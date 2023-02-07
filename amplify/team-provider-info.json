@@ -1,0 +1,38 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-bookwormfriends-dev-110656-authRole",
+      "UnauthRoleArn": "arn:aws:iam::594107625744:role/amplify-bookwormfriends-dev-110656-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::594107625744:role/amplify-bookwormfriends-dev-110656-authRole",
+      "Region": "ap-northeast-2",
+      "DeploymentBucketName": "amplify-bookwormfriends-dev-110656-deployment",
+      "UnauthRoleName": "amplify-bookwormfriends-dev-110656-unauthRole",
+      "StackName": "amplify-bookwormfriends-dev-110656",
+      "StackId": "arn:aws:cloudformation:ap-northeast-2:594107625744:stack/amplify-bookwormfriends-dev-110656/19c78650-21bf-11ed-8e5a-02e415115646",
+      "AmplifyAppId": "d2x0ycrtf22r08"
+    },
+    "categories": {
+      "function": {
+        "bookwormFriendsKakaoLogin": {
+          "deploymentBucketName": "amplify-bookwormfriends-dev-110656-deployment",
+          "s3Key": "amplify-builds/bookwormFriendsKakaoLogin-566567525a75576f4569-build.zip"
+        }
+      },
+      "auth": {
+        "bookwormfriends47dca2d6": {
+          "userPoolId": "ap-northeast-2_MGdU7uQ11",
+          "userPoolName": "bookworm-friends-user",
+          "webClientId": "71vfkcgaaekbqmmcli2jbncg60",
+          "nativeClientId": "71vfkcgaaekbqmmcli2jbncg60",
+          "identityPoolId": "ap-northeast-2:c5653df9-274a-4a37-ac79-db25bcd7265d",
+          "identityPoolName": "Bookworm Friends",
+          "allowUnauthenticatedIdentities": true,
+          "authRoleArn": "arn:aws:iam::594107625744:role/Cognito_BookwormFriendsAuth_Role",
+          "authRoleName": "Cognito_BookwormFriendsAuth_Role",
+          "unauthRoleArn": "arn:aws:iam::594107625744:role/Cognito_BookwormFriendsUnauth_Role",
+          "unauthRoleName": "Cognito_BookwormFriendsUnauth_Role"
+        }
+      }
+    }
+  }
+}

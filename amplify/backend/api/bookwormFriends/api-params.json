@@ -1,0 +1,35 @@
+{
+  "paths": [
+    {
+      "name": "/user/login",
+      "lambdaFunction": "bookwormFriendsKakaoLogin",
+      "privacy": {
+        "open": true
+      },
+      "policyResourceName": "/user/login"
+    }
+  ],
+  "resourceName": "bookwormFriends",
+  "apiName": "bookwormFriends",
+  "functionArns": [
+    {
+      "lambdaFunction": "bookwormFriendsKakaoLogin"
+    }
+  ],
+  "privacy": {
+    "auth": 0,
+    "unauth": 0,
+    "authRoleName": "amplify-bookwormfriends-dev-110656-authRole",
+    "unAuthRoleName": "amplify-bookwormfriends-dev-110656-unauthRole"
+  },
+  "dependsOn": [
+    {
+      "category": "function",
+      "resourceName": "bookwormFriendsKakaoLogin",
+      "attributes": [
+        "Name",
+        "Arn"
+      ]
+    }
+  ]
+}

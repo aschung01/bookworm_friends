@@ -1,0 +1,6 @@
+{
+  "authSelections": "identityPoolAndUserPool",
+  "resourceName": "bookwormfriends47dca2d6",
+  "serviceType": "imported",
+  "region": "ap-northeast-2"
+}

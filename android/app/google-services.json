@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "212723580252",
+    "project_id": "bookworm-friends-notification",
+    "storage_bucket": "bookworm-friends-notification.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212723580252:android:9cc48e063b6f058c30d599",
+        "android_client_info": {
+          "package_name": "com.unicorn.bookwormFriends"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "212723580252-i9fc0r1e8cj538k2fiei1jjhctikpu42.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPmt9ERLRxkTVeSXOSxDTUwN2352BIS68"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "212723580252-i9fc0r1e8cj538k2fiei1jjhctikpu42.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "212723580252-6guk5js3ejruthokjk0ssmsqml25q5on.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.unicorn.bookwormFriends"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212723580252:android:85b17eb6ce76189230d599",
+        "android_client_info": {
+          "package_name": "com.unicorn.bookworm_friends"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "212723580252-i9fc0r1e8cj538k2fiei1jjhctikpu42.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPmt9ERLRxkTVeSXOSxDTUwN2352BIS68"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "212723580252-i9fc0r1e8cj538k2fiei1jjhctikpu42.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "212723580252-6guk5js3ejruthokjk0ssmsqml25q5on.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.unicorn.bookwormFriends"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
