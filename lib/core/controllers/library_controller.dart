@@ -15,16 +15,25 @@ enum LibraryMode {
   editShelf,
 }
 
+enum LibraryTab {
+  liked,
+  finished,
+}
+
 class LibraryController extends GetxController {
   static LibraryController get to => Get.find<LibraryController>();
   RxList<String> shelf = <String>[].obs;
   RxMap<String, List> library = <String, List>{}.obs;
-  RxList finishedBooks = [].obs;
+  RxMap<String, List> finishedLibrary = <String, List>{}.obs;
   late TextEditingController shelfNameTextController;
   late FixedExtentScrollController pickerYearScrollController;
   late FixedExtentScrollController pickerMonthScrollController;
+  late PageController libraryPageController;
 
-  Rx<LibraryMode> libraryMode = LibraryMode.library.obs;
+  LibraryMode libraryMode = LibraryMode.library;
+  LibraryTab libraryTab = LibraryTab.liked;
+
+  bool barOpened = false;
   RxBool dragging = false.obs;
   RxInt emptiedShelf = (-1).obs;
   RxBool finishedBookLoading = false.obs;
@@ -52,6 +61,7 @@ class LibraryController extends GetxController {
     shelfNameTextController = TextEditingController();
     pickerYearScrollController = FixedExtentScrollController();
     pickerMonthScrollController = FixedExtentScrollController();
+    libraryPageController = PageController();
   }
 
   @override
@@ -59,6 +69,34 @@ class LibraryController extends GetxController {
     shelfNameTextController.dispose();
     pickerYearScrollController.dispose();
     pickerMonthScrollController.dispose();
+  }
+
+  void updateLibraryMode(LibraryMode mode) {
+    libraryMode = mode;
+    update();
+  }
+
+  void updateLibraryTab(LibraryTab tab) {
+    libraryTab = tab;
+    if (libraryTab == LibraryTab.finished) {
+      libraryPageController.animateToPage(
+        1,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.linear,
+      );
+    } else {
+      libraryPageController.animateToPage(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.linear,
+      );
+    }
+    update();
+  }
+
+  void updateBarOpened() {
+    barOpened = !barOpened;
+    update();
   }
 
   void toggleBookElevation() {
@@ -103,8 +141,13 @@ class LibraryController extends GetxController {
     finishedBookLoading.value = true;
     var resData = await LibraryApiService.getFinishedBooks(
         filterYear.value, filterMonth.value);
-    finishedBooks.clear();
-    finishedBooks.addAll(resData);
+    finishedLibrary.clear();
+    for (var e in resData) {
+      if (e['books'].length == 0) continue;
+      finishedLibrary.addAll({
+        e['name']: e['books'],
+      });
+    }
     finishedBookLoading.value = false;
   }
 

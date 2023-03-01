@@ -122,7 +122,7 @@ class AppController extends GetxController {
     var initialzationSettingsAndroid =
         const AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    var initialzationSettingsIOS = const IOSInitializationSettings(
+    var initialzationSettingsIOS = const DarwinInitializationSettings(
       requestSoundPermission: true,
       requestBadgePermission: true,
       requestAlertPermission: true,

@@ -7,6 +7,7 @@ import 'package:bookworm_friends/ui/pages/settings_page.dart';
 import 'package:bookworm_friends/ui/pages/splash_page.dart';
 import 'package:bookworm_friends/ui/pages/user_library_page.dart';
 import 'package:bookworm_friends/ui/views/book_details_tab_view.dart';
+import 'package:bookworm_friends/ui/views/home_navigation_view.dart';
 import 'package:get/get.dart';
 
 class AppRoutes {
@@ -21,7 +22,7 @@ class AppRoutes {
     ),
     GetPage(
       name: '/home',
-      page: () => const HomePage(),
+      page: () => HomeNavigationView(),
       transition: Transition.topLevel,
     ),
     GetPage(

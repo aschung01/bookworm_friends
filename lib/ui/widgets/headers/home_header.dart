@@ -11,7 +11,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 class HomeHeader extends StatelessWidget implements PreferredSizeWidget {
   final Function() onSearchUserPressed;
   final Function() onMenuPressed;
-  final Rx<LibraryMode> libraryMode;
+  final LibraryMode libraryMode;
   const HomeHeader({
     Key? key,
     required this.onSearchUserPressed,
@@ -35,102 +35,105 @@ class HomeHeader extends StatelessWidget implements PreferredSizeWidget {
           width: context.width,
           child: Row(
             children: [
-              TabBar(
-                isScrollable: true,
-                physics: const ClampingScrollPhysics(),
-                controller: UserController.to.userTabController,
-                indicatorColor: Colors.transparent,
-                labelPadding: const EdgeInsets.only(right: 10),
-                splashFactory: NoSplash.splashFactory,
-                overlayColor: MaterialStateProperty.resolveWith<Color?>(
-                  (Set<MaterialState> states) {
-                    return states.contains(MaterialState.focused)
-                        ? null
-                        : Colors.transparent;
-                  },
-                ),
-                tabs: List.generate(
-                  UserController.to.userFollowing.length + 1,
-                  (index) {
-                    if (index == 0) {
-                      return Container(
-                        width: 40,
-                        height: 40,
-                        decoration:
-                            index == UserController.to.userTabIndex.value
-                                ? BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: lightGrayColor,
-                                    border: Border.all(
-                                      color: AppController.to.themeColor,
-                                      width: 1.5,
+              Expanded(
+                child: TabBar(
+                  isScrollable: true,
+                  physics: const ClampingScrollPhysics(),
+                  controller: UserController.to.userTabController,
+                  indicatorColor: Colors.transparent,
+                  labelPadding: const EdgeInsets.only(right: 10),
+                  splashFactory: NoSplash.splashFactory,
+                  overlayColor: MaterialStateProperty.resolveWith<Color?>(
+                    (Set<MaterialState> states) {
+                      return states.contains(MaterialState.focused)
+                          ? null
+                          : Colors.transparent;
+                    },
+                  ),
+                  tabs: List.generate(
+                    UserController.to.userFollowing.length + 1,
+                    (index) {
+                      if (index == 0) {
+                        return Container(
+                          width: 40,
+                          height: 40,
+                          decoration:
+                              index == UserController.to.userTabIndex.value
+                                  ? BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: lightGrayColor,
+                                      border: Border.all(
+                                        color: AppController.to.themeColor,
+                                        width: 1.5,
+                                      ),
+                                    )
+                                  : const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: lightGrayColor,
                                     ),
-                                  )
-                                : const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: lightGrayColor,
-                                  ),
-                        child: Center(
-                          child: Text(
-                            AuthController.to.userInfo.isEmpty
-                                ? '?'
-                                : AuthController.to.userInfo['emoji'],
-                            style: const TextStyle(
-                              color: darkPrimaryColor,
-                              fontSize: 20,
+                          child: Center(
+                            child: Text(
+                              AuthController.to.userInfo.isEmpty
+                                  ? '?'
+                                  : AuthController.to.userInfo['emoji'],
+                              style: const TextStyle(
+                                color: darkPrimaryColor,
+                                fontSize: 20,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    } else {
-                      return Container(
-                        width: 40,
-                        height: 40,
-                        decoration:
-                            index == UserController.to.userTabIndex.value
-                                ? BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: lightGrayColor,
-                                    border: Border.all(
-                                      color: AppController.to.themeColor,
-                                      width: 1.5,
+                        );
+                      } else {
+                        return Container(
+                          width: 40,
+                          height: 40,
+                          decoration:
+                              index == UserController.to.userTabIndex.value
+                                  ? BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: lightGrayColor,
+                                      border: Border.all(
+                                        color: AppController.to.themeColor,
+                                        width: 1.5,
+                                      ),
+                                    )
+                                  : const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: lightGrayColor,
                                     ),
-                                  )
-                                : const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: lightGrayColor,
-                                  ),
-                        child: Center(
-                          child: Text(
-                            UserController.to.userFollowing[index - 1]['emoji'],
-                            style: const TextStyle(
-                              color: darkPrimaryColor,
-                              fontSize: 20,
+                          child: Center(
+                            child: Text(
+                              UserController.to.userFollowing[index - 1]
+                                  ['emoji'],
+                              style: const TextStyle(
+                                color: darkPrimaryColor,
+                                fontSize: 20,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: Material(
-                  type: MaterialType.circle,
-                  color: lightGrayColor,
-                  child: IconButton(
-                    onPressed: onSearchUserPressed,
-                    splashRadius: 20,
-                    icon: const Icon(
-                      PhosphorIcons.magnifyingGlassLight,
-                      size: 24,
-                      color: darkPrimaryColor,
-                    ),
+                        );
+                      }
+                    },
                   ),
                 ),
               ),
+              // SizedBox(
+              //   width: 40,
+              //   height: 40,
+              //   child: Material(
+              //     type: MaterialType.circle,
+              //     color: lightGrayColor,
+              //     child: IconButton(
+              //       onPressed: onSearchUserPressed,
+              //       splashRadius: 20,
+              //       icon: const Icon(
+              //         PhosphorIcons.magnifyingGlassLight,
+              //         size: 24,
+              //         color: darkPrimaryColor,
+              //       ),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ),
@@ -160,7 +163,7 @@ class HomeHeader extends StatelessWidget implements PreferredSizeWidget {
 class LibraryHeader extends StatelessWidget {
   final Function() onEditPressed;
   final Function() onAddPressed;
-  final Rx<LibraryMode> libraryMode;
+  final LibraryMode libraryMode;
   final Function() onEditShelfPressed;
   final Function() onEditShelfCompletePressed;
 
@@ -181,7 +184,7 @@ class LibraryHeader extends StatelessWidget {
       child: SizedBox(
         height: 56,
         child: () {
-          if (libraryMode.value == LibraryMode.editLibrary) {
+          if (libraryMode == LibraryMode.editLibrary) {
             return SizedBox(
               height: 56,
               child: Align(
@@ -196,7 +199,7 @@ class LibraryHeader extends StatelessWidget {
                 ),
               ),
             );
-          } else if (libraryMode.value == LibraryMode.editShelf) {
+          } else if (libraryMode == LibraryMode.editShelf) {
             return SizedBox(
               height: 56,
               child: Align(
@@ -219,36 +222,28 @@ class LibraryHeader extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    GetBuilder<AuthController>(
-                      builder: (_) {
-                        return Text.rich(
-                          TextSpan(
-                            text: () {
-                              if (_.userInfo.isEmpty) {
-                                return '???';
-                              } else {
-                                return _.userInfo['username'];
-                              }
-                            }(),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: darkPrimaryColor,
-                            ),
-                            children: const [
-                              TextSpan(
-                                text: ' 님의 서재',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.normal,
-                                  color: darkPrimaryColor,
-                                ),
-                              ),
-                            ],
+                    GetX<UserController>(builder: (_) {
+                      return Text.rich(
+                        TextSpan(
+                          text: _.username.value,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: darkPrimaryColor,
                           ),
-                        );
-                      }
-                    ),
+                          children: const [
+                            TextSpan(
+                              text: ' 님의 서재',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.normal,
+                                color: darkPrimaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [

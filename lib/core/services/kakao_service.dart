@@ -45,24 +45,10 @@ class KakaoService {
     }
   }
 
-  static _issueAccessToken(String authCode) async {
-    try {
-      var token = await AuthApi.instance.issueAccessToken(authCode: authCode);
-      Get.back();
-      var tokenManger = DefaultTokenManager();
-      tokenManger.setToken(token);
-      print(token.toJson());
-      return token.toJson();
-    } catch (e) {
-      print(e);
-    }
-  }
-
   static loginWithKakao() async {
     try {
-      String authCode = await AuthCodeClient.instance.request();
-      var token = await _issueAccessToken(authCode);
-      return token.map((key, value) => MapEntry(key, value?.toString()));
+      OAuthToken token = await UserApi.instance.loginWithKakaoAccount();
+      return token.toJson().map((key, value) => MapEntry(key, value?.toString()));
     } catch (e) {
       print(e);
     }
@@ -70,9 +56,8 @@ class KakaoService {
 
   static loginWithKakaoTalk() async {
     try {
-      String authCode = await AuthCodeClient.instance.requestWithTalk();
-      var token = await _issueAccessToken(authCode);
-      return token.map((key, value) => MapEntry(key, value?.toString()));
+      OAuthToken token = await UserApi.instance.loginWithKakaoTalk();
+      return token.toJson().map((key, value) => MapEntry(key, value?.toString()));
     } catch (e) {
       print(e);
     }

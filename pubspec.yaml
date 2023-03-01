@@ -34,30 +34,30 @@ dependencies:
   get: ^4.6.5
   dio: ^4.0.1
   intl: ^0.17.0
-  flutter_secure_storage: ^5.0.2
+  flutter_secure_storage: ^8.0.0
   flutter_easyloading: ^3.0.5 
   phosphor_flutter: ^1.4.0
   flutter_shake_animated: ^0.0.5
   emojis: ^0.9.9
   animated_text_kit: ^4.2.2
   shimmer: ^2.0.0
-  flutter_svg: ^1.0.3
+  flutter_svg: ^2.0.2
   url_launcher: ^6.1.5
   pull_to_refresh: ^2.0.0
-  package_info_plus: ^1.4.3
+  package_info_plus: ^3.0.3
   amplify_flutter: ^0.6.6
   amplify_auth_cognito: ^0.6.6
   amplify_api: ^0.6.6
   flutter_inappwebview: ^5.4.3+7
-  firebase_core: ^1.20.0
-  firebase_messaging: ^12.0.1
-  flutter_local_notifications: ^9.7.0
+  firebase_core: ^2.7.0
+  firebase_messaging: ^14.2.5
+  flutter_local_notifications: ^13.0.0
   uni_links: ^0.5.1
   amazon_cognito_identity_dart_2: ^3.0.0
-  kakao_flutter_sdk: ^1.2.1
+  kakao_flutter_sdk: ^1.4.0
   in_app_review: ^2.0.4
-  firebase_analytics: ^9.3.3
-  firebase_crashlytics: ^2.8.9
+  firebase_analytics: ^10.1.4
+  firebase_crashlytics: ^3.0.15
   app_tracking_transparency: ^2.0.2+4
   # google_mobile_ads: ^2.0.0
 

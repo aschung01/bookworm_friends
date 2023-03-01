@@ -79,7 +79,7 @@ class DeepLinkController extends GetxController {
                 await AuthController.to.registerUserInfo();
                 AuthController.to.getUserInfoIfEmpty();
                 LibraryController.to.getLibrary();
-                if (LibraryController.to.finishedBooks.isEmpty) {
+                if (LibraryController.to.finishedLibrary.isEmpty) {
                   LibraryController.to.getFinishedBooks();
                 }
                 UserController.to.getUserFollowing();
@@ -100,7 +100,7 @@ class DeepLinkController extends GetxController {
               await AuthController.to.registerUserInfo();
               AuthController.to.getUserInfoIfEmpty();
               LibraryController.to.getLibrary();
-              if (LibraryController.to.finishedBooks.isEmpty) {
+              if (LibraryController.to.finishedLibrary.isEmpty) {
                 LibraryController.to.getFinishedBooks();
               }
               UserController.to.getUserFollowing();

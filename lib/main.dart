@@ -4,6 +4,7 @@ import 'package:bookworm_friends/core/controllers/app_controller.dart';
 import 'package:bookworm_friends/core/controllers/auth_controller.dart';
 import 'package:bookworm_friends/core/controllers/book_details_controller.dart';
 import 'package:bookworm_friends/core/controllers/deep_link_controller.dart';
+import 'package:bookworm_friends/core/controllers/home_navigation_controller.dart';
 import 'package:bookworm_friends/core/controllers/library_controller.dart';
 import 'package:bookworm_friends/core/controllers/search_book_controller.dart';
 import 'package:bookworm_friends/core/controllers/settings_controller.dart';
@@ -16,16 +17,17 @@ import 'package:kakao_flutter_sdk/kakao_flutter_sdk_template.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  KakaoSdk.init(nativeAppKey: kakaoNativeAppKey);
   Get.put<AppController>(AppController());
   Get.put<UserController>(UserController());
   Get.put<AuthController>(AuthController());
   await AuthController.to.asyncMethod();
+  Get.put<HomeNavigationController>(HomeNavigationController());
   Get.put<BookDetailsController>(BookDetailsController());
   Get.put<SearchBookController>(SearchBookController());
   Get.put<LibraryController>(LibraryController());
   Get.put<SettingsController>(SettingsController());
   Get.put<DeepLinkController>(DeepLinkController());
-  KakaoSdk.init(nativeAppKey: kakaoNativeAppKey);
 
   runApp(const MyApp());
 }
@@ -44,7 +46,7 @@ class MyApp extends GetView<AppController> {
     (context as Element).visitChildren(rebuild);
     UserController.to.rebuild = false;
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(

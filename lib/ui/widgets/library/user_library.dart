@@ -122,50 +122,6 @@ class UserLibrary extends GetView<UserController> {
                                     children: List.generate(
                                       libraryModel.library.length,
                                       (shelfNum) {
-                                        // if (_isLibraryEmpty) {
-                                        //     return Column(
-                                        //       mainAxisAlignment:
-                                        //           MainAxisAlignment.center,
-                                        //       children: [
-                                        //         const Padding(
-                                        //           padding: EdgeInsets.only(
-                                        //               top: 10, bottom: 20),
-                                        //           child: SadCharacter(),
-                                        //         ),
-                                        //         const Text(
-                                        //           '서재가 비었어요..',
-                                        //           style: TextStyle(
-                                        //             fontSize: 14,
-                                        //             color: grayColor,
-                                        //           ),
-                                        //         ),
-                                        //         Row(
-                                        //           mainAxisSize:
-                                        //               MainAxisSize.min,
-                                        //           mainAxisAlignment:
-                                        //               MainAxisAlignment.center,
-                                        //           children: const [
-                                        //             Padding(
-                                        //               padding: EdgeInsets.only(
-                                        //                   right: 5),
-                                        //               child: Icon(
-                                        //                 PhosphorIcons.plusLight,
-                                        //                 size: 24,
-                                        //                 color: grayColor,
-                                        //               ),
-                                        //             ),
-                                        //             Text(
-                                        //               '를 눌러 책을 추가해 볼까요?',
-                                        //               style: TextStyle(
-                                        //                 fontSize: 14,
-                                        //                 color: grayColor,
-                                        //               ),
-                                        //             ),
-                                        //           ],
-                                        //         ),
-                                        //       ],
-                                        //     );
-                                        // }
                                         return Padding(
                                           padding:
                                               const EdgeInsets.only(bottom: 26),
@@ -320,20 +276,9 @@ class UserLibrary extends GetView<UserController> {
                                                                   ),
                                                       ),
                                                     ),
-                                                    if (libraryModel
-                                                        .shelf.isNotEmpty)
-                                                      Positioned(
-                                                        bottom: 0,
-                                                        right: 0,
-                                                        child: ShelfLabel(
-                                                          label: libraryModel
-                                                              .shelf[shelfNum],
-                                                        ),
-                                                      ),
                                                   ],
                                                 ),
                                               ),
-                                              const Shelf(),
                                             ],
                                           ),
                                         );
@@ -355,6 +300,7 @@ class UserLibrary extends GetView<UserController> {
                           ),
                         ],
                       ),
+                      // 서재 하단 읽은 책 목록
                       Positioned(
                         bottom: 0,
                         child: AnimatedSize(
@@ -550,6 +496,7 @@ class UserLibrary extends GetView<UserController> {
                   ),
                 ),
               ),
+              // 서재 상단 바
               Positioned(
                 top: 0,
                 child: SizedBox(

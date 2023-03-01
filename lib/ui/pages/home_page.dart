@@ -26,9 +26,7 @@ class HomePage extends GetView<LibraryController> {
     for (int i = 0; i < UserController.to.userFollowing.length + 1; i++) {
       if (i == 0) {
         _tabViews.add(
-          Library(
-            height: height,
-          ),
+          const Library(),
         );
       } else {
         _tabViews.add(
@@ -68,7 +66,7 @@ class HomePage extends GetView<LibraryController> {
       AuthController.to.getUserInfoIfEmpty();
       if (AuthController.to.isAuthenticated.value) {
         controller.getLibrary();
-        if (controller.finishedBooks.isEmpty) {
+        if (controller.finishedLibrary.isEmpty) {
           controller.getFinishedBooks();
         }
         if (UserController.to.userFollowing.isEmpty) {
@@ -79,13 +77,13 @@ class HomePage extends GetView<LibraryController> {
 
     return GestureDetector(
       onTap: () {
-        if (controller.libraryMode.value != LibraryMode.library) {
-          if (controller.libraryMode.value == LibraryMode.editLibrary) {
+        if (controller.libraryMode != LibraryMode.library) {
+          if (controller.libraryMode == LibraryMode.editLibrary) {
             controller.updateLibrary();
-          } else if (controller.libraryMode.value == LibraryMode.editShelf) {
+          } else if (controller.libraryMode == LibraryMode.editShelf) {
             controller.updateShelfOrder();
           }
-          controller.libraryMode.value = LibraryMode.library;
+          controller.libraryMode = LibraryMode.library;
         }
       },
       child: GetBuilder<UserController>(
@@ -95,25 +93,29 @@ class HomePage extends GetView<LibraryController> {
               rebuildAllChildren(context);
             });
           }
-          return Scaffold(
-            appBar: HomeHeader(
-              onSearchUserPressed: _onSearchUserPressed,
-              onMenuPressed: _onMenuPressed,
-              libraryMode: controller.libraryMode,
-            ),
-            body: GetX<UserController>(
-              builder: (_) {
-                double _height = context.height -
-                    (112 +
-                        context.mediaQueryPadding.bottom +
-                        context.mediaQueryPadding.top);
-                return TabBarView(
-                  controller: __.userTabController,
-                  physics: const ClampingScrollPhysics(),
-                  children: createTabViews(_height),
-                );
-              },
-            ),
+          return Column(
+            children: [
+              HomeHeader(
+                onSearchUserPressed: _onSearchUserPressed,
+                onMenuPressed: _onMenuPressed,
+                libraryMode: controller.libraryMode,
+              ),
+              Expanded(
+                child: GetX<UserController>(
+                  builder: (_) {
+                    double _height = context.height -
+                        (112 +
+                            context.mediaQueryPadding.bottom +
+                            context.mediaQueryPadding.top);
+                    return TabBarView(
+                      controller: __.userTabController,
+                      physics: const ClampingScrollPhysics(),
+                      children: createTabViews(_height),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
