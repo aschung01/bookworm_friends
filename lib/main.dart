@@ -1,58 +1,39 @@
-import 'package:bookworm_friends/constants/app_routes.dart';
+import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/constants/constants.dart';
-import 'package:bookworm_friends/core/controllers/app_controller.dart';
-import 'package:bookworm_friends/core/controllers/auth_controller.dart';
-import 'package:bookworm_friends/core/controllers/book_details_controller.dart';
-import 'package:bookworm_friends/core/controllers/deep_link_controller.dart';
-import 'package:bookworm_friends/core/controllers/library_controller.dart';
-import 'package:bookworm_friends/core/controllers/search_book_controller.dart';
-import 'package:bookworm_friends/core/controllers/settings_controller.dart';
-import 'package:bookworm_friends/core/controllers/user_controller.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:get/get.dart';
-import 'package:kakao_flutter_sdk/kakao_flutter_sdk_template.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Get.put<AppController>(AppController());
-  Get.put<UserController>(UserController());
-  Get.put<AuthController>(AuthController());
-  await AuthController.to.asyncMethod();
-  Get.put<BookDetailsController>(BookDetailsController());
-  Get.put<SearchBookController>(SearchBookController());
-  Get.put<LibraryController>(LibraryController());
-  Get.put<SettingsController>(SettingsController());
-  Get.put<DeepLinkController>(DeepLinkController());
-  KakaoSdk.init(nativeAppKey: kakaoNativeAppKey);
 
-  runApp(const MyApp());
+  await Firebase.initializeApp();
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  await Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+  );
+
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends GetView<AppController> {
-  const MyApp({Key? key}) : super(key: key);
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-  // This widget is the root of your application.
-  void rebuildAllChildren(BuildContext context) {
-    print('rebuild');
-    void rebuild(Element el) {
-      el.markNeedsBuild();
-      el.visitChildren(rebuild);
-    }
-
-    (context as Element).visitChildren(rebuild);
-    UserController.to.rebuild = false;
-  }
-  
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      theme: controller.theme.copyWith(
-        colorScheme: controller.theme.colorScheme.copyWith(
-          // secondary: brightPrimaryColor.withOpacity(0.3),
+    return MaterialApp(
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: greenThemeColor,
           secondary: lightGrayColor,
         ),
+        useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
       localizationsDelegates: const [
@@ -64,11 +45,9 @@ class MyApp extends GetView<AppController> {
         Locale('en', 'US'),
         Locale('ko', 'KR'),
       ],
-      key: controller.scaffoldKey,
-      initialRoute: '/',
-      locale: const Locale('ko', 'KO'),
-      getPages: AppRoutes.routes,
+      locale: const Locale('ko', 'KR'),
       builder: EasyLoading.init(),
+      home: const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
 }
