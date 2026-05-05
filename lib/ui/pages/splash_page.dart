@@ -19,7 +19,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
     final authState = ref.read(authProvider);
