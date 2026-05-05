@@ -1,3 +1,4 @@
+import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -47,7 +48,8 @@ class MyApp extends StatelessWidget {
       ],
       locale: const Locale('ko', 'KR'),
       builder: EasyLoading.init(),
-      home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      initialRoute: AppRoutes.splash,
+      routes: AppRoutes.routes,
     );
   }
 }

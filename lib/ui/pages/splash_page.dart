@@ -1,51 +1,47 @@
-import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:bookworm_friends/core/controllers/app_controller.dart';
-import 'package:bookworm_friends/core/controllers/auth_controller.dart';
-import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bookworm_friends/providers/auth_provider.dart';
+import 'package:bookworm_friends/providers/profile_provider.dart';
+import 'package:bookworm_friends/constants/app_routes.dart';
 
-const String _logoText = '책벌레\n친구들';
+class SplashPage extends ConsumerStatefulWidget {
+  const SplashPage({super.key});
 
-class SplashPage extends StatelessWidget {
-  const SplashPage({Key? key}) : super(key: key);
+  @override
+  ConsumerState<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends ConsumerState<SplashPage> {
+  @override
+  void initState() {
+    super.initState();
+    _navigate();
+  }
+
+  Future<void> _navigate() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+
+    if (authState.status == AuthStatus.authenticated) {
+      final profile = await ref.read(profileProvider.future);
+      if (!mounted) return;
+
+      if (profile?.needsOnboarding ?? true) {
+        Navigator.pushReplacementNamed(context, AppRoutes.settings);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      }
+    } else {
+      Navigator.pushReplacementNamed(context, AppRoutes.auth);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    Future.delayed(
-      Duration.zero,
-      () {
-        Get.offAllNamed('/home');
-      },
-    );
-
-    return Scaffold(
-      body: Container(
-        color: Colors.white,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 20),
-                child: BookwormIcon(),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Text(
-                  _logoText,
-                  style: TextStyle(
-                    color: AppController.to.themeColor,
-                    fontSize: 50,
-                    fontFamily: 'DesignHouse',
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }
