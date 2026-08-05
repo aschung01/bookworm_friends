@@ -11,4 +11,13 @@ const Color backgroundColor = Color(0xffF8F9FA);
 List<double> bookOpacityList = [0.4, 0.7, 1.0];
 
 const String kakaoBookSearchBaseUrl = 'https://dapi.kakao.com';
-const String kakaoRestApiKey = 'ab7c0da780466d764fbee0e55e65900c';
+// Provided at build time via --dart-define-from-file (env.json, gitignored).
+const String kakaoRestApiKey = String.fromEnvironment('KAKAO_REST_API_KEY');
+
+const String googleBooksBaseUrl = 'https://www.googleapis.com/books/v1';
+
+// Provided at build time via --dart-define / --dart-define-from-file (see
+// env.json, which is gitignored). Empty by default: the Google Books provider
+// then runs keyless and falls back to Open Library.
+const String googleBooksApiKey =
+    String.fromEnvironment('GOOGLE_BOOKS_API_KEY');

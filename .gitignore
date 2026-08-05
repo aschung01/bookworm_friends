@@ -5,9 +5,11 @@
 *.swp
 .DS_Store
 .atom/
+.build/
 .buildlog/
 .history
 .svn/
+.swiftpm/
 migrate_working_dir/
 
 # IntelliJ related
@@ -67,3 +69,13 @@ amplifytools.xcconfig
 .secret-*
 **.sample
 #amplify-do-not-edit-end
+
+# Local build-time secrets (dart-define-from-file)
+env.json
+
+# Generated localizations (gen-l10n)
+lib/l10n/app_localizations*.dart
+
+# Production data dumps (PII) and Supabase CLI cache
+migration_data/
+supabase/.temp/

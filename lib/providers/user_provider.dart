@@ -1,8 +1,11 @@
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
+import 'package:bookworm_friends/l10n/app_localizations.dart';
+import 'package:bookworm_friends/services/notification_service.dart' show navigatorKey;
 
 final followingListProvider =
     FutureProvider.autoDispose<List<Profile>>((ref) async {
@@ -84,6 +87,18 @@ final searchUsersProvider =
   },
 );
 
+final followerListProvider =
+    FutureProvider.autoDispose.family<List<Profile>, String>((ref, userId) async {
+  final data = await supabase
+      .from('follows')
+      .select('follower_id, profiles!follows_follower_id_fkey(*)')
+      .eq('following_id', userId);
+
+  return data
+      .map((row) => Profile.fromJson(row['profiles'] as Map<String, dynamic>))
+      .toList();
+});
+
 final userActionsProvider = Provider((ref) => UserActions(ref));
 
 class UserActions {
@@ -94,26 +109,44 @@ class UserActions {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
 
-    await supabase.from('follows').insert({
-      'follower_id': userId,
-      'following_id': targetUserId,
-    });
+    try {
+      await supabase.from('follows').insert({
+        'follower_id': userId,
+        'following_id': targetUserId,
+      });
 
-    ref.invalidate(followingListProvider);
-    ref.invalidate(isFollowingProvider(targetUserId));
+      ref.invalidate(followingListProvider);
+      ref.invalidate(isFollowingProvider(targetUserId));
+    } catch (e) {
+      EasyLoading.showError(AppLocalizations.of(navigatorKey.currentContext!).followFailed);
+    }
   }
 
   Future<void> unfollow(String targetUserId) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
 
-    await supabase
-        .from('follows')
-        .delete()
-        .eq('follower_id', userId)
-        .eq('following_id', targetUserId);
+    try {
+      await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', userId)
+          .eq('following_id', targetUserId);
 
-    ref.invalidate(followingListProvider);
-    ref.invalidate(isFollowingProvider(targetUserId));
+      ref.invalidate(followingListProvider);
+      ref.invalidate(isFollowingProvider(targetUserId));
+    } catch (e) {
+      EasyLoading.showError(AppLocalizations.of(navigatorKey.currentContext!).unfollowFailed);
+    }
+  }
+
+  Future<void> pokeUser(String targetUsername) async {
+    final l10n = AppLocalizations.of(navigatorKey.currentContext!);
+    try {
+      await supabase.rpc<void>('poke_user', params: {'target_username': targetUsername});
+      EasyLoading.showSuccess(l10n.pokeSent);
+    } catch (e) {
+      EasyLoading.showError(l10n.pokeFailed);
+    }
   }
 }

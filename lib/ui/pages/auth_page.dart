@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 
@@ -10,6 +11,7 @@ class AuthPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     ref.listen(authProvider, (previous, next) {
       if (next.status == AuthStatus.authenticated) {
         Navigator.pushReplacementNamed(context, AppRoutes.home);
@@ -27,9 +29,9 @@ class AuthPage extends ConsumerWidget {
               height: 120,
             ),
             const SizedBox(height: 48),
-            const Text(
-              '책벌레 친구들',
-              style: TextStyle(
+            Text(
+              l10n.appTitle,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'DesignHouse',
@@ -37,7 +39,7 @@ class AuthPage extends ConsumerWidget {
             ),
             const SizedBox(height: 48),
             _SignInButton(
-              label: 'Apple로 계속하기',
+              label: l10n.continueWithApple,
               icon: 'assets/icons/appleBlackIcon.svg',
               backgroundColor: Colors.black,
               textColor: Colors.white,
@@ -45,7 +47,7 @@ class AuthPage extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             _SignInButton(
-              label: 'Google로 계속하기',
+              label: l10n.continueWithGoogle,
               icon: 'assets/icons/googleIcon.svg',
               backgroundColor: Colors.white,
               textColor: Colors.black,

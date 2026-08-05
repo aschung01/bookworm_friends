@@ -25,12 +25,17 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     final authState = ref.read(authProvider);
 
     if (authState.status == AuthStatus.authenticated) {
-      final profile = await ref.read(profileProvider.future);
-      if (!mounted) return;
+      try {
+        final profile = await ref.read(profileProvider.future);
+        if (!mounted) return;
 
-      if (profile?.needsOnboarding ?? true) {
-        Navigator.pushReplacementNamed(context, AppRoutes.settings);
-      } else {
+        if (profile?.needsOnboarding ?? true) {
+          Navigator.pushReplacementNamed(context, AppRoutes.settings);
+        } else {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
+      } catch (_) {
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, AppRoutes.home);
       }
     } else {

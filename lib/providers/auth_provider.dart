@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
+import 'package:bookworm_friends/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
@@ -31,6 +32,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
       if (event == AuthChangeEvent.signedIn && session != null) {
         state = AuthState.authenticated(session.user);
+        NotificationService.updateTokenInProfile();
       } else if (event == AuthChangeEvent.signedOut) {
         state = const AuthState.unauthenticated();
       }
@@ -56,6 +58,17 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> signOut() async {
     await supabase.auth.signOut();
     state = const AuthState.unauthenticated();
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      await supabase.functions.invoke('delete-account');
+      await supabase.auth.signOut();
+      state = const AuthState.unauthenticated();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }
 
