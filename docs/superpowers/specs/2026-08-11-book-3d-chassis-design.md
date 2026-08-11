@@ -301,6 +301,16 @@ passing once the new required parameters are supplied. `finished_books_sheet_tes
 
 ## Risks
 
+- **The page block is the one face that can collapse silently.** The cover and back board are handed
+  tight constraints by the chassis; the page block sizes itself, and a childless `DecoratedBox` is a
+  `RenderProxyBox` that takes `constraints.smallest`. When it collapses the failure is invisible
+  rather than loud, because the flat back board sits directly behind and shows through the fore-edge
+  as a uniform slab. Guarded by `test/book_page_block_test.dart`.
+- **Flutter gradients default to horizontal, CSS defaults to vertical.** `linear-gradient(#fff,
+#fafafa)` is top-to-bottom; `LinearGradient(colors: [...])` is left-to-right. Any gradient
+  transliterated from the reference needs `begin`/`end` stated explicitly. Also guarded by
+  `test/book_page_block_test.dart`.
+
 - **No depth at rest.** See the correction above. Shelves get the chassis, the size variation and
   generated covers; the fore-edge only appears while a book is held. If that reads as too little on
   device, the resting angle has to change. Raising thickness will not help, because thickness is
