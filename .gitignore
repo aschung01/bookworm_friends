@@ -79,3 +79,6 @@ lib/l10n/app_localizations*.dart
 # Production data dumps (PII) and Supabase CLI cache
 migration_data/
 supabase/.temp/
+
+# Brainstorming session mockups
+.superpowers/
