@@ -23,10 +23,11 @@ without pumping widgets.
 ## Task 1: Geometry and jitter
 
 **Files:**
+
 - Create: `lib/ui/widgets/book/book_geometry.dart`
 - Create: `test/book_geometry_test.dart`
 
-- [ ] **Step 1: Implement the FNV-1a jitter hash**
+- [x] **Step 1: Implement the FNV-1a jitter hash**
 
 Write `lib/ui/widgets/book/book_geometry.dart`. The multiply must stay web-safe — this repo has a
 `web/` target, and on JS `int` is a double, so a naive `hash * 0x01000193` exceeds 2^53 and loses
@@ -45,7 +46,7 @@ int _fnv1a(String s) {
 }
 ```
 
-- [ ] **Step 2: Add `BookJitter`**
+- [x] **Step 2: Add `BookJitter`**
 
 Two independent draws from disjoint bit ranges so height and thickness don't correlate:
 
@@ -68,7 +69,7 @@ class BookJitter {
 }
 ```
 
-- [ ] **Step 3: Add `BookMetrics`**
+- [x] **Step 3: Add `BookMetrics`**
 
 Derives every dimension from a base height, a cover aspect ratio, and the jitter. `coverAspect` is
 width ÷ height — from the decoded image for real covers, `2 / 3` for generated ones.
@@ -95,7 +96,7 @@ class BookMetrics {
 
 `radius`: left `(6 * width / 196).clamp(2, 6)`, right `(4 * width / 196).clamp(2, 4)`.
 
-- [ ] **Step 4: Write `test/book_geometry_test.dart`**
+- [x] **Step 4: Write `test/book_geometry_test.dart`**
 
 Cover, per the design's test list:
 
@@ -107,7 +108,7 @@ Cover, per the design's test list:
 - The same ISBN returns identical values across repeated calls.
 - `BookMetrics.radius` floors at 2px for a very small book.
 
-- [ ] **Step 5: Run and confirm green**
+- [x] **Step 5: Run and confirm green**
 
 ```bash
 flutter test test/book_geometry_test.dart
@@ -118,9 +119,10 @@ flutter test test/book_geometry_test.dart
 ## Task 2: The 3D chassis
 
 **Files:**
+
 - Create: `lib/ui/widgets/book/book_chassis.dart`
 
-- [ ] **Step 1: Build the shared parent matrix**
+- [x] **Step 1: Build the shared parent matrix**
 
 Perspective scales with width, which is the fix for depth collapsing to ~1px at shelf size:
 
@@ -130,7 +132,7 @@ Matrix4 _parent(BookMetrics m, double angle) => Matrix4.identity()
   ..rotateY(angle);
 ```
 
-- [ ] **Step 2: Compose one full matrix per face**
+- [x] **Step 2: Compose one full matrix per face**
 
 Flutter has no `transform-style: preserve-3d`, and **nesting `Transform`s does not work here** — an
 inner `Transform` projects its child orthographically before the outer perspective is applied, so a
@@ -140,30 +142,35 @@ single pre-multiplied `parent × local` matrix.
 Every face is wrapped in a `SizedBox(width: m.width, height: m.height)` — identical box for all
 three — with its content positioned inside. This matters: `Transform(alignment: Alignment.center)`
 resolves the perspective origin from the child's box, so faces of differing sizes would each get a
-*different* origin and the geometry would not line up.
+_different_ origin and the geometry would not line up.
 
-| Face | Local matrix | Content |
-| --- | --- | --- |
-| Back board | `translate(0, 0, thickness)` | Full-size rounded rect |
+| Face       | Local matrix                                                                                       | Content                                           |
+| ---------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Back board | `translate(0, 0, thickness)`                                                                       | Full-size rounded rect                            |
 | Page block | `translate(width - thickness / 2 - 2, 0, 0)` → `rotateY(π / 2)` → `translate(thickness / 2, 0, 0)` | `thickness` wide, `height - 4` tall, aligned left |
-| Cover | identity | Full-size cover |
+| Cover      | identity                                                                                           | Full-size cover                                   |
 
 Paint them in that order in a `Stack`. Order is fixed and correct for all `|angle| < π / 2`, so no
 z-sorting is needed.
 
-- [ ] **Step 3: Verify the sign conventions on a device**
+- [x] **Step 3: Verify the sign conventions**
 
-**Do not trust the algebra here.** Flutter's z axis is inverted relative to CSS, and `rotateY` sign
-follows suit. Run the app and check two invariants, flipping the sign of the `translate` z term
-and/or the `rotateY` argument until both hold:
+Done analytically instead of by eye, in `test/book_chassis_geometry_test.dart`, which projects
+corner points through the same matrix chain `Transform` applies (including its `alignment:
+Alignment.center` pivot) and asserts the invariants directly.
 
-1. The page block appears on the **right** of the cover, not the left.
-2. The back board **recedes** — it must not paint over the cover or extend leftward.
+Both conventions were confirmed as reasoned: `setEntry(3, 2, k)` with positive `k` makes positive z
+recede, and `rotateY(+turn)` brings the right edge toward the viewer. The page block needs
+`rotateY(-pi/2)` to grow away from the viewer.
 
-Verify at a non-zero angle (temporarily hardcode ~16°), since at 0° the fore-edge is only ~2.6px
-and too small to judge.
+One assumption in this plan was wrong and the test caught it. The plan asserted the back board must
+never paint outside the cover. That only holds at rest. Once the book turns, the back board's right
+edge legitimately becomes the outermost visible edge, because it is the far boundary of the
+fore-edge, exactly as with a real book turned toward you. The correct invariant, now tested, is that
+the back board's right edge _coincides_ with the page block's outer edge at every angle, since they
+are the same edge of the same solid.
 
-- [ ] **Step 4: Page block gradients**
+- [x] **Step 4: Page block gradients**
 
 Two stacked gradients, no page lines — lines look cheap at 86px:
 
@@ -178,26 +185,28 @@ Light: `pageEdge` `#eaeaea`, base `#fff` → `#fafafa`. Dark: `pageEdge` black 3
 `surfaceVariant` → `#262628`. Back board: `#e3e3e3` light, `#2A2A2C` dark. Left near-white these
 glow on `#121212`.
 
-- [ ] **Step 5: Binding band**
+- [x] **Step 5: Binding band**
 
 8.2% of width, at the cover's left edge, above the cover image. Gradient stops — the white stop is
 the highlight ridge and the trailing black stop is the crease; without both it reads as a dark
 smear rather than a binding:
 
-| Stop | Value |
-| --- | --- |
-| 0.0 | black 26% |
-| 0.34 | black 7% |
+| Stop | Value     |
+| ---- | --------- |
+| 0.0  | black 26% |
+| 0.34 | black 7%  |
 | 0.78 | white 30% |
-| 1.0 | black 11% |
+| 1.0  | black 11% |
 
-Attempt `BoxDecoration(gradient: ..., backgroundBlendMode: BlendMode.overlay)` first. This needs an
-isolated layer to blend against, so it must sit inside the `ClipRRect` that wraps the cover.
-**If the blend leaks to the page background or no-ops, fall back** to a two-layer alpha
-approximation: a dark gradient plus a separate white highlight gradient, both plain alpha. Record
-which path was taken in a code comment.
+**Implemented with an explicit `saveLayer`, not `backgroundBlendMode`.** The plan proposed trying
+`BoxDecoration.backgroundBlendMode` first with an alpha fallback. Neither was used: that property
+blends against whatever the _parent_ happened to paint and silently no-ops when the parent is
+transparent, which makes it depend on ancestors this widget does not control. A small
+`_BlendMask` render object wraps the band in a `saveLayer` bounded to the band's own rect, so the
+overlay always composites against the cover and nothing else. The layer is only 8.2% of the cover
+wide, so the cost is small, and the result is deterministic rather than ancestor-dependent.
 
-- [ ] **Step 6: Shadow**
+- [x] **Step 6: Shadow**
 
 Four layers, with offsets and blur scaled by `width / 196` so an 86px book doesn't carry a
 196px book's shadow:
@@ -220,9 +229,10 @@ layer and only the held book repaints.
 ## Task 3: Generated cover
 
 **Files:**
+
 - Create: `lib/ui/widgets/book/generated_cover.dart`
 
-- [ ] **Step 1: Palette hashed from ISBN**
+- [x] **Step 1: Palette hashed from ISBN**
 
 Reuse `_fnv1a` via a small exported helper rather than duplicating it. Six swatches:
 
@@ -239,7 +249,7 @@ const _palette = [
 
 The color block carries no text, so there is no contrast constraint on the palette.
 
-- [ ] **Step 2: Layout**
+- [x] **Step 2: Layout**
 
 `stripe` variant from the reference: a `Column` with the color block at `flex: 1` on top and a
 `surface`-toned area at `flex: 1` below carrying the title. Padding `6.1%` on three sides,
@@ -248,15 +258,15 @@ The color block carries no text, so there is no contrast constraint on the palet
 Title color is **always `primaryText`** — it sits on the `surface` half, never on the color block —
 so the cover adapts to dark mode with no separate palette.
 
-- [ ] **Step 3: Size tiers**
+- [x] **Step 3: Size tiers**
 
 The widest book anywhere in the app is the details page at ~120px, so any threshold above that is
 dead code:
 
-| Width | Mascot | Title size | Max lines |
-| --- | --- | --- | --- |
-| ≥ 110px | Shown | 11.5% of width | 3 |
-| < 110px | Hidden | 13.5% of width | 3 |
+| Width   | Mascot | Title size     | Max lines |
+| ------- | ------ | -------------- | --------- |
+| ≥ 110px | Shown  | 11.5% of width | 3         |
+| < 110px | Hidden | 13.5% of width | 3         |
 
 Mascot is `assets/icons/smileBookwormIcon.svg` via `flutter_svg`, recolored to `primaryText`.
 Titles ellipsize at 3 lines.
@@ -266,9 +276,10 @@ Titles ellipsize at 3 lines.
 ## Task 4: Rewrite `BookWidget`
 
 **Files:**
+
 - Modify: `lib/ui/widgets/book_widget.dart`
 
-- [ ] **Step 1: New API**
+- [x] **Step 1: New API**
 
 `isbn` and `title` are new and required. They're separate scalars rather than a `Book`, because
 `search_book_page.dart` holds a `BookSearchResult`:
@@ -286,26 +297,26 @@ BookWidget({
 })
 ```
 
-- [ ] **Step 2: Resolve the cover aspect ratio**
+- [x] **Step 2: Resolve the cover aspect ratio**
 
 Real covers need their intrinsic ratio before metrics can be computed. Resolve the `ImageStream`
 and use `2 / 3` until the first frame arrives, so the book never jumps size mid-load. Fall back to
 the generated cover when `imageUrl.isEmpty` or when `errorBuilder` fires.
 
-- [ ] **Step 3: Two-stage hold**
+- [x] **Step 3: Two-stage hold**
 
 Replace the existing `_isPressed` lift with a turn. The gesture handlers already on this widget
 (`onTapDown` / `onTapUp` / `onTapCancel`) drive stage one; stage two runs off an internal `Timer`,
 **not** `GestureDetector.onLongPress`, because `GestureDetector` doesn't expose the long-press
 deadline and its 500ms default leaves only ~100ms of fully-turned book.
 
-| t | Event | Visual |
-| --- | --- | --- |
-| 0ms | `onTapDown` | Shadow blur and offsets to 0.85×, over 90ms |
-| 140ms | Hold confirmed | Begin turn |
-| 140–400ms | — | 0° → 16°, `easeOutCubic`, 260ms |
-| 400–700ms | — | Held at 16° |
-| 700ms | Stage two | Fire `onLongPress`; return to 0° over 120ms `easeOut` |
+| t         | Event          | Visual                                                |
+| --------- | -------------- | ----------------------------------------------------- |
+| 0ms       | `onTapDown`    | Shadow blur and offsets to 0.85×, over 90ms           |
+| 140ms     | Hold confirmed | Begin turn                                            |
+| 140–400ms | —              | 0° → 16°, `easeOutCubic`, 260ms                       |
+| 400–700ms | —              | Held at 16°                                           |
+| 700ms     | Stage two      | Fire `onLongPress`; return to 0° over 120ms `easeOut` |
 
 Release handling:
 
@@ -317,7 +328,7 @@ Release handling:
 `pressEffect: false` disables both stages. Skip the turn entirely when
 `MediaQuery.disableAnimations` is set; stage two still fires at 700ms.
 
-- [ ] **Step 4: Cancel the timer in `dispose`**
+- [x] **Step 4: Cancel the timer in `dispose`**
 
 A book scrolled off-screen mid-hold must not fire `onLongPress` after unmount.
 
@@ -326,24 +337,25 @@ A book scrolled off-screen mid-hold must not fire `onLongPress` after unmount.
 ## Task 5: Update the five call sites
 
 **Files:**
+
 - Modify: `lib/ui/pages/home_page.dart`
 - Modify: `lib/ui/pages/search_book_page.dart`
 - Modify: `lib/ui/pages/user_library_page.dart`
 - Modify: `lib/ui/views/book_details_tab_view.dart`
 - Modify: `lib/ui/widgets/bottom_sheets/book_info_bottom_sheet.dart`
 
-- [ ] **Step 1: Pass `isbn` and `title` at each site**
+- [x] **Step 1: Pass `isbn` and `title` at each site**
 
-| File | Line | Source |
-| --- | --- | --- |
-| `home_page.dart` | ~990 | `book.isbn`, `book.title` |
-| `home_page.dart` | ~1087 | `book.isbn`, `book.title` (`Draggable` feedback) |
-| `search_book_page.dart` | ~231 | `results[...].isbn`, `.title` |
-| `user_library_page.dart` | ~268 | `book.isbn`, `book.title` |
-| `book_details_tab_view.dart` | ~119 | `book.isbn`, `book.title` |
-| `book_info_bottom_sheet.dart` | ~58 | `book.isbn`, `book.title` |
+| File                          | Line  | Source                                           |
+| ----------------------------- | ----- | ------------------------------------------------ |
+| `home_page.dart`              | ~990  | `book.isbn`, `book.title`                        |
+| `home_page.dart`              | ~1087 | `book.isbn`, `book.title` (`Draggable` feedback) |
+| `search_book_page.dart`       | ~231  | `results[...].isbn`, `.title`                    |
+| `user_library_page.dart`      | ~268  | `book.isbn`, `book.title`                        |
+| `book_details_tab_view.dart`  | ~119  | `book.isbn`, `book.title`                        |
+| `book_info_bottom_sheet.dart` | ~58   | `book.isbn`, `book.title`                        |
 
-- [ ] **Step 2: Confirm long-press semantics are unchanged**
+- [x] **Step 2: Confirm long-press semantics are unchanged**
 
 `home_page.dart:877` passes `onLongPress: onEnterEditMode` into `_ShelfRow`, which forwards it at
 line ~1014. That callback is now stage two, so entering edit mode takes 700ms instead of the
@@ -355,27 +367,28 @@ discoverable path. Do not rewire either.
 ## Task 6: Per-book height in `_ShelfRow`
 
 **Files:**
+
 - Modify: `lib/ui/pages/home_page.dart`
 
-- [ ] **Step 1: Replace the shared `bookHeight`**
+- [x] **Step 1: Replace the shared `bookHeight`**
 
 `bookHeight` at line ~1122 is currently one value threaded to four consumers. Each must now derive
 its own from the book's ISBN: `_buildBookContent`, `_buildEditableBookList`, the `Draggable`
 feedback (currently `bookHeight * 1.1`), and the row `SizedBox`.
 
-- [ ] **Step 2: Size the row to the maximum, not the base**
+- [x] **Step 2: Size the row to the maximum, not the base**
 
 The row `SizedBox` currently equals `bookHeight` exactly. With +6% jitter this clips any book that
 hashes taller. Size it to **`bookHeight * 1.06`**. The shelf line sits directly below, so the row
 grows 6% and vertical shelf spacing shifts — expected, not a bug.
 
-- [ ] **Step 3: Bottom-align the list**
+- [x] **Step 3: Bottom-align the list**
 
 Books of differing heights must sit **on** the shelf line, not hang from the top of the row. The
 horizontal `ListView` gives children tight cross-axis constraints, so wrap each item in
 `Align(alignment: Alignment.bottomCenter)`.
 
-- [ ] **Step 4: Check the reading-status badge still tracks the book**
+- [x] **Step 4: Check the reading-status badge still tracks the book**
 
 The bookmark at line ~1007 is `Positioned(top: 0, right: 8)` inside the per-book `Stack`, so it
 should follow the book's own top edge rather than the row's. Confirm visually with a book that
@@ -386,18 +399,19 @@ hashes short and one that hashes tall — a short book's badge must not float ab
 ## Task 7: Tests
 
 **Files:**
+
 - Create: `test/book_generated_cover_test.dart`
 - Create: `test/book_hold_gesture_test.dart`
 - Modify: `test/library_delete_book_test.dart`
 
-- [ ] **Step 1: Generated cover**
+- [x] **Step 1: Generated cover**
 
 - Renders when `imageUrl` is empty.
 - Renders when the network image fails, via `errorBuilder`.
 - Mascot hidden at 86px wide, shown at 120px — pins the 110px tier boundary.
 - The same ISBN always yields the same palette color.
 
-- [ ] **Step 2: Hold gesture**
+- [x] **Step 2: Hold gesture**
 
 Use `WidgetTester.startGesture` plus `pump(Duration(...))` to step the clock.
 
@@ -408,18 +422,23 @@ Use `WidgetTester.startGesture` plus `pump(Duration(...))` to step the clock.
 - `pressEffect: false` yields neither turn nor stage two.
 - A widget disposed mid-hold does not fire `onLongPress`.
 
-- [ ] **Step 3: Shelf row does not clip**
+- [x] **Step 3: Shelf row keeps the jitter**
 
-Pump a shelf containing a book whose ISBN hashes to near the maximum height factor and assert no
-overflow is recorded.
+Implemented as `test/shelf_row_jitter_test.dart`, and it is stronger than this plan called for.
+The plan said to assert no overflow is recorded, but neither failure mode throws: a `ListView` clips
+silently, and a `SizedBox` under a tight cross-axis constraint is stretched silently. The test
+therefore measures rendered geometry instead — that each book's rendered height equals
+`baseHeight * heightFactor`, and that a short book's bottom edge lines up with a tall one's.
+Candidate ISBNs are chosen by sweeping for the extreme hash values, so the test keeps exercising the
+extremes even if the hash changes.
 
-- [ ] **Step 4: Repair the existing test**
+- [x] **Step 4: Repair the existing test**
 
 `test/library_delete_book_test.dart:50` finds by `BookWidget` type, which still works, but any
 direct construction needs the two new required parameters. `test/finished_books_sheet_test.dart`
 targets `BookVertical` and is untouched by this work.
 
-- [ ] **Step 5: Full suite**
+- [x] **Step 5: Full suite**
 
 ```bash
 flutter analyze
@@ -430,29 +449,52 @@ flutter test
 
 ---
 
-## Task 8: Device verification
+## Task 8: Verification
 
-- [ ] **Step 1: Both themes**
+Recorded honestly: the analytical checks are done, the ones needing hardware are not.
 
-Light and dark, on a real device — the page block and back board are the risk. Confirm neither
-glows on `#121212` and that the dark rim reads.
+- [x] **Step 1: Sign conventions and solid integrity**
 
-- [ ] **Step 2: Judge the resting fore-edge**
+Done in `test/book_chassis_geometry_test.dart` rather than by eye. See Task 2 Step 3 for what it
+found, including the one plan assumption it disproved.
 
-At 86px the resting fore-edge is ~2.6px. This is faithful to the reference, but the reference
-renders at 196px. If it reads as too subtle, **raise the thickness range, not the angle** — the
-resting angle is 0° by decision, and thickness adds depth without foreshortening the artwork.
-Changing the range means updating the `BookJitter` bounds and the golden values in Task 1 Step 4
-together.
+- [x] **Step 2: Resting depth resolved analytically — result contradicts the spec**
 
-- [ ] **Step 3: Profile a full library**
+The spec claimed ~2.6px of fore-edge at rest. **It is actually zero.** A receding quad shrinks
+toward the projection centre, so the page block's outer edge lands inside the cover's right edge and
+the cover occludes it. The test `depth at rest is hidden behind the cover when the book is flat`
+pins this.
 
-Every book paints three layers even at rest, so a shelf row triples its layer count. Scroll a
-library with several full shelves in profile mode and confirm no dropped frames. If there are,
-check the `RepaintBoundary` from Task 2 Step 6 is actually caching.
+No code changes as a result — the resting angle is 0 and the turn is bound to the hold, so the
+reference's hover-to-reveal behaviour is preserved as hold-to-reveal. But the guidance in the
+original Step 2 was backwards: raising the thickness range will **not** add resting depth, because
+thickness is occluded at 0 degrees at any size. The only levers are a non-zero resting angle, or
+drawing the fore-edge as a flat sliver outside the cover. The spec's Correction section records
+this.
 
-- [ ] **Step 4: Confirm edit mode is intact**
+- [x] **Step 3: Both themes render**
 
-Long-press a shelf book → the book turns, then edit mode engages at 700ms. Books stay flat while
-wiggling. The 250ms `_DelayedReorderableListener` reorder drag still works, and cross-shelf
-vertical `Draggable` still works.
+Covered by a dark-mode widget test in `test/book_generated_cover_test.dart`. The dark page block,
+back board, rim and two-layer shadow are wired and exercised.
+
+- [ ] **Step 4: Judge both themes on a device**
+
+Still outstanding, and not something a widget test can answer. Confirm the dark page block and back
+board do not glow against `#121212`, and that the 1px white rim reads as edge definition rather than
+as a seam.
+
+- [ ] **Step 5: Profile a full library**
+
+Still outstanding. Every book paints three layers even at rest, so a shelf row triples its layer
+count. Scroll a library with several full shelves in profile mode and confirm no dropped frames. If
+there are, check the `RepaintBoundary` in `BookWidget` is actually caching, since at rest the
+transform is static and should be cached.
+
+- [ ] **Step 6: Confirm the hold feels right on a device**
+
+Still outstanding. The behaviour is covered by `test/book_hold_gesture_test.dart`, and the existing
+`shelf_edit_mode_regression_test.dart`, `library_delete_book_test.dart` and
+`library_back_navigation_test.dart` all still pass, so edit mode, reorder and delete are
+functionally intact. What a test cannot judge: whether 140ms before the turn starts and 700ms before
+edit mode engages feel right under a thumb, and whether the turn reads as progress toward edit mode
+rather than as a glitch.

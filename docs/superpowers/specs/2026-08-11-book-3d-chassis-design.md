@@ -34,7 +34,7 @@ input.
 | Decision                       | Choice                                        | Rationale                                                                                                                                               |
 | ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Resting angle                  | **0°**                                        | Matches the reference literally. Depth still reads because perspective is measured from the book's centre.                                              |
-| Depth visible at rest          | **Yes**, ~2.6px fore-edge                     | Consequence of perspective, not rotation. Not "flat".                                                                                                   |
+| Depth visible at rest          | **No** (see correction below)                 | The page block projects inside the cover's silhouette and is occluded by it. Depth is a reward for holding, not a resting state.                        |
 | Perspective                    | **`4.6 × width`**, not a constant             | A fixed `900px` is tuned for a 196px book; at 88px it yields ~1px of depth. Scaling keeps the look size-invariant.                                      |
 | Width                          | From the cover image's intrinsic aspect ratio | Already the behaviour via `BoxFit.fitHeight`. Real signal, free.                                                                                        |
 | Height                         | **±6%**, hashed from ISBN                     | No real source exists. Small enough not to read as data, enough to break the ruler-straight top edge.                                                   |
@@ -43,6 +43,32 @@ input.
 | Generated cover ratio          | **2/3**                                       | Matches real covers. At the reference's `49/60` every generated cover would be the widest book on the shelf, which is strange behaviour for a fallback. |
 | Turn trigger                   | **Two-stage hold**                            | Stage one turns the book; stage two enters edit mode. The turn doubles as a progress indicator for the long press.                                      |
 | Turn angle                     | **16°**                                       | The reference's hover angle.                                                                                                                            |
+
+## Correction: there is no visible depth at rest
+
+An earlier revision of this document claimed the reference shows roughly 2.6px of fore-edge at
+`rotate-0`, reasoning that perspective is measured from the book's centre so the right edge sits
+off-axis. That was wrong, and the geometry test in `test/book_chassis_geometry_test.dart` now
+proves it.
+
+The page block is a quad in the plane `x = width / 2`, spanning z from 0 to the book's thickness.
+Receding shrinks a point toward the projection centre, so the block's outer edge lands at
+`(width / 2) * p / (p + thickness)`, strictly inside the cover's own right edge at `width / 2`. The
+cover paints last, so it occludes the block entirely. The back board is inside it too. At 0 degrees
+a book is a rounded rectangle with a binding band and a shadow, and nothing else.
+
+This changes no decision in this document. The resting angle is 0 and the turn is bound to the
+hold, so the reference's behaviour is preserved exactly: the reference reveals depth on hover, this
+app reveals it on hold. Two consequences are worth stating plainly:
+
+- Thickness variation is invisible at rest. The hashed `thicknessFactor` only reads while a book is
+  held. Still worth having, because that is when it is looked at, but it does no work on a shelf at
+  a glance.
+- The shelf gains no depth. What shelves gain is the binding band, asymmetric corners, the
+  four-layer shadow, size variation, and generated covers in place of gray "no image" boxes.
+
+If depth at rest is wanted later, either the resting angle becomes non-zero, or the page block is
+drawn outside the cover's right edge as a flat fore-edge sliver rather than as a receding 3D face.
 
 ## Geometry
 
@@ -275,10 +301,10 @@ passing once the new required parameters are supplied. `finished_books_sheet_tes
 
 ## Risks
 
-- **Depth is subtle at shelf size.** At 88px the resting fore-edge is ~2.6px. This is faithful to
-  the reference but the reference renders at 196px. If it reads as too subtle on device, the
-  lever is the thickness range, not the angle — raising thickness adds depth without
-  foreshortening the artwork.
+- **No depth at rest.** See the correction above. Shelves get the chassis, the size variation and
+  generated covers; the fore-edge only appears while a book is held. If that reads as too little on
+  device, the resting angle has to change. Raising thickness will not help, because thickness is
+  occluded at 0 degrees no matter how large it is.
 - **Generated covers will look better than real ones.** The reference's appeal is largely its
   typography and flat color, which only the fallback path gets. Photographic Kakao covers receive
   the chassis only. Accepted.
