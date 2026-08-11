@@ -146,9 +146,10 @@ Color is hashed from the ISBN out of a fixed palette:
 | `#F2B544` | amber       |
 | `#7C5CBF` | violet      |
 
-Title color is chosen by relative luminance rather than hardcoded per swatch: luminance > 0.5
-gets `primaryText`, otherwise white. Because the lower half uses `surface` and the title uses
-`primaryText`, the generated cover adapts to dark mode with no separate palette.
+Title color is always `primaryText`, because in the `stripe` layout the title sits on the
+`surface`-toned lower half and never on the color block. No luminance calculation is needed, and
+the cover adapts to dark mode with no separate palette. The color block carries no text, so the
+palette has no contrast constraint.
 
 Size tiers, by rendered width. Only two tiers, because the actual size range in the app is narrow:
 
@@ -260,13 +261,12 @@ before shipping.
 - `_bookJitter` pinned to golden values for a fixed set of ISBNs, so heights cannot drift.
 - Jittered height stays within ±6% of the base for a large sample of ISBNs.
 - Empty ISBN yields the neutral fallback factors.
-- Generated-cover title clears 4.5:1 against every palette swatch, extending the existing
-  `test/color_contrast_test.dart` approach.
 - Hold past 140ms sets the turned state; release returns it; `onTapCancel` returns it without
   navigating.
 - Stage two fires at 700ms and not before.
 - `pressEffect: false` produces neither turn nor stage two.
 - The shelf row does not clip a book that hashes to the maximum height factor (1.06).
+- The mascot is hidden at 86px wide and shown at 120px, pinning the 110px tier boundary.
 - The mascot is hidden at 86px wide and shown at 120px, pinning the 110px tier boundary.
 
 Existing tests: `library_delete_book_test.dart` finds by `BookWidget` type and should keep
