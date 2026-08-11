@@ -218,6 +218,13 @@ both, the band reads as a dark smear rather than a binding.
 Page block, light mode: horizontal `#eaeaea` → transparent at 70%, layered over vertical
 `#fff` → `#fafafa`. No page lines; they make it look cheap at small sizes.
 
+The binding crease is a separate element from the band and is **composited normally, not blended**:
+a 1px `white 18%` line against a 1px `black 12%` line, straddling the 8.2% boundary. Overlay leaves
+pure black and pure white untouched, so on a black or white cover the band does nothing and the
+spine reads as absent. The plain-alpha pair survives any base tone — the white line carries a dark
+cover, the black line a light one, both read on a mid-tone. Guarded by `test/book_crease_test.dart`,
+which also pins the overlay property the crease exists to work around.
+
 Shadow, light mode — four layers, with offsets and blur radii scaled by `width / 196` so small
 books don't carry oversized shadows:
 
@@ -232,12 +239,16 @@ Dark mode overrides:
 
 | Element         | Light              | Dark                                                    |
 | --------------- | ------------------ | ------------------------------------------------------- |
-| Page block base | `#fff` → `#fafafa` | `surfaceVariant` → `#262628`                            |
-| Page block edge | `#eaeaea`          | black 35%                                               |
-| Back board      | `#e3e3e3`          | `#2A2A2C`                                               |
+| Page block base | `#fff` → `#fafafa` | `#4A4A4E` → `#3E3E42`                                   |
+| Page block edge | `#eaeaea`          | black 40%                                               |
+| Back board      | `#e3e3e3`          | `#35353A`                                               |
 | Shadow          | 4 layers as above  | 2 layers at ~1.6× alpha, plus a 1px top rim at white 6% |
 
-Left near-white, the page block and back board glow against `#121212`.
+The dark page tones are **deliberately not `surfaceVariant`**. An earlier revision specified that,
+and it was wrong: the details page paints its hero area with `surfaceVariant`, so the fore-edge was
+the same colour as the surface behind it and vanished entirely. `#4A4A4E` reads as paper in low light
+and separates from `surfaceVariant` (`#2C2C2E`), `pageBackground` (`#121212`) and `surface`
+(`#1E1E1E`) alike. `test/book_page_block_test.dart` asserts a luminance gap against all three.
 
 ## Widget API and call sites
 
@@ -298,6 +309,13 @@ before shipping.
 Existing tests: `library_delete_book_test.dart` finds by `BookWidget` type and should keep
 passing once the new required parameters are supplied. `finished_books_sheet_test.dart` targets
 `BookVertical` and is unaffected.
+
+- **Dark-mode chassis tones must not be taken from `AppColors`.** The surfaces a book sits on are
+  themselves `AppColors` values, so reusing one risks painting the book the same colour as its
+  background. The tones are literals, with a luminance-gap test against every surface a book appears
+  on.
+- **`BlendMode.overlay` is a no-op on pure black and pure white.** Anything relying on it for
+  legibility needs a normally composited companion, which is why the crease exists.
 
 ## Risks
 
