@@ -218,13 +218,6 @@ both, the band reads as a dark smear rather than a binding.
 Page block, light mode: horizontal `#eaeaea` → transparent at 70%, layered over vertical
 `#fff` → `#fafafa`. No page lines; they make it look cheap at small sizes.
 
-The binding crease is a separate element from the band and is **composited normally, not blended**:
-a 1px `white 18%` line against a 1px `black 12%` line, straddling the 8.2% boundary. Overlay leaves
-pure black and pure white untouched, so on a black or white cover the band does nothing and the
-spine reads as absent. The plain-alpha pair survives any base tone — the white line carries a dark
-cover, the black line a light one, both read on a mid-tone. Guarded by `test/book_crease_test.dart`,
-which also pins the overlay property the crease exists to work around.
-
 Shadow, light mode — four layers, with offsets and blur radii scaled by `width / 196` so small
 books don't carry oversized shadows:
 
@@ -314,8 +307,17 @@ passing once the new required parameters are supplied. `finished_books_sheet_tes
   themselves `AppColors` values, so reusing one risks painting the book the same colour as its
   background. The tones are literals, with a luminance-gap test against every surface a book appears
   on.
-- **`BlendMode.overlay` is a no-op on pure black and pure white.** Anything relying on it for
-  legibility needs a normally composited companion, which is why the crease exists.
+- **`BlendMode.overlay` is a no-op on pure black and pure white.** Per the compositing spec, a base
+  of 0 stays 0 and a base of 1 stays 1 whatever is blended in. So the binding band does its work on
+  mid-tone covers and little to nothing on very dark or very light ones — a black cover reads as
+  having no spine. This is accepted, and is what the reference does too, since it uses
+  `mix-blend-overlay` for the same element.
+
+  A normally composited 1px highlight-against-shadow crease at the 8.2% boundary was built and
+  rejected on review: it made the spine legible on any cover, but read as a drawn line rather than a
+  fold, particularly on cream covers where the dark half does all the work. If this is revisited, the
+  constraint to respect is that the fix must not be visible on mid-tone covers, where the band
+  already works.
 
 ## Risks
 
