@@ -590,6 +590,14 @@
                 gap: 26px;
                 align-items: start;
             }
+            /* A grid item's min-width is `auto`, so the widest flow -- six 170px
+               steps with arrows between them -- was sizing this column and pushing
+               the whole document wider than the viewport. The page scrolled
+               sideways, taking the header and the flow list with it, instead of the
+               steps row scrolling inside its own box. */
+            .flowlayout > * {
+                min-width: 0;
+            }
             .side {
                 position: sticky;
                 top: 80px;
@@ -688,14 +696,37 @@
             .flow .vrow.b {
                 color: var(--brandText);
             }
+            /* A flow is a sequence, so it stays on one line and scrolls: wrapping
+               would put step 5 under step 1 with an arrow pointing off the end of
+               the row. macOS hides overlay scrollbars until you scroll, so the bar
+               is styled to stay visible -- otherwise nothing says the row
+               continues past the right edge. */
             .steps {
                 display: flex;
                 overflow-x: auto;
                 padding-bottom: 8px;
+                scroll-snap-type: x proximity;
+                overscroll-behavior-x: contain;
+                scrollbar-width: thin;
+                scrollbar-color: #cfcbc5 transparent;
+            }
+            .steps::-webkit-scrollbar {
+                height: 9px;
+            }
+            .steps::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .steps::-webkit-scrollbar-thumb {
+                background: #dcd8d2;
+                border-radius: 99px;
+            }
+            .steps:hover::-webkit-scrollbar-thumb {
+                background: #c2beb8;
             }
             .step {
                 flex: 0 0 auto;
                 width: 170px;
+                scroll-snap-align: start;
             }
             .step .shot {
                 border-radius: 9px;
