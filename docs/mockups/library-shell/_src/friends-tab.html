@@ -1,0 +1,127 @@
+<style>
+  .fgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+  .solo { display:flex; justify-content:center; padding:16px 6px 8px; background:#eceae6; border-radius:8px; }
+  .ph { width:152px; height:300px; background:#fdfcfa; border:3px solid #2a2a2e; border-radius:22px; position:relative; overflow:hidden; flex:0 0 auto; }
+  .phdr { padding:10px 10px 4px; font-size:10.5px; font-weight:800; color:#1c1c1e; letter-spacing:-.2px; }
+  .wall { padding:3px 9px; display:flex; flex-direction:column; gap:9px; }
+  .shelf { display:flex; align-items:flex-end; gap:2px; height:32px; border-bottom:2px solid #d9c9b2; }
+  .shelf i { display:block; width:7px; height:var(--h); background:var(--c); border-radius:1px 1px 0 0; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:17px 17px 0 0; box-shadow:0 -3px 14px rgba(0,0,0,.28); padding:5px 8px 32px; }
+  .handle { width:26px; height:3px; border-radius:2px; background:#c9c9cf; margin:0 auto 6px; }
+  .avrail { display:flex; gap:4px; padding-bottom:2px; }
+  .avrail b { width:17px; height:17px; border-radius:50%; background:#cfe3d0; display:block; flex:0 0 auto; }
+  .avrail b.sel { box-shadow:0 0 0 2px #0a84ff; }
+  .avrail b.me { background:#e2d5c3; }
+  .fname { display:flex; align-items:center; justify-content:space-between; margin:6px 0 7px; }
+  .fname .n { font-size:10px; font-weight:800; color:#1c1c1e; }
+  .poke { font-size:5px; background:#eef4ff; color:#0a84ff; border-radius:7px; padding:3px 7px; font-weight:800; }
+  .label2 { font-size:4.6px; letter-spacing:.6px; text-transform:uppercase; color:#a0a0a5; font-weight:700; margin-bottom:4px; }
+  .strip { display:flex; gap:3px; }
+  .strip u { text-decoration:none; display:block; width:14px; height:21px; border-radius:2px; background:var(--c); }
+  .frow { display:flex; align-items:center; gap:6px; padding:5.5px 0; border-bottom:1px solid #f1f0ef; }
+  .fav { width:15px; height:15px; border-radius:50%; background:#cfe3d0; flex:0 0 auto; }
+  .ftx { flex:1; font-size:5.6px; color:#3a3a3c; line-height:1.4; }
+  .ftx b { font-weight:800; color:#1c1c1e; }
+  .ftm { font-size:4.6px; color:#a8a8ad; margin-top:1px; }
+  .cv { width:12px; height:17px; border-radius:2px; background:var(--c); flex:0 0 auto; }
+  .hint { text-align:center; font-size:5px; color:#a0a0a5; padding-top:5px; font-weight:600; }
+  .tabbar { position:absolute; bottom:8px; left:6px; right:6px; display:flex; gap:5px; align-items:center; z-index:5; }
+  .pill { flex:1; display:flex; gap:1px; background:rgba(255,255,255,.85); border-radius:14px; padding:3px 2px; box-shadow:0 1px 5px rgba(0,0,0,.18); }
+  .pill s { text-decoration:none; flex:1; text-align:center; font-size:5px; color:#6b6b70; padding:4px 0; border-radius:11px; line-height:1.5; }
+  .pill s.on { background:#e9e9ec; color:#0a84ff; font-weight:800; }
+  .circ { width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.88); box-shadow:0 1px 5px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; font-size:10px; color:#6b6b70; }
+  .costs { font-size:9.5px; color:#8a8a8f; margin-top:6px; line-height:1.5; }
+  .costs b { color:#c05746; font-weight:700; }
+  .verdict { font-size:11px; color:#0a84ff; font-weight:700; margin-top:2px; }
+  .note { background:#f6f4f1; border-left:3px solid #d4a373; padding:10px 14px; border-radius:0 6px 6px 0; margin-bottom:18px; font-size:12.5px; line-height:1.6; }
+</style>
+
+<h2>What the Friends tab actually shows</h2>
+<p class="subtitle">Three contents, all drawn in the shape&nbsp;C shell (sheet over a live shelf wall).</p>
+
+<div class="note">
+  Worth naming: <b>this choice is mostly independent of A / B / C.</b> Nav shape decides the chrome &mdash; in A these become opaque full pages, in B they sit in a dimmed sheet. The content question below is the one that's actually vague, so that's what I've drawn. Say the word if you wanted the chrome comparison instead.
+</div>
+
+<div class="fgrid">
+
+  <div class="card" data-choice="swiper" onclick="toggleSelect(this)">
+    <div class="solo">
+      <div class="ph">
+        <div class="phdr" style="color:#6b6b70;font-size:8px">jisoo&rsquo;s library</div>
+        <div class="wall">
+          <div class="shelf"><i style="--h:80%;--c:#6b8f71"></i><i style="--h:92%;--c:#3f5d75"></i><i style="--h:68%;--c:#d4a373"></i><i style="--h:86%;--c:#8b6f9e"></i><i style="--h:74%;--c:#4a6c8c"></i><i style="--h:90%;--c:#c05746"></i></div>
+          <div class="shelf"><i style="--h:70%;--c:#d99a4e"></i><i style="--h:88%;--c:#6b8f71"></i><i style="--h:78%;--c:#b5544f"></i><i style="--h:94%;--c:#3f5d75"></i><i style="--h:64%;--c:#8b6f9e"></i></div>
+          <div class="shelf"><i style="--h:84%;--c:#4a6c8c"></i><i style="--h:72%;--c:#d4a373"></i><i style="--h:90%;--c:#c05746"></i><i style="--h:66%;--c:#6b8f71"></i></div>
+        </div>
+        <div class="sheet" style="height:40%">
+          <div class="handle"></div>
+          <div class="avrail"><b class="me"></b><b class="sel"></b><b></b><b></b><b></b></div>
+          <div class="fname"><span class="n">jisoo</span><span class="poke">Poke</span></div>
+          <div class="label2">Books read &middot; 24</div>
+          <div class="strip"><u style="--c:#6b8f71"></u><u style="--c:#c05746"></u><u style="--c:#4a6c8c"></u><u style="--c:#d99a4e"></u><u style="--c:#8b6f9e"></u><u style="--c:#3f5d75"></u><u style="--c:#d4a373"></u></div>
+          <div class="hint">&darr; drag down for her full shelf</div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s class="on">Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>1 &mdash; Friend swiper</h3>
+      <p>Today&rsquo;s avatar bar and <code>PageView</code> move here wholesale. The sheet is deliberately short because <em>the friend&rsquo;s shelf is the content</em> &mdash; it fills the world behind. Scroll the rail, the wall behind changes owner.</p>
+      <div class="costs">Reuses <b>everything</b> you already have: <code>_FriendAvatarBar</code>, <code>_selectedFriendProvider</code>, <code>userLibraryProvider</code>. Zero new queries, zero schema. Also simplifies My&nbsp;Library&rsquo;s header, which loses the avatar bar.</div>
+      <div class="verdict">&#9733; Cheapest, and the only one that uses the world switch</div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="feed" onclick="toggleSelect(this)">
+    <div class="solo">
+      <div class="ph">
+        <div class="wall" style="padding-top:10px">
+          <div class="shelf"><i style="--h:82%;--c:#c05746"></i><i style="--h:70%;--c:#d99a4e"></i><i style="--h:92%;--c:#4a6c8c"></i><i style="--h:64%;--c:#6b8f71"></i><i style="--h:78%;--c:#8b6f9e"></i><i style="--h:88%;--c:#b5544f"></i></div>
+        </div>
+        <div class="sheet" style="height:76%">
+          <div class="handle"></div>
+          <div class="phdr" style="padding:0 0 4px">Friends</div>
+          <div class="frow"><span class="fav"></span><span class="ftx"><b>jisoo</b> finished The Vegetarian<div class="ftm">&#9733;&#9733;&#9733;&#9733;&#9734; &middot; 2h</div></span><span class="cv" style="--c:#6b8f71"></span></div>
+          <div class="frow"><span class="fav" style="background:#e6d2c0"></span><span class="ftx"><b>minho</b> &#128079; your Pachinko<div class="ftm">5h</div></span><span class="cv" style="--c:#c05746"></span></div>
+          <div class="frow"><span class="fav" style="background:#cfd8e8"></span><span class="ftx"><b>hana</b> started Kafka on the Shore<div class="ftm">1d</div></span><span class="cv" style="--c:#4a6c8c"></span></div>
+          <div class="frow"><span class="fav"></span><span class="ftx"><b>jisoo</b> added 3 books to Poetry<div class="ftm">2d</div></span><span class="cv" style="--c:#d4a373"></span></div>
+          <div class="frow" style="border:0"><span class="fav" style="background:#e8dcc8"></span><span class="ftx"><b>sora</b> rated Beloved &#9733;&#9733;&#9733;&#9733;&#9733;<div class="ftm">3d</div></span><span class="cv" style="--c:#8b6f9e"></span></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s class="on">Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>2 &mdash; Activity feed</h3>
+      <p>Flighty&rsquo;s literal model. Chronological rows of what people you follow are doing. Highest pull-to-open value, and the only option that gives you a reason to open the app when nothing of yours changed.</p>
+      <div class="costs">Needs a new feed query joining <code>follows</code> &times; <code>books</code> &times; <code>book_compliments</code>. Two catches: <b>nothing records "started"/"added" as an event</b> &mdash; you&rsquo;d infer them from <code>start_date</code> and <code>created_at</code>, so edits rewrite history. And <b>pokes aren&rsquo;t stored at all</b> &mdash; <code>poke_user()</code> only fires a push, so pokes can&rsquo;t appear here without a new table.</div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="solo">
+      <div class="ph">
+        <div class="phdr" style="color:#6b6b70;font-size:8px">jisoo&rsquo;s library</div>
+        <div class="wall">
+          <div class="shelf"><i style="--h:80%;--c:#6b8f71"></i><i style="--h:92%;--c:#3f5d75"></i><i style="--h:68%;--c:#d4a373"></i><i style="--h:86%;--c:#8b6f9e"></i><i style="--h:74%;--c:#4a6c8c"></i><i style="--h:90%;--c:#c05746"></i></div>
+        </div>
+        <div class="sheet" style="height:74%">
+          <div class="handle"></div>
+          <div class="avrail" style="padding-bottom:7px"><b class="me"></b><b class="sel"></b><b></b><b></b><b></b></div>
+          <div class="frow" style="padding-top:0"><span class="fav"></span><span class="ftx"><b>jisoo</b> finished The Vegetarian<div class="ftm">&#9733;&#9733;&#9733;&#9733;&#9734; &middot; 2h</div></span><span class="cv" style="--c:#6b8f71"></span></div>
+          <div class="frow"><span class="fav" style="background:#e6d2c0"></span><span class="ftx"><b>minho</b> &#128079; your Pachinko<div class="ftm">5h</div></span><span class="cv" style="--c:#c05746"></span></div>
+          <div class="frow"><span class="fav" style="background:#cfd8e8"></span><span class="ftx"><b>hana</b> started Kafka on the Shore<div class="ftm">1d</div></span><span class="cv" style="--c:#4a6c8c"></span></div>
+          <div class="frow" style="border:0"><span class="fav"></span><span class="ftx"><b>jisoo</b> added 3 books to Poetry<div class="ftm">2d</div></span><span class="cv" style="--c:#d4a373"></span></div>
+          <div class="hint">&darr; drag down for jisoo&rsquo;s shelf</div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s class="on">Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>3 &mdash; Hybrid: rail + feed</h3>
+      <p>Avatar rail pinned to the top of the sheet, feed below it. Tapping an avatar filters the feed <em>and</em> swaps the wall behind to that friend&rsquo;s shelf, so dragging the sheet down is how you visit them.</p>
+      <div class="costs">Everything option&nbsp;2 needs, plus the rail wiring and a filtered variant of the feed query. Strictly the most work &mdash; <b>and the only one where both halves of the tab compete for the same vertical space.</b></div>
+    </div>
+  </div>
+
+</div>

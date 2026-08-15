@@ -1,0 +1,18 @@
+</main>
+<script>
+  // The screens were authored for the brainstorming companion, which provided
+  // this. Kept so the option/card cards still respond to clicks when the files
+  // are opened directly from disk.
+  function toggleSelect(el) {
+    var multi = el.parentElement && el.parentElement.hasAttribute('data-multiselect');
+    if (!multi) {
+      var siblings = el.parentElement ? el.parentElement.children : [];
+      for (var i = 0; i < siblings.length; i++) {
+        if (siblings[i] !== el) siblings[i].classList.remove('selected');
+      }
+    }
+    el.classList.toggle('selected');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library shell mockups</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav class="mk-nav">
+  <a class="mk-home" href="index.html">&larr; All screens</a>
+  <a class="mk-link" href="nav-architecture.html"><span class="mk-n">01</span>Nav shapes</a>
+  <a class="mk-link" href="friends-tab.html"><span class="mk-n">02</span>Friends content</a>
+  <a class="mk-link" href="read-view.html"><span class="mk-n">03</span>Read view</a>
+  <a class="mk-link" href="app-states.html"><span class="mk-n">04</span>Seven states</a>
+  <a class="mk-link" href="three-directions.html"><span class="mk-n">05</span>3 &times; 7</a>
+  <a class="mk-link" href="encased-variants.html"><span class="mk-n">06</span>Encasing</a>
+  <a class="mk-link" href="stripped-chrome.html"><span class="mk-n">07</span>Chrome stripped</a>
+  <a class="mk-link" href="one-world.html"><span class="mk-n">08</span>One world</a>
+  <a class="mk-link" href="bar-owns-identity.html"><span class="mk-n">09</span>Bar identity</a>
+  <a class="mk-link" href="capsule-tabs.html"><span class="mk-n">10</span>Capsule tabs</a>
+  <a class="mk-link" href="friend-transition.html"><span class="mk-n">11</span>Transitions</a>
+</nav>
+<main>
+<style>
+  .rgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+  .solo { display:flex; justify-content:center; padding:16px 6px 8px; background:#eceae6; border-radius:8px; }
+  .ph { width:152px; height:300px; background:#fdfcfa; border:3px solid #2a2a2e; border-radius:22px; position:relative; overflow:hidden; flex:0 0 auto; }
+  .phdr { padding:10px 10px 6px; font-size:10.5px; font-weight:800; color:#1c1c1e; letter-spacing:-.2px; }
+  .grp { padding:0 9px 8px; }
+  .slbl { font-size:4.8px; color:#8a8a8f; font-weight:800; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px; }
+  .shelf { display:flex; align-items:flex-end; gap:2px; height:30px; border-bottom:2px solid #d9c9b2; }
+  .shelf i { display:block; width:7px; height:var(--h); background:var(--c); border-radius:1px 1px 0 0; }
+  .shelf i.done { box-shadow:inset 0 -2px 0 rgba(255,255,255,.5); }
+  .fctl { position:absolute; top:32px; right:8px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; z-index:6; }
+  .seg { display:flex; gap:1px; background:rgba(255,255,255,.92); border-radius:9px; padding:2px; box-shadow:0 1px 5px rgba(0,0,0,.22); }
+  .seg s { text-decoration:none; font-size:4.6px; padding:3px 5px; border-radius:7px; color:#6b6b70; font-weight:800; }
+  .seg s.on { background:#1c1c1e; color:#fff; }
+  .gbtn { background:rgba(255,255,255,.92); border-radius:9px; padding:3.5px 6px; font-size:4.6px; font-weight:800; color:#3a3a3c; box-shadow:0 1px 5px rgba(0,0,0,.22); }
+  .grid3 { display:grid; grid-template-columns:repeat(4,1fr); gap:3px; padding:0 9px; }
+  .grid3 u { text-decoration:none; display:block; aspect-ratio:2/3; border-radius:2px; background:var(--c); }
+  .mhdr { font-size:5.6px; font-weight:800; color:#1c1c1e; padding:0 9px; margin:6px 0 3px; display:flex; justify-content:space-between; }
+  .mhdr span { color:#a0a0a5; font-weight:700; }
+  .tabbar { position:absolute; bottom:8px; left:6px; right:6px; display:flex; gap:5px; align-items:center; z-index:5; }
+  .pill { flex:1; display:flex; gap:1px; background:rgba(255,255,255,.85); border-radius:14px; padding:3px 2px; box-shadow:0 1px 5px rgba(0,0,0,.18); }
+  .pill s { text-decoration:none; flex:1; text-align:center; font-size:5px; color:#6b6b70; padding:4px 0; border-radius:11px; line-height:1.5; }
+  .pill s.on { background:#e9e9ec; color:#0a84ff; font-weight:800; }
+  .circ { width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.88); box-shadow:0 1px 5px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; font-size:10px; color:#6b6b70; }
+  .costs { font-size:9.5px; color:#8a8a8f; margin-top:6px; line-height:1.5; }
+  .costs b { color:#c05746; font-weight:700; }
+  .verdict { font-size:11px; color:#0a84ff; font-weight:700; margin-top:2px; }
+  .note { background:#f6f4f1; border-left:3px solid #d4a373; padding:10px 14px; border-radius:0 6px 6px 0; margin-bottom:18px; font-size:12.5px; line-height:1.6; }
+  .note code { font-size:11.5px; }
+</style>
+
+<h2>What &ldquo;Read&rdquo; looks like with the whole canvas</h2>
+<p class="subtitle">All three show the <b>Read</b> state of the toggle. Floating glass controls sit top-right, Flighty-style: the Reading&nbsp;/&nbsp;Read switch, and the date filter under it.</p>
+
+<div class="note">
+  The switch costs nothing at the data layer &mdash; <code>withoutFinishedBooks()</code> already splits these two sets, and finished books keep their <code>shelf_id</code>. What differs below is purely <em>how the read set is grouped</em>, and that&rsquo;s the whole decision.
+</div>
+
+<div class="rgrid">
+
+  <div class="card" data-choice="same-shelves" onclick="toggleSelect(this)">
+    <div class="solo">
+      <div class="ph">
+        <div class="phdr">My Library</div>
+        <div class="fctl">
+          <div class="seg"><s>Reading</s><s class="on">Read</s></div>
+          <div class="gbtn">All time &#9662;</div>
+        </div>
+        <div style="height:16px"></div>
+        <div class="grp">
+          <div class="slbl">Novels</div>
+          <div class="shelf"><i class="done" style="--h:82%;--c:#c05746"></i><i class="done" style="--h:70%;--c:#d99a4e"></i><i class="done" style="--h:92%;--c:#4a6c8c"></i><i class="done" style="--h:64%;--c:#6b8f71"></i></div>
+        </div>
+        <div class="grp">
+          <div class="slbl">Poetry</div>
+          <div class="shelf"><i class="done" style="--h:78%;--c:#8b6f9e"></i><i class="done" style="--h:88%;--c:#b5544f"></i></div>
+        </div>
+        <div class="grp">
+          <div class="slbl">Non-fiction</div>
+          <div class="shelf"><i class="done" style="--h:74%;--c:#3f5d75"></i><i class="done" style="--h:90%;--c:#d4a373"></i><i class="done" style="--h:66%;--c:#6b8f71"></i><i class="done" style="--h:84%;--c:#c05746"></i><i class="done" style="--h:72%;--c:#4a6c8c"></i></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>1 &mdash; Same shelves, status swapped</h3>
+      <p>The shelf structure is the constant; status is the filter. Flip the toggle and your shelves stay exactly where they are &mdash; the books on them change. The read copy of &ldquo;Novels&rdquo; sits where the unread one did.</p>
+      <div class="costs">Nearly free: <code>withoutFinishedBooks()</code> gains a mirror, <code>onlyFinishedBooks()</code>, and the same <code>_ShelfRow</code> renders both. <b>Weakness:</b> no sense of time or accumulation &mdash; a year of reading looks identical to a decade of it.</div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="month-shelves" onclick="toggleSelect(this)">
+    <div class="solo">
+      <div class="ph">
+        <div class="phdr">My Library</div>
+        <div class="fctl">
+          <div class="seg"><s>Reading</s><s class="on">Read</s></div>
+          <div class="gbtn">2026 &#9662;</div>
+        </div>
+        <div style="height:16px"></div>
+        <div class="grp">
+          <div class="slbl">March &middot; 4</div>
+          <div class="shelf"><i class="done" style="--h:82%;--c:#c05746"></i><i class="done" style="--h:70%;--c:#d99a4e"></i><i class="done" style="--h:92%;--c:#4a6c8c"></i><i class="done" style="--h:64%;--c:#6b8f71"></i></div>
+        </div>
+        <div class="grp">
+          <div class="slbl">February &middot; 2</div>
+          <div class="shelf"><i class="done" style="--h:78%;--c:#8b6f9e"></i><i class="done" style="--h:88%;--c:#b5544f"></i></div>
+        </div>
+        <div class="grp">
+          <div class="slbl">January &middot; 5</div>
+          <div class="shelf"><i class="done" style="--h:74%;--c:#3f5d75"></i><i class="done" style="--h:90%;--c:#d4a373"></i><i class="done" style="--h:66%;--c:#6b8f71"></i><i class="done" style="--h:84%;--c:#c05746"></i><i class="done" style="--h:72%;--c:#4a6c8c"></i></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>2 &mdash; Month shelves</h3>
+      <p>Shelf labels become months. A year of reading renders as a bookcase you fill up &mdash; uneven shelves are the story, and a thin month is visible at a glance. This is the passport-stamp feeling, and it&rsquo;s what the date filter was always implying.</p>
+      <div class="costs">Cheap: group the same rows by <code>finish_date</code> instead of <code>shelf_id</code>. Pairs naturally with the year filter, and it&rsquo;s the visual twin of the Library&nbsp;Card &mdash; shelf as picture, card as number. <b>Trade-off:</b> your shelf names disappear in this view.</div>
+      <div class="verdict">&#9733; My recommendation</div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="cover-grid" onclick="toggleSelect(this)">
+    <div class="solo">
+      <div class="ph">
+        <div class="phdr">My Library</div>
+        <div class="fctl">
+          <div class="seg"><s>Reading</s><s class="on">Read</s></div>
+          <div class="gbtn">2026 &#9662;</div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="mhdr">March <span>4</span></div>
+        <div class="grid3"><u style="--c:#c05746"></u><u style="--c:#d99a4e"></u><u style="--c:#4a6c8c"></u><u style="--c:#6b8f71"></u></div>
+        <div class="mhdr">February <span>2</span></div>
+        <div class="grid3"><u style="--c:#8b6f9e"></u><u style="--c:#b5544f"></u></div>
+        <div class="mhdr">January <span>5</span></div>
+        <div class="grid3"><u style="--c:#3f5d75"></u><u style="--c:#d4a373"></u><u style="--c:#6b8f71"></u><u style="--c:#c05746"></u><u style="--c:#4a6c8c"></u></div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>3 &mdash; Cover grid by month</h3>
+      <p>Full covers instead of spines, four across, month headers between. By far the most legible &mdash; you can actually recognise a book &mdash; and it scales to hundreds without turning into a smear of 7px slivers.</p>
+      <div class="costs">Most new UI: a grid view that doesn&rsquo;t reuse <code>_ShelfRow</code> at all. <b>And it abandons the shelf metaphor</b> at exactly the moment you&rsquo;re showing off, which is the moment it was earning the most.</div>
+    </div>
+  </div>
+
+</div>
+
+<p style="font-size:9.5px;color:#8a8a8f;text-align:center;margin-top:12px">Note the toggle also retires <code>FinishedBooksSheet</code>, freeing the bottom of the screen that the floating tab bar now wants.</p>
+</main>
+<script>
+  // The screens were authored for the brainstorming companion, which provided
+  // this. Kept so the option/card cards still respond to clicks when the files
+  // are opened directly from disk.
+  function toggleSelect(el) {
+    var multi = el.parentElement && el.parentElement.hasAttribute('data-multiselect');
+    if (!multi) {
+      var siblings = el.parentElement ? el.parentElement.children : [];
+      for (var i = 0; i < siblings.length; i++) {
+        if (siblings[i] !== el) siblings[i].classList.remove('selected');
+      }
+    }
+    el.classList.toggle('selected');
+  }
+</script>
+</body>
+</html>

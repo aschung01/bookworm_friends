@@ -1,0 +1,1314 @@
+<style>
+    .row {
+        margin-bottom: 32px;
+    }
+    .row > .sh {
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #1c1c1e;
+        margin: 0 0 3px;
+    }
+    .row > .sd {
+        font-size: 10.5px;
+        color: #8a8a8f;
+        margin: 0 0 12px;
+    }
+    .frames {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+    }
+    .fl {
+        font-size: 9px;
+        font-weight: 800;
+        color: #adb5bd;
+        margin-bottom: 5px;
+        letter-spacing: 0.4px;
+    }
+    .fl b {
+        color: #067657;
+    }
+    .vcap {
+        font-size: 9.5px;
+        color: #8a8a8f;
+        margin-top: 7px;
+        line-height: 1.5;
+    }
+    .vcap b {
+        color: #c05746;
+        font-weight: 700;
+    }
+    .stage {
+        display: flex;
+        justify-content: center;
+        padding: 12px 6px 7px;
+        background: #dfdcd6;
+        border-radius: 8px;
+        position: relative;
+    }
+    .ph {
+        width: 150px;
+        height: 296px;
+        background: #f8f9fa;
+        border: 3px solid #2a2a2e;
+        border-radius: 20px;
+        position: relative;
+        overflow: hidden;
+        flex: 0 0 auto;
+    }
+    .statusbar {
+        height: 10px;
+    }
+    .railbar {
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 7px 8px 6px;
+    }
+    .railbar b {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: block;
+        flex: 0 0 auto;
+    }
+    .railbar b.sel {
+        box-shadow: 0 0 0 1.6px #067657;
+        background: #cdeee2;
+    }
+    .railbar b.me {
+        background: #eff5ef;
+    }
+    .subbar {
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 8px;
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.13);
+        position: relative;
+        z-index: 3;
+    }
+    .subbar .t {
+        flex: 1;
+        font-size: 8.6px;
+        font-weight: 800;
+        color: #212529;
+        letter-spacing: -0.2px;
+    }
+    .subbar .t u {
+        text-decoration: none;
+        font-size: 7.4px;
+        font-weight: 400;
+    }
+    .ic {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 7px;
+        color: #212529;
+        flex: 0 0 auto;
+    }
+    .ic.prof {
+        background: #cdeee2;
+        font-size: 5.6px;
+        color: #067657;
+        font-weight: 800;
+    }
+    .ic.bk2 {
+        background: #e9ecef;
+    }
+    .poke {
+        font-size: 5px;
+        background: #067657;
+        color: #fff;
+        border-radius: 9px;
+        padding: 2.5px 6px;
+        font-weight: 800;
+    }
+    .well {
+        padding: 8px 8px 0;
+    }
+    .grp {
+        margin-bottom: 8px;
+    }
+    .slbl {
+        font-size: 4.6px;
+        color: #adb5bd;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+    .books {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+    }
+    .bk {
+        display: block;
+        border-radius: 1.5px 2.5px 2.5px 1.5px;
+        background: var(--c);
+        box-shadow:
+            1px 1px 2px rgba(0, 0, 0, 0.22),
+            inset 2.5px 0 0 rgba(0, 0, 0, 0.16);
+    }
+    .shelfbar {
+        height: 5px;
+        background: #fff;
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    }
+    .sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #fff;
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.15);
+        padding: 5px 8px 30px;
+        z-index: 5;
+    }
+    .handle {
+        width: 24px;
+        height: 3px;
+        border-radius: 2px;
+        background: #adb5bd;
+        margin: 0 auto 5px;
+    }
+    .sechdr {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    .sechdr .lt {
+        flex: 1;
+        font-size: 8.4px;
+        font-weight: 800;
+        color: #212529;
+    }
+    .sechdr .lt i {
+        font-style: normal;
+        color: #067657;
+        margin-left: 5px;
+    }
+    .sechdr .filt {
+        font-size: 5.2px;
+        font-weight: 700;
+        color: #adb5bd;
+    }
+    .ptabs {
+        display: flex;
+        align-items: center;
+        gap: 1px;
+        margin-bottom: 5px;
+    }
+    .ptabs s {
+        text-decoration: none;
+        font-size: 5.8px;
+        font-weight: 700;
+        color: #8e9196;
+        padding: 3px 6px;
+        border-radius: 20px;
+        line-height: 1;
+    }
+    .ptabs s.on {
+        background: #fff;
+        color: #212529;
+        font-weight: 800;
+        border: 0.5px solid #e9ecef;
+        box-shadow: 0 1px 2.5px rgba(0, 0, 0, 0.14);
+    }
+    .ptabs .add {
+        margin-left: auto;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #067657;
+        color: #fff;
+        font-size: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .erow {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4.5px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .erow.hit {
+        background: #eff5ef;
+        border-radius: 5px;
+        padding: 4.5px 4px;
+    }
+    .eav {
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background: #e9ecef;
+        flex: 0 0 auto;
+    }
+    .etx {
+        flex: 1;
+    }
+    .etx .n {
+        font-size: 5.8px;
+        font-weight: 800;
+        color: #212529;
+    }
+    .etx .r {
+        font-size: 4.4px;
+        color: #adb5bd;
+        font-weight: 600;
+        margin-top: 1px;
+    }
+    .ecnt {
+        font-size: 5.2px;
+        font-weight: 800;
+        color: #067657;
+    }
+    .cvs {
+        width: 10px;
+        height: 15px;
+        border-radius: 1.5px;
+        background: var(--c);
+        flex: 0 0 auto;
+        box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.18);
+    }
+    .pile {
+        display: flex;
+        align-items: flex-end;
+        gap: 1.5px;
+    }
+    .sp2 {
+        width: 7.5px;
+        height: 30px;
+        border-radius: 3px 3px 0 0;
+    }
+    .tabbar {
+        position: absolute;
+        bottom: 7px;
+        left: 5px;
+        right: 5px;
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        z-index: 9;
+    }
+    .pill {
+        flex: 1;
+        display: flex;
+        gap: 1px;
+        background: rgba(255, 255, 255, 0.86);
+        border-radius: 13px;
+        padding: 2.5px 2px;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+    }
+    .pill s {
+        text-decoration: none;
+        flex: 1;
+        text-align: center;
+        font-size: 4.6px;
+        color: #6c757d;
+        padding: 3.5px 0;
+        border-radius: 10px;
+        line-height: 1.5;
+    }
+    .pill s.on {
+        background: #e9ecef;
+        color: #067657;
+        font-weight: 800;
+    }
+    .circ {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        color: #6c757d;
+    }
+    .tag {
+        position: absolute;
+        top: 4px;
+        left: 8px;
+        font-size: 8px;
+        font-weight: 800;
+        color: #067657;
+        background: #fff;
+        border-radius: 4px;
+        padding: 1px 5px;
+        z-index: 20;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+    .ghost {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.16);
+        z-index: 6;
+    }
+    .note {
+        background: #eff5ef;
+        border-left: 3px solid #09bc8a;
+        padding: 11px 15px;
+        border-radius: 0 6px 6px 0;
+        margin-bottom: 22px;
+        font-size: 12.5px;
+        line-height: 1.65;
+    }
+    .warnbox {
+        background: #fdf3f0;
+        border-left: 3px solid #c05746;
+        padding: 11px 15px;
+        border-radius: 0 6px 6px 0;
+        margin: 0 0 14px;
+        font-size: 12.5px;
+        line-height: 1.65;
+    }
+    .hr {
+        height: 1px;
+        background: #e6e4e0;
+        margin: 4px 0 24px;
+        border: 0;
+    }
+    .verdict {
+        font-size: 11px;
+        color: #0a84ff;
+        font-weight: 700;
+        margin-top: 3px;
+    }
+</style>
+
+<h2>Tapping a friend: three mechanics</h2>
+<p class="subtitle">
+    Each shown as tap &rarr; mid-transition &rarr; settled. Locked in: Activity
+    keeps its name, glass popover for the collapsed filter, month filtering
+    dropped, Add&nbsp;Friend icon-only, <b>rail holds friends only</b>,
+    horizontal swipe pages between friends.
+</p>
+
+<div class="note">
+    <b>The question underneath:</b> the Friends sheet and a friend&rsquo;s
+    Books-read sheet are different content competing for one slot. Each mechanic
+    below answers &ldquo;where did Friends go?&rdquo; differently &mdash; and
+    that answer, not the animation, is what you&rsquo;re choosing.
+</div>
+
+<div class="row">
+    <p class="sh">A &middot; Sheet grows, friend&rsquo;s library inside it</p>
+    <p class="sd">
+        Sheet expands to near-full and hosts her shelves plus the rail.
+    </p>
+    <div class="frames">
+        <div>
+            <div class="fl">1 &mdash; TAP JISOO</div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="subbar">
+                        <span class="t">My Library</span
+                        ><span class="ic">&#8593;</span
+                        ><span class="ic prof">AC</span>
+                    </div>
+                    <div class="well">
+                        <div class="grp">
+                            <div class="slbl">Novels</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d99a4e;
+                                        width: 17px;
+                                        height: 25px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #4a6c8c;
+                                        width: 20px;
+                                        height: 30px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 70%">
+                        <div class="handle"></div>
+                        <div class="sechdr">
+                            <span class="lt">Friends</span>
+                        </div>
+                        <div class="ptabs">
+                            <s class="on">Everyone</s><s>Activity</s
+                            ><span class="add">+</span>
+                        </div>
+                        <div class="erow hit">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">jisoo</div>
+                                <div class="r">
+                                    Reading The Vegetarian
+                                </div></span
+                            ><span class="ecnt">24</span>
+                        </div>
+                        <div class="erow">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">minho</div>
+                                <div class="r">Reading Snow</div></span
+                            ><span class="ecnt">9</span>
+                        </div>
+                        <div class="erow" style="border: 0">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">hana</div>
+                                <div class="r">Reading Kafka</div></span
+                            ><span class="ecnt">31</span>
+                        </div>
+                    </div>
+                    <div class="tabbar">
+                        <div class="pill">
+                            <s>Library</s><s class="on">Friends</s><s>Card</s>
+                        </div>
+                        <div class="circ">&#9906;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="fl">2 &mdash; <b>SHEET RISING</b></div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="subbar">
+                        <span class="t">My Library</span
+                        ><span class="ic">&#8593;</span
+                        ><span class="ic prof">AC</span>
+                    </div>
+                    <div class="well">
+                        <div class="grp">
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 22px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d99a4e;
+                                        width: 17px;
+                                        height: 20px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 86%">
+                        <div class="handle"></div>
+                        <div
+                            class="railbar"
+                            style="padding: 0 0 6px; opacity: 0.5"
+                        >
+                            <b class="sel"></b><b></b><b></b>
+                        </div>
+                        <div class="sechdr" style="opacity: 0.5">
+                            <span class="lt">jisoo</span>
+                        </div>
+                        <div class="grp" style="opacity: 0.35">
+                            <div class="slbl">Fiction</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #6b8f71;
+                                        width: 19px;
+                                        height: 27px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #3f5d75;
+                                        width: 17px;
+                                        height: 30px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="tabbar">
+                        <div class="pill">
+                            <s>Library</s><s class="on">Friends</s><s>Card</s>
+                        </div>
+                        <div class="circ">&#9906;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="fl">3 &mdash; SETTLED</div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="subbar">
+                        <span class="t">My Library</span
+                        ><span class="ic">&#8593;</span
+                        ><span class="ic prof">AC</span>
+                    </div>
+                    <div class="well">
+                        <div class="grp">
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 20px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 90%">
+                        <div class="handle"></div>
+                        <div class="railbar" style="padding: 0 0 6px">
+                            <b class="sel"></b><b></b><b></b>
+                        </div>
+                        <div class="sechdr">
+                            <span class="lt"
+                                >jisoo<u
+                                    style="
+                                        text-decoration: none;
+                                        font-size: 7px;
+                                        font-weight: 400;
+                                    "
+                                    >&rsquo;s Library</u
+                                ></span
+                            ><span class="poke">Poke</span>
+                        </div>
+                        <div class="grp">
+                            <div class="slbl">Fiction</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #6b8f71;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #3f5d75;
+                                        width: 17px;
+                                        height: 31px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d4a373;
+                                        width: 20px;
+                                        height: 25px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                        <div class="grp">
+                            <div class="slbl">Essays</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #4a6c8c;
+                                        width: 18px;
+                                        height: 29px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 26px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                        <div class="sechdr" style="margin-top: 6px">
+                            <span class="lt">Books read <i>24</i></span>
+                        </div>
+                        <div class="pile">
+                            <i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.7)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.4)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.7)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.4)"
+                            ></i>
+                        </div>
+                    </div>
+                    <div class="tabbar">
+                        <div class="pill">
+                            <s>Library</s><s class="on">Friends</s><s>Card</s>
+                        </div>
+                        <div class="circ">&#9906;</div>
+                    </div>
+                </div>
+            </div>
+            <div class="vcap">
+                <b>This is the duplication you rejected, returning.</b> Your
+                library sits behind while hers is inside the sheet, and the bar
+                still says &ldquo;My Library&rdquo; while the content is hers.
+                Shelves inside a draggable sheet also means horizontal book
+                scroll and drag-to-reorder nested in a vertical drag &mdash; the
+                worst gesture case in the app.
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="hr" />
+
+<div class="row">
+    <p class="sh">B &middot; Pushed page, swipe to dismiss</p>
+    <p class="sd">
+        Her library is its own screen. The world rule doesn&rsquo;t apply
+        because you&rsquo;ve left it.
+    </p>
+    <div class="frames">
+        <div>
+            <div class="fl">1 &mdash; TAP JISOO</div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="subbar">
+                        <span class="t">My Library</span
+                        ><span class="ic">&#8593;</span
+                        ><span class="ic prof">AC</span>
+                    </div>
+                    <div class="well">
+                        <div class="grp">
+                            <div class="slbl">Novels</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d99a4e;
+                                        width: 17px;
+                                        height: 25px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #4a6c8c;
+                                        width: 20px;
+                                        height: 30px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 70%">
+                        <div class="handle"></div>
+                        <div class="sechdr">
+                            <span class="lt">Friends</span>
+                        </div>
+                        <div class="ptabs">
+                            <s class="on">Everyone</s><s>Activity</s
+                            ><span class="add">+</span>
+                        </div>
+                        <div class="erow hit">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">jisoo</div>
+                                <div class="r">
+                                    Reading The Vegetarian
+                                </div></span
+                            ><span class="ecnt">24</span>
+                        </div>
+                        <div class="erow">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">minho</div>
+                                <div class="r">Reading Snow</div></span
+                            ><span class="ecnt">9</span>
+                        </div>
+                        <div class="erow" style="border: 0">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">hana</div>
+                                <div class="r">Reading Kafka</div></span
+                            ><span class="ecnt">31</span>
+                        </div>
+                    </div>
+                    <div class="tabbar">
+                        <div class="pill">
+                            <s>Library</s><s class="on">Friends</s><s>Card</s>
+                        </div>
+                        <div class="circ">&#9906;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="fl">2 &mdash; <b>PAGE RISING OVER</b></div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="subbar" style="opacity: 0.5">
+                        <span class="t">My Library</span>
+                    </div>
+                    <div class="well" style="opacity: 0.5">
+                        <div class="grp">
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d99a4e;
+                                        width: 17px;
+                                        height: 25px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="ghost"></div>
+                    <div
+                        style="
+                            position: absolute;
+                            left: 0;
+                            right: 0;
+                            top: 26%;
+                            bottom: 0;
+                            background: #f8f9fa;
+                            border-radius: 18px 18px 0 0;
+                            box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.3);
+                            z-index: 8;
+                            overflow: hidden;
+                        "
+                    >
+                        <div class="railbar" style="padding: 7px 8px 6px">
+                            <b class="sel"></b><b></b><b></b>
+                        </div>
+                        <div class="subbar">
+                            <span class="t">jisoo<u>&rsquo;s Library</u></span
+                            ><span class="poke">Poke</span>
+                        </div>
+                        <div class="well">
+                            <div class="grp">
+                                <div class="slbl">Fiction</div>
+                                <div class="books">
+                                    <i
+                                        class="bk"
+                                        style="
+                                            --c: #6b8f71;
+                                            width: 19px;
+                                            height: 28px;
+                                        "
+                                    ></i
+                                    ><i
+                                        class="bk"
+                                        style="
+                                            --c: #3f5d75;
+                                            width: 17px;
+                                            height: 31px;
+                                        "
+                                    ></i>
+                                </div>
+                                <div class="shelfbar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="fl">3 &mdash; SETTLED</div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="railbar">
+                        <b class="sel"></b><b></b><b></b><b></b>
+                    </div>
+                    <div class="subbar">
+                        <span class="t">jisoo<u>&rsquo;s Library</u></span
+                        ><span class="poke">Poke</span>
+                    </div>
+                    <div class="well">
+                        <div class="grp">
+                            <div class="slbl">Fiction</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #6b8f71;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #3f5d75;
+                                        width: 17px;
+                                        height: 31px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d4a373;
+                                        width: 20px;
+                                        height: 25px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                        <div class="grp">
+                            <div class="slbl">Essays</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #4a6c8c;
+                                        width: 18px;
+                                        height: 29px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 26px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 28%">
+                        <div class="handle"></div>
+                        <div class="sechdr">
+                            <span class="lt">Books read <i>24</i></span
+                            ><span class="filt">All time &#9662;</span>
+                        </div>
+                        <div class="pile">
+                            <i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.7)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.4)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.7)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.4)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="vcap">
+                Cleanest semantics: her screen, her bar, her sheet, no
+                ambiguity. Keeps your existing horizontal
+                <code>PageView</code> for swiping between friends.
+                <b>But the tab bar is covered</b>, so you&rsquo;re modal &mdash;
+                and the persistent world you just committed to is exactly what
+                this abandons.
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="hr" />
+
+<div class="row">
+    <p class="sh">
+        C &middot; Background swaps, rail drops in, sheet falls to her count
+    </p>
+    <p class="sd">
+        One downward motion: the sheet gets out of the way to reveal what you
+        asked for.
+    </p>
+    <div class="frames">
+        <div>
+            <div class="fl">1 &mdash; TAP JISOO</div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="subbar">
+                        <span class="t">My Library</span
+                        ><span class="ic">&#8593;</span
+                        ><span class="ic prof">AC</span>
+                    </div>
+                    <div class="well">
+                        <div class="grp">
+                            <div class="slbl">Novels</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d99a4e;
+                                        width: 17px;
+                                        height: 25px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #4a6c8c;
+                                        width: 20px;
+                                        height: 30px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 70%">
+                        <div class="handle"></div>
+                        <div class="sechdr">
+                            <span class="lt">Friends</span>
+                        </div>
+                        <div class="ptabs">
+                            <s class="on">Everyone</s><s>Activity</s
+                            ><span class="add">+</span>
+                        </div>
+                        <div class="erow hit">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">jisoo</div>
+                                <div class="r">
+                                    Reading The Vegetarian
+                                </div></span
+                            ><span class="ecnt">24</span>
+                        </div>
+                        <div class="erow">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">minho</div>
+                                <div class="r">Reading Snow</div></span
+                            ><span class="ecnt">9</span>
+                        </div>
+                        <div class="erow" style="border: 0">
+                            <span class="eav"></span
+                            ><span class="etx"
+                                ><div class="n">hana</div>
+                                <div class="r">Reading Kafka</div></span
+                            ><span class="ecnt">31</span>
+                        </div>
+                    </div>
+                    <div class="tabbar">
+                        <div class="pill">
+                            <s>Library</s><s class="on">Friends</s><s>Card</s>
+                        </div>
+                        <div class="circ">&#9906;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="fl">2 &mdash; <b>RAIL DOWN, SHEET DOWN</b></div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div
+                        class="railbar"
+                        style="padding: 3px 8px 2px; opacity: 0.55"
+                    >
+                        <b class="sel"></b><b></b><b></b>
+                    </div>
+                    <div class="subbar">
+                        <span class="t" style="opacity: 0.5"
+                            >jisoo<u>&rsquo;s Library</u></span
+                        >
+                    </div>
+                    <div class="well" style="opacity: 0.55">
+                        <div class="grp">
+                            <div class="slbl">Fiction</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #6b8f71;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #3f5d75;
+                                        width: 17px;
+                                        height: 31px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 50%; opacity: 0.75">
+                        <div class="handle"></div>
+                        <div class="sechdr">
+                            <span class="lt" style="opacity: 0.4"
+                                >Books read <i>24</i></span
+                            >
+                        </div>
+                        <div class="erow" style="opacity: 0.25; border: 0">
+                            <span class="eav"></span
+                            ><span class="etx"><div class="n">minho</div></span>
+                        </div>
+                    </div>
+                    <div class="tabbar">
+                        <div class="pill">
+                            <s>Library</s><s class="on">Friends</s><s>Card</s>
+                        </div>
+                        <div class="circ">&#9906;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="fl">3 &mdash; SETTLED</div>
+            <div class="stage">
+                <div class="ph">
+                    <div class="statusbar"></div>
+                    <div class="railbar">
+                        <b class="sel"></b><b></b><b></b><b></b>
+                    </div>
+                    <div class="subbar">
+                        <span class="t">jisoo<u>&rsquo;s Library</u></span
+                        ><span class="poke">Poke</span>
+                    </div>
+                    <div class="well">
+                        <div class="grp">
+                            <div class="slbl">Fiction</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #6b8f71;
+                                        width: 19px;
+                                        height: 28px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #3f5d75;
+                                        width: 17px;
+                                        height: 31px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #d4a373;
+                                        width: 20px;
+                                        height: 25px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                        <div class="grp">
+                            <div class="slbl">Essays</div>
+                            <div class="books">
+                                <i
+                                    class="bk"
+                                    style="
+                                        --c: #4a6c8c;
+                                        width: 18px;
+                                        height: 29px;
+                                    "
+                                ></i
+                                ><i
+                                    class="bk"
+                                    style="
+                                        --c: #c05746;
+                                        width: 19px;
+                                        height: 26px;
+                                    "
+                                ></i>
+                            </div>
+                            <div class="shelfbar"></div>
+                        </div>
+                    </div>
+                    <div class="sheet" style="height: 28%">
+                        <div class="handle"></div>
+                        <div class="sechdr">
+                            <span class="lt">Books read <i>24</i></span
+                            ><span class="filt">All time &#9662;</span>
+                        </div>
+                        <div class="pile">
+                            <i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.7)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.4)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.7)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 0.4)"
+                            ></i
+                            ><i
+                                class="sp2"
+                                style="background: rgba(9, 188, 138, 1)"
+                            ></i>
+                        </div>
+                    </div>
+                    <div class="tabbar">
+                        <div class="pill">
+                            <s>Library</s><s class="on">Friends</s><s>Card</s>
+                        </div>
+                        <div class="circ">&#9906;</div>
+                    </div>
+                </div>
+            </div>
+            <div class="vcap">
+                Tab bar stays live, world persists, and the sheet dropping reads
+                as &ldquo;here she is.&rdquo; Swipe the background left or right
+                to page to the next friend, and the rail selection follows.
+                <b>Three things move at once</b> though &mdash; background
+                cross-fade, rail descending, sheet content swapping mid-fall.
+            </div>
+            <div class="verdict">&#9733; My recommendation</div>
+        </div>
+    </div>
+</div>
+
+<hr class="hr" />
+
+<div class="warnbox">
+    <b
+        >With your own avatar out of the rail, C has exactly one free way
+        back.</b
+    >
+    Tapping the <b>already-active Friends tab</b> clears the selection &mdash;
+    standard iOS pop-to-root, nothing to learn, no pixels spent. It is now
+    load-bearing rather than a nicety: without it the Everyone list is
+    unreachable after your first pick. If that feels too hidden, the alternative
+    is a <b>back chevron in the bar</b> to the left of &ldquo;jisoo&rsquo;s
+    Library&rdquo;, which costs a little width but is unmissable. B
+    doesn&rsquo;t have this problem at all &mdash; swipe-to-dismiss is the way
+    back. <br /><br />
+    <b>Swipe paging is confirmed, and it prices the mechanics differently.</b>
+    In <b>C</b> the background owns a horizontal <code>PageView</code> while the
+    sheet owns a vertical drag, so both gestures live on screen at once and
+    arbitration is real work &mdash; your
+    <code>_DelayedReorderableListener</code> already exists because of a milder
+    version of this. In <b>B</b> the pushed page owns paging outright and the
+    sheet inside it is short, which is the cheapest place to put it. In
+    <b>A</b> paging would have to happen <em>inside</em> a draggable sheet,
+    alongside per-shelf horizontal scroll: three nested directions, and the
+    reason to rule A out even before the duplication argument.
+</div>

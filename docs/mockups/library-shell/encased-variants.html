@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library shell mockups</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav class="mk-nav">
+  <a class="mk-home" href="index.html">&larr; All screens</a>
+  <a class="mk-link" href="nav-architecture.html"><span class="mk-n">01</span>Nav shapes</a>
+  <a class="mk-link" href="friends-tab.html"><span class="mk-n">02</span>Friends content</a>
+  <a class="mk-link" href="read-view.html"><span class="mk-n">03</span>Read view</a>
+  <a class="mk-link" href="app-states.html"><span class="mk-n">04</span>Seven states</a>
+  <a class="mk-link" href="three-directions.html"><span class="mk-n">05</span>3 &times; 7</a>
+  <a class="mk-link" href="encased-variants.html"><span class="mk-n">06</span>Encasing</a>
+  <a class="mk-link" href="stripped-chrome.html"><span class="mk-n">07</span>Chrome stripped</a>
+  <a class="mk-link" href="one-world.html"><span class="mk-n">08</span>One world</a>
+  <a class="mk-link" href="bar-owns-identity.html"><span class="mk-n">09</span>Bar identity</a>
+  <a class="mk-link" href="capsule-tabs.html"><span class="mk-n">10</span>Capsule tabs</a>
+  <a class="mk-link" href="friend-transition.html"><span class="mk-n">11</span>Transitions</a>
+</nav>
+<main>
+<style>
+  .row { margin-bottom:30px; }
+  .row > .sh { font-size:13.5px; font-weight:800; color:#1c1c1e; margin:0 0 3px; }
+  .row > .sd { font-size:10.5px; color:#8a8a8f; margin:0 0 12px; }
+  .trio { display:grid; grid-template-columns:repeat(auto-fit,minmax(198px,1fr)); gap:14px; }
+  .vname { font-size:10px; font-weight:800; color:#067657; margin-bottom:6px; letter-spacing:.3px; }
+  .vcap { font-size:9.5px; color:#8a8a8f; margin-top:7px; line-height:1.5; }
+  .vcap b { color:#c05746; font-weight:700; }
+  .stage { display:flex; justify-content:center; padding:13px 6px 7px; background:#dfdcd6; border-radius:8px; }
+
+  /* real tokens: pageBackground F8F9FA, surface FFF, surfaceVariant E9ECEF,
+     primaryText 212529, secondaryText ADB5BD, brand 09BC8A, brandText 067657 */
+  .ph { width:164px; height:320px; background:#F8F9FA; border:3px solid #2a2a2e; border-radius:22px; position:relative; overflow:hidden; flex:0 0 auto; }
+
+  .appbar { background:#fff; display:flex; align-items:center; gap:4px; padding:9px 8px 7px; }
+  .appbar .av { width:16px; height:16px; border-radius:50%; background:#E9ECEF; display:block; flex:0 0 auto; }
+  .appbar .av.sel { box-shadow:0 0 0 1.6px #067657; background:#cdeee2; }
+  .appbar .sp { flex:1; }
+  .appbar .g { font-size:8px; color:#212529; }
+
+  .subbar { background:#fff; display:flex; align-items:center; gap:5px; padding:7px 9px; box-shadow:0 3px 5px rgba(0,0,0,.13); position:relative; z-index:3; }
+  .subbar .t { flex:1; font-size:8.5px; font-weight:800; color:#212529; letter-spacing:-.2px; }
+  .subbar .t u { text-decoration:none; font-size:7.5px; font-weight:400; }
+  .subbar .g { font-size:8.5px; color:#212529; }
+  .seg { display:flex; gap:1px; background:#E9ECEF; border-radius:8px; padding:1.5px; }
+  .seg s { text-decoration:none; font-size:4.8px; padding:2.5px 4.5px; border-radius:6.5px; color:#6c757d; font-weight:800; }
+  .seg s.on { background:#fff; color:#212529; box-shadow:0 1px 1.5px rgba(0,0,0,.14); }
+  .yr { font-size:4.8px; font-weight:800; color:#067657; }
+  .poke { font-size:5px; background:#067657; color:#fff; border-radius:9px; padding:3px 7px; font-weight:800; }
+
+  .well { padding:9px 9px 0; }
+  .grp { margin-bottom:9px; }
+  .slbl { font-size:4.8px; color:#ADB5BD; font-weight:800; letter-spacing:.5px; text-transform:uppercase; margin-bottom:3px; }
+  .books { display:flex; align-items:flex-end; gap:3px; }
+  .bk { display:block; border-radius:1.5px 2.5px 2.5px 1.5px; background:var(--c); box-shadow:1px 1px 2px rgba(0,0,0,.22), inset 2.5px 0 0 rgba(0,0,0,.16); }
+  .shelfbar { height:5px; background:#fff; box-shadow:0 2px 2px rgba(0,0,0,.25); }
+
+  .fctl { position:absolute; right:9px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; z-index:4; }
+  .glass { display:flex; gap:1px; background:rgba(255,255,255,.9); border-radius:9px; padding:2px; box-shadow:0 1px 5px rgba(0,0,0,.2); }
+  .glass s { text-decoration:none; font-size:4.6px; padding:3px 5px; border-radius:7px; color:#6c757d; font-weight:800; }
+  .glass s.on { background:#212529; color:#fff; }
+  .gbtn { background:rgba(255,255,255,.9); border-radius:9px; padding:3.5px 6px; font-size:4.6px; font-weight:800; color:#212529; box-shadow:0 1px 5px rgba(0,0,0,.2); }
+
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:20px 20px 0 0; box-shadow:0 -3px 6px rgba(0,0,0,.15); padding:5px 9px 34px; z-index:5; }
+  .handle { width:26px; height:3px; border-radius:2px; background:#ADB5BD; margin:0 auto 6px; }
+  .sechdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .sechdr .lt { font-size:8.5px; font-weight:800; color:#212529; }
+  .sechdr .lt i { font-style:normal; color:#067657; margin-left:6px; }
+  .sechdr .rt { font-size:5.6px; font-weight:700; color:#212529; }
+  .pile { display:flex; align-items:flex-end; gap:1.5px; }
+  .sp2 { width:8px; height:32px; border-radius:3px 3px 0 0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .sp2 em { writing-mode:vertical-rl; font-style:normal; font-size:3.2px; white-space:nowrap; letter-spacing:.2px; }
+
+  .mgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:3px; }
+  .mgrid u { text-decoration:none; display:block; aspect-ratio:2/3; border-radius:1.5px 2.5px 2.5px 1.5px; background:var(--c); box-shadow:1px 1px 2px rgba(0,0,0,.2); }
+  .mhdr { font-size:5.4px; font-weight:800; color:#212529; margin:6px 0 3px; display:flex; justify-content:space-between; }
+  .mhdr span { color:#ADB5BD; font-weight:700; }
+
+  .chips { display:flex; gap:3px; margin-bottom:6px; }
+  .chips s { text-decoration:none; font-size:5px; padding:2.5px 5px; border-radius:7px; background:#E9ECEF; color:#6c757d; font-weight:700; }
+  .chips s.on { background:#212529; color:#fff; }
+  .stat { border-radius:7px; padding:5px 7px 6px; color:#fff; margin-bottom:4px; }
+  .stat .lbl { font-size:4.2px; letter-spacing:.6px; text-transform:uppercase; opacity:.75; }
+  .stat .big { font-size:15px; font-weight:800; line-height:1.05; }
+  .stat .sub { font-size:4.6px; opacity:.72; }
+  .hero { background:linear-gradient(155deg,#0b3d33,#06705a); }
+  .warm { background:linear-gradient(155deg,#7d2320,#3a0f0e); }
+  .cool { background:linear-gradient(155deg,#dfe6e2,#f2f5f3); color:#123028; }
+  .cool .lbl, .cool .sub { color:#123028; }
+  .row2 { display:flex; gap:4px; }
+  .row2 > div { flex:1; }
+  .sortrow { display:flex; gap:3px; align-items:center; margin:6px 0 3px; }
+  .sortrow s { text-decoration:none; font-size:4.4px; padding:2px 4px; border-radius:6px; color:#ADB5BD; font-weight:800; }
+  .sortrow s.on { background:#E9ECEF; color:#212529; }
+  .dens { margin-left:auto; display:flex; gap:1px; background:#E9ECEF; border-radius:6px; padding:1.5px; }
+  .dens s { padding:2px 3.5px; font-size:5px; color:#ADB5BD; border-radius:5px; }
+  .dens s.on { background:#fff; color:#212529; }
+  .brow { display:flex; align-items:center; gap:5px; padding:3.5px 0; border-bottom:1px solid #E9ECEF; }
+  .brow .bt { flex:1; font-size:5.4px; font-weight:700; color:#212529; line-height:1.35; }
+  .brow .bd { font-size:4.4px; color:#ADB5BD; font-weight:600; }
+  .cvs { width:11px; height:16px; border-radius:1.5px; background:var(--c); flex:0 0 auto; box-shadow:1px 1px 1px rgba(0,0,0,.18); }
+  .frow { display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid #E9ECEF; }
+  .fav { width:15px; height:15px; border-radius:50%; background:#E9ECEF; flex:0 0 auto; }
+  .ftx { flex:1; font-size:5.6px; color:#495057; line-height:1.4; }
+  .ftx b { font-weight:800; color:#212529; }
+  .ftm { font-size:4.6px; color:#ADB5BD; margin-top:1px; }
+  .hint { text-align:center; font-size:5px; color:#ADB5BD; padding-top:2px; font-weight:700; }
+  .sfield { background:#E9ECEF; border-radius:8px; padding:6px 7px; font-size:5.4px; color:#ADB5BD; margin-bottom:7px; font-weight:600; }
+
+  .tabbar { position:absolute; bottom:8px; left:6px; right:6px; display:flex; gap:5px; align-items:center; z-index:9; }
+  .pill { flex:1; display:flex; gap:1px; background:rgba(255,255,255,.86); border-radius:14px; padding:3px 2px; box-shadow:0 1px 5px rgba(0,0,0,.18); }
+  .pill s { text-decoration:none; flex:1; text-align:center; font-size:5px; color:#6c757d; padding:4px 0; border-radius:11px; line-height:1.5; }
+  .pill s.on { background:#E9ECEF; color:#067657; font-weight:800; }
+  .circ { width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.9); box-shadow:0 1px 5px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; font-size:10px; color:#6c757d; }
+  .circ.on { color:#067657; }
+  .note { background:#EFF5EF; border-left:3px solid #09BC8A; padding:10px 14px; border-radius:0 6px 6px 0; margin-bottom:22px; font-size:12.5px; line-height:1.6; }
+  .hr { height:1px; background:#e6e4e0; margin:4px 0 24px; border:0; }
+</style>
+
+<h2>Encased library, three chrome treatments</h2>
+<p class="subtitle">B is gone. Real tokens now: <code>#F8F9FA</code> well between a <code>Material(elevation:&nbsp;4)</code> white bar and a white sheet with an upward shadow. Shelves are 5&ndash;8px white bars with a drop shadow. Read spines are brand green at 0.4&thinsp;/&thinsp;0.7&thinsp;/&thinsp;1.0 opacity.</p>
+
+<div class="note">
+  <b>C.1 fixed.</b> The page title was never missing from your app &mdash; it lives in <code>_LibrarySubHeader</code> as &ldquo;aschung&rsquo;s Library&rdquo; at 18px bold, inside the elevated bar. My last mock deleted that bar and then promoted &ldquo;Books read&rdquo; into the empty title slot. Here the bar is back, and &ldquo;Books read&rdquo; is section weight with the green count, exactly as <code>FinishedBooksSheet</code> renders it today. <b>Which also answers the header-in-sheet question: our page header is the encasing bar, so share belongs there, not in a sheet.</b>
+</div>
+
+<div class="row">
+  <p class="sh">1 &middot; My Library &mdash; Shelves</p>
+  <p class="sd">Where the Shelves&thinsp;/&thinsp;Read control lives, and what it costs the encasing.</p>
+  <div class="trio">
+    <div>
+      <div class="vname">V1 &mdash; SEGMENTED IN THE BAR</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">aschung<u>&rsquo;s Library</u></span><span class="seg"><s class="on">Shelves</s><s>Read</s></span><span class="g">&#8593;</span></div>
+        <div class="well">
+          <div class="grp"><div class="slbl">Novels</div><div class="books"><i class="bk" style="--c:#c05746;width:20px;height:30px"></i><i class="bk" style="--c:#d99a4e;width:18px;height:27px"></i><i class="bk" style="--c:#4a6c8c;width:21px;height:32px"></i><i class="bk" style="--c:#6b8f71;width:17px;height:25px"></i><i class="bk" style="--c:#8b6f9e;width:20px;height:29px"></i></div><div class="shelfbar"></div></div>
+          <div class="grp"><div class="slbl">Poetry</div><div class="books"><i class="bk" style="--c:#b5544f;width:19px;height:31px"></i><i class="bk" style="--c:#3f5d75;width:21px;height:26px"></i><i class="bk" style="--c:#d4a373;width:18px;height:30px"></i></div><div class="shelfbar"></div></div>
+          <div class="grp"><div class="slbl">Non-fiction</div><div class="books"><i class="bk" style="--c:#6b8f71;width:20px;height:28px"></i><i class="bk" style="--c:#c05746;width:17px;height:31px"></i><i class="bk" style="--c:#4a6c8c;width:21px;height:27px"></i></div><div class="shelfbar"></div></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Encasing untouched, nothing floats over the well, and the whole well is books. <b>But the bar now carries title + switch + share + add</b> &mdash; and edit had to move into a menu.</div>
+    </div>
+    <div>
+      <div class="vname">V2 &mdash; FLOATING GLASS</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">aschung<u>&rsquo;s Library</u></span><span class="g">&#9998;</span><span class="g">&#43;</span></div>
+        <div class="fctl" style="top:72px"><div class="glass"><s class="on">Shelves</s><s>Read</s></div></div>
+        <div class="well">
+          <div class="grp"><div class="slbl">Novels</div><div class="books"><i class="bk" style="--c:#c05746;width:20px;height:30px"></i><i class="bk" style="--c:#d99a4e;width:18px;height:27px"></i><i class="bk" style="--c:#4a6c8c;width:21px;height:32px"></i></div><div class="shelfbar"></div></div>
+          <div class="grp"><div class="slbl">Poetry</div><div class="books"><i class="bk" style="--c:#b5544f;width:19px;height:31px"></i><i class="bk" style="--c:#3f5d75;width:21px;height:26px"></i><i class="bk" style="--c:#d4a373;width:18px;height:30px"></i></div><div class="shelfbar"></div></div>
+          <div class="grp"><div class="slbl">Non-fiction</div><div class="books"><i class="bk" style="--c:#6b8f71;width:20px;height:28px"></i><i class="bk" style="--c:#c05746;width:17px;height:31px"></i></div><div class="shelfbar"></div></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Bar keeps its current contents exactly. <b>But a glass pill hovering inside a recessed well fights the encasing</b> &mdash; it reads as a third layer above a surface that&rsquo;s meant to be the bottom one, and it covers the first shelf.</div>
+    </div>
+    <div>
+      <div class="vname">V3 &mdash; SHEET POSITION IS THE TOGGLE</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">aschung<u>&rsquo;s Library</u></span><span class="g">&#8593;</span><span class="g">&#9998;</span><span class="g">&#43;</span></div>
+        <div class="well">
+          <div class="grp"><div class="slbl">Novels</div><div class="books"><i class="bk" style="--c:#c05746;width:20px;height:30px"></i><i class="bk" style="--c:#d99a4e;width:18px;height:27px"></i><i class="bk" style="--c:#4a6c8c;width:21px;height:32px"></i><i class="bk" style="--c:#6b8f71;width:17px;height:25px"></i></div><div class="shelfbar"></div></div>
+          <div class="grp"><div class="slbl">Poetry</div><div class="books"><i class="bk" style="--c:#b5544f;width:19px;height:31px"></i><i class="bk" style="--c:#3f5d75;width:21px;height:26px"></i><i class="bk" style="--c:#d4a373;width:18px;height:30px"></i></div><div class="shelfbar"></div></div>
+        </div>
+        <div class="sheet" style="height:31%">
+          <div class="handle"></div>
+          <div class="sechdr"><span class="lt">Books read <i>12</i></span><span class="rt" style="color:#ADB5BD">All time &#9662;</span></div>
+          <div class="pile"><i class="sp2" style="background:rgba(9,188,138,1)"><em style="color:#fff">The Vegetarian</em></i><i class="sp2" style="background:rgba(9,188,138,.7)"><em style="color:#fff">Pachinko</em></i><i class="sp2" style="background:rgba(9,188,138,.4)"><em style="color:#212529">Human Acts</em></i><i class="sp2" style="background:rgba(9,188,138,1)"><em style="color:#fff">Beloved</em></i><i class="sp2" style="background:rgba(9,188,138,.7)"><em style="color:#fff">Kafka</em></i><i class="sp2" style="background:rgba(9,188,138,.4)"><em style="color:#212529">Almond</em></i><i class="sp2" style="background:rgba(9,188,138,1)"><em style="color:#fff">Snow</em></i><i class="sp2" style="background:rgba(9,188,138,.7)"><em style="color:#fff">Ghosts</em></i></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">This is your app today, plus the tab bar and a share glyph. Encasing fully intact &mdash; bar above, well between, sheet below. <b>No control to place anywhere.</b></div>
+    </div>
+  </div>
+</div>
+
+<hr class="hr">
+
+<div class="row">
+  <p class="sh">2 &middot; My Library &mdash; Read</p>
+  <p class="sd">The showcase state.</p>
+  <div class="trio">
+    <div>
+      <div class="vname">V1 &mdash; SEGMENTED IN THE BAR</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t" style="flex:0 0 auto">Read</span><span class="seg" style="margin-left:auto"><s>Shelves</s><s class="on">Read</s></span><span class="yr">2026 &#9662;</span><span class="g">&#8593;</span></div>
+        <div class="well">
+          <div class="mhdr" style="margin-top:0">March <span>4</span></div>
+          <div class="mgrid"><u style="--c:#c05746"></u><u style="--c:#d99a4e"></u><u style="--c:#4a6c8c"></u><u style="--c:#6b8f71"></u></div>
+          <div class="mhdr">February <span>2</span></div>
+          <div class="mgrid"><u style="--c:#8b6f9e"></u><u style="--c:#b5544f"></u></div>
+          <div class="mhdr">January <span>5</span></div>
+          <div class="mgrid"><u style="--c:#3f5d75"></u><u style="--c:#d4a373"></u><u style="--c:#6b8f71"></u><u style="--c:#c05746"></u></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Biggest covers of the three. <b>The well stops being a bookcase</b> &mdash; no shelf bars, so the encasing reads as a plain scroll view and the title had to shorten to fit the year.</div>
+    </div>
+    <div>
+      <div class="vname">V2 &mdash; FLOATING GLASS</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">aschung<u>&rsquo;s Library</u></span><span class="g">&#9998;</span><span class="g">&#43;</span></div>
+        <div class="fctl" style="top:72px"><div class="glass"><s>Shelves</s><s class="on">Read</s></div><div class="gbtn">2026 &#9662;</div></div>
+        <div class="well">
+          <div class="mhdr" style="margin-top:0">March <span>4</span></div>
+          <div class="mgrid" style="grid-template-columns:repeat(3,1fr);width:66%"><u style="--c:#c05746"></u><u style="--c:#d99a4e"></u><u style="--c:#4a6c8c"></u></div>
+          <div class="mhdr">February <span>2</span></div>
+          <div class="mgrid"><u style="--c:#8b6f9e"></u><u style="--c:#b5544f"></u><u style="--c:#3f5d75"></u><u style="--c:#d4a373"></u></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Bar untouched, but now <b>two stacked glass controls sit on top of your covers</b> &mdash; and March, the row you most want seen, is the one they cover.</div>
+    </div>
+    <div>
+      <div class="vname">V3 &mdash; SHEET POSITION IS THE TOGGLE</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">aschung<u>&rsquo;s Library</u></span><span class="g">&#8593;</span><span class="g">&#9998;</span><span class="g">&#43;</span></div>
+        <div class="well">
+          <div class="grp"><div class="slbl">Novels</div><div class="books"><i class="bk" style="--c:#c05746;width:20px;height:26px"></i><i class="bk" style="--c:#d99a4e;width:18px;height:23px"></i><i class="bk" style="--c:#4a6c8c;width:21px;height:27px"></i></div><div class="shelfbar"></div></div>
+        </div>
+        <div class="sheet" style="height:76%">
+          <div class="handle"></div>
+          <div class="sechdr"><span class="lt">Books read <i>12</i></span><span class="rt" style="color:#ADB5BD">2026 &#9662;</span></div>
+          <div class="mhdr" style="margin-top:0">March <span>4</span></div>
+          <div class="mgrid"><u style="--c:#c05746"></u><u style="--c:#d99a4e"></u><u style="--c:#4a6c8c"></u><u style="--c:#6b8f71"></u></div>
+          <div class="mhdr">February <span>2</span></div>
+          <div class="mgrid"><u style="--c:#8b6f9e"></u><u style="--c:#b5544f"></u></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Count stays pinned in the sheet header while covers scroll under it. <b>Loses one grid row to the shelf strip above</b> &mdash; the price of never leaving the library behind.</div>
+    </div>
+  </div>
+</div>
+
+<hr class="hr">
+
+<div class="row">
+  <p class="sh">3 &middot; Friend &mdash; Shelves and Read</p>
+  <p class="sd">V2 dropped from here on; it differs from V1 only in where the switch sits.</p>
+  <div class="trio">
+    <div>
+      <div class="vname">V1 &mdash; FRIEND, SHELVES</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av"></b><b class="av sel"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">jisoo<u>&rsquo;s Library</u></span><span class="seg"><s class="on">Shelves</s><s>Read</s></span><span class="poke">Poke</span></div>
+        <div class="well">
+          <div class="grp"><div class="slbl">Fiction</div><div class="books"><i class="bk" style="--c:#6b8f71;width:20px;height:29px"></i><i class="bk" style="--c:#3f5d75;width:18px;height:32px"></i><i class="bk" style="--c:#d4a373;width:21px;height:26px"></i></div><div class="shelfbar"></div></div>
+          <div class="grp"><div class="slbl">Essays</div><div class="books"><i class="bk" style="--c:#4a6c8c;width:19px;height:30px"></i><i class="bk" style="--c:#c05746;width:20px;height:27px"></i></div><div class="shelfbar"></div></div>
+        </div>
+        <div class="sheet" style="height:14%"><div class="handle"></div><div class="hint">&uarr; activity</div></div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s class="on">Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Title, switch and Poke all in one bar. <b>Tight at longer usernames</b> &mdash; and Korean suffixes run longer than the English possessive.</div>
+    </div>
+    <div>
+      <div class="vname">V3 &mdash; FRIEND, COLLAPSED</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av"></b><b class="av sel"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">jisoo<u>&rsquo;s Library</u></span><span class="poke">Poke</span></div>
+        <div class="well">
+          <div class="grp"><div class="slbl">Fiction</div><div class="books"><i class="bk" style="--c:#6b8f71;width:20px;height:29px"></i><i class="bk" style="--c:#3f5d75;width:18px;height:32px"></i><i class="bk" style="--c:#d4a373;width:21px;height:26px"></i></div><div class="shelfbar"></div></div>
+          <div class="grp"><div class="slbl">Essays</div><div class="books"><i class="bk" style="--c:#4a6c8c;width:19px;height:30px"></i><i class="bk" style="--c:#c05746;width:20px;height:27px"></i></div><div class="shelfbar"></div></div>
+        </div>
+        <div class="sheet" style="height:31%">
+          <div class="handle"></div>
+          <div class="sechdr"><span class="lt">Books read <i>24</i></span><span class="rt" style="color:#ADB5BD">All time &#9662;</span></div>
+          <div class="pile"><i class="sp2" style="background:rgba(9,188,138,1)"><em style="color:#fff">Beloved</em></i><i class="sp2" style="background:rgba(9,188,138,.7)"><em style="color:#fff">Snow</em></i><i class="sp2" style="background:rgba(9,188,138,.4)"><em style="color:#212529">Almond</em></i><i class="sp2" style="background:rgba(9,188,138,1)"><em style="color:#fff">Ghosts</em></i><i class="sp2" style="background:rgba(9,188,138,.7)"><em style="color:#fff">Kafka</em></i><i class="sp2" style="background:rgba(9,188,138,.4)"><em style="color:#212529">Circe</em></i><i class="sp2" style="background:rgba(9,188,138,1)"><em style="color:#fff">Exit West</em></i><i class="sp2" style="background:rgba(9,188,138,.7)"><em style="color:#fff">Pachinko</em></i></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s class="on">Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Bar stays as it is today. Her <b>24 lands the moment you arrive</b>, against your 12 &mdash; the comparison happens without a tap.</div>
+    </div>
+    <div>
+      <div class="vname">V3 &mdash; FRIEND, EXPANDED</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av"></b><b class="av sel"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">jisoo<u>&rsquo;s Library</u></span><span class="poke">Poke</span></div>
+        <div class="well">
+          <div class="grp"><div class="slbl">Fiction</div><div class="books"><i class="bk" style="--c:#6b8f71;width:20px;height:25px"></i><i class="bk" style="--c:#3f5d75;width:18px;height:27px"></i></div><div class="shelfbar"></div></div>
+        </div>
+        <div class="sheet" style="height:76%">
+          <div class="handle"></div>
+          <div class="sechdr"><span class="lt">Books read <i>24</i></span><span class="rt" style="color:#ADB5BD">2026 &#9662;</span></div>
+          <div class="mhdr" style="margin-top:0">March <span>3</span></div>
+          <div class="mgrid"><u style="--c:#6b8f71"></u><u style="--c:#3f5d75"></u><u style="--c:#d4a373"></u></div>
+          <div class="mhdr">February <span>4</span></div>
+          <div class="mgrid"><u style="--c:#8b6f9e"></u><u style="--c:#4a6c8c"></u><u style="--c:#c05746"></u><u style="--c:#d99a4e"></u></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s class="on">Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Same drag, same sheet, her data. Replaces the cramped stats in <code>_showFriendInfoDialog</code> entirely.</div>
+    </div>
+  </div>
+</div>
+
+<hr class="hr">
+
+<div class="row">
+  <p class="sh">4 &middot; Library Card, and Friends</p>
+  <p class="sd">Does the Card own a sortable read list, or does the Library tab own read books outright?</p>
+  <div class="trio">
+    <div>
+      <div class="vname">CARD &mdash; STATS ONLY</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">Library Card</span><span class="g">&#8593;</span></div>
+        <div class="well">
+          <div class="chips"><s class="on">All-Time</s><s>2026</s><s>2025</s></div>
+          <div class="stat hero"><div class="lbl">All-time library card</div><div class="big">12</div><div class="sub">books &middot; 4,180 pages &middot; 86 days</div></div>
+          <div class="row2"><div class="stat warm"><div class="lbl">Pace</div><div class="big">9d</div><div class="sub">per book</div></div><div class="stat cool"><div class="lbl">Rating</div><div class="big">4.2</div><div class="sub">of 12</div></div></div>
+          <div class="stat" style="background:linear-gradient(155deg,#2f5d4a,#16332a)"><div class="lbl">Most-read author</div><div class="big" style="font-size:10px">Han Kang</div><div class="sub">3 books</div></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s>Friends</s><s class="on">Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Numbers only; read books belong to the Library tab. <b>No sorting by author or rating anywhere in the app.</b></div>
+    </div>
+    <div>
+      <div class="vname">CARD &mdash; STATS + READ LIST</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">Library Card</span><span class="g">&#8593;</span></div>
+        <div class="well">
+          <div class="chips"><s class="on">All-Time</s><s>2026</s></div>
+          <div class="stat hero"><div class="lbl">All-time library card</div><div class="big">12</div><div class="sub">books &middot; 4,180 pages</div></div>
+          <div class="sechdr" style="margin:7px 0 0"><span class="lt">Books read</span><span class="rt" style="color:#ADB5BD;font-size:4.6px">12 BOOKS</span></div>
+          <div class="sortrow"><s class="on">Date &darr;</s><s>Title</s><s>Author</s><s>Rating</s><div class="dens"><s class="on">&#9776;</s><s>&#9707;</s></div></div>
+          <div class="brow"><span class="cvs" style="--c:#6b8f71"></span><span class="bt">The Vegetarian<div class="bd">Han Kang &middot; &#9733;&#9733;&#9733;&#9733;&#9734;</div></span><span class="bd">Mar 14</span></div>
+          <div class="brow"><span class="cvs" style="--c:#c05746"></span><span class="bt">Pachinko<div class="bd">Min Jin Lee &middot; &#9733;&#9733;&#9733;&#9733;&#9733;</div></span><span class="bd">Mar 2</span></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s>Friends</s><s class="on">Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Flighty&rsquo;s Past&nbsp;Flights, with sort chips and a density toggle. <b>Overlaps the Library tab&rsquo;s read view</b> &mdash; two places showing the same books, differently.</div>
+    </div>
+    <div>
+      <div class="vname">FRIENDS &mdash; ACTIVITY</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">Friends</span><span class="g">&#9906;</span></div>
+        <div class="well">
+          <div class="frow" style="padding-top:0"><span class="fav"></span><span class="ftx"><b>jisoo</b> finished The Vegetarian<div class="ftm">&#9733;&#9733;&#9733;&#9733;&#9734; &middot; 2h</div></span><span class="cvs" style="--c:#6b8f71"></span></div>
+          <div class="frow"><span class="fav"></span><span class="ftx"><b>minho</b> &#128079; your Pachinko<div class="ftm">5h</div></span><span class="cvs" style="--c:#c05746"></span></div>
+          <div class="frow"><span class="fav"></span><span class="ftx"><b>hana</b> started Kafka<div class="ftm">1d</div></span><span class="cvs" style="--c:#4a6c8c"></span></div>
+          <div class="frow"><span class="fav"></span><span class="ftx"><b>sora</b> rated Beloved &#9733;&#9733;&#9733;&#9733;&#9733;<div class="ftm">3d</div></span><span class="cvs" style="--c:#8b6f9e"></span></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s>Library</s><s class="on">Friends</s><s>Card</s></div><div class="circ">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">With the rail already in the app bar, Friends needs no sheet at all &mdash; the feed just fills the well. <b>Consistent with every other tab.</b></div>
+    </div>
+  </div>
+</div>
+
+<hr class="hr">
+
+<div class="row">
+  <p class="sh">5 &middot; Search &mdash; Add Book</p>
+  <p class="sd">Modal over the current tab. Identical in every variant.</p>
+  <div class="trio">
+    <div>
+      <div class="vname">ALL VARIANTS</div>
+      <div class="stage"><div class="ph">
+        <div class="appbar"><b class="av sel"></b><b class="av"></b><b class="av"></b><b class="av"></b><span class="sp"></span><span class="g">&#9906;</span><span class="g">&#9776;</span></div>
+        <div class="subbar"><span class="t">aschung<u>&rsquo;s Library</u></span><span class="g">&#9998;</span><span class="g">&#43;</span></div>
+        <div class="well"><div class="grp"><div class="books"><i class="bk" style="--c:#c05746;width:20px;height:26px"></i><i class="bk" style="--c:#d99a4e;width:18px;height:23px"></i></div><div class="shelfbar"></div></div></div>
+        <div class="sheet" style="height:80%">
+          <div class="handle"></div>
+          <div class="sechdr"><span class="lt">Add Book</span><span class="rt" style="color:#ADB5BD">&#10005;</span></div>
+          <div class="sfield">Title, author, or ISBN</div>
+          <div class="brow"><span class="cvs" style="--c:#6b8f71"></span><span class="bt">The Vegetarian<div class="bd">Han Kang &middot; Changbi</div></span></div>
+          <div class="brow"><span class="cvs" style="--c:#c05746"></span><span class="bt">Human Acts<div class="bd">Han Kang &middot; Changbi</div></span></div>
+          <div class="brow" style="border:0"><span class="cvs" style="--c:#4a6c8c"></span><span class="bt">Pachinko<div class="bd">Min Jin Lee</div></span></div>
+        </div>
+        <div class="tabbar"><div class="pill"><s class="on">Library</s><s>Friends</s><s>Card</s></div><div class="circ on">&#9906;</div></div>
+      </div></div>
+      <div class="vcap">Uses <code>sheetBackground</code> like your other modals, so it reads as a layer above the encasing rather than part of it.</div>
+    </div>
+  </div>
+</div>
+</main>
+<script>
+  // The screens were authored for the brainstorming companion, which provided
+  // this. Kept so the option/card cards still respond to clicks when the files
+  // are opened directly from disk.
+  function toggleSelect(el) {
+    var multi = el.parentElement && el.parentElement.hasAttribute('data-multiselect');
+    if (!multi) {
+      var siblings = el.parentElement ? el.parentElement.children : [];
+      for (var i = 0; i < siblings.length; i++) {
+        if (siblings[i] !== el) siblings[i].classList.remove('selected');
+      }
+    }
+    el.classList.toggle('selected');
+  }
+</script>
+</body>
+</html>

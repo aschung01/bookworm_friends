@@ -1,0 +1,90 @@
+/* Shared shell for the library-shell mockups.
+   The screens were authored as fragments for the brainstorming companion, which
+   supplied base typography and the .card styles. This reproduces just enough of
+   that so each file opens standalone in a browser. Every screen also carries its
+   own <style> block for its phone mockups; nothing here should override those. */
+
+:root {
+  --text: #1c1c1e;
+  --text-secondary: #6b6b70;
+  --border: #e6e4e0;
+  --bg: #ffffff;
+  --bg-secondary: #faf9f7;
+  --accent: #067657;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  margin: 0;
+  padding: 0 24px 64px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+main { max-width: 1180px; margin: 0 auto; }
+
+h2 { font-size: 1.6rem; font-weight: 700; margin: 28px 0 6px; letter-spacing: -0.02em; }
+h3 { font-size: 1rem; font-weight: 700; margin: 0 0 4px; }
+h4 { font-size: 0.95rem; font-weight: 700; margin: 0 0 4px; }
+p { margin: 0 0 10px; }
+.subtitle { color: var(--text-secondary); margin-bottom: 22px; font-size: 0.95rem; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86em;
+  background: #f2f1ee;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.card.selected { border-color: var(--accent); border-width: 2px; }
+.card-image { background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; }
+.card-body { padding: 14px 16px 16px; }
+.card-body h3 { margin-bottom: 5px; }
+.card-body p { color: var(--text-secondary); font-size: 0.84rem; line-height: 1.55; margin: 0; }
+
+.options { display: grid; gap: 12px; }
+.option { display: flex; gap: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.option.selected { border-color: var(--accent); border-width: 2px; }
+.option .letter { font-weight: 800; color: var(--accent); }
+
+/* Site chrome added by the build wrapper, not part of any screen. */
+.mk-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  margin: 0 -24px 8px;
+  padding: 10px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+}
+.mk-nav .mk-home { font-weight: 800; font-size: 0.82rem; margin-right: 6px; color: var(--text); text-decoration: none; }
+.mk-nav a.mk-link {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.mk-nav a.mk-link:hover { color: var(--text); border-color: var(--border); }
+.mk-nav .mk-n { color: #b9b6b0; font-weight: 700; margin-right: 2px; }
