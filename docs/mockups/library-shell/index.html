@@ -408,16 +408,17 @@
 
                     <dt>Praise is one emoji, not text</dt>
                     <dd>
-                        &ldquo;Praise&rdquo; (칭찬하기) writes
-                        <code>book_compliments</code> from the fixed 16-emoji
-                        palette in <code>praise_palette.dart</code>;
-                        <code>varchar(6)</code> is sized for one emoji, since ❤️
-                        alone is two code points. It is the only
-                        <b>persisted</b> social object in the app &mdash;
-                        <code>poke_user()</code> fires a push and writes no row
-                        &mdash; so praise is what Activity can be built from
-                        today, and it is the payoff of a visit. It is gated to
-                        <b>finished</b> books:
+                        &ldquo;Praise&rdquo; (칭찬하기) writes one emoji to
+                        <code>book_compliments</code>, chosen from
+                        <code>AwesomeEmojiPicker</code> &mdash; any of ~3,500,
+                        not a curated set (see below). Still exactly one emoji
+                        though: the column caps at 16 code points, which fits
+                        the widest emoji that exists and refuses prose. It is
+                        the only <b>persisted</b> social object in the app
+                        &mdash; <code>poke_user()</code> fires a push and writes
+                        no row &mdash; so praise is what Activity can be built
+                        from today, and it is the payoff of a visit. It is gated
+                        to <b>finished</b> books:
                         <code>_ComplimentButton</code> returns
                         <code>SizedBox.shrink()</code> unless
                         <code>status == 2</code>, so praise is for
@@ -630,22 +631,34 @@
                         job the visit's &times; now does.
                     </dd>
 
+                    <dt>&#10003; The palette lost to the data</dt>
+                    <dd>
+                        28 of the 39 live praises were emoji the fixed 16 never
+                        offered &mdash; 🦄 🐲 🧸 🛸 ☘️ ☃️, dating from
+                        2022&ndash;2024 and carried over from the archived
+                        project. Their shape gives away the source: ✌🏻 carries a
+                        skin-tone modifier and ☃️ a variation selector, which is
+                        system-keyboard output. So the curated set was never
+                        what people used, and it is now
+                        <code>AwesomeEmojiPicker</code> &mdash; search, Recents,
+                        categories, skin tones &mdash; with the sixteen demoted
+                        to seeding an empty Recents run so a first-timer is not
+                        dropped into 3,500 emoji with no shortlist. Both emoji
+                        columns widened from <code>varchar(6)</code> to
+                        <code>text</code> first: 290 of the 3,544 emoji exceed
+                        six code points, and Postgres rejects rather than
+                        truncates. Spec:
+                        <code>2026-08-14-free-emoji-praise-design.md</code>.
+                    </dd>
+
                     <dt>Still open</dt>
                     <dd>
-                        <b>The palette does not match the data.</b> 28 of the 39
-                        live praises are emoji outside the fixed 16 &mdash; 🦄
-                        🐲 🧸 🛸 ☘️ ☃️ &mdash; left by an older version with a
-                        free emoji keyboard (the rows date from 2022&ndash;2024,
-                        carried over from the archived project). They render
-                        fine, and the pill still shows yours, but they highlight
-                        nothing when you re-open the palette, and a
-                        <code>CHECK</code> pinning the column to the 16 would
-                        reject them. Migrate them onto the palette, widen the
-                        palette, or leave it unconstrained &mdash; not yet
-                        decided. Praise is also still
-                        <b>discoverable only from a detail page</b>: the shelf
-                        hint that would advertise it costs a new shelf-level
-                        count query, so it stays a proposal. And the
+                        Praise is <b>discoverable only from a detail page</b>:
+                        the shelf hint that would advertise it costs a new
+                        shelf-level count query, so it stays a proposal. The
+                        vocabulary is now unbounded, so anything that groups
+                        praise by emoji has a long tail &mdash; counts stay
+                        safe, &ldquo;top praise&rdquo; does not. And the
                         bar-to-sheet clearance on friend screens measures 5.8px
                         in <i>every</i> version, <code>main</code> included
                         &mdash; a pre-existing tightness worth fixing globally,

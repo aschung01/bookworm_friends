@@ -1,7 +1,7 @@
 # Free emoji praise
 
 **Date:** 2026-08-14
-**Status:** Approved design
+**Status:** Implemented — see "Amendments during implementation" below
 
 ## Context
 
@@ -145,11 +145,48 @@ ever blocks a Flutter upgrade.
 need an explicit detent, which could change the sheet's shape. Verify before
 building the layout — it is the one unknown that could move this design.
 
+## Amendments during implementation
+
+Three things the code contradicted, recorded rather than quietly absorbed.
+
+**Recents cannot be scoped per context (§3).** `EmojiRepository` is a
+process-wide singleton whose `prefsKey` is fixed by whoever constructs it first —
+`_instance ??= ...` — and `AwesomeEmojiPicker` constructs it itself, passing only
+a skin tone. Two stores in one session would mean resetting the singleton around
+every sheet. So praise and the profile emoji **share one Recents store**. Cheap in
+practice: the profile emoji is changed rarely, so it can add an entry or two to a
+list of 24, and both are lists of friendly emoji.
+
+**The highlight survives after all (§4).** The spec said `EmojiPicker` exposes
+only `onEmojiSelected`, so a marked cell was impossible. It also takes
+`emojiRenderer`, and the renderer it replaces is a bare `EmojiWidget` — so
+marking your own cell costs nothing and loses no behaviour. Both are shipped: the
+cell is marked _and_ the strip states the toggle, because a highlight is findable
+in the Recents run (where your praise usually is) but not in a grid of 3,500, and
+only the strip can withdraw.
+
+**The package's README is wrong about its own class name.** It documents
+`EmojiPicker`; the exported widget is `AwesomeEmojiPicker`. Worth knowing before
+trusting other details in those docs.
+
+## Verification against the live database
+
+The migration was applied to the hosted project and checked there: both columns
+report `text` with no length limit, a 10-code-point emoji (🧑🏿‍❤️‍💋‍🧑🏾) stores and
+reads back intact, and prose is refused by
+`book_compliments_compliment_length`. The two write tests ran inside transactions
+that were rolled back.
+
+The sheet-height risk resolved harmlessly: `CNBottomSheet.show` is a thin wrapper
+over `showModalBottomSheet`, so there is no native detent to fight. It does cap
+height at 9/16 of the screen unless told otherwise, so the sheet passes
+`isScrollControlled: true` and sizes the picker itself.
+
 ## Consequences
 
 - All 28 legacy off-palette praises become first-class rather than
   unrepresentable.
-- The mockups' praise palette element and the `praise-book` flow must be redrawn:
-  a search field, category bar and recents row rather than a 16-tile grid.
+- The mockups' praise palette element and the `praise-book` flow are redrawn: a
+  search field, category bar and Recents run rather than a 16-tile grid.
 - Praise vocabulary is now unbounded, so any future "most-used praise" or
   emoji-grouped feed row has a long tail to handle. Counts stay safe.

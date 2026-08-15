@@ -16,7 +16,6 @@ dependencies:
   intl: ^0.20.2
   flutter_easyloading: ^3.0.5
   phosphor_flutter: ^2.1.0
-  emojis: ^0.9.9
   animated_text_kit: ^4.2.2
   shimmer: ^3.0.0
   flutter_svg: ^2.0.10
@@ -34,6 +33,7 @@ dependencies:
   cupertino_native_better: ^1.5.4
   http: ^1.2.0
   shared_preferences: ^2.3.0
+  awesome_emoji_picker: ^1.0.5
 
 dependency_overrides:
   path_provider_foundation: 2.4.1

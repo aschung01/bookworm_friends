@@ -1328,13 +1328,56 @@
                 color: var(--brandText);
                 font-weight: 700;
             }
-            /* Praise: the 16-emoji palette from compliment_bottom_sheet.dart. */
+            /* Praise: the emoji picker in compliment_bottom_sheet.dart. */
             .phdr {
                 font-size: 6.4px;
                 font-weight: 700;
                 color: var(--text);
                 text-align: center;
                 margin: 2px 0 6px;
+            }
+            /* "Your praise, and how to take it back" — the strip above the grid.
+               The picker has no selected state of its own, so this is what states
+               the toggle, and the only thing that can reach a legacy emoji buried
+               hundreds of rows down. */
+            .pstrip {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 3px;
+                font-size: 5.6px;
+                color: var(--text2);
+                margin: 0 0 5px;
+            }
+            .pstrip u {
+                color: var(--brandText);
+                font-weight: 700;
+                text-decoration: none;
+            }
+            /* Category label above each run of the grid. */
+            .pcat {
+                font-size: 5.2px;
+                font-weight: 700;
+                color: var(--text2);
+                text-transform: uppercase;
+                letter-spacing: 0.2px;
+                margin: 5px 0 3px;
+            }
+            /* The category bar pinned under the grid. */
+            .pbar {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 6px;
+                padding-top: 4px;
+                border-top: 0.5px solid var(--divider);
+            }
+            .pbar s {
+                font-size: 6px;
+                text-decoration: none;
+                opacity: 0.45;
+            }
+            .pbar s.on {
+                opacity: 1;
             }
             .pgrid {
                 display: grid;
@@ -1352,8 +1395,9 @@
                 font-style: normal;
             }
             /* `on` marks the viewer's *own* praise, not a hover: one person holds
-               one praise per book, so re-opening the palette has to say which
-               emoji is already theirs. Matches PraisePalette's brand tint + ring. */
+               one praise per book, so the picker has to say which emoji is already
+               theirs. Drawn by passing `emojiRenderer` to AwesomeEmojiPicker,
+               whose own cell renderer is a bare EmojiWidget. */
             .pgrid i.on {
                 background: #cdeee2;
                 box-shadow: 0 0 0 1px var(--brandText);
@@ -1770,10 +1814,10 @@
                 return `<div class="grp2">${name ? `<div class="sl">${name}</div>` : ""}<div class="bks">${b}</div><div class="shf"></div></div>`;
             }
 
-            /* The fixed palette in compliment_bottom_sheet.dart. Praise is one tap
-               from this set — not free text; the column is varchar(6) because a single
-               emoji can be several code points. */
-            const PRAISE_EMOJI = [
+            /* The sixteen that used to *be* praise. They now only seed an empty
+               Recents row: 28 of the 39 praises in production are emoji this list
+               never offered, so the closed set was never what people used. */
+            const SEED_EMOJI = [
                 "&#128079;",
                 "&#127881;",
                 "&#10084;&#65039;",
@@ -1791,10 +1835,63 @@
                 "&#129321;",
                 "&#128144;",
             ];
-            function praiseGrid(on) {
-                return `<div class="pgrid">${PRAISE_EMOJI.map(
-                    (e) => `<i class="${e === on ? "on" : ""}">${e}</i>`,
-                ).join("")}</div>`;
+            /* Deliberately includes emoji the old palette could not reach, because
+               that is the whole point of the change: 🦄 🐲 🧸 🛸 are real rows in
+               production. */
+            const WILD_EMOJI = [
+                "&#129412;",
+                "&#128050;",
+                "&#129528;",
+                "&#128760;",
+                "&#128123;",
+                "&#127808;",
+                "&#129418;",
+                "&#128302;",
+                "&#127752;",
+                "&#129440;",
+                "&#127849;",
+                "&#128031;",
+                "&#129370;",
+                "&#127793;",
+                "&#128126;",
+                "&#129419;",
+            ];
+            const PRAISE_CATS = [
+                "&#128337;",
+                "&#128512;",
+                "&#128040;",
+                "&#127826;",
+                "&#9917;",
+                "&#9992;",
+                "&#128161;",
+                "&#10035;",
+                "&#127988;",
+            ];
+            function pgrid(list, on) {
+                return `<div class="pgrid">${list
+                    .map((e) => `<i class="${e === on ? "on" : ""}">${e}</i>`)
+                    .join("")}</div>`;
+            }
+            /**
+             * The praise sheet as AwesomeEmojiPicker draws it: search, a Recents
+             * run, a category run, and the category bar. `on` is the viewer's own
+             * praise — marked in the grid via `emojiRenderer`, and repeated in the
+             * strip, which is the only place a withdrawal can be offered.
+             */
+            function praisePicker(on, strip) {
+                return (
+                    (on && strip
+                        ? `<div class="pstrip">Your praise <s class="pc">${on}</s> <u>Remove</u></div>`
+                        : "") +
+                    `<div class="fld">Search</div>` +
+                    `<div class="pcat">Recents</div>` +
+                    pgrid(SEED_EMOJI, on) +
+                    `<div class="pcat">Animals &amp; nature</div>` +
+                    pgrid(WILD_EMOJI, on) +
+                    `<div class="pbar">${PRAISE_CATS.map(
+                        (c, i) => `<s class="${i === 0 ? "on" : ""}">${c}</s>`,
+                    ).join("")}</div>`
+                );
             }
             function praiseCluster(list) {
                 return `<div class="pcluster">${list
@@ -1953,7 +2050,7 @@
                     case "praise":
                         return (
                             `<div class="phdr">${b.label || "Choose a praise emoji"}</div>` +
-                            praiseGrid(b.on)
+                            praisePicker(b.on, b.strip !== false)
                         );
                     case "months":
                         return months(b.list);
@@ -4386,7 +4483,7 @@
                                         ],
                                     },
                                     sheet: {
-                                        h: 40,
+                                        h: 62,
                                         modal: true,
                                         body: {
                                             type: "praise",
@@ -4494,8 +4591,8 @@
                             "el-praise": {
                                 group: "Social",
                                 name: "Praise palette",
-                                note: "The 16 emoji in <code>PraisePalette</code>, eight to a row as the real grid draws them. Opened by the Praise button in <b>book details</b> &mdash; not from the shelf. Fixed set, so praise can be aggregated (&#128079;&nbsp;3) rather than listed. The marked cell is <i>your</i> praise, not a hover: tapping it withdraws, tapping another replaces.",
-                                demo: `<div style="background:#fff;padding:10px;border-radius:8px;width:100%">${praiseGrid("&#128293;")}</div>`,
+                                note: "<code>AwesomeEmojiPicker</code> over ~3,500 emoji, with search, categories and a persisted Recents run. Opened by the Praise button in <b>book details</b> &mdash; not from the shelf. It replaced a fixed 16 once the live data showed 28 of 39 praises had gone outside that set anyway; the sixteen now only <i>seed</i> an empty Recents. The marked cell is <i>your</i> praise, drawn through <code>emojiRenderer</code> since the package has no selected state, and the strip above repeats it because a highlight alone cannot be found in a grid this size.",
+                                demo: `<div style="background:#fff;padding:10px;border-radius:8px;width:100%">${praisePicker("&#128293;", true)}</div>`,
                             },
                             "el-badge": {
                                 group: "Social",
@@ -4735,8 +4832,8 @@
                                         },
                                     ],
                                     [
-                                        "Palette",
-                                        "The fixed 16, eight to a row. Nothing is marked yet: the highlight means <i>your</i> praise, and you hold none on this book.",
+                                        "Picker",
+                                        "Search, Recents, categories &mdash; <code>AwesomeEmojiPicker</code> over 3,500 emoji. Nothing is marked yet: the highlight means <i>your</i> praise, and you hold none here. The Recents run is seeded with the sixteen that used to be the whole palette, so a first-timer is not staring at a blank shelf.",
                                         {
                                             bar: false,
                                             tab: false,
@@ -4759,7 +4856,7 @@
                                                 ],
                                             },
                                             sheet: {
-                                                h: 40,
+                                                h: 62,
                                                 modal: true,
                                                 body: { type: "praise" },
                                             },
@@ -4796,7 +4893,7 @@
                                     ],
                                     [
                                         "Re-opened",
-                                        "Now &#128293; is marked. Tapping it again withdraws your praise; tapping any other swaps it. There is no tap that adds a second one &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15.",
+                                        "Now &#128293; is marked, and the strip above the grid repeats it with a <b>Remove</b>. Tapping &#128293; again withdraws your praise; tapping any other swaps it. There is no tap that adds a second one &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15.",
                                         {
                                             bar: false,
                                             tab: false,
@@ -4820,7 +4917,7 @@
                                                 ],
                                             },
                                             sheet: {
-                                                h: 40,
+                                                h: 62,
                                                 modal: true,
                                                 body: {
                                                     type: "praise",
@@ -4832,7 +4929,7 @@
                                     ],
                                     [
                                         "Swapped",
-                                        "&#128079; replaces &#128293; in place. The count on her book is unchanged, which is the point of one-per-person: praise can be aggregated (&#128079;&nbsp;3) and the number means the same thing to every viewer.",
+                                        "&#128079; replaces &#128293; in place. Praise stays one-per-person, so a book's chip count means the same thing to every viewer &mdash; but the <i>vocabulary</i> is now unbounded, so a count is the only thing safe to aggregate.",
                                         {
                                             bar: false,
                                             tab: false,
@@ -4928,7 +5025,7 @@
                             "visit-friend":
                                 "<b>This reframes decision 1 rather than picking a side.</b> It is close to <b>pushed-page</b> in mechanics, but for the opposite reason: not &ldquo;a page that unfortunately covers the tab bar&rdquo;, but a focused context that <i>should</i> drop the tab bar, because a bookshelf is property and visiting one is a place you leave. Your own library keeps the persistent background, which is the part of the world rule that was always true.",
                             "praise-book":
-                                "<b>Data settled and shipped:</b> praise is <b>one per person per book</b> &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15 &mdash; and a tap is a toggle: same emoji withdraws, different emoji replaces. Reads widened to match the book's own visibility, so a third visitor sees the same praise the owner does and a count means the same thing to everyone; verified against the real database, where a third party went from seeing 0 rows to 2. <b>Still open &mdash; discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page. <b>Also open &mdash; the palette does not match the data:</b> 28 of the 39 live praises are emoji outside the fixed 16 (🦄 🐲 🧸 🛸), left by an older free-keyboard version, so they highlight nothing when you re-open the palette and a CHECK constraint pinning the 16 would reject them.",
+                                "<b>Data settled and shipped:</b> praise is <b>one per person per book</b> &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15 &mdash; and a tap is a toggle: same emoji withdraws, different emoji replaces. Reads widened to match the book's own visibility, so a third visitor sees the same praise the owner does and a count means the same thing to everyone; verified against the real database, where a third party went from seeing 0 rows to 2. <b>Vocabulary settled too:</b> the fixed 16 are gone. 28 of the 39 live praises were already outside them (🦄 🐲 🧸 🛸), so the palette was never what people used; both emoji columns widened from <code>varchar(6)</code> to <code>text</code> with a 16-code-point cap, because 290 of the 3,544 emoji do not fit six. <b>Still open &mdash; discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page.",
                         },
                     },
                 ],

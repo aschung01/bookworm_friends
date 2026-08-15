@@ -77,6 +77,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _onUpdateEmojiPressed() {
     showEmojiBottomSheet(
       context,
+      // Same picker, different job: this one names an avatar rather than praising
+      // a book, so it carries its own title and offers no withdrawal.
+      title: AppLocalizations.of(context).changeEmoji,
       selected: ref.read(profileProvider).valueOrNull?.emoji,
       onEmojiPressed: (emoji) async {
         Navigator.pop(context);
@@ -234,6 +237,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
     }
+  }
+
+  /// Credits, over Flutter's aggregated licence page.
+  ///
+  /// `awesome_emoji_picker` is MIT with an attribution requirement -- visible
+  /// credit to its authors -- which pub.dev does not surface, since it reports
+  /// the licence as unknown. The licence page alone would technically carry it,
+  /// buried among every transitive dependency, so the names are stated in the
+  /// page's own header where someone might actually read them. The app had no
+  /// licence screen at all before this, which it owed regardless.
+  void _onAcknowledgementsPressed() {
+    final l10n = AppLocalizations.of(context);
+    showLicensePage(
+      context: context,
+      applicationName: l10n.appTitle,
+      applicationLegalese: l10n.emojiPickerCredit,
+    );
   }
 
   static String _bookSourceLabel(
@@ -581,6 +601,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _SettingsMenuItem(
               labelText: l10n.privacyPolicy,
               onTap: () => _launchUrl(_privacyPolicyUrl),
+            ),
+            _SettingsMenuItem(
+              labelText: l10n.acknowledgements,
+              onTap: _onAcknowledgementsPressed,
             ),
             FutureBuilder<PackageInfo>(
               future: PackageInfo.fromPlatform(),

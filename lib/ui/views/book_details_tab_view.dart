@@ -506,6 +506,17 @@ class _ComplimentButton extends ConsumerWidget {
                 .read(bookDetailsActionsProvider)
                 .togglePraise(book.id, emoji);
           },
+          // Withdrawing is the same call as praising with what you already hold:
+          // `praiseTapFor` reads that as removal, so the strip is an affordance
+          // over the existing toggle rather than a second path to keep in step.
+          onRemove: mine == null
+              ? null
+              : () async {
+                  Navigator.pop(context);
+                  await ref
+                      .read(bookDetailsActionsProvider)
+                      .togglePraise(book.id, mine);
+                },
         );
       },
       style: ElevatedButton.styleFrom(
