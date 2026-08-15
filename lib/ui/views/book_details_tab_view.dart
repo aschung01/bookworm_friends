@@ -17,6 +17,7 @@ import 'package:bookworm_friends/providers/book_search_provider.dart';
 import 'package:bookworm_friends/services/book_search_service.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
+import 'package:bookworm_friends/ui/widgets/compliment_block.dart';
 import 'package:bookworm_friends/ui/widgets/headers/collapsing_book_title.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
@@ -204,63 +205,25 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                       children: [
                                         if (!isSelf)
                                           _ComplimentButton(book: book),
-                                        if (!isSelf)
-                                          complimentsAsync.when(
-                                            data: (compliments) {
-                                              if (compliments.isEmpty)
-                                                return const SizedBox.shrink();
-                                              return Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 8,
-                                                ),
-                                                child: Wrap(
-                                                  spacing: 4,
-                                                  children: compliments
-                                                      .map(
-                                                        (c) => Container(
-                                                          width: 28,
-                                                          height: 28,
-                                                          decoration: BoxDecoration(
-                                                            shape:
-                                                                BoxShape.circle,
-                                                            color: context
-                                                                .colors
-                                                                .pageBackground,
-                                                            border: Border.all(
-                                                              color: context
-                                                                  .colors
-                                                                  .brand
-                                                                  .withOpacity(
-                                                                    0.3,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                          alignment:
-                                                              Alignment.center,
-                                                          child: Text(
-                                                            c.compliment,
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 14,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                      .toList(),
-                                                ),
-                                              );
-                                            },
-                                            loading: () =>
-                                                const SizedBox.shrink(),
-                                            error: (_, __) =>
-                                                const SizedBox.shrink(),
-                                          ),
                                         // A friend's badge is drawn above the
                                         // shelf label instead (see below), since
                                         // the praise button already owns this
                                         // corner.
                                         if (isSelf)
                                           BookStatusBadge(status: book.status),
+                                        // Praise is shown to the owner too: only
+                                        // the button adding it is theirs to be
+                                        // denied.
+                                        complimentsAsync.when(
+                                          data: (compliments) =>
+                                              ComplimentBlock(
+                                                compliments: compliments,
+                                              ),
+                                          loading: () =>
+                                              const SizedBox.shrink(),
+                                          error: (_, __) =>
+                                              const SizedBox.shrink(),
+                                        ),
                                       ],
                                     ),
                                   ),

@@ -10,137 +10,23 @@
 // where the praise button would otherwise sit), so it is asserted separately to
 // make sure the fix didn't move or duplicate it.
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:bookworm_friends/constants/app_theme.dart';
-import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/models/book.dart';
-import 'package:bookworm_friends/models/book_compliment.dart';
-import 'package:bookworm_friends/models/book_memo.dart';
-import 'package:bookworm_friends/models/shelf.dart';
-import 'package:bookworm_friends/providers/auth_provider.dart';
-import 'package:bookworm_friends/providers/book_details_provider.dart';
-import 'package:bookworm_friends/providers/book_search_provider.dart';
-import 'package:bookworm_friends/providers/library_provider.dart';
-import 'package:bookworm_friends/providers/user_provider.dart';
-import 'package:bookworm_friends/services/book_search_service.dart';
-import 'package:bookworm_friends/ui/views/book_details_tab_view.dart';
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
 
-import 'support/home_page_harness.dart' show FakeLibraryNotifier;
-
-const _me = 'me';
-const _friend = 'friend';
-const _shelfId = 's1';
-
-/// The catalog lookup is irrelevant to the hero corner, and hitting the network
-/// from a widget test is not an option.
-class _NoBookInfo implements BookSearchProvider {
-  @override
-  Future<List<BookSearchResult>> search(
-    String query, {
-    int page = 1,
-    int size = 10,
-  }) async => const [];
-
-  @override
-  Future<BookSearchResult?> getByIsbn(String isbn) async => null;
-}
-
-/// A finished book — status 2 is what puts the praise button on screen for a
-/// friend, which is the layout that produced the bug.
-Book _finishedBook({required String ownerId}) => Book(
-  id: 'b1',
-  userId: ownerId,
-  shelfId: _shelfId,
-  isbn: '440238498',
-  title: 'Eldest',
-  thumbnail: '', // empty keeps `Image.network` out of the test
-  status: 2,
-  position: 0,
-  startDate: DateTime(2023, 12, 9),
-  finishDate: DateTime(2023, 12, 23),
-  createdAt: DateTime(2023, 12, 9),
-);
-
-List<Shelf> _shelves(String ownerId) => [
-  Shelf(
-    id: _shelfId,
-    userId: ownerId,
-    name: 'Novels',
-    position: 0,
-    createdAt: DateTime(2023),
-    books: const [],
-  ),
-];
-
-BookCompliment _compliment(String emoji) => BookCompliment(
-  id: 'c1',
-  bookId: 'b1',
-  fromUserId: _me,
-  compliment: emoji,
-  createdAt: DateTime(2024),
-);
-
-Future<void> _pumpDetails(
-  WidgetTester tester, {
-  required Book book,
-  required String signedInAs,
-  List<BookCompliment> compliments = const [],
-}) async {
-  tester.view.physicalSize = const Size(1170, 2532); // iPhone-ish, 390x844 dp
-  tester.view.devicePixelRatio = 3;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        currentUserIdProvider.overrideWithValue(signedInAs),
-        bookSearchProvider.overrideWithValue(_NoBookInfo()),
-        bookMemosProvider(book.id).overrideWith((ref) async => <BookMemo>[]),
-        bookComplimentsProvider(
-          book.id,
-        ).overrideWith((ref) async => compliments),
-        // Shelf names resolve against the owner's library, so both the self and
-        // friend paths need stubbing.
-        userLibraryProvider(
-          book.userId,
-        ).overrideWith((ref) async => _shelves(book.userId)),
-        libraryProvider.overrideWith(
-          () => FakeLibraryNotifier(_shelves(book.userId)),
-        ),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.light,
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        // The view reads its `Book` off `ModalRoute.settings.arguments`, so it
-        // needs a generated route rather than `home:`.
-        onGenerateRoute: (settings) => MaterialPageRoute(
-          builder: (_) => const BookDetailsTabView(),
-          settings: RouteSettings(name: settings.name, arguments: book),
-        ),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
+import 'support/book_details_harness.dart';
 
 void main() {
   group('BookDetailsTabView status badge', () {
     testWidgets(
       "Given a friend's finished book, When the details page is shown, Then the status badge is not hidden behind the shelf label",
       (tester) async {
-        await _pumpDetails(
+        await pumpBookDetails(
           tester,
-          book: _finishedBook(ownerId: _friend),
-          signedInAs: _me,
-          compliments: [_compliment('👏')],
+          book: finishedBook(ownerId: friendId),
+          signedInAs: meId,
+          compliments: [compliment('👏')],
         );
 
         // The layout that broke: praise button and chips own the top-right.
@@ -149,7 +35,7 @@ void main() {
 
         expect(find.byType(BookStatusBadge), findsOneWidget);
         expect(find.byType(ShelfLabel), findsOneWidget);
-        expect(find.text('Novels'), findsOneWidget);
+        expect(find.text(shelfName), findsOneWidget);
 
         final badge = tester.getRect(find.byType(BookStatusBadge));
         final label = tester.getRect(find.byType(ShelfLabel));
@@ -170,10 +56,10 @@ void main() {
     testWidgets(
       "Given the owner's own finished book, When the details page is shown, Then a single badge stays clear of the shelf label",
       (tester) async {
-        await _pumpDetails(
+        await pumpBookDetails(
           tester,
-          book: _finishedBook(ownerId: _me),
-          signedInAs: _me,
+          book: finishedBook(ownerId: meId),
+          signedInAs: meId,
         );
 
         // No praise button on your own book, so the column's top-right is free.
