@@ -548,20 +548,24 @@
                         the world rule that was always true.
                     </dd>
 
-                    <dt>&#9888; The recipient never sees their praise</dt>
+                    <dt>&#10003; Received praise is visible again</dt>
                     <dd>
                         <code>_ComplimentButton</code> <b>and</b> the
-                        received-emoji block are both inside
-                        <code>if (!isSelf)</code>. Hiding the <i>button</i> on
-                        your own book is right &mdash; you should not praise
-                        yourself. Hiding the <i>emoji</i> means the person praised
-                        never sees it anywhere in the app: the push notification
-                        and an Activity row are the only traces it happened. That
-                        cannot be intended, since the whole point of a persisted
-                        reaction is that the recipient finds it. Looks like a
-                        one-line fix, and it is what makes the ending exist at
-                        all. Drawn honestly as the dead end in
-                        <b>Being praised: the ending</b>.
+                        received-emoji block both sat inside
+                        <code>if (!isSelf)</code>, so the person praised never saw
+                        it anywhere in the app &mdash; the push notification was
+                        the only trace. Hiding the <i>button</i> is right, since
+                        you should not praise yourself; hiding the <i>praise</i>
+                        defeated the point of storing it, and
+                        <code>book_compliments</code> is the only social action
+                        that is stored at all. Fixed in <code>e67ca75</code>,
+                        which also retired <code>ComplimentBlock</code> from being
+                        dead code &mdash; it was never referenced, and its
+                        <code>List&lt;dynamic&gt;</code> fallback would have
+                        rendered <code>Instance of 'BookCompliment'</code> if it
+                        had been. Pinned by
+                        <code>book_details_compliments_test.dart</code>, which
+                        fails without the fix.
                     </dd>
 
                     <dt>Praise is the peak, but it is buried</dt>

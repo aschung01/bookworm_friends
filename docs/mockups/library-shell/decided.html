@@ -1983,12 +1983,16 @@
                                       : "int";
                             return `<span class="sbadge ${k}">${st}</span>`;
                         };
-                        const right = b.self
-                            ? badge(b.status)
-                            : (b.praise
+                        /* Owner sees the badge, a visitor sees the Praise button;
+                           both see the chips — the guard that hid them from the
+                           owner was lifted in e67ca75. */
+                        const right =
+                            (b.self
+                                ? badge(b.status)
+                                : b.praise
                                   ? `<div class="ppill">&#127881; Praise</div>`
                                   : "") +
-                              (b.praised ? praiseCluster(b.praised) : "");
+                            (b.praised ? praiseCluster(b.praised) : "");
                         return (
                             `<div class="bd"><div class="bdtop"><span class="bdback">&#8249;</span>${
                                 b.self
@@ -4378,7 +4382,10 @@
                                         status: "Read",
                                         shelf: "Novels",
                                         color: "#6b8f71",
-                                        period: ["2026.03.02 ~ 2026.03.14", "12 days"],
+                                        period: [
+                                            "2026.03.02 ~ 2026.03.14",
+                                            "12 days",
+                                        ],
                                         praise: true,
                                         info: [
                                             ["Publisher", "Changbi"],
@@ -4402,7 +4409,10 @@
                                         status: "Read",
                                         shelf: "Novels",
                                         color: "#6b8f71",
-                                        period: ["2026.03.02 ~ 2026.03.14", "12 days"],
+                                        period: [
+                                            "2026.03.02 ~ 2026.03.14",
+                                            "12 days",
+                                        ],
                                         praise: true,
                                         praised: [
                                             "&#128293;",
@@ -4419,7 +4429,7 @@
                             "shelf-hint": {
                                 group: "Proposed &mdash; not built",
                                 name: "Praise visible on the shelf",
-                                note: "<b>Does not exist today.</b> Drawn because the flow above exposes a problem: praise is three taps deep (cover &rarr; details &rarr; Praise &rarr; emoji) and <i>nothing on a shelf hints it exists</i>. Surfacing the count on the cover would advertise the loop and give the received praise somewhere to live outside a detail page. Costs a new query on the shelf, so it is a proposal, not a decision.",
+                                note: "<b>Does not exist today.</b> Drawn because the flow above exposes a problem: praise is three taps deep (cover &rarr; details &rarr; Praise &rarr; emoji) and <i>nothing on a shelf hints it exists</i>. Surfacing the count on the cover would advertise the loop. Half the gap closed in <code>e67ca75</code> &mdash; the owner can now at least see praise on the detail page &mdash; but nothing still hints at it from a shelf, in either direction. Costs a new query on the shelf, so it is a proposal, not a decision.",
                                 spec: {
                                     tab: false,
                                     rail: 1,
@@ -4763,7 +4773,7 @@
                             "praise-received": {
                                 group: "Social",
                                 name: "Being praised: the ending",
-                                note: "The half of the loop that does not currently work. Activity is worth shipping because praise gives it real content with no migration &mdash; but follow the row through and there is nowhere for it to land: the recipient cannot see their own praise anywhere in the app.",
+                                note: "The other half of the loop, working as of <code>e67ca75</code>. Activity is worth shipping because praise gives it real content with no migration &mdash; and the row now has somewhere to land: the chips render for the owner as well as for visitors.",
                                 steps: [
                                     [
                                         "Activity",
@@ -4788,8 +4798,8 @@
                                         },
                                     ],
                                     [
-                                        "Your book &mdash; nothing there",
-                                        "<b>The loop dead-ends.</b> Both the Praise button and the received emoji are wrapped in <code>if (!isSelf)</code>, so on your own book the corner shows the status badge and the praise you were given <i>is not rendered at all</i>. The feed row is the only trace it ever happened.",
+                                        "Your book",
+                                        "The chips sit under the status badge in your own hero corner. They were previously wrapped in the same <code>if (!isSelf)</code> guard as the Praise button, so the recipient never saw them &mdash; fixed in <code>e67ca75</code>, which also retired <code>ComplimentBlock</code> from being dead code. The button stays owner-hidden: you still cannot praise yourself.",
                                         {
                                             bar: false,
                                             tab: false,
@@ -4801,12 +4811,19 @@
                                                 status: "Read",
                                                 shelf: "Novels",
                                                 color: "#4a6c8c",
+                                                praised: [
+                                                    "&#128079;",
+                                                    "&#128293;",
+                                                ],
                                                 period: [
                                                     "2026.01.11 ~ 2026.02.02",
                                                     "22 days",
                                                 ],
                                                 info: [
-                                                    ["Publisher", "Grand Central"],
+                                                    [
+                                                        "Publisher",
+                                                        "Grand Central",
+                                                    ],
                                                     ["ISBN", "9781455563937"],
                                                 ],
                                             },
@@ -4820,8 +4837,6 @@
                             "return-to-friends": null,
                             "visit-friend":
                                 "<b>This reframes decision 1 rather than picking a side.</b> It is close to <b>pushed-page</b> in mechanics, but for the opposite reason: not &ldquo;a page that unfortunately covers the tab bar&rdquo;, but a focused context that <i>should</i> drop the tab bar, because a bookshelf is property and visiting one is a place you leave. Your own library keeps the persistent background, which is the part of the world rule that was always true.",
-                            "praise-received":
-                                "<b>Looks like a bug, not a decision.</b> <code>_ComplimentButton</code> and the received-emoji block are both inside <code>if (!isSelf)</code>. Hiding the <i>button</i> on your own book is right \u2014 you should not praise yourself. Hiding the <i>emoji</i> means the person praised never sees it, which cannot be intended: the whole point of a persisted reaction is that the recipient finds it. One-line fix, and it is what makes the ending exist.",
                             "praise-book":
                                 "Two open things. <b>Data:</b> <code>book_compliments</code> has no unique constraint, so nothing stops one person praising the same book fifty times &mdash; one per person per book, one per person per emoji, or a free-for-all, and the UI's aggregation depends on the answer. <b>Discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page.",
                         },
