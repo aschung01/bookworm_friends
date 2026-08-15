@@ -10,6 +10,7 @@
 // The asymmetry is the thing to pin: the button stays owner-hidden, the chips do
 // not.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
@@ -51,15 +52,46 @@ void main() {
           tester,
           book: finishedBook(ownerId: friendId),
           signedInAs: meId,
+          // Two people, one praise each: with `UNIQUE (book_id, from_user_id)`
+          // two rows can no longer come from the same person.
           compliments: [
-            compliment('👏'),
-            compliment('❤️', id: 'c2'),
+            compliment('👏', from: otherId),
+            compliment('❤️', id: 'c2', from: 'other2'),
           ],
         );
 
         expect(find.text('👏'), findsOneWidget);
         expect(find.text('❤️'), findsOneWidget);
         expect(find.text('Praise'), findsOneWidget);
+        // Nobody else's praise is mistaken for yours.
+        expect(find.byIcon(Icons.celebration), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given you already praised a friend\'s book, When the details page is '
+      'shown, Then the button carries your emoji instead of the generic icon',
+      (tester) async {
+        await pumpBookDetails(
+          tester,
+          book: finishedBook(ownerId: friendId),
+          signedInAs: meId,
+          compliments: [
+            compliment('🔥'), // from meId
+            compliment('👏', id: 'c2', from: otherId),
+          ],
+        );
+
+        // You hold one praise per book, and the chips do not say who gave what,
+        // so the button is the only place that can tell you where you stand —
+        // which is what makes tapping 🔥 again read as "take it back".
+        expect(find.byIcon(Icons.celebration), findsNothing);
+        expect(
+          find.text('🔥'),
+          findsNWidgets(2),
+          reason: 'once as a chip on the book, once on the button as yours',
+        );
+        expect(find.text('👏'), findsOneWidget);
       },
     );
 

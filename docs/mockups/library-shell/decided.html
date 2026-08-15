@@ -1351,6 +1351,9 @@
                 font-size: 7px;
                 font-style: normal;
             }
+            /* `on` marks the viewer's *own* praise, not a hover: one person holds
+               one praise per book, so re-opening the palette has to say which
+               emoji is already theirs. Matches PraisePalette's brand tint + ring. */
             .pgrid i.on {
                 background: #cdeee2;
                 box-shadow: 0 0 0 1px var(--brandText);
@@ -1985,12 +1988,21 @@
                         };
                         /* Owner sees the badge, a visitor sees the Praise button;
                            both see the chips — the guard that hid them from the
-                           owner was lifted in e67ca75. */
+                           owner was lifted in e67ca75. `praise` may be an emoji
+                           rather than `true`, in which case the pill wears the
+                           viewer's own praise instead of the celebration icon:
+                           you hold one praise per book and the chips do not say
+                           who gave what, so the pill is the only place that can
+                           tell you where you stand. */
                         const right =
                             (b.self
                                 ? badge(b.status)
                                 : b.praise
-                                  ? `<div class="ppill">&#127881; Praise</div>`
+                                  ? `<div class="ppill">${
+                                        b.praise === true
+                                            ? "&#127881;"
+                                            : b.praise
+                                    } Praise</div>`
                                   : "") +
                             (b.praised ? praiseCluster(b.praised) : "");
                         return (
@@ -4348,21 +4360,37 @@
                                 },
                             },
                             "visit-praise": {
-                                group: "Friends tab",
+                                group: "Book",
                                 name: "Praise &middot; emoji palette",
-                                note: "The reason to be in someone else's library. Tapping one of her covers opens the fixed 16-emoji palette from <code>compliment_bottom_sheet.dart</code> &mdash; one tap, no keyboard, and the row it writes to <code>book_compliments</code> is the only <b>persisted</b> social object in the app.",
+                                note: "The reason to be in someone else's library, though it is <b>not</b> reachable from the shelf: the palette is a modal over <b>book details</b>, opened by the Praise pill. One tap, no keyboard, and the row it writes to <code>book_compliments</code> is the only <b>persisted</b> social object in the app. &#128293; is marked because it is already yours &mdash; tapping it withdraws, tapping another replaces.",
                                 spec: {
+                                    bar: false,
                                     tab: false,
-                                    rail: 1,
-                                    railLead: "close",
-                                    bar: { kind: "friend", friend: "jisoo" },
-                                    well: HERSHELVES,
+                                    page: {
+                                        type: "detail",
+                                        self: false,
+                                        title: "The Vegetarian",
+                                        author: "Han Kang",
+                                        status: "Read",
+                                        shelf: "Novels",
+                                        color: "#6b8f71",
+                                        period: [
+                                            "2026.03.02 ~ 2026.03.14",
+                                            "12 days",
+                                        ],
+                                        praise: "&#128293;",
+                                        praised: ["&#128293;", "&#128079;"],
+                                        info: [
+                                            ["Publisher", "Changbi"],
+                                            ["ISBN", "9788936434120"],
+                                        ],
+                                    },
                                     sheet: {
                                         h: 40,
                                         modal: true,
                                         body: {
                                             type: "praise",
-                                            on: "&#128079;",
+                                            on: "&#128293;",
                                         },
                                     },
                                 },
@@ -4397,7 +4425,7 @@
                             "book-praised": {
                                 group: "Book",
                                 name: "Book details &middot; praised",
-                                note: "The payoff state. The emoji row is built inline in <code>book_details_tab_view.dart</code> from <code>bookComplimentsProvider</code> &mdash; note that <code>ComplimentBlock</code> exists but is <b>dead code</b>, referenced nowhere.",
+                                note: "The payoff state, one chip per person. The row is <code>ComplimentBlock</code>, fed by <code>bookComplimentsProvider</code>; it was dead code until <code>e67ca75</code> put it on both sides of the visit. The chips do not say <i>who</i> gave what &mdash; which is why the pill carries your own praise instead.",
                                 spec: {
                                     bar: false,
                                     tab: false,
@@ -4429,7 +4457,7 @@
                             "shelf-hint": {
                                 group: "Proposed &mdash; not built",
                                 name: "Praise visible on the shelf",
-                                note: "<b>Does not exist today.</b> Drawn because the flow above exposes a problem: praise is three taps deep (cover &rarr; details &rarr; Praise &rarr; emoji) and <i>nothing on a shelf hints it exists</i>. Surfacing the count on the cover would advertise the loop. Half the gap closed in <code>e67ca75</code> &mdash; the owner can now at least see praise on the detail page &mdash; but nothing still hints at it from a shelf, in either direction. Costs a new query on the shelf, so it is a proposal, not a decision.",
+                                note: "<b>Does not exist today.</b> Drawn because the flow above exposes a problem: praise is four taps deep (cover &rarr; details &rarr; Praise &rarr; emoji) and <i>nothing on a shelf hints it exists</i>. Surfacing the count on the cover would advertise the loop, and since the <code>compliment_uniqueness</code> migration the count is well-defined &mdash; one per person, the same number for every viewer. Half the gap closed in <code>e67ca75</code> &mdash; the owner can now at least see praise on the detail page &mdash; but nothing still hints at it from a shelf, in either direction. Costs a new query on the shelf, so it is a proposal, not a decision.",
                                 spec: {
                                     tab: false,
                                     rail: 1,
@@ -4466,14 +4494,14 @@
                             "el-praise": {
                                 group: "Social",
                                 name: "Praise palette",
-                                note: "The 16 emoji in <code>compliment_bottom_sheet.dart</code>, eight to a row as the real grid draws them. Opened by the Praise button in <b>book details</b> &mdash; not from the shelf. Fixed set, so praise can be aggregated (&#128079;&nbsp;3) rather than listed.",
+                                note: "The 16 emoji in <code>PraisePalette</code>, eight to a row as the real grid draws them. Opened by the Praise button in <b>book details</b> &mdash; not from the shelf. Fixed set, so praise can be aggregated (&#128079;&nbsp;3) rather than listed. The marked cell is <i>your</i> praise, not a hover: tapping it withdraws, tapping another replaces.",
                                 demo: `<div style="background:#fff;padding:10px;border-radius:8px;width:100%">${praiseGrid("&#128293;")}</div>`,
                             },
                             "el-badge": {
                                 group: "Social",
                                 name: "Praise button and received praise",
-                                note: "<code>brandFill</code> pill with a celebration icon, shown in book details only when <code>status == 2</code>. The received emoji are built inline in the details view; <code>ComplimentBlock</code> is <b>dead code</b> and should either be used or deleted.",
-                                demo: `<div style="background:#fff;padding:10px 12px;border-radius:8px;display:flex;gap:10px;align-items:center">${praiseCluster(["&#128293;", "&#128079;", "&#10084;&#65039;"])}<span class="ppill" style="margin:0">&#127881; Praise</span></div>`,
+                                note: "<code>brandFill</code> pill, shown in book details only when <code>status == 2</code>. It wears the celebration icon until you praise, then your own emoji &mdash; you hold one praise per book and the chips beside it do not say who gave what, so this is the only thing that can tell you where you stand. The received chips are <code>ComplimentBlock</code>, live on both sides since <code>e67ca75</code>.",
+                                demo: `<div style="background:#fff;padding:10px 12px;border-radius:8px;display:flex;gap:10px;align-items:center">${praiseCluster(["&#128293;", "&#128079;", "&#10084;&#65039;"])}<span class="ppill" style="margin:0">&#127881; Praise</span><span class="ppill" style="margin:0">&#128293; Praise</span></div>`,
                             },
                             "el-poke": {
                                 note: "Person-level and <b>ephemeral</b> &mdash; <code>poke_user()</code> fires a push and writes no row, so a poke can never appear in Activity. Praise is the durable counterpart, which is why it gets the shelf and the feed and this only gets the bar.",
@@ -4667,7 +4695,7 @@
                             "praise-book": {
                                 group: "Social",
                                 name: "Praising a book: the peak",
-                                note: "Four taps, not two &mdash; cover, then the Praise pill, then an emoji. It runs through <b>book details</b>, because that is where <code>_ComplimentButton</code> lives, and the button only exists on a book the friend has finished.",
+                                note: "Four taps, not two &mdash; cover, then the Praise pill, then an emoji. It runs through <b>book details</b>, because that is where <code>_ComplimentButton</code> lives, and the button only exists on a book the friend has finished. You hold <b>one praise per book</b>, so the last two steps are the toggle: same emoji withdraws, different emoji replaces.",
                                 steps: [
                                     [
                                         "Her shelf",
@@ -4681,7 +4709,7 @@
                                     ],
                                     [
                                         "Her book, Read",
-                                        "Details open as their own screen. The Praise pill is present because <code>status == 2</code>; on a book she is still reading it is simply absent.",
+                                        "Details open as their own screen. The Praise pill is present because <code>status == 2</code>; on a book she is still reading it is simply absent. The generic &#127881; means you have not praised this one.",
                                         {
                                             bar: false,
                                             tab: false,
@@ -4708,7 +4736,7 @@
                                     ],
                                     [
                                         "Palette",
-                                        "The fixed 16, eight to a row. A closed set keeps the visual language consistent and lets praise be counted rather than listed.",
+                                        "The fixed 16, eight to a row. Nothing is marked yet: the highlight means <i>your</i> praise, and you hold none on this book.",
                                         {
                                             bar: false,
                                             tab: false,
@@ -4724,6 +4752,68 @@
                                                     "2026.03.02 ~ 2026.03.14",
                                                     "12 days",
                                                 ],
+                                                praise: true,
+                                                info: [
+                                                    ["Publisher", "Changbi"],
+                                                    ["ISBN", "9788936434120"],
+                                                ],
+                                            },
+                                            sheet: {
+                                                h: 40,
+                                                modal: true,
+                                                body: { type: "praise" },
+                                            },
+                                            sm: true,
+                                        },
+                                    ],
+                                    [
+                                        "It lands",
+                                        "The emoji joins the row under her title <i>and</i> the pill takes it on. She gets a push, and unlike a poke the row is permanent.",
+                                        {
+                                            bar: false,
+                                            tab: false,
+                                            page: {
+                                                type: "detail",
+                                                self: false,
+                                                title: "The Vegetarian",
+                                                author: "Han Kang",
+                                                status: "Read",
+                                                shelf: "Novels",
+                                                color: "#6b8f71",
+                                                period: [
+                                                    "2026.03.02 ~ 2026.03.14",
+                                                    "12 days",
+                                                ],
+                                                praise: "&#128293;",
+                                                praised: ["&#128293;"],
+                                                info: [
+                                                    ["Publisher", "Changbi"],
+                                                    ["ISBN", "9788936434120"],
+                                                ],
+                                            },
+                                            sm: true,
+                                        },
+                                    ],
+                                    [
+                                        "Re-opened",
+                                        "Now &#128293; is marked. Tapping it again withdraws your praise; tapping any other swaps it. There is no tap that adds a second one &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15.",
+                                        {
+                                            bar: false,
+                                            tab: false,
+                                            page: {
+                                                type: "detail",
+                                                self: false,
+                                                title: "The Vegetarian",
+                                                author: "Han Kang",
+                                                status: "Read",
+                                                shelf: "Novels",
+                                                color: "#6b8f71",
+                                                period: [
+                                                    "2026.03.02 ~ 2026.03.14",
+                                                    "12 days",
+                                                ],
+                                                praise: "&#128293;",
+                                                praised: ["&#128293;"],
                                                 info: [
                                                     ["Publisher", "Changbi"],
                                                     ["ISBN", "9788936434120"],
@@ -4741,8 +4831,8 @@
                                         },
                                     ],
                                     [
-                                        "It lands",
-                                        "The emoji joins the row under her title. She gets a push, and unlike a poke the row is permanent.",
+                                        "Swapped",
+                                        "&#128079; replaces &#128293; in place. The count on her book is unchanged, which is the point of one-per-person: praise can be aggregated (&#128079;&nbsp;3) and the number means the same thing to every viewer.",
                                         {
                                             bar: false,
                                             tab: false,
@@ -4758,8 +4848,8 @@
                                                     "2026.03.02 ~ 2026.03.14",
                                                     "12 days",
                                                 ],
-                                                praise: true,
-                                                praised: ["&#128293;"],
+                                                praise: "&#128079;",
+                                                praised: ["&#128079;"],
                                                 info: [
                                                     ["Publisher", "Changbi"],
                                                     ["ISBN", "9788936434120"],
@@ -4773,7 +4863,7 @@
                             "praise-received": {
                                 group: "Social",
                                 name: "Being praised: the ending",
-                                note: "The other half of the loop, working as of <code>e67ca75</code>. Activity is worth shipping because praise gives it real content with no migration &mdash; and the row now has somewhere to land: the chips render for the owner as well as for visitors.",
+                                note: "The other half of the loop, working as of <code>e67ca75</code>. Activity is worth shipping because praise gives it real content with no migration &mdash; and the row now has somewhere to land: the chips render for the owner as well as for visitors. Since the <code>compliment_uniqueness</code> migration the chips are also one-per-person, and readable by anyone who can see the book, so the row is the same for her, for you, and for a third visitor.",
                                 steps: [
                                     [
                                         "Activity",
@@ -4838,7 +4928,7 @@
                             "visit-friend":
                                 "<b>This reframes decision 1 rather than picking a side.</b> It is close to <b>pushed-page</b> in mechanics, but for the opposite reason: not &ldquo;a page that unfortunately covers the tab bar&rdquo;, but a focused context that <i>should</i> drop the tab bar, because a bookshelf is property and visiting one is a place you leave. Your own library keeps the persistent background, which is the part of the world rule that was always true.",
                             "praise-book":
-                                "Two open things. <b>Data:</b> <code>book_compliments</code> has no unique constraint, so nothing stops one person praising the same book fifty times &mdash; one per person per book, one per person per emoji, or a free-for-all, and the UI's aggregation depends on the answer. <b>Discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page.",
+                                "<b>Data settled and shipped:</b> praise is <b>one per person per book</b> &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15 &mdash; and a tap is a toggle: same emoji withdraws, different emoji replaces. Reads widened to match the book's own visibility, so a third visitor sees the same praise the owner does and a count means the same thing to everyone; verified against the real database, where a third party went from seeing 0 rows to 2. <b>Still open &mdash; discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page. <b>Also open &mdash; the palette does not match the data:</b> 28 of the 39 live praises are emoji outside the fixed 16 (🦄 🐲 🧸 🛸), left by an older free-keyboard version, so they highlight nothing when you re-open the palette and a CHECK constraint pinning the 16 would reject them.",
                         },
                     },
                 ],

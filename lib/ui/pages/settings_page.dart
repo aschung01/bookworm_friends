@@ -77,6 +77,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _onUpdateEmojiPressed() {
     showEmojiBottomSheet(
       context,
+      selected: ref.read(profileProvider).valueOrNull?.emoji,
       onEmojiPressed: (emoji) async {
         Navigator.pop(context);
         await ref.read(updateProfileProvider).updateEmoji(emoji);

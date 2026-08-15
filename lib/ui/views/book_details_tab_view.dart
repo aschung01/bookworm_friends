@@ -474,6 +474,13 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _TabBarDelegate oldDelegate) => false;
 }
 
+/// The praise control on a friend's finished book.
+///
+/// Carries the viewer's own praise on its face. You may hold only one praise per
+/// book, and the chips beside the cover do not say who gave what, so without
+/// this the button could not tell you whether you had already praised — and
+/// tapping the same emoji again would look like it added nothing rather than
+/// taking your praise back.
 class _ComplimentButton extends ConsumerWidget {
   final Book book;
   const _ComplimentButton({required this.book});
@@ -482,15 +489,22 @@ class _ComplimentButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     if (book.status != 2) return const SizedBox.shrink();
+
+    final mine = praiseBy(
+      ref.watch(bookComplimentsProvider(book.id)).valueOrNull ?? const [],
+      ref.watch(currentUserIdProvider),
+    );
+
     return ElevatedButton.icon(
       onPressed: () {
         showEmojiBottomSheet(
           context,
+          selected: mine,
           onEmojiPressed: (emoji) async {
             Navigator.pop(context);
             await ref
                 .read(bookDetailsActionsProvider)
-                .addCompliment(book.id, emoji);
+                .togglePraise(book.id, emoji);
           },
         );
       },
@@ -500,7 +514,9 @@ class _ComplimentButton extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
-      icon: const Icon(Icons.celebration, size: 18),
+      icon: mine == null
+          ? const Icon(Icons.celebration, size: 18)
+          : Text(mine, style: const TextStyle(fontSize: 15)),
       label: Text(
         l10n.praise,
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),

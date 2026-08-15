@@ -28,6 +28,9 @@ import 'home_page_harness.dart' show FakeLibraryNotifier;
 
 const meId = 'me';
 const friendId = 'friend';
+
+/// A third party: someone who is neither the viewer nor the book's owner.
+const otherId = 'other';
 const shelfId = 's1';
 const shelfName = 'Novels';
 

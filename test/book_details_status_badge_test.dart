@@ -26,7 +26,9 @@ void main() {
           tester,
           book: finishedBook(ownerId: friendId),
           signedInAs: meId,
-          compliments: [compliment('👏')],
+          // Praise from a third party: the chips' geometry is the subject here,
+          // and praise of your own would also land on the button's face.
+          compliments: [compliment('👏', from: otherId)],
         );
 
         // The layout that broke: praise button and chips own the top-right.

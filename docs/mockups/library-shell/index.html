@@ -410,29 +410,32 @@
                     <dd>
                         &ldquo;Praise&rdquo; (칭찬하기) writes
                         <code>book_compliments</code> from the fixed 16-emoji
-                        palette in <code>compliment_bottom_sheet.dart</code>;
+                        palette in <code>praise_palette.dart</code>;
                         <code>varchar(6)</code> is sized for one emoji, since ❤️
                         alone is two code points. It is the only
                         <b>persisted</b> social object in the app &mdash;
                         <code>poke_user()</code> fires a push and writes no row
                         &mdash; so praise is what Activity can be built from
                         today, and it is the payoff of a visit. It is gated to
-                        <b>finished</b> books: <code>_ComplimentButton</code>
-                        returns <code>SizedBox.shrink()</code> unless
-                        <code>status == 2</code>, so praise is for accomplishment,
-                        never for what someone is currently reading.
+                        <b>finished</b> books:
+                        <code>_ComplimentButton</code> returns
+                        <code>SizedBox.shrink()</code> unless
+                        <code>status == 2</code>, so praise is for
+                        accomplishment, never for what someone is currently
+                        reading.
                     </dd>
 
                     <dt>Book details, redrawn from the widget</dt>
                     <dd>
                         The mockup's details page was wrong and has been rebuilt
-                        against <code>book_details_tab_view.dart</code>: circular
-                        back button; delete and edit <b>only on your own book</b>;
-                        a 180px cover standing on a shelf with its label; the
-                        status badge in the top-right corner &mdash; the corner the
-                        Praise button takes over on a friend's book, which is why
-                        a friend's badge moves down above the shelf label. Then
-                        title, authors (from the search API, since
+                        against <code>book_details_tab_view.dart</code>:
+                        circular back button; delete and edit
+                        <b>only on your own book</b>; a 180px cover standing on
+                        a shelf with its label; the status badge in the
+                        top-right corner &mdash; the corner the Praise button
+                        takes over on a friend's book, which is why a friend's
+                        badge moves down above the shelf label. Then title,
+                        authors (from the search API, since
                         <code>books</code> has no author column) and the
                         reading-period card, shown only when
                         <code>status &gt;= 1</code> and a start date exists.
@@ -552,15 +555,16 @@
                     <dd>
                         <code>_ComplimentButton</code> <b>and</b> the
                         received-emoji block both sat inside
-                        <code>if (!isSelf)</code>, so the person praised never saw
-                        it anywhere in the app &mdash; the push notification was
-                        the only trace. Hiding the <i>button</i> is right, since
-                        you should not praise yourself; hiding the <i>praise</i>
+                        <code>if (!isSelf)</code>, so the person praised never
+                        saw it anywhere in the app &mdash; the push notification
+                        was the only trace. Hiding the <i>button</i> is right,
+                        since you should not praise yourself; hiding the
+                        <i>praise</i>
                         defeated the point of storing it, and
                         <code>book_compliments</code> is the only social action
                         that is stored at all. Fixed in <code>e67ca75</code>,
-                        which also retired <code>ComplimentBlock</code> from being
-                        dead code &mdash; it was never referenced, and its
+                        which also retired <code>ComplimentBlock</code> from
+                        being dead code &mdash; it was never referenced, and its
                         <code>List&lt;dynamic&gt;</code> fallback would have
                         rendered <code>Instance of 'BookCompliment'</code> if it
                         had been. Pinned by
@@ -571,18 +575,45 @@
                     <dt>Praise is the peak, but it is buried</dt>
                     <dd>
                         The real path is four taps and runs through
-                        <b>book details</b>, where <code>_ComplimentButton</code>
-                        actually lives: cover &rarr; details &rarr; Praise &rarr;
-                        emoji. The emoji then sit under the title on that detail
-                        page &mdash; built inline in
-                        <code>book_details_tab_view.dart</code>, while
-                        <code>ComplimentBlock</code> is <b>dead code</b>
-                        referenced nowhere. So <b>nothing on any shelf hints that
-                        praise exists</b>, in either direction: you cannot see
-                        that a friend's book can be praised, and you cannot see
-                        that yours has been. Drawn as a labelled proposal
-                        (&ldquo;Proposed &mdash; not built&rdquo;) rather than
-                        folded in as fact.
+                        <b>book details</b>, where
+                        <code>_ComplimentButton</code> actually lives: cover
+                        &rarr; details &rarr; Praise &rarr; emoji. The emoji
+                        then sit under the title on that detail page &mdash;
+                        rendered by <code>ComplimentBlock</code>, which
+                        <code>e67ca75</code> put to work. So
+                        <b>nothing on any shelf hints that praise exists</b>, in
+                        either direction: you cannot see that a friend's book
+                        can be praised, and you cannot see that yours has been.
+                        Drawn as a labelled proposal (&ldquo;Proposed &mdash;
+                        not built&rdquo;) rather than folded in as fact.
+                    </dd>
+
+                    <dt>&#10003; One praise per person per book, live</dt>
+                    <dd>
+                        Settled, enforced, and
+                        <b>applied to the hosted project on 2026-08-15</b>: the
+                        <code>compliment_uniqueness</code> migration adds
+                        <code>UNIQUE (book_id, from_user_id)</code>. Praise was
+                        already scoped to <i>one person's copy</i> of a title
+                        &mdash; <code>book_compliments.book_id</code> points at
+                        <code>books</code>, which is per-user, so jisoo's
+                        Pachinko and minho's are different rows and never share
+                        praise. What was missing was uniqueness, and reads were
+                        too narrow: the old policy showed a third visitor
+                        nothing but their own praise, which would have made a
+                        count mean something different to every viewer. Reads
+                        now follow the book's own visibility. A tap is a
+                        <b>toggle</b>: the same emoji withdraws, a different one
+                        replaces, and the Praise pill wears your own emoji so
+                        you can tell which is yours among chips that do not name
+                        their senders. Pinned by
+                        <code>praise_toggle_test.dart</code>, and verified
+                        against the real database: all 39 rows were already
+                        unique so nothing was deleted, a third party went from
+                        seeing 0 of a book's praises to 2, the old bare
+                        <code>insert</code> now fails with a duplicate-key
+                        error, and the upsert swaps the emoji in place without
+                        adding a row.
                     </dd>
 
                     <dt>tab-only, rejected</dt>
@@ -601,16 +632,24 @@
 
                     <dt>Still open</dt>
                     <dd>
-                        <code>book_compliments</code> has
-                        <b>no unique constraint</b>, so nothing stops one person
-                        praising the same book fifty times. One per person per
-                        book, one per person per emoji, or a free-for-all? The
-                        UI's aggregation (&#128079;&nbsp;3 versus three badges)
-                        depends on the answer. Separately, the bar-to-sheet
-                        clearance on friend screens measures 5.8px in
-                        <i>every</i> version, <code>main</code> included &mdash;
-                        a pre-existing tightness worth fixing globally, and not
-                        caused or cured by any version here.
+                        <b>The palette does not match the data.</b> 28 of the 39
+                        live praises are emoji outside the fixed 16 &mdash; 🦄
+                        🐲 🧸 🛸 ☘️ ☃️ &mdash; left by an older version with a
+                        free emoji keyboard (the rows date from 2022&ndash;2024,
+                        carried over from the archived project). They render
+                        fine, and the pill still shows yours, but they highlight
+                        nothing when you re-open the palette, and a
+                        <code>CHECK</code> pinning the column to the 16 would
+                        reject them. Migrate them onto the palette, widen the
+                        palette, or leave it unconstrained &mdash; not yet
+                        decided. Praise is also still
+                        <b>discoverable only from a detail page</b>: the shelf
+                        hint that would advertise it costs a new shelf-level
+                        count query, so it stays a proposal. And the
+                        bar-to-sheet clearance on friend screens measures 5.8px
+                        in <i>every</i> version, <code>main</code> included
+                        &mdash; a pre-existing tightness worth fixing globally,
+                        and not caused or cured by any version here.
                     </dd>
                 </dl>
             </div>
