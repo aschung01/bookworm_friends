@@ -1,4 +1,4 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/profile.dart';
@@ -10,8 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final _searchUserQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
-final _searchUserResultsProvider =
-    FutureProvider.autoDispose<List<Profile>>((ref) async {
+final _searchUserResultsProvider = FutureProvider.autoDispose<List<Profile>>((
+  ref,
+) async {
   final query = ref.watch(_searchUserQueryProvider);
   if (query.isEmpty) return [];
   return ref.watch(searchUsersProvider(query).future);
@@ -38,10 +39,11 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
   }
 
   void _onUserTap(Profile user) {
-    Navigator.pushNamed(context, AppRoutes.userLibrary, arguments: {
-      'user_id': user.id,
-      'username': user.username ?? '?',
-    });
+    Navigator.pushNamed(
+      context,
+      AppRoutes.userLibrary,
+      arguments: {'user_id': user.id, 'username': user.username ?? '?'},
+    );
   }
 
   @override
@@ -50,7 +52,7 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
     final resultsAsync = ref.watch(_searchUserResultsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.colors.surface,
       appBar: SearchHeader(
         controller: _controller,
         hintText: l10n.searchUserPrompt,
@@ -63,7 +65,9 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
           data: (results) {
             if (results.isEmpty) {
               return Padding(
-                padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.25),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).size.height * 0.25,
+                ),
                 child: Center(
                   child: Column(
                     children: [
@@ -74,7 +78,10 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
                       Text(
                         l10n.searchUserHint,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: grayColor, fontSize: 16),
+                        style: TextStyle(
+                          color: context.colors.secondaryText,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -84,7 +91,6 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
 
             return ListView.builder(
               padding: const EdgeInsets.fromLTRB(30, 10, 30, 15),
-              physics: const ClampingScrollPhysics(),
               itemCount: results.length,
               itemBuilder: (context, index) {
                 final user = results[index];
@@ -100,9 +106,9 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
                           width: 40,
                           height: 40,
                           margin: const EdgeInsets.only(right: 10),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: lightGrayColor,
+                            color: context.colors.surfaceVariant,
                           ),
                           child: Center(
                             child: Text(
@@ -113,10 +119,7 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
                         ),
                         Text(
                           user.username ?? '?',
-                          style: const TextStyle(
-                            color: darkPrimaryColor,
-                            fontSize: 16,
-                          ),
+                          style: const TextStyle(fontSize: 16),
                         ),
                       ],
                     ),
@@ -125,8 +128,10 @@ class _SearchUserPageState extends ConsumerState<SearchUserPage> {
               },
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text(l10n.searchErrorWithMessage(e.toString()))),
+          loading: () =>
+              const Center(child: CircularProgressIndicator.adaptive()),
+          error: (e, _) =>
+              Center(child: Text(l10n.searchErrorWithMessage(e.toString()))),
         ),
       ),
     );

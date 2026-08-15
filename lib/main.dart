@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:app_links/app_links.dart';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/constants/constants.dart';
 import 'package:bookworm_friends/providers/book_search_provider.dart';
+import 'package:bookworm_friends/providers/theme_provider.dart';
 import 'package:bookworm_friends/services/notification_service.dart';
+import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -27,10 +29,7 @@ void main() async {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
   }
 
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -39,9 +38,7 @@ void main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
       child: const MyApp(),
     ),
   );
@@ -72,14 +69,14 @@ void _configureEasyLoading() {
     ..dismissOnTap = false;
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  ConsumerState<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
@@ -94,15 +91,13 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp(
       navigatorKey: navigatorKey,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: greenThemeColor,
-          secondary: lightGrayColor,
-        ),
-        useMaterial3: true,
-      ),
+      navigatorObservers: [CNTabBarRouteObserver()],
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       debugShowCheckedModeBanner: false,
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: const [

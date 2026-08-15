@@ -13,9 +13,8 @@ class AuthState {
 
   const AuthState.unknown() : this(status: AuthStatus.unknown);
   const AuthState.authenticated(User user)
-      : this(status: AuthStatus.authenticated, user: user);
-  const AuthState.unauthenticated()
-      : this(status: AuthStatus.unauthenticated);
+    : this(status: AuthStatus.authenticated, user: user);
+  const AuthState.unauthenticated() : this(status: AuthStatus.unauthenticated);
 }
 
 class AuthNotifier extends Notifier<AuthState> {

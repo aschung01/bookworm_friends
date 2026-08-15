@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/book_search_provider.dart';
@@ -16,11 +16,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 final _searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
 final _searchResultsProvider =
-    AutoDisposeAsyncNotifierProvider<_SearchResultsNotifier, List<BookSearchResult>>(
-  _SearchResultsNotifier.new,
-);
+    AutoDisposeAsyncNotifierProvider<
+      _SearchResultsNotifier,
+      List<BookSearchResult>
+    >(_SearchResultsNotifier.new);
 
-class _SearchResultsNotifier extends AutoDisposeAsyncNotifier<List<BookSearchResult>> {
+class _SearchResultsNotifier
+    extends AutoDisposeAsyncNotifier<List<BookSearchResult>> {
   int _page = 1;
   bool _hasMore = true;
   bool _isLoadingMore = false;
@@ -54,7 +56,11 @@ class _SearchResultsNotifier extends AutoDisposeAsyncNotifier<List<BookSearchRes
     _page++;
     try {
       final searchProvider = ref.read(bookSearchProvider);
-      final moreResults = await searchProvider.search(query, page: _page, size: 20);
+      final moreResults = await searchProvider.search(
+        query,
+        page: _page,
+        size: 20,
+      );
       if (moreResults.length < 20) _hasMore = false;
       final current = state.valueOrNull ?? [];
       state = AsyncData([...current, ...moreResults]);
@@ -106,21 +112,32 @@ class _SearchBookPageState extends ConsumerState<SearchBookPage> {
       context,
       book: book,
       shelfNames: shelves.map((s) => s.name).toList(),
-      onSavePressed: (shelfName, status, {DateTime? startDate, DateTime? finishDate}) async {
-        final shelf = shelves.firstWhere((s) => s.name == shelfName);
-        await ref.read(libraryActionsProvider).addBook(
-              shelfId: shelf.id,
-              isbn: book.isbn,
-              title: book.title,
-              thumbnail: book.thumbnail,
-              status: status,
-              startDate: startDate,
-              finishDate: finishDate,
-            );
-        if (mounted) {
-          Navigator.popUntil(context, (route) => route.isFirst || route.settings.name == '/home');
-        }
-      },
+      onSavePressed:
+          (
+            shelfName,
+            status, {
+            DateTime? startDate,
+            DateTime? finishDate,
+          }) async {
+            final shelf = shelves.firstWhere((s) => s.name == shelfName);
+            await ref
+                .read(libraryActionsProvider)
+                .addBook(
+                  shelfId: shelf.id,
+                  isbn: book.isbn,
+                  title: book.title,
+                  thumbnail: book.thumbnail,
+                  status: status,
+                  startDate: startDate,
+                  finishDate: finishDate,
+                );
+            if (mounted) {
+              Navigator.popUntil(
+                context,
+                (route) => route.isFirst || route.settings.name == '/home',
+              );
+            }
+          },
     );
   }
 
@@ -133,8 +150,8 @@ class _SearchBookPageState extends ConsumerState<SearchBookPage> {
 
     return Scaffold(
       backgroundColor: resultsAsync.valueOrNull?.isEmpty ?? true
-          ? Colors.white
-          : lightGrayColor,
+          ? context.colors.surface
+          : context.colors.surfaceVariant,
       appBar: SearchHeader(
         controller: _controller,
         elevate: resultsAsync.valueOrNull?.isNotEmpty ?? false,
@@ -146,18 +163,27 @@ class _SearchBookPageState extends ConsumerState<SearchBookPage> {
           data: (results) {
             if (results.isEmpty) {
               return Padding(
-                padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.25),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).size.height * 0.25,
+                ),
                 child: Center(
                   child: Column(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 15),
-                        child: Icon(Icons.menu_book_outlined, size: 100, color: grayColor),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 15),
+                        child: Icon(
+                          Icons.menu_book_outlined,
+                          size: 100,
+                          color: context.colors.secondaryText,
+                        ),
                       ),
                       Text(
                         l10n.searchBookHint,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: grayColor, fontSize: 16),
+                        style: TextStyle(
+                          color: context.colors.secondaryText,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -169,14 +195,17 @@ class _SearchBookPageState extends ConsumerState<SearchBookPage> {
             final screenHeight = MediaQuery.of(context).size.height;
             final bookHeight = screenHeight * 0.15;
             final bookWidth = bookHeight / 1.6;
-            final numBooksPerLine = max(((screenWidth - 50 + bookWidth * 0.2) / (bookWidth * 1.2)).floor(), 1);
+            final numBooksPerLine = max(
+              ((screenWidth - 50 + bookWidth * 0.2) / (bookWidth * 1.2))
+                  .floor(),
+              1,
+            );
             final lineCount = max((results.length / numBooksPerLine).ceil(), 1);
             final notifier = ref.read(_searchResultsProvider.notifier);
 
             return ListView.separated(
               controller: _scrollController,
               padding: const EdgeInsets.only(top: 20, bottom: 20),
-              physics: const ClampingScrollPhysics(),
               itemCount: lineCount + (notifier.hasMore ? 1 : 0),
               separatorBuilder: (_, __) => const SizedBox(height: 26),
               itemBuilder: (context, line) {
@@ -184,7 +213,7 @@ class _SearchBookPageState extends ConsumerState<SearchBookPage> {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator.adaptive(),
                     ),
                   );
                 }
@@ -200,8 +229,14 @@ class _SearchBookPageState extends ConsumerState<SearchBookPage> {
                           (endIdx - startIdx) * 2 - 1,
                           (index) => index % 2 == 0
                               ? BookWidget(
-                                  imageUrl: results[startIdx + index ~/ 2].thumbnail,
-                                  onTap: () => _onBookTap(results[startIdx + index ~/ 2], shelves),
+                                  imageUrl:
+                                      results[startIdx + index ~/ 2].thumbnail,
+                                  isbn: results[startIdx + index ~/ 2].isbn,
+                                  title: results[startIdx + index ~/ 2].title,
+                                  onTap: () => _onBookTap(
+                                    results[startIdx + index ~/ 2],
+                                    shelves,
+                                  ),
                                 )
                               : SizedBox(width: bookHeight / (5 * 1.6)),
                         ),
@@ -213,8 +248,10 @@ class _SearchBookPageState extends ConsumerState<SearchBookPage> {
               },
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text(l10n.searchErrorWithMessage(e.toString()))),
+          loading: () =>
+              const Center(child: CircularProgressIndicator.adaptive()),
+          error: (e, _) =>
+              Center(child: Text(l10n.searchErrorWithMessage(e.toString()))),
         ),
       ),
     );

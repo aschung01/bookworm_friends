@@ -21,13 +21,13 @@ class AppRoutes {
   static const String settings = '/settings';
 
   static Map<String, WidgetBuilder> get routes => {
-        splash: (_) => const SplashPage(),
-        auth: (_) => const AuthPage(),
-        home: (_) => const HomePage(),
-        searchUsers: (_) => const SearchUserPage(),
-        userLibrary: (_) => const UserLibraryPage(),
-        details: (_) => const BookDetailsTabView(),
-        search: (_) => const SearchBookPage(),
-        settings: (_) => const SettingsPage(),
-      };
+    splash: (_) => const SplashPage(),
+    auth: (_) => const AuthPage(),
+    home: (_) => const HomePage(),
+    searchUsers: (_) => const SearchUserPage(),
+    userLibrary: (_) => const UserLibraryPage(),
+    details: (_) => const BookDetailsTabView(),
+    search: (_) => const SearchBookPage(),
+    settings: (_) => const SettingsPage(),
+  };
 }

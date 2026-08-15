@@ -13,13 +13,15 @@ class NotificationService {
 
   static Future<void> initialize() async {
     try {
-      await _messaging
-          .requestPermission()
-          .timeout(const Duration(seconds: 5), onTimeout: () => throw TimeoutException('requestPermission'));
+      await _messaging.requestPermission().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('requestPermission'),
+      );
     } catch (_) {}
 
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
     const settings = InitializationSettings(
       android: androidSettings,
@@ -37,9 +39,9 @@ class NotificationService {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
     try {
-      final initialMessage = await _messaging
-          .getInitialMessage()
-          .timeout(const Duration(seconds: 5));
+      final initialMessage = await _messaging.getInitialMessage().timeout(
+        const Duration(seconds: 5),
+      );
       if (initialMessage != null) {
         _handleMessageOpenedApp(initialMessage);
       }

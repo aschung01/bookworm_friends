@@ -4,7 +4,8 @@ import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/services/notification_service.dart' show navigatorKey;
+import 'package:bookworm_friends/services/notification_service.dart'
+    show navigatorKey;
 
 final profileProvider = FutureProvider.autoDispose<Profile?>((ref) async {
   final userId = ref.watch(currentUserIdProvider);
@@ -49,14 +50,13 @@ class UpdateProfileNotifier {
     if (userId == null) return;
 
     try {
-      await supabase
-          .from('profiles')
-          .update({'emoji': emoji})
-          .eq('id', userId);
+      await supabase.from('profiles').update({'emoji': emoji}).eq('id', userId);
 
       ref.invalidate(profileProvider);
     } catch (e) {
-      EasyLoading.showError(AppLocalizations.of(navigatorKey.currentContext!).emojiChangeFailed);
+      EasyLoading.showError(
+        AppLocalizations.of(navigatorKey.currentContext!).emojiChangeFailed,
+      );
     }
   }
 
@@ -72,7 +72,9 @@ class UpdateProfileNotifier {
 
       ref.invalidate(profileProvider);
     } catch (e) {
-      EasyLoading.showError(AppLocalizations.of(navigatorKey.currentContext!).settingChangeFailed);
+      EasyLoading.showError(
+        AppLocalizations.of(navigatorKey.currentContext!).settingChangeFailed,
+      );
     }
   }
 

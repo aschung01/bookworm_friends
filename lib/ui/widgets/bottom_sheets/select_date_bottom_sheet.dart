@@ -1,4 +1,5 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,7 +13,7 @@ Future<({int year, int month})?> showYearMonthFilterBottomSheet(
   int pickerYear = currentYear;
   int pickerMonth = currentMonth;
 
-  return showModalBottomSheet<({int year, int month})>(
+  return CNBottomSheet.show<({int year, int month})>(
     context: context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -49,7 +50,10 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
   late FixedExtentScrollController _monthController;
 
   List<int> get _yearItems {
-    return List<int>.generate(20, (i) => i == 0 ? 0 : DateTime.now().year + 1 - i);
+    return List<int>.generate(
+      20,
+      (i) => i == 0 ? 0 : DateTime.now().year + 1 - i,
+    );
   }
 
   @override
@@ -57,7 +61,9 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
     super.initState();
     _pickerYear = widget.initialYear;
     _pickerMonth = widget.initialMonth;
-    final yearIndex = _pickerYear == 0 ? 0 : (DateTime.now().year + 1 - _pickerYear);
+    final yearIndex = _pickerYear == 0
+        ? 0
+        : (DateTime.now().year + 1 - _pickerYear);
     _yearController = FixedExtentScrollController(initialItem: yearIndex);
     _monthController = FixedExtentScrollController(initialItem: _pickerMonth);
   }
@@ -85,13 +91,20 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
               children: [
                 Text(
                   l10n.filterTitle,
-                  style: const TextStyle(color: darkPrimaryColor, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 GestureDetector(
                   onTap: () => widget.onSave(_pickerYear, _pickerMonth),
                   child: Text(
                     l10n.done,
-                    style: const TextStyle(color: greenThemeColor, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: context.colors.brandText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -107,11 +120,17 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                     child: CupertinoPicker(
                       scrollController: _yearController,
                       itemExtent: 80,
-                      selectionOverlay: const DecoratedBox(
+                      selectionOverlay: DecoratedBox(
                         decoration: BoxDecoration(
                           border: Border(
-                            top: BorderSide(color: greenThemeColor, width: 0.5),
-                            bottom: BorderSide(color: greenThemeColor, width: 0.5),
+                            top: BorderSide(
+                              color: context.colors.brandText,
+                              width: 0.5,
+                            ),
+                            bottom: BorderSide(
+                              color: context.colors.brandText,
+                              width: 0.5,
+                            ),
                           ),
                         ),
                       ),
@@ -131,7 +150,9 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                             child: Text(
                               l10n.all,
                               style: TextStyle(
-                                color: e == _pickerYear ? greenThemeColor : darkPrimaryColor,
+                                color: e == _pickerYear
+                                    ? context.colors.brandText
+                                    : context.colors.primaryText,
                                 fontSize: e == _pickerYear ? 26 : 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -144,7 +165,9 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                             TextSpan(
                               text: e.toString(),
                               style: TextStyle(
-                                color: isSelected ? greenThemeColor : darkPrimaryColor,
+                                color: isSelected
+                                    ? context.colors.brandText
+                                    : context.colors.primaryText,
                                 fontSize: isSelected ? 28 : 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -152,7 +175,11 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                                   ? [
                                       TextSpan(
                                         text: l10n.yearSuffix,
-                                        style: const TextStyle(color: greenThemeColor, fontSize: 20, fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                          color: context.colors.brandText,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ]
                                   : null,
@@ -169,11 +196,17 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                     child: CupertinoPicker(
                       scrollController: _monthController,
                       itemExtent: 80,
-                      selectionOverlay: const DecoratedBox(
+                      selectionOverlay: DecoratedBox(
                         decoration: BoxDecoration(
                           border: Border(
-                            top: BorderSide(color: greenThemeColor, width: 0.5),
-                            bottom: BorderSide(color: greenThemeColor, width: 0.5),
+                            top: BorderSide(
+                              color: context.colors.brandText,
+                              width: 0.5,
+                            ),
+                            bottom: BorderSide(
+                              color: context.colors.brandText,
+                              width: 0.5,
+                            ),
                           ),
                         ),
                       ),
@@ -183,11 +216,15 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                         });
                       },
                       children: _pickerYear == 0
-                          ? const [
+                          ? [
                               Center(
                                 child: Text(
                                   '--',
-                                  style: TextStyle(color: greenThemeColor, fontSize: 26, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: context.colors.brandText,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ]
@@ -197,7 +234,9 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                                   child: Text(
                                     l10n.all,
                                     style: TextStyle(
-                                      color: i == _pickerMonth ? greenThemeColor : darkPrimaryColor,
+                                      color: i == _pickerMonth
+                                          ? context.colors.brandText
+                                          : context.colors.primaryText,
                                       fontSize: i == _pickerMonth ? 26 : 20,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -210,7 +249,9 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                                   TextSpan(
                                     text: i.toString(),
                                     style: TextStyle(
-                                      color: isSelected ? greenThemeColor : darkPrimaryColor,
+                                      color: isSelected
+                                          ? context.colors.brandText
+                                          : context.colors.primaryText,
                                       fontSize: isSelected ? 28 : 20,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -218,7 +259,11 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
                                         ? [
                                             TextSpan(
                                               text: l10n.monthSuffix,
-                                              style: const TextStyle(color: greenThemeColor, fontSize: 20, fontWeight: FontWeight.bold),
+                                              style: TextStyle(
+                                                color: context.colors.brandText,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ]
                                         : null,
@@ -239,16 +284,37 @@ class _YearMonthFilterSheetState extends State<_YearMonthFilterSheet> {
   }
 }
 
+/// Strips the time component so two dates can be compared (and bounded) by
+/// calendar day. Reading dates are stored as `yyyy-MM-dd`, so the time a date
+/// happened to be created at must never affect a comparison.
+DateTime dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
 Future<void> showSelectDateBottomSheet(
   BuildContext context, {
   required DateTime initialDate,
   required ValueChanged<DateTime> onDateSelected,
   String? title,
+
+  /// Earliest selectable day. Used to keep a finish date from landing before
+  /// the book's start date.
+  DateTime? minimumDate,
 }) {
   final l10n = AppLocalizations.of(context);
   final resolvedTitle = title ?? l10n.selectDate;
-  DateTime selected = initialDate;
-  return showModalBottomSheet(
+
+  // A book can't be read in the future, and can't be finished before it was
+  // started.
+  final maximum = dateOnly(DateTime.now());
+  final minimum = minimumDate == null ? null : dateOnly(minimumDate);
+
+  // CupertinoDatePicker asserts that its initial value sits inside its own
+  // bounds, so clamp rather than trusting the caller.
+  var initial = dateOnly(initialDate);
+  if (minimum != null && initial.isBefore(minimum)) initial = minimum;
+  if (initial.isAfter(maximum)) initial = maximum;
+
+  DateTime selected = initial;
+  return CNBottomSheet.show(
     context: context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -262,9 +328,17 @@ Future<void> showSelectDateBottomSheet(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(resolvedTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkPrimaryColor)),
+                Text(
+                  resolvedTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 ElevatedActionButton(
-                  width: 60,
+                  // Wide enough for the label plus the glass button's own
+                  // internal padding; 60 clipped it to "Co…".
+                  width: 92,
                   height: 32,
                   buttonText: l10n.confirm,
                   onPressed: () {
@@ -278,9 +352,10 @@ Future<void> showSelectDateBottomSheet(
           Expanded(
             child: CupertinoDatePicker(
               mode: CupertinoDatePickerMode.date,
-              initialDateTime: initialDate,
-              maximumDate: DateTime.now(),
-              onDateTimeChanged: (dt) => selected = dt,
+              initialDateTime: initial,
+              minimumDate: minimum,
+              maximumDate: maximum,
+              onDateTimeChanged: (dt) => selected = dateOnly(dt),
             ),
           ),
         ],

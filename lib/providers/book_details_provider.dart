@@ -3,18 +3,16 @@ import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/models/book_compliment.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 
-final bookComplimentsProvider =
-    FutureProvider.autoDispose.family<List<BookCompliment>, String>(
-  (ref, bookId) async {
-    final data = await supabase
-        .from('book_compliments')
-        .select()
-        .eq('book_id', bookId)
-        .order('created_at', ascending: false);
+final bookComplimentsProvider = FutureProvider.autoDispose
+    .family<List<BookCompliment>, String>((ref, bookId) async {
+      final data = await supabase
+          .from('book_compliments')
+          .select()
+          .eq('book_id', bookId)
+          .order('created_at', ascending: false);
 
-    return data.map((c) => BookCompliment.fromJson(c)).toList();
-  },
-);
+      return data.map((c) => BookCompliment.fromJson(c)).toList();
+    });
 
 final bookDetailsActionsProvider = Provider((ref) => BookDetailsActions(ref));
 

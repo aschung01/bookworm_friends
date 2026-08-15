@@ -1,10 +1,25 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 const List<String> _emojis = [
-  '👏', '🎉', '❤️', '🔥', '⭐', '💪', '😍', '🥰',
-  '👍', '✨', '🎊', '💯', '🙌', '😎', '🤩', '💐',
+  '👏',
+  '🎉',
+  '❤️',
+  '🔥',
+  '⭐',
+  '💪',
+  '😍',
+  '🥰',
+  '👍',
+  '✨',
+  '🎊',
+  '💯',
+  '🙌',
+  '😎',
+  '🤩',
+  '💐',
 ];
 
 Future<void> showEmojiBottomSheet(
@@ -12,19 +27,19 @@ Future<void> showEmojiBottomSheet(
   required void Function(String emoji) onEmojiPressed,
 }) {
   final l10n = AppLocalizations.of(context);
-  return showModalBottomSheet(
+  return CNBottomSheet.show(
     context: context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => Padding(
+    builder: (context) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             l10n.selectComplimentEmoji,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkPrimaryColor),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
           GridView.builder(
@@ -40,7 +55,7 @@ Future<void> showEmojiBottomSheet(
               onTap: () => onEmojiPressed(_emojis[i]),
               child: Container(
                 decoration: BoxDecoration(
-                  color: lightGrayColor,
+                  color: context.colors.surfaceVariant,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,

@@ -1,4 +1,4 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -16,13 +16,13 @@ class LoadingBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade200,
-      highlightColor: Colors.grey.shade50,
+      baseColor: context.colors.surfaceVariant,
+      highlightColor: context.colors.shimmerHighlight,
       child: Container(
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: lightGrayColor,
+          color: context.colors.surfaceVariant,
           borderRadius: borderRadius ?? BorderRadius.circular(4),
         ),
       ),
@@ -38,9 +38,15 @@ class LoadingTitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LoadingBlock(width: MediaQuery.of(context).size.width * 0.6, height: 20),
+        LoadingBlock(
+          width: MediaQuery.of(context).size.width * 0.6,
+          height: 20,
+        ),
         const SizedBox(height: 8),
-        LoadingBlock(width: MediaQuery.of(context).size.width * 0.4, height: 16),
+        LoadingBlock(
+          width: MediaQuery.of(context).size.width * 0.4,
+          height: 16,
+        ),
       ],
     );
   }
@@ -55,8 +61,8 @@ class LoadingShelfRow extends StatelessWidget {
     final bookHeight = screenHeight * 0.15;
 
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade200,
-      highlightColor: Colors.grey.shade50,
+      baseColor: context.colors.surfaceVariant,
+      highlightColor: context.colors.shimmerHighlight,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 26, left: 15),
         child: Column(
@@ -71,7 +77,7 @@ class LoadingShelfRow extends StatelessWidget {
                     width: bookHeight / 1.6,
                     height: bookHeight,
                     decoration: BoxDecoration(
-                      color: lightGrayColor,
+                      color: context.colors.surfaceVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -82,7 +88,7 @@ class LoadingShelfRow extends StatelessWidget {
             Container(
               width: double.infinity,
               height: 12,
-              color: Colors.grey.shade300,
+              color: context.colors.surfaceVariant,
             ),
           ],
         ),
@@ -97,14 +103,9 @@ class LoadingLibrary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: lightGrayColor,
+      color: context.colors.surfaceVariant,
       padding: const EdgeInsets.only(top: 16),
-      child: const Column(
-        children: [
-          LoadingShelfRow(),
-          LoadingShelfRow(),
-        ],
-      ),
+      child: const Column(children: [LoadingShelfRow(), LoadingShelfRow()]),
     );
   }
 }

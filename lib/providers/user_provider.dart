@@ -5,10 +5,12 @@ import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/services/notification_service.dart' show navigatorKey;
+import 'package:bookworm_friends/services/notification_service.dart'
+    show navigatorKey;
 
-final followingListProvider =
-    FutureProvider.autoDispose<List<Profile>>((ref) async {
+final followingListProvider = FutureProvider.autoDispose<List<Profile>>((
+  ref,
+) async {
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) return [];
 
@@ -22,8 +24,10 @@ final followingListProvider =
       .toList();
 });
 
-final followerCountProvider =
-    FutureProvider.autoDispose.family<int, String>((ref, userId) async {
+final followerCountProvider = FutureProvider.autoDispose.family<int, String>((
+  ref,
+  userId,
+) async {
   final result = await supabase
       .from('follows')
       .select()
@@ -33,8 +37,10 @@ final followerCountProvider =
   return result.count;
 });
 
-final followingCountProvider =
-    FutureProvider.autoDispose.family<int, String>((ref, userId) async {
+final followingCountProvider = FutureProvider.autoDispose.family<int, String>((
+  ref,
+  userId,
+) async {
   final result = await supabase
       .from('follows')
       .select()
@@ -44,8 +50,10 @@ final followingCountProvider =
   return result.count;
 });
 
-final isFollowingProvider =
-    FutureProvider.autoDispose.family<bool, String>((ref, targetUserId) async {
+final isFollowingProvider = FutureProvider.autoDispose.family<bool, String>((
+  ref,
+  targetUserId,
+) async {
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) return false;
 
@@ -59,45 +67,47 @@ final isFollowingProvider =
   return data != null;
 });
 
-final userLibraryProvider =
-    FutureProvider.autoDispose.family<List<Shelf>, String>(
-  (ref, targetUserId) async {
-    final data = await supabase
-        .from('shelves')
-        .select('*, books(*)')
-        .eq('user_id', targetUserId)
-        .order('position');
+final userLibraryProvider = FutureProvider.autoDispose
+    .family<List<Shelf>, String>((ref, targetUserId) async {
+      final data = await supabase
+          .from('shelves')
+          .select('*, books(*)')
+          .eq('user_id', targetUserId)
+          .order('position');
 
-    return data.map((s) => Shelf.fromJson(s)).toList();
-  },
-);
+      final shelves = data.map((s) => Shelf.fromJson(s)).toList();
+      for (final shelf in shelves) {
+        shelf.books.sort((a, b) => a.position.compareTo(b.position));
+      }
+      return shelves;
+    });
 
-final searchUsersProvider =
-    FutureProvider.autoDispose.family<List<Profile>, String>(
-  (ref, query) async {
-    if (query.isEmpty) return [];
+final searchUsersProvider = FutureProvider.autoDispose
+    .family<List<Profile>, String>((ref, query) async {
+      if (query.isEmpty) return [];
 
-    final data = await supabase
-        .from('profiles')
-        .select()
-        .ilike('username', '%$query%')
-        .limit(20);
+      final data = await supabase
+          .from('profiles')
+          .select()
+          .ilike('username', '%$query%')
+          .limit(20);
 
-    return data.map((p) => Profile.fromJson(p)).toList();
-  },
-);
+      return data.map((p) => Profile.fromJson(p)).toList();
+    });
 
-final followerListProvider =
-    FutureProvider.autoDispose.family<List<Profile>, String>((ref, userId) async {
-  final data = await supabase
-      .from('follows')
-      .select('follower_id, profiles!follows_follower_id_fkey(*)')
-      .eq('following_id', userId);
+final followerListProvider = FutureProvider.autoDispose
+    .family<List<Profile>, String>((ref, userId) async {
+      final data = await supabase
+          .from('follows')
+          .select('follower_id, profiles!follows_follower_id_fkey(*)')
+          .eq('following_id', userId);
 
-  return data
-      .map((row) => Profile.fromJson(row['profiles'] as Map<String, dynamic>))
-      .toList();
-});
+      return data
+          .map(
+            (row) => Profile.fromJson(row['profiles'] as Map<String, dynamic>),
+          )
+          .toList();
+    });
 
 final userActionsProvider = Provider((ref) => UserActions(ref));
 
@@ -118,7 +128,9 @@ class UserActions {
       ref.invalidate(followingListProvider);
       ref.invalidate(isFollowingProvider(targetUserId));
     } catch (e) {
-      EasyLoading.showError(AppLocalizations.of(navigatorKey.currentContext!).followFailed);
+      EasyLoading.showError(
+        AppLocalizations.of(navigatorKey.currentContext!).followFailed,
+      );
     }
   }
 
@@ -136,14 +148,19 @@ class UserActions {
       ref.invalidate(followingListProvider);
       ref.invalidate(isFollowingProvider(targetUserId));
     } catch (e) {
-      EasyLoading.showError(AppLocalizations.of(navigatorKey.currentContext!).unfollowFailed);
+      EasyLoading.showError(
+        AppLocalizations.of(navigatorKey.currentContext!).unfollowFailed,
+      );
     }
   }
 
   Future<void> pokeUser(String targetUsername) async {
     final l10n = AppLocalizations.of(navigatorKey.currentContext!);
     try {
-      await supabase.rpc<void>('poke_user', params: {'target_username': targetUsername});
+      await supabase.rpc<void>(
+        'poke_user',
+        params: {'target_username': targetUsername},
+      );
       EasyLoading.showSuccess(l10n.pokeSent);
     } catch (e) {
       EasyLoading.showError(l10n.pokeFailed);

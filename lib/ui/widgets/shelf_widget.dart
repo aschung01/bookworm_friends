@@ -1,3 +1,4 @@
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class ShelfWidget extends StatelessWidget {
@@ -10,7 +11,7 @@ class ShelfWidget extends StatelessWidget {
       height: 8,
       width: width ?? MediaQuery.of(context).size.width * 0.95,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         boxShadow: [
           BoxShadow(
             offset: const Offset(0, 2),

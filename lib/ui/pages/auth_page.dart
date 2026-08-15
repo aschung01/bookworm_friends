@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
@@ -19,15 +19,12 @@ class AuthPage extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: context.colors.pageBackground,
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              'assets/icons/smileBookwormIcon.svg',
-              height: 120,
-            ),
+            SvgPicture.asset('assets/icons/smileBookwormIcon.svg', height: 120),
             const SizedBox(height: 48),
             Text(
               l10n.appTitle,
@@ -43,7 +40,8 @@ class AuthPage extends ConsumerWidget {
               icon: 'assets/icons/appleBlackIcon.svg',
               backgroundColor: Colors.black,
               textColor: Colors.white,
-              onPressed: () => ref.read(authProvider.notifier).signInWithApple(),
+              onPressed: () =>
+                  ref.read(authProvider.notifier).signInWithApple(),
             ),
             const SizedBox(height: 12),
             _SignInButton(
@@ -51,7 +49,8 @@ class AuthPage extends ConsumerWidget {
               icon: 'assets/icons/googleIcon.svg',
               backgroundColor: Colors.white,
               textColor: Colors.black,
-              onPressed: () => ref.read(authProvider.notifier).signInWithGoogle(),
+              onPressed: () =>
+                  ref.read(authProvider.notifier).signInWithGoogle(),
             ),
           ],
         ),

@@ -1,4 +1,4 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class BookVertical extends StatelessWidget {
@@ -36,7 +36,7 @@ class BookVertical extends StatelessWidget {
                   width: width,
                   height: height,
                   decoration: BoxDecoration(
-                    color: greenThemeColor.withOpacity(opacity),
+                    color: context.colors.brand.withOpacity(opacity),
                   ),
                   alignment: Alignment.center,
                   padding: const EdgeInsets.only(top: 15, bottom: 15),
@@ -47,7 +47,9 @@ class BookVertical extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        color: opacity > 0.7 ? Colors.white : darkPrimaryColor,
+                        color: opacity > 0.7
+                            ? Colors.white
+                            : context.colors.primaryText,
                       ),
                     ),
                   ),

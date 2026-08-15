@@ -24,10 +24,22 @@ class Shelf {
       name: json['name'] as String,
       position: json['position'] as int,
       createdAt: DateTime.parse(json['created_at'] as String),
-      books: (json['books'] as List<dynamic>?)
+      books:
+          (json['books'] as List<dynamic>?)
               ?.map((b) => Book.fromJson(b as Map<String, dynamic>))
               .toList() ??
           [],
+    );
+  }
+
+  Shelf copyWith({String? name, int? position, List<Book>? books}) {
+    return Shelf(
+      id: id,
+      userId: userId,
+      name: name ?? this.name,
+      position: position ?? this.position,
+      createdAt: createdAt,
+      books: books ?? this.books,
     );
   }
 }

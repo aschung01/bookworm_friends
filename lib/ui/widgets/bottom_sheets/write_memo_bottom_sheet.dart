@@ -1,4 +1,5 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:flutter/material.dart';
@@ -9,13 +10,13 @@ Future<void> showWriteMemoBottomSheet(
   required VoidCallback onSavePressed,
 }) {
   final l10n = AppLocalizations.of(context);
-  return showModalBottomSheet(
+  return CNBottomSheet.show(
     context: context,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => Padding(
+    builder: (context) => Padding(
       padding: EdgeInsets.only(
         left: 30,
         right: 30,
@@ -27,11 +28,7 @@ Future<void> showWriteMemoBottomSheet(
         children: [
           Text(
             l10n.writeMemoTitle,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: darkPrimaryColor,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
           TextField(
@@ -40,9 +37,9 @@ Future<void> showWriteMemoBottomSheet(
             maxLines: 5,
             decoration: InputDecoration(
               hintText: l10n.memoHint,
-              hintStyle: const TextStyle(color: grayColor),
+              hintStyle: TextStyle(color: context.colors.secondaryText),
               filled: true,
-              fillColor: lightGrayColor,
+              fillColor: context.colors.surfaceVariant,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,

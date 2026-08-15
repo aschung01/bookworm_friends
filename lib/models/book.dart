@@ -47,4 +47,28 @@ class Book {
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
+
+  Book copyWith({
+    String? shelfId,
+    int? status,
+    int? position,
+    double? rating,
+    DateTime? startDate,
+    DateTime? finishDate,
+  }) {
+    return Book(
+      id: id,
+      userId: userId,
+      shelfId: shelfId ?? this.shelfId,
+      isbn: isbn,
+      title: title,
+      thumbnail: thumbnail,
+      status: status ?? this.status,
+      position: position ?? this.position,
+      rating: rating ?? this.rating,
+      startDate: startDate ?? this.startDate,
+      finishDate: finishDate ?? this.finishDate,
+      createdAt: createdAt,
+    );
+  }
 }

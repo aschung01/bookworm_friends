@@ -1,4 +1,5 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
+import 'package:bookworm_friends/ui/widgets/buttons/adaptive_back_button.dart';
 import 'package:flutter/material.dart';
 
 class Header extends StatelessWidget implements PreferredSizeWidget {
@@ -12,12 +13,9 @@ class Header extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: context.colors.surface,
       elevation: 0,
-      leading: IconButton(
-        onPressed: onPressed,
-        icon: const Icon(Icons.arrow_back_ios, color: darkPrimaryColor, size: 22),
-      ),
+      leading: AdaptiveBackButton(onPressed: onPressed),
       actions: actions,
     );
   }

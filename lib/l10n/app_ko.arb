@@ -9,6 +9,7 @@
   "delete": "삭제",
   "edit": "수정",
   "done": "완료",
+  "close": "닫기",
   "confirm": "확인",
   "select": "선택",
   "all": "전체",
@@ -19,7 +20,10 @@
   "follow": "팔로우",
   "unfollow": "언팔로우",
   "poke": "콕 찌르기",
-  "reorder": "순서 변경",
+  "manageShelves": "서재 관리",
+  "searchFriends": "친구 검색",
+  "settings": "설정",
+  "dragToReorder": "끌어서 순서 변경",
   "errorOccurred": "오류가 발생했어요",
   "emptyList": "목록이 비었어요",
 
@@ -59,6 +63,10 @@
   "unfollowConfirmMessage": "정말 팔로우를 취소하시겠어요?",
   "deleteBookTitle": "책 삭제",
   "deleteBookConfirmMessage": "정말 이 책을 삭제하시겠어요?",
+  "deleteBookNamed": "{title} 삭제",
+  "@deleteBookNamed": {
+    "placeholders": { "title": { "type": "String" } }
+  },
 
   "searchBookHint": "책 제목, 저자, 출판사 등으로\n검색이 가능해요 ☺️",
   "searchBookPlaceholder": "책 제목, 저자, 출판사 등",
@@ -78,6 +86,10 @@
   "bookSourceKakao": "카카오 (한국어)",
   "bookSourceGoogle": "Google (영어/기타)",
   "bookSearchSource": "책 검색 소스",
+  "appearance": "화면 모드",
+  "appearanceSystem": "시스템 설정",
+  "appearanceLight": "라이트",
+  "appearanceDark": "다크",
   "login": "로그인",
   "accountSection": "계정",
   "email": "이메일",
@@ -96,7 +108,6 @@
   "appVersion": "앱 버전",
   "logout": "로그아웃",
 
-  "noImage": "이미지가 없습니다",
   "selectShelf": "서재 선택",
   "startDate": "시작일",
   "selectStartDate": "시작일 선택",

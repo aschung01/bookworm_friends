@@ -1,3 +1,5 @@
+import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
@@ -8,28 +10,24 @@ Future<void> showDeleteShelfBottomSheet(
   required VoidCallback onDeletePressed,
 }) {
   final l10n = AppLocalizations.of(context);
-  return showModalBottomSheet(
+  return CNBottomSheet.show(
     context: context,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => Padding(
+    builder: (context) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             l10n.deleteShelfConfirmTitle,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: darkPrimaryColor,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             l10n.deleteShelfWarning,
-            style: const TextStyle(fontSize: 14, color: grayColor),
+            style: TextStyle(fontSize: 14, color: context.colors.secondaryText),
           ),
           const SizedBox(height: 24),
           Row(
@@ -38,8 +36,8 @@ Future<void> showDeleteShelfBottomSheet(
                 child: ElevatedActionButton(
                   height: 44,
                   buttonText: l10n.cancel,
-                  backgroundColor: lightGrayColor,
-                  textStyle: const TextStyle(color: darkPrimaryColor, fontSize: 14),
+                  backgroundColor: context.colors.surfaceVariant,
+                  textStyle: const TextStyle(fontSize: 14),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -49,6 +47,7 @@ Future<void> showDeleteShelfBottomSheet(
                   height: 44,
                   buttonText: l10n.delete,
                   backgroundColor: softRedColor,
+                  isDestructive: true,
                   onPressed: onDeletePressed,
                 ),
               ),

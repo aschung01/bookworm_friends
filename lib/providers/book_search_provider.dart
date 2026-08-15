@@ -55,8 +55,8 @@ class BookSourceNotifier extends Notifier<BookSourcePreference> {
 
 final bookSourcePreferenceProvider =
     NotifierProvider<BookSourceNotifier, BookSourcePreference>(
-  BookSourceNotifier.new,
-);
+      BookSourceNotifier.new,
+    );
 
 /// Resolves the [BookSourcePreference] into a concrete [BookSearchSource],
 /// falling back to the device locale when the preference is [auto].

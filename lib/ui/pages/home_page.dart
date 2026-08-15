@@ -1,9 +1,10 @@
 import 'dart:ui';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/models/shelf.dart';
@@ -12,19 +13,28 @@ import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
-import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
+import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
 import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
+import 'package:bookworm_friends/ui/widgets/wiggle.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/update_shelf_name_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_book_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_shelf_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/manage_shelves_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_date_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
+import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart';
 import 'package:bookworm_friends/ui/widgets/loading_blocks.dart';
 
-enum LibraryMode { library, editLibrary, editShelf }
+enum LibraryMode { library, editLibrary }
 
-final _libraryModeProvider = StateProvider.autoDispose<LibraryMode>((ref) => LibraryMode.library);
-final _selectedFriendProvider = StateProvider.autoDispose<Profile?>((ref) => null);
+final _libraryModeProvider = StateProvider.autoDispose<LibraryMode>(
+  (ref) => LibraryMode.library,
+);
+final _selectedFriendProvider = StateProvider.autoDispose<Profile?>(
+  (ref) => null,
+);
 final _filterYearProvider = StateProvider.autoDispose<int>((ref) => 0);
 final _filterMonthProvider = StateProvider.autoDispose<int>((ref) => 0);
 final _friendFilterYearProvider = StateProvider.autoDispose<int>((ref) => 0);
@@ -39,11 +49,34 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final _shelfNameController = TextEditingController();
+  final _pageController = PageController();
 
   @override
   void dispose() {
     _shelfNameController.dispose();
+    _pageController.dispose();
     super.dispose();
+  }
+
+  void _syncPageToFriend(List<Profile> following, Profile? friend) {
+    int targetIndex;
+    if (friend == null) {
+      targetIndex = 0;
+    } else {
+      final idx = following.indexWhere((f) => f.id == friend.id);
+      if (idx == -1) return;
+      targetIndex = idx + 1;
+    }
+    if (!_pageController.hasClients) return;
+    final current =
+        _pageController.page?.round() ?? _pageController.initialPage;
+    if (current != targetIndex) {
+      _pageController.animateToPage(
+        targetIndex,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   void _onAddBookPressed() {
@@ -82,15 +115,45 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _onDeleteShelf(String shelfId) {
-    showDeleteShelfBottomSheet(context, onDeletePressed: () async {
-      Navigator.pop(context);
-      await ref.read(libraryActionsProvider).deleteShelf(shelfId);
-    });
+    showDeleteShelfBottomSheet(
+      context,
+      onDeletePressed: () async {
+        Navigator.pop(context);
+        await ref.read(libraryActionsProvider).deleteShelf(shelfId);
+      },
+    );
   }
 
-  Future<void> _onReorderShelves(List<Shelf> reordered) async {
-    final shelfIds = reordered.map((s) => s.id).toList();
-    await ref.read(libraryActionsProvider).updateShelfOrder(shelfIds);
+  /// Confirms, then removes the book.
+  ///
+  /// Deleting a book is irreversible — the confirm sheet says exactly that — and
+  /// in edit mode the whole cover is the delete target, so this cannot be a
+  /// one-tap action. An undo SnackBar was tried here instead and was the wrong
+  /// trade: undo only earns the right to replace confirmation when it is
+  /// dependable, and a 5-second window that a second delete cuts short isn't.
+  ///
+  /// Confirming removes the book from local state immediately and commits
+  /// without a loading overlay: the cover vanishing is the feedback. A failed
+  /// delete puts it back.
+  void _onDeleteBook(String bookId) {
+    final notifier = ref.read(libraryProvider.notifier);
+    // Read now, not in the callback: these outlive the sheet.
+    final actions = ref.read(libraryActionsProvider);
+
+    showDeleteBookBottomSheet(
+      context,
+      onDeletePressed: () async {
+        Navigator.pop(context);
+
+        final pending = notifier.removeBookLocally(bookId);
+        if (pending == null) return;
+
+        final deleted = await actions.deleteBookSilently(bookId);
+        // No `mounted` guard: the book belongs in library state whether or not
+        // this page is still around to show it.
+        if (!deleted) notifier.restoreBookLocally(pending);
+      },
+    );
   }
 
   @override
@@ -99,180 +162,262 @@ class _HomePageState extends ConsumerState<HomePage> {
     final libraryAsync = ref.watch(libraryProvider);
     final filterYear = ref.watch(_filterYearProvider);
     final filterMonth = ref.watch(_filterMonthProvider);
-    final finishedBooksAsync = ref.watch(finishedBooksProvider((year: filterYear, month: filterMonth)));
+    final finishedBooksAsync = ref.watch(
+      finishedBooksProvider((year: filterYear, month: filterMonth)),
+    );
     final mode = ref.watch(_libraryModeProvider);
     final selectedFriend = ref.watch(_selectedFriendProvider);
     final myProfile = ref.watch(profileProvider);
     final followingAsync = ref.watch(followingListProvider);
-
-    final friendFilterYear = ref.watch(_friendFilterYearProvider);
-    final friendFilterMonth = ref.watch(_friendFilterMonthProvider);
+    final following = followingAsync.valueOrNull ?? [];
 
     final isSelf = selectedFriend == null;
-    final friendLibraryAsync = selectedFriend != null
-        ? ref.watch(userLibraryProvider(selectedFriend.id))
-        : null;
-    final friendFinishedBooksAsync = selectedFriend != null
-        ? ref.watch(userFinishedBooksProvider((userId: selectedFriend.id, year: friendFilterYear, month: friendFilterMonth)))
-        : null;
 
-    return GestureDetector(
-      onTap: () {
-        if (mode == LibraryMode.editLibrary || mode == LibraryMode.editShelf) {
+    // Keep the horizontal pager in sync when a friend is selected by tapping
+    // an avatar (or when selection is cleared).
+    ref.listen<Profile?>(_selectedFriendProvider, (prev, next) {
+      _syncPageToFriend(following, next);
+    });
+
+    // If the currently-viewed friend is no longer followed (e.g. after an
+    // unfollow), fall back to our own library so the pager index stays valid.
+    if (selectedFriend != null &&
+        followingAsync.hasValue &&
+        !following.any((f) => f.id == selectedFriend.id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(_selectedFriendProvider.notifier).state = null;
+        }
+      });
+    }
+
+    return PopScope(
+      // Android back / iOS predictive back should leave edit mode, not the page.
+      canPop: mode == LibraryMode.library,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && mode != LibraryMode.library) {
           ref.read(_libraryModeProvider.notifier).state = LibraryMode.library;
         }
       },
-      child: Scaffold(
-        backgroundColor: backgroundColor,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          automaticallyImplyLeading: false,
-          centerTitle: false,
-          elevation: 0,
-          titleSpacing: 0,
-          title: SizedBox(
-            height: 56,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _FriendAvatarBar(
-                    myProfile: myProfile.valueOrNull,
-                    following: followingAsync.valueOrNull ?? [],
-                    selectedFriend: selectedFriend,
-                    onSelectSelf: () {
-                      ref.read(_selectedFriendProvider.notifier).state = null;
-                    },
-                    onSelectFriend: (profile) {
-                      ref.read(_selectedFriendProvider.notifier).state = profile;
-                      ref.read(_libraryModeProvider.notifier).state = LibraryMode.library;
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Material(
-                    type: MaterialType.circle,
-                    color: lightGrayColor,
-                    child: IconButton(
-                      onPressed: () => Navigator.pushNamed(context, AppRoutes.searchUsers),
-                      splashRadius: 20,
-                      icon: const Icon(Icons.search, size: 22, color: darkPrimaryColor),
+      child: GestureDetector(
+        onTap: () {
+          if (mode == LibraryMode.editLibrary) {
+            ref.read(_libraryModeProvider.notifier).state = LibraryMode.library;
+          }
+        },
+        child: Scaffold(
+          backgroundColor: context.colors.pageBackground,
+          appBar: AppBar(
+            backgroundColor: context.colors.surface,
+            automaticallyImplyLeading: false,
+            centerTitle: false,
+            elevation: 0,
+            titleSpacing: 0,
+            title: SizedBox(
+              height: 56,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _FriendAvatarBar(
+                      myProfile: myProfile.valueOrNull,
+                      following: following,
+                      selectedFriend: selectedFriend,
+                      onSelectSelf: () {
+                        ref.read(_selectedFriendProvider.notifier).state = null;
+                      },
+                      onSelectFriend: (profile) {
+                        ref.read(_selectedFriendProvider.notifier).state =
+                            profile;
+                        ref.read(_libraryModeProvider.notifier).state =
+                            LibraryMode.library;
+                      },
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 15),
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: IconButton(
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
-                  splashRadius: 20,
-                  icon: const Icon(Icons.menu, color: darkPrimaryColor, size: 26),
-                ),
+                  AdaptiveIconButton(
+                    symbol: 'magnifyingglass',
+                    icon: Icons.search,
+                    filledFallback: true,
+                    semanticLabel: l10n.searchFriends,
+                    onPressed: () =>
+                        Navigator.pushNamed(context, AppRoutes.searchUsers),
+                  ),
+                  // Keeps the search button off the settings button next to it,
+                  // which the glass rendering would otherwise sit flush against.
+                  const AdaptiveIconButtonGap(),
+                ],
               ),
             ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(56),
-            child: _LibrarySubHeader(
-              isSelf: isSelf,
-              mode: mode,
-              username: isSelf
-                  ? (myProfile.valueOrNull?.username ?? '')
-                  : (selectedFriend.username ?? ''),
-              onEditPressed: () {
-                ref.read(_libraryModeProvider.notifier).state = LibraryMode.editLibrary;
-              },
-              onAddPressed: _onAddBookPressed,
-              onDonePressed: () {
-                ref.read(_libraryModeProvider.notifier).state = LibraryMode.library;
-              },
-              onReorderPressed: () {
-                ref.read(_libraryModeProvider.notifier).state = LibraryMode.editShelf;
-              },
-              onPokePressed: !isSelf && selectedFriend != null
-                  ? () => ref.read(userActionsProvider).pokeUser(selectedFriend.username ?? '')
-                  : null,
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 15),
+                child: AdaptiveIconButton(
+                  symbol: 'line.3.horizontal',
+                  icon: Icons.menu,
+                  iconSize: 26,
+                  semanticLabel: l10n.settings,
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.settings),
+                ),
+              ),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(56),
+              child: _LibrarySubHeader(
+                isSelf: isSelf,
+                mode: mode,
+                username: isSelf
+                    ? (myProfile.valueOrNull?.username ?? '')
+                    : (selectedFriend.username ?? ''),
+                onEditPressed: () {
+                  ref.read(_libraryModeProvider.notifier).state =
+                      LibraryMode.editLibrary;
+                },
+                onAddPressed: _onAddBookPressed,
+                onDonePressed: () {
+                  ref.read(_libraryModeProvider.notifier).state =
+                      LibraryMode.library;
+                },
+                onManageShelvesPressed: () =>
+                    showManageShelvesBottomSheet(context),
+                onPokePressed: !isSelf
+                    ? () => ref
+                          .read(userActionsProvider)
+                          .pokeUser(selectedFriend.username ?? '')
+                    : null,
+              ),
             ),
           ),
-        ),
-        body: isSelf
-            ? libraryAsync.when(
-                data: (shelves) => mode == LibraryMode.editShelf
-                    ? _ReorderableShelfList(
-                        shelves: shelves,
-                        onReorderDone: _onReorderShelves,
-                      )
-                    : _LibraryWithFinishedBooks(
-                        shelves: shelves,
-                        finishedBooks: finishedBooksAsync.valueOrNull ?? [],
-                        mode: mode,
-                        filterYear: filterYear,
-                        filterMonth: filterMonth,
-                        onFilterPressed: () async {
-                          final result = await showYearMonthFilterBottomSheet(
-                            context,
-                            currentYear: filterYear,
-                            currentMonth: filterMonth,
-                          );
-                          if (result != null) {
-                            ref.read(_filterYearProvider.notifier).state = result.year;
-                            ref.read(_filterMonthProvider.notifier).state = result.month;
-                          }
-                        },
-                        onEditShelfName: _onEditShelfName,
-                        onDeleteShelf: _onDeleteShelf,
-                        onAddShelf: _onAddShelfPressed,
-                        onEnterEditMode: () {
-                          ref.read(_libraryModeProvider.notifier).state = LibraryMode.editLibrary;
-                        },
-                        onMoveBook: (bookId, targetShelfId) {
-                          ref.read(libraryActionsProvider).moveBookToShelf(bookId, targetShelfId);
-                        },
-                        onRefresh: () async {
-                          ref.invalidate(libraryProvider);
-                          ref.invalidate(finishedBooksProvider((year: filterYear, month: filterMonth)));
-                        },
-                      ),
-                loading: () => const LoadingLibrary(),
-                error: (e, _) => Center(child: Text(l10n.errorWithMessage(e.toString()))),
-              )
-            : friendLibraryAsync!.when(
+          body: PageView.builder(
+            controller: _pageController,
+            physics: mode == LibraryMode.library
+                ? const ClampingScrollPhysics()
+                : const NeverScrollableScrollPhysics(),
+            itemCount: following.length + 1,
+            onPageChanged: (index) {
+              if (index == 0) {
+                ref.read(_selectedFriendProvider.notifier).state = null;
+              } else if (index - 1 < following.length) {
+                ref.read(_selectedFriendProvider.notifier).state =
+                    following[index - 1];
+              }
+            },
+            itemBuilder: (context, index) {
+              if (index != 0) {
+                return _FriendLibraryPage(friend: following[index - 1]);
+              }
+              return libraryAsync.when(
                 data: (shelves) => _LibraryWithFinishedBooks(
                   shelves: shelves,
-                  finishedBooks: friendFinishedBooksAsync?.valueOrNull ?? [],
-                  mode: LibraryMode.library,
-                  filterYear: friendFilterYear,
-                  filterMonth: friendFilterMonth,
+                  finishedBooks: finishedBooksAsync.valueOrNull ?? [],
+                  mode: mode,
+                  filterYear: filterYear,
+                  filterMonth: filterMonth,
                   onFilterPressed: () async {
                     final result = await showYearMonthFilterBottomSheet(
                       context,
-                      currentYear: friendFilterYear,
-                      currentMonth: friendFilterMonth,
+                      currentYear: filterYear,
+                      currentMonth: filterMonth,
                     );
                     if (result != null) {
-                      ref.read(_friendFilterYearProvider.notifier).state = result.year;
-                      ref.read(_friendFilterMonthProvider.notifier).state = result.month;
+                      ref.read(_filterYearProvider.notifier).state =
+                          result.year;
+                      ref.read(_filterMonthProvider.notifier).state =
+                          result.month;
                     }
                   },
-                  onEditShelfName: (_, __) {},
-                  onDeleteShelf: (_) {},
-                  onEnterEditMode: () {},
+                  onEditShelfName: _onEditShelfName,
+                  onDeleteShelf: _onDeleteShelf,
+                  onAddShelf: _onAddShelfPressed,
+                  onEnterEditMode: () {
+                    ref.read(_libraryModeProvider.notifier).state =
+                        LibraryMode.editLibrary;
+                  },
+                  onMoveBook: (bookId, targetShelfId) {
+                    ref
+                        .read(libraryProvider.notifier)
+                        .moveBookToShelf(bookId, targetShelfId);
+                  },
+                  onReorderBooks: (shelfId, bookIds) {
+                    ref
+                        .read(libraryProvider.notifier)
+                        .reorderBooksInShelf(shelfId, bookIds);
+                  },
+                  onDeleteBook: _onDeleteBook,
                   onRefresh: () async {
-                    ref.invalidate(userLibraryProvider(selectedFriend!.id));
-                    ref.invalidate(userFinishedBooksProvider((userId: selectedFriend.id, year: friendFilterYear, month: friendFilterMonth)));
+                    ref.invalidate(libraryProvider);
+                    ref.invalidate(
+                      finishedBooksProvider((
+                        year: filterYear,
+                        month: filterMonth,
+                      )),
+                    );
                   },
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text(l10n.errorWithMessage(e.toString()))),
-              ),
+                loading: () => const LoadingLibrary(),
+                error: (e, _) =>
+                    Center(child: Text(l10n.errorWithMessage(e.toString()))),
+              );
+            },
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _FriendLibraryPage extends ConsumerWidget {
+  final Profile friend;
+
+  const _FriendLibraryPage({required this.friend});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final friendFilterYear = ref.watch(_friendFilterYearProvider);
+    final friendFilterMonth = ref.watch(_friendFilterMonthProvider);
+    final friendLibraryAsync = ref.watch(userLibraryProvider(friend.id));
+    final friendFinishedBooksAsync = ref.watch(
+      userFinishedBooksProvider((
+        userId: friend.id,
+        year: friendFilterYear,
+        month: friendFilterMonth,
+      )),
+    );
+
+    return friendLibraryAsync.when(
+      data: (shelves) => _LibraryWithFinishedBooks(
+        shelves: shelves,
+        finishedBooks: friendFinishedBooksAsync.valueOrNull ?? [],
+        mode: LibraryMode.library,
+        filterYear: friendFilterYear,
+        filterMonth: friendFilterMonth,
+        onFilterPressed: () async {
+          final result = await showYearMonthFilterBottomSheet(
+            context,
+            currentYear: friendFilterYear,
+            currentMonth: friendFilterMonth,
+          );
+          if (result != null) {
+            ref.read(_friendFilterYearProvider.notifier).state = result.year;
+            ref.read(_friendFilterMonthProvider.notifier).state = result.month;
+          }
+        },
+        onEditShelfName: (_, __) {},
+        onDeleteShelf: (_) {},
+        onEnterEditMode: () {},
+        onRefresh: () async {
+          ref.invalidate(userLibraryProvider(friend.id));
+          ref.invalidate(
+            userFinishedBooksProvider((
+              userId: friend.id,
+              year: friendFilterYear,
+              month: friendFilterMonth,
+            )),
+          );
+        },
+      ),
+      loading: () => const Center(child: CircularProgressIndicator.adaptive()),
+      error: (e, _) => Center(child: Text(l10n.errorWithMessage(e.toString()))),
     );
   }
 }
@@ -329,7 +474,7 @@ class _LibrarySubHeader extends StatelessWidget {
   final VoidCallback onEditPressed;
   final VoidCallback onAddPressed;
   final VoidCallback onDonePressed;
-  final VoidCallback onReorderPressed;
+  final VoidCallback onManageShelvesPressed;
   final VoidCallback? onPokePressed;
 
   const _LibrarySubHeader({
@@ -339,48 +484,77 @@ class _LibrarySubHeader extends StatelessWidget {
     required this.onEditPressed,
     required this.onAddPressed,
     required this.onDonePressed,
-    required this.onReorderPressed,
+    required this.onManageShelvesPressed,
     this.onPokePressed,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isEditing = mode == LibraryMode.editLibrary;
+
     return Material(
-      color: Colors.white,
+      color: context.colors.surface,
       elevation: 4,
       child: SizedBox(
         height: 56,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15),
-          child: mode == LibraryMode.editLibrary
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          padding: EdgeInsets.only(left: 15, right: isEditing ? 4 : 15),
+          child: Row(
+            children: [
+              // The title stays put in every mode: it keeps the user oriented,
+              // and it keeps actions out of the slot where users expect Cancel.
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: username.isEmpty ? l10n.library : username,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: isSelf
+                            ? l10n.librarySuffixSelf
+                            : l10n.librarySuffixOther,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isEditing)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    GestureDetector(
-                      onTap: onReorderPressed,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.swap_vert, size: 20, color: greenThemeColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            l10n.reorder,
-                            style: const TextStyle(
-                              color: greenThemeColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                    // A bare icon, matching the pencil/plus in this same band.
+                    // Glass capsules (AdaptiveIconButton) belong to the app bar
+                    // above; using one here made the secondary action heavier
+                    // than Done.
+                    SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: IconButton(
+                        onPressed: onManageShelvesPressed,
+                        tooltip: l10n.manageShelves,
+                        splashRadius: 22,
+                        icon: const Icon(Icons.swap_vert, size: 24),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: onDonePressed,
+                    TextButton(
+                      onPressed: onDonePressed,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(64, 44),
+                        foregroundColor: context.colors.brandText,
+                      ),
                       child: Text(
                         l10n.done,
                         style: const TextStyle(
-                          color: greenThemeColor,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -388,85 +562,55 @@ class _LibrarySubHeader extends StatelessWidget {
                     ),
                   ],
                 )
-              : mode == LibraryMode.editShelf
-                  ? Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: onDonePressed,
-                        child: Text(
-                          l10n.done,
-                          style: const TextStyle(
-                            color: greenThemeColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+              else if (isSelf)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: IconButton(
+                        onPressed: onEditPressed,
+                        tooltip: l10n.edit,
+                        splashRadius: 22,
+                        icon: const Icon(Icons.edit_outlined, size: 22),
                       ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text.rich(
-                          TextSpan(
-                            text: username.isEmpty ? l10n.library : username,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: darkPrimaryColor,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: isSelf ? l10n.librarySuffixSelf : l10n.librarySuffixOther,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.normal,
-                                  color: darkPrimaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (isSelf)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: IconButton(
-                                  onPressed: onEditPressed,
-                                  splashRadius: 20,
-                                  icon: const Icon(Icons.edit_outlined, size: 22, color: darkPrimaryColor),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: IconButton(
-                                  onPressed: onAddPressed,
-                                  splashRadius: 20,
-                                  icon: const Icon(Icons.add, size: 24, color: darkPrimaryColor),
-                                ),
-                              ),
-                            ],
-                          ),
-                        if (!isSelf && onPokePressed != null)
-                          GestureDetector(
-                            onTap: onPokePressed,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: greenThemeColor,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                l10n.poke,
-                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                      ],
                     ),
+                    SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: IconButton(
+                        onPressed: onAddPressed,
+                        splashRadius: 22,
+                        icon: const Icon(Icons.add, size: 24),
+                      ),
+                    ),
+                  ],
+                )
+              else if (onPokePressed != null)
+                GestureDetector(
+                  onTap: onPokePressed,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.colors.brandFill,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      l10n.poke,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -496,9 +640,11 @@ class _AvatarCircle extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isSelected ? greenThemeColor.withValues(alpha: 0.15) : Colors.grey.shade100,
+          color: isSelected
+              ? context.colors.brand.withValues(alpha: 0.15)
+              : context.colors.surfaceVariant,
           border: Border.all(
-            color: isSelected ? greenThemeColor : Colors.transparent,
+            color: isSelected ? context.colors.brandText : Colors.transparent,
             width: 2,
           ),
         ),
@@ -510,7 +656,7 @@ class _AvatarCircle extends StatelessWidget {
 }
 
 void _showFriendInfoDialog(BuildContext context, Profile friend) {
-  showDialog(
+  showDialog<void>(
     context: context,
     builder: (ctx) => Consumer(
       builder: (context, ref, _) {
@@ -519,18 +665,20 @@ void _showFriendInfoDialog(BuildContext context, Profile friend) {
         final followingCount = ref.watch(followingCountProvider(friend.id));
 
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                friend.emoji ?? '📖',
-                style: const TextStyle(fontSize: 40),
-              ),
+              Text(friend.emoji ?? '📖', style: const TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
               Text(
                 friend.username ?? '',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkPrimaryColor),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -540,9 +688,18 @@ void _showFriendInfoDialog(BuildContext context, Profile friend) {
                     children: [
                       Text(
                         followerCount.valueOrNull?.toString() ?? '-',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      Text(l10n.followers, style: const TextStyle(fontSize: 12, color: grayColor)),
+                      Text(
+                        l10n.followers,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.colors.secondaryText,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(width: 24),
@@ -550,9 +707,18 @@ void _showFriendInfoDialog(BuildContext context, Profile friend) {
                     children: [
                       Text(
                         followingCount.valueOrNull?.toString() ?? '-',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      Text(l10n.following, style: const TextStyle(fontSize: 12, color: grayColor)),
+                      Text(
+                        l10n.following,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.colors.secondaryText,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -564,35 +730,46 @@ void _showFriendInfoDialog(BuildContext context, Profile friend) {
                   TextButton(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      ref.read(userActionsProvider).pokeUser(friend.username ?? '');
+                      ref
+                          .read(userActionsProvider)
+                          .pokeUser(friend.username ?? '');
                     },
-                    child: Text(l10n.poke, style: const TextStyle(color: greenThemeColor)),
+                    child: Text(
+                      l10n.poke,
+                      style: TextStyle(color: context.colors.brandText),
+                    ),
                   ),
                   TextButton(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      showDialog(
+                      showAdaptiveDialog<void>(
                         context: context,
-                        builder: (confirmCtx) => AlertDialog(
+                        builder: (confirmCtx) => AlertDialog.adaptive(
                           title: Text(l10n.unfollowConfirmTitle),
                           content: Text(l10n.unfollowConfirmMessage),
                           actions: [
-                            TextButton(
+                            AdaptiveDialogAction(
+                              label: l10n.cancel,
                               onPressed: () => Navigator.pop(confirmCtx),
-                              child: Text(l10n.cancel),
                             ),
-                            TextButton(
+                            AdaptiveDialogAction(
+                              label: l10n.confirm,
+                              isDestructive: true,
                               onPressed: () {
                                 Navigator.pop(confirmCtx);
-                                ref.read(userActionsProvider).unfollow(friend.id);
+                                ref
+                                    .read(userActionsProvider)
+                                    .unfollow(friend.id);
                               },
-                              child: Text(l10n.confirm, style: const TextStyle(color: Colors.red)),
                             ),
                           ],
                         ),
                       );
                     },
-                    child: Text(l10n.unfollow, style: const TextStyle(color: Colors.red)),
+                    child: Text(
+                      l10n.unfollow,
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   ),
                 ],
               ),
@@ -601,32 +778,6 @@ void _showFriendInfoDialog(BuildContext context, Profile friend) {
         );
       },
     ),
-  );
-}
-
-void _showDeleteBookDialog(BuildContext context, String bookId) {
-  showDialog(
-    context: context,
-    builder: (ctx) {
-      final l10n = AppLocalizations.of(ctx);
-      return AlertDialog(
-        title: Text(l10n.deleteBookTitle),
-        content: Text(l10n.deleteBookConfirmMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ProviderScope.containerOf(context).read(libraryActionsProvider).deleteBook(bookId);
-            },
-            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
-          ),
-        ],
-      );
-    },
   );
 }
 
@@ -642,6 +793,8 @@ class _LibraryWithFinishedBooks extends StatelessWidget {
   final VoidCallback onEnterEditMode;
   final VoidCallback? onAddShelf;
   final void Function(String bookId, String targetShelfId)? onMoveBook;
+  final void Function(String shelfId, List<String> bookIds)? onReorderBooks;
+  final void Function(String bookId)? onDeleteBook;
   final Future<void> Function()? onRefresh;
 
   const _LibraryWithFinishedBooks({
@@ -656,29 +809,53 @@ class _LibraryWithFinishedBooks extends StatelessWidget {
     required this.onEnterEditMode,
     this.onAddShelf,
     this.onMoveBook,
+    this.onReorderBooks,
+    this.onDeleteBook,
     this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final bool isLibraryEmpty = shelves.isEmpty || shelves.every((s) => s.books.isEmpty);
+    // Read books live in the "Books read" pile at the bottom of this library, so
+    // they are kept off the shelves above it: showing both listed every read
+    // book twice.
+    final shelvesOnDisplay = withoutFinishedBooks(shelves);
+    // Deliberately measured against the *unfiltered* shelves. `finishedBooks` is
+    // only the books matching the pile's year/month filter, so a library made up
+    // entirely of read books must not offer to add a first book just because the
+    // filter happens to exclude them all.
+    final bool hasNoBooks =
+        (shelves.isEmpty || shelves.every((s) => s.books.isEmpty)) &&
+        finishedBooks.isEmpty;
 
-    if (isLibraryEmpty && finishedBooks.isEmpty) {
+    if (hasNoBooks) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SadCharacter(height: 100),
             const SizedBox(height: 16),
-            Text(l10n.libraryEmptySelf, style: const TextStyle(fontSize: 14, color: grayColor)),
+            Text(
+              l10n.libraryEmptySelf,
+              style: TextStyle(
+                fontSize: 14,
+                color: context.colors.secondaryText,
+              ),
+            ),
             const SizedBox(height: 8),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.add, size: 20, color: grayColor),
+                Icon(Icons.add, size: 20, color: context.colors.secondaryText),
                 const SizedBox(width: 4),
-                Text(l10n.addBookHintSuffix, style: const TextStyle(fontSize: 14, color: grayColor)),
+                Text(
+                  l10n.addBookHintSuffix,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.colors.secondaryText,
+                  ),
+                ),
               ],
             ),
           ],
@@ -686,284 +863,93 @@ class _LibraryWithFinishedBooks extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        Widget scrollView = Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: lightGrayColor,
-            boxShadow: [
-              BoxShadow(blurRadius: 4, offset: const Offset(0, -4), color: Colors.black.withValues(alpha: 0.3)),
-            ],
-          ),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Column(
-                      children: [
-                        ...shelves.map((shelf) => _ShelfRow(
-                              shelf: shelf,
-                              mode: mode,
-                              onEditName: () => onEditShelfName(shelf.id, shelf.name),
-                              onDelete: () => onDeleteShelf(shelf.id),
-                              onLongPress: onEnterEditMode,
-                              onBookDropped: onMoveBook != null
-                                  ? (bookId) => onMoveBook!(bookId, shelf.id)
-                                  : null,
-                              onDeleteBook: mode == LibraryMode.editLibrary
-                                  ? (bookId) => _showDeleteBookDialog(context, bookId)
-                                  : null,
-                            )),
-                        if (mode == LibraryMode.editLibrary && onAddShelf != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 20),
-                            child: TextButton.icon(
-                              onPressed: onAddShelf,
-                              icon: const Icon(Icons.add, size: 20, color: darkPrimaryColor),
-                              label: Text(
-                                l10n.addShelf,
-                                style: const TextStyle(
-                                  color: darkPrimaryColor,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  _FinishedBooksSection(
-                    books: finishedBooks,
-                    isEditMode: mode == LibraryMode.editLibrary,
-                    filterYear: filterYear,
-                    filterMonth: filterMonth,
-                    onFilterPressed: onFilterPressed,
-                  ),
-                ],
-              ),
+    Widget shelfList = SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 16, bottom: 16),
+      child: Column(
+        children: [
+          ...shelvesOnDisplay.map(
+            (shelf) => _ShelfRow(
+              shelf: shelf,
+              mode: mode,
+              onEditName: () => onEditShelfName(shelf.id, shelf.name),
+              onDelete: () => onDeleteShelf(shelf.id),
+              onLongPress: onEnterEditMode,
+              onBookDropped: onMoveBook != null
+                  ? (bookId) => onMoveBook!(bookId, shelf.id)
+                  : null,
+              onReorderBooks: onReorderBooks != null
+                  ? (bookIds) => onReorderBooks!(shelf.id, bookIds)
+                  : null,
+              onDeleteBook: mode == LibraryMode.editLibrary
+                  ? onDeleteBook
+                  : null,
             ),
           ),
-        );
-
-        if (onRefresh != null) {
-          return RefreshIndicator(
-            color: greenThemeColor,
-            onRefresh: onRefresh!,
-            child: scrollView,
-          );
-        }
-        return scrollView;
-      },
+          if (mode == LibraryMode.editLibrary && onAddShelf != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 20),
+              child: TextButton.icon(
+                onPressed: onAddShelf,
+                icon: const Icon(Icons.add, size: 20),
+                label: Text(
+                  l10n.addShelf,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
-  }
-}
 
-class _FinishedBooksSection extends StatelessWidget {
-  final List<Book> books;
-  final bool isEditMode;
-  final int filterYear;
-  final int filterMonth;
-  final VoidCallback onFilterPressed;
+    if (onRefresh != null) {
+      shelfList = RefreshIndicator(
+        color: context.colors.brandText,
+        onRefresh: onRefresh!,
+        child: shelfList,
+      );
+    }
 
-  const _FinishedBooksSection({
-    required this.books,
-    required this.isEditMode,
-    required this.filterYear,
-    required this.filterMonth,
-    required this.onFilterPressed,
-  });
-
-  String _filterText(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    if (filterYear == 0) return l10n.all;
-    if (filterMonth == 0) return l10n.yearLabel(filterYear);
-    return l10n.yearMonthLabel(filterYear, filterMonth);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Container(
+    // NOTE: the background has to live *outside* RefreshIndicator. That widget
+    // wraps its child in a loose Stack, which would let the container shrink to
+    // the shelves' height and leave the rest of the library unpainted.
+    final library = Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surfaceVariant,
         boxShadow: [
           BoxShadow(
             blurRadius: 4,
             offset: const Offset(0, -4),
-            color: Colors.black.withValues(alpha: 0.15),
+            color: Colors.black.withValues(alpha: 0.3),
           ),
         ],
       ),
-      padding: const EdgeInsets.only(left: 25, right: 25, top: 20, bottom: 10),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    l10n.finishedBooksTitle,
-                    style: const TextStyle(color: darkPrimaryColor, fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${books.length}',
-                    style: const TextStyle(color: greenThemeColor, fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: onFilterPressed,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _filterText(context),
-                      style: const TextStyle(color: darkPrimaryColor, fontWeight: FontWeight.w500, fontSize: 14),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.keyboard_arrow_down, size: 18, color: darkPrimaryColor),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (books.isNotEmpty && !isEditMode)
-            Padding(
-              padding: const EdgeInsets.only(top: 20),
-              child: SizedBox(
-                height: 124 + 13,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: books.length,
-                  itemBuilder: (context, index) {
-                    final opacityList = bookOpacityList;
-                    final opacity = opacityList[index % opacityList.length];
-                    return BookVertical(
-                      title: books[index].title,
-                      opacity: opacity,
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.details, arguments: books[index]),
-                    );
-                  },
-                ),
-              ),
-            )
-          else if (books.isEmpty)
-            SizedBox(
-              height: 124 + 20 + 13,
-              child: Center(
-                child: Text(l10n.noFinishedBooks, style: const TextStyle(color: grayColor, fontSize: 14)),
-              ),
-            ),
-          const ShelfWidget(),
-        ],
-      ),
+      child: shelfList,
     );
-  }
-}
 
-
-class _ReorderableShelfList extends StatefulWidget {
-  final List<Shelf> shelves;
-  final Future<void> Function(List<Shelf> reordered) onReorderDone;
-
-  const _ReorderableShelfList({
-    required this.shelves,
-    required this.onReorderDone,
-  });
-
-  @override
-  State<_ReorderableShelfList> createState() => _ReorderableShelfListState();
-}
-
-class _ReorderableShelfListState extends State<_ReorderableShelfList> {
-  late List<Shelf> _shelves;
-
-  @override
-  void initState() {
-    super.initState();
-    _shelves = List.of(widget.shelves);
-  }
-
-  @override
-  void didUpdateWidget(_ReorderableShelfList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.shelves != widget.shelves) {
-      _shelves = List.of(widget.shelves);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Container(
-      color: lightGrayColor,
-      child: ReorderableListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        itemCount: _shelves.length,
-        onReorder: (oldIndex, newIndex) {
-          setState(() {
-            if (newIndex > oldIndex) newIndex--;
-            final item = _shelves.removeAt(oldIndex);
-            _shelves.insert(newIndex, item);
-          });
-          widget.onReorderDone(_shelves);
-        },
-        proxyDecorator: (child, index, animation) {
-          return Material(
-            elevation: 4,
-            color: Colors.transparent,
-            child: child,
-          );
-        },
-        itemBuilder: (context, index) {
-          final shelf = _shelves[index];
-          return Container(
-            key: ValueKey(shelf.id),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.drag_handle, color: grayColor, size: 22),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    shelf.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: darkPrimaryColor,
-                    ),
-                  ),
-                ),
-                Text(
-                  l10n.bookCountLabel(shelf.books.length),
-                  style: const TextStyle(fontSize: 13, color: grayColor),
-                ),
-              ],
-            ),
-          );
-        },
+    // The library only gets the height left over by the "Books read" sheet, so
+    // the sheet is always fully visible without scrolling to the bottom. As the
+    // sheet is dragged down the library grows into the freed space. The library
+    // colour also backs the whole area so it shows through the sheet's rounded
+    // top corners.
+    return ColoredBox(
+      color: context.colors.surfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: library),
+          FinishedBooksSheet(
+            books: finishedBooks,
+            isEditMode: mode == LibraryMode.editLibrary,
+            filterYear: filterYear,
+            filterMonth: filterMonth,
+            onFilterPressed: onFilterPressed,
+          ),
+        ],
       ),
     );
   }
@@ -976,6 +962,7 @@ class _ShelfRow extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback onLongPress;
   final void Function(String bookId)? onBookDropped;
+  final void Function(List<String> bookIds)? onReorderBooks;
   final void Function(String bookId)? onDeleteBook;
 
   const _ShelfRow({
@@ -985,6 +972,7 @@ class _ShelfRow extends StatefulWidget {
     required this.onDelete,
     required this.onLongPress,
     this.onBookDropped,
+    this.onReorderBooks,
     this.onDeleteBook,
   });
 
@@ -995,157 +983,315 @@ class _ShelfRow extends StatefulWidget {
 class _ShelfRowState extends State<_ShelfRow> {
   bool _isDragOver = false;
 
+  /// Builds a single book tile (cover + reading badge + edit-mode delete icon).
+  Widget _buildBookContent(
+    Book book,
+    double bookHeight,
+    bool isEditMode, {
+    bool withHero = true,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    return Wiggle(
+      enabled: isEditMode,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          BookWidget(
+            imageUrl: book.thumbnail,
+            isbn: book.isbn,
+            title: book.title,
+            height: bookHeight,
+            heroTag: withHero ? 'book_${book.isbn}' : null,
+            pressEffect: !isEditMode,
+            // In edit mode the badge is the sole delete target. The no-op tap
+            // handler keeps cover taps from bubbling to the page-level handler
+            // and unintentionally leaving edit mode.
+            onTap: isEditMode
+                ? () {}
+                : () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.details,
+                    arguments: book,
+                  ),
+            onLongPress: isEditMode ? null : widget.onLongPress,
+          ),
+          if (book.status == 1)
+            Positioned(
+              top: 0,
+              right: 8,
+              child: Stack(
+                children: [
+                  Transform.translate(
+                    offset: const Offset(0, 4),
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                      child: const Opacity(
+                        opacity: 0.5,
+                        child: ColorFiltered(
+                          colorFilter: ColorFilter.mode(
+                            Colors.black,
+                            BlendMode.srcATop,
+                          ),
+                          child: BookmarkIcon(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const BookmarkIcon(),
+                ],
+              ),
+            ),
+          if (isEditMode)
+            Positioned(
+              top: -22,
+              left: -22,
+              child: _DeleteBookButton(
+                key: ValueKey('delete_book_${book.id}'),
+                label: l10n.deleteBookNamed(book.title),
+                onPressed: () => widget.onDeleteBook?.call(book.id),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Horizontal reorderable list used in edit mode. Long-press + horizontal
+  /// drag reorders books within the shelf; a vertical drag (via the nested
+  /// [Draggable] with vertical affinity) moves a book to another shelf.
+  Widget _buildEditableBookList(double bookHeight) {
+    return ReorderableListView.builder(
+      scrollDirection: Axis.horizontal,
+      physics: const ClampingScrollPhysics(),
+      clipBehavior: Clip.none,
+      buildDefaultDragHandles: false,
+      padding: const EdgeInsets.symmetric(horizontal: 7.5),
+      itemCount: widget.shelf.books.length,
+      onReorderItem: (oldIndex, newIndex) {
+        final ids = widget.shelf.books.map((b) => b.id).toList();
+        final id = ids.removeAt(oldIndex);
+        ids.insert(newIndex, id);
+        widget.onReorderBooks?.call(ids);
+      },
+      proxyDecorator: (child, index, animation) {
+        return AnimatedBuilder(
+          animation: animation,
+          child: Material(color: Colors.transparent, child: child),
+          builder: (context, child) {
+            final t = Curves.easeInOut.transform(animation.value);
+            return Transform.scale(scale: 1.0 + 0.1 * t, child: child);
+          },
+        );
+      },
+      itemBuilder: (context, index) {
+        final book = widget.shelf.books[index];
+        return _DelayedReorderableListener(
+          key: ValueKey(book.id),
+          index: index,
+          // Bottom-aligned so a book that hashes short sits on the shelf line
+          // instead of floating, and so the row's tight height constraint is
+          // loosened — without this the book would be stretched to the row
+          // extent and the height jitter would vanish.
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 7.5),
+              child: Draggable<String>(
+                data: book.id,
+                affinity: Axis.vertical,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: BookWidget(
+                    imageUrl: book.thumbnail,
+                    isbn: book.isbn,
+                    title: book.title,
+                    height: bookHeight * 1.1,
+                  ),
+                ),
+                childWhenDragging: Opacity(
+                  opacity: 0.3,
+                  child: _buildBookContent(
+                    book,
+                    bookHeight,
+                    true,
+                    withHero: false,
+                  ),
+                ),
+                child: _buildBookContent(book, bookHeight, true),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final bookHeight = screenHeight * 0.15;
+    // Books can hash up to 6% taller than the base, so the row has to reserve
+    // that or every tall book gets clipped along the top.
+    final rowExtent = bookRowExtent(bookHeight);
     final isEditMode = widget.mode == LibraryMode.editLibrary;
 
-    Widget shelfContent = Padding(
-      padding: const EdgeInsets.only(bottom: 26),
-      child: Column(
-        children: [
-          SizedBox(
-            height: bookHeight,
-            width: screenWidth * 0.95,
-            child: Stack(
-              alignment: Alignment.bottomLeft,
-              children: [
-                Positioned(
-                  top: 0,
-                  child: SizedBox(
-                    height: bookHeight,
-                    width: screenWidth * 0.95,
-                    child: widget.shelf.books.isEmpty
-                        ? const SizedBox.shrink()
-                        : ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            physics: const ClampingScrollPhysics(),
-                            padding: const EdgeInsets.only(left: 15, right: 15),
-                            itemCount: widget.shelf.books.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 15),
-                            itemBuilder: (context, index) {
-                              final book = widget.shelf.books[index];
-                              Widget bookWidget = Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  BookWidget(
-                                    imageUrl: book.thumbnail,
-                                    height: bookHeight,
-                                    heroTag: 'book_${book.isbn}',
-                                    onTap: isEditMode
-                                        ? () => widget.onDeleteBook?.call(book.id)
-                                        : () => Navigator.pushNamed(context, AppRoutes.details, arguments: book),
-                                    onLongPress: widget.onLongPress,
-                                  ),
-                                  if (book.status == 1)
-                                    Positioned(
-                                      top: 0,
-                                      right: 8,
-                                      child: Stack(
-                                        children: [
-                                          Transform.translate(
-                                            offset: const Offset(0, 4),
-                                            child: ImageFiltered(
-                                              imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                                              child: const Opacity(
-                                                opacity: 0.5,
-                                                child: ColorFiltered(
-                                                  colorFilter: ColorFilter.mode(Colors.black, BlendMode.srcATop),
-                                                  child: BookmarkIcon(),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const BookmarkIcon(),
-                                        ],
-                                      ),
-                                    ),
-                                  if (isEditMode)
-                                    Positioned(
-                                      top: -6,
-                                      left: -6,
-                                      child: Container(
-                                        width: 22,
-                                        height: 22,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.close, size: 14, color: Colors.white),
-                                      ),
-                                    ),
-                                ],
-                              );
-                              if (isEditMode) {
-                                bookWidget = LongPressDraggable<String>(
-                                  data: book.id,
-                                  feedback: Material(
-                                    elevation: 8,
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: BookWidget(imageUrl: book.thumbnail, height: bookHeight * 0.9),
-                                  ),
-                                  childWhenDragging: Opacity(
-                                    opacity: 0.3,
-                                    child: bookWidget,
-                                  ),
-                                  child: bookWidget,
-                                );
-                              }
-                              return bookWidget;
-                            },
+    final Widget innerContent = Column(
+      children: [
+        SizedBox(
+          height: rowExtent,
+          width: screenWidth * 0.95,
+          child: Stack(
+            alignment: Alignment.bottomLeft,
+            children: [
+              Positioned(
+                top: 0,
+                child: SizedBox(
+                  height: rowExtent,
+                  width: screenWidth * 0.95,
+                  child: widget.shelf.books.isEmpty
+                      ? const SizedBox.shrink()
+                      : isEditMode
+                      ? _buildEditableBookList(bookHeight)
+                      : ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          physics: const ClampingScrollPhysics(),
+                          padding: const EdgeInsets.only(left: 15, right: 15),
+                          itemCount: widget.shelf.books.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 15),
+                          itemBuilder: (context, index) => Align(
+                            alignment: Alignment.bottomCenter,
+                            child: _buildBookContent(
+                              widget.shelf.books[index],
+                              bookHeight,
+                              false,
+                            ),
                           ),
-                  ),
+                        ),
                 ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: isEditMode ? widget.onEditName : null,
-                    onLongPress: isEditMode ? widget.onDelete : null,
-                    child: ShelfLabel(label: widget.shelf.name),
-                  ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: isEditMode ? widget.onEditName : null,
+                  onLongPress: isEditMode ? widget.onDelete : null,
+                  child: ShelfLabel(label: widget.shelf.name),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const ShelfWidget(),
-        ],
-      ),
+        ),
+        const ShelfWidget(),
+      ],
     );
 
     if (isEditMode) {
-      shelfContent = DragTarget<String>(
-        onWillAcceptWithDetails: (details) {
-          final bookId = details.data;
-          final isFromThisShelf = widget.shelf.books.any((b) => b.id == bookId);
-          if (!isFromThisShelf) {
-            setState(() => _isDragOver = true);
-          }
-          return !isFromThisShelf;
-        },
-        onLeave: (_) => setState(() => _isDragOver = false),
-        onAcceptWithDetails: (details) {
-          setState(() => _isDragOver = false);
-          widget.onBookDropped?.call(details.data);
-        },
-        builder: (context, candidateData, rejectedData) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              color: _isDragOver ? greenThemeColor.withValues(alpha: 0.1) : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: _isDragOver
-                  ? Border.all(color: greenThemeColor, width: 2)
-                  : null,
-            ),
-            child: shelfContent,
-          );
-        },
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 26),
+        child: DragTarget<String>(
+          onWillAcceptWithDetails: (details) {
+            final bookId = details.data;
+            final isFromThisShelf = widget.shelf.books.any(
+              (b) => b.id == bookId,
+            );
+            if (!isFromThisShelf) {
+              setState(() => _isDragOver = true);
+            }
+            return !isFromThisShelf;
+          },
+          onLeave: (_) => setState(() => _isDragOver = false),
+          onAcceptWithDetails: (details) {
+            setState(() => _isDragOver = false);
+            widget.onBookDropped?.call(details.data);
+          },
+          builder: (context, candidateData, rejectedData) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                color: _isDragOver
+                    ? context.colors.brand.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: _isDragOver
+                    ? Border.all(color: context.colors.brandText, width: 2)
+                    : null,
+              ),
+              child: innerContent,
+            );
+          },
+        ),
       );
     }
 
-    return shelfContent;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 26),
+      child: innerContent,
+    );
+  }
+}
+
+class _DeleteBookButton extends StatelessWidget {
+  const _DeleteBookButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      onTap: onPressed,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
+          onTap: onPressed,
+          child: const SizedBox(
+            width: 44,
+            height: 44,
+            child: Align(
+              alignment: Alignment.center,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Like [ReorderableDelayedDragStartListener] but with a shorter, iOS-style
+/// long-press delay before a reorder drag begins.
+class _DelayedReorderableListener extends ReorderableDelayedDragStartListener {
+  const _DelayedReorderableListener({
+    super.key,
+    required super.child,
+    required super.index,
+  });
+
+  @override
+  MultiDragGestureRecognizer createRecognizer() {
+    return DelayedMultiDragGestureRecognizer(
+      delay: const Duration(milliseconds: 250),
+      debugOwner: this,
+    );
   }
 }

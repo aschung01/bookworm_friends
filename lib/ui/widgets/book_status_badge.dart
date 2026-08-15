@@ -1,4 +1,4 @@
-import 'package:bookworm_friends/constants/constants.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -10,10 +10,10 @@ class BookStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final (label, color) = switch (status) {
-      0 => (l10n.statusInterested, grayColor),
-      1 => (l10n.statusReading, greenThemeColor),
-      2 => (l10n.statusFinished, darkPrimaryColor),
-      _ => (l10n.statusOther, grayColor),
+      0 => (l10n.statusInterested, context.colors.secondaryText),
+      1 => (l10n.statusReading, context.colors.brandText),
+      2 => (l10n.statusFinished, context.colors.primaryText),
+      _ => (l10n.statusOther, context.colors.secondaryText),
     };
 
     return Container(

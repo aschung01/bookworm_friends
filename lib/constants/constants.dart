@@ -19,5 +19,4 @@ const String googleBooksBaseUrl = 'https://www.googleapis.com/books/v1';
 // Provided at build time via --dart-define / --dart-define-from-file (see
 // env.json, which is gitignored). Empty by default: the Google Books provider
 // then runs keyless and falls back to Open Library.
-const String googleBooksApiKey =
-    String.fromEnvironment('GOOGLE_BOOKS_API_KEY');
+const String googleBooksApiKey = String.fromEnvironment('GOOGLE_BOOKS_API_KEY');

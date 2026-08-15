@@ -18,7 +18,14 @@ class KakaoIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(_kakaoIcon, width: width, height: height, colorFilter: color != null ? ColorFilter.mode(color!, BlendMode.srcIn) : null);
+    return SvgPicture.asset(
+      _kakaoIcon,
+      width: width,
+      height: height,
+      colorFilter: color != null
+          ? ColorFilter.mode(color!, BlendMode.srcIn)
+          : null,
+    );
   }
 }
 
@@ -30,7 +37,14 @@ class AppleWhiteIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(_appleWhiteIcon, width: width, height: height, colorFilter: color != null ? ColorFilter.mode(color!, BlendMode.srcIn) : null);
+    return SvgPicture.asset(
+      _appleWhiteIcon,
+      width: width,
+      height: height,
+      colorFilter: color != null
+          ? ColorFilter.mode(color!, BlendMode.srcIn)
+          : null,
+    );
   }
 }
 
@@ -42,7 +56,14 @@ class AppleBlackIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(_appleBlackIcon, width: width, height: height, colorFilter: color != null ? ColorFilter.mode(color!, BlendMode.srcIn) : null);
+    return SvgPicture.asset(
+      _appleBlackIcon,
+      width: width,
+      height: height,
+      colorFilter: color != null
+          ? ColorFilter.mode(color!, BlendMode.srcIn)
+          : null,
+    );
   }
 }
 
@@ -54,7 +75,14 @@ class GoogleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(_googleIcon, width: width, height: height, colorFilter: color != null ? ColorFilter.mode(color!, BlendMode.srcIn) : null);
+    return SvgPicture.asset(
+      _googleIcon,
+      width: width,
+      height: height,
+      colorFilter: color != null
+          ? ColorFilter.mode(color!, BlendMode.srcIn)
+          : null,
+    );
   }
 }
 

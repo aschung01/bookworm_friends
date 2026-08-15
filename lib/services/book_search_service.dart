@@ -34,7 +34,8 @@ class BookSearchResult {
       isbn: (json['isbn'] as String? ?? '').split(' ').first,
       thumbnail: json['thumbnail'] as String? ?? '',
       url: json['url'] as String?,
-      authors: (json['authors'] as List<dynamic>?)
+      authors:
+          (json['authors'] as List<dynamic>?)
               ?.map((a) => a as String)
               .toList() ??
           [],
@@ -77,9 +78,10 @@ class KakaoBookSearchProvider implements BookSearchProvider {
       },
     );
 
-    final response = await http.get(uri, headers: {
-      'Authorization': 'KakaoAK $_apiKey',
-    });
+    final response = await http.get(
+      uri,
+      headers: {'Authorization': 'KakaoAK $_apiKey'},
+    );
 
     if (response.statusCode != 200) return [];
 
@@ -175,9 +177,9 @@ class GoogleBooksSearchProvider implements BookSearchProvider {
 
     // Force https so iOS App Transport Security doesn't block cover images.
     final imageLinks = volume['imageLinks'] as Map<String, dynamic>?;
-    var thumbnail = (imageLinks?['thumbnail'] ??
-            imageLinks?['smallThumbnail'] ??
-            '') as String;
+    var thumbnail =
+        (imageLinks?['thumbnail'] ?? imageLinks?['smallThumbnail'] ?? '')
+            as String;
     if (thumbnail.startsWith('http://')) {
       thumbnail = thumbnail.replaceFirst('http://', 'https://');
     }
@@ -186,9 +188,11 @@ class GoogleBooksSearchProvider implements BookSearchProvider {
       title: volume['title'] as String? ?? '',
       isbn: isbn,
       thumbnail: thumbnail,
-      url: volume['infoLink'] as String? ??
+      url:
+          volume['infoLink'] as String? ??
           volume['canonicalVolumeLink'] as String?,
-      authors: (volume['authors'] as List<dynamic>?)
+      authors:
+          (volume['authors'] as List<dynamic>?)
               ?.map((a) => a as String)
               .toList() ??
           const [],
