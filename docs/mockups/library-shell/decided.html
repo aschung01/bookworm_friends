@@ -182,7 +182,8 @@
             .cbox {
                 position: relative;
             }
-            .cbox.hide {
+            .cbox.hide,
+            .sep.hide {
                 display: none;
             }
             .cbtn {
@@ -4437,6 +4438,10 @@
                 closeCB();
                 const isFlows = view === "flows";
                 cbox.classList.toggle("hide", isFlows);
+                // Flows have nothing to filter, so the combobox goes -- and the
+                // separator that introduces it has to go with it, or the header
+                // ends in a rule with nothing after it.
+                cbox.previousElementSibling.classList.toggle("hide", isFlows);
                 if (!isFlows) {
                     cbtnLabel.textContent = CB[view].label;
                     csearch.placeholder = CB[view].placeholder;
@@ -4652,10 +4657,21 @@
                 }
             });
 
-            /* one version means versioning is unused: hide the selector entirely */
+            /* One version means versioning is unused, so the selector goes. Its
+               separator goes with it: a rule is only meaningful between two things,
+               and with the selector hidden it sat at the very left edge implying a
+               control that was not there.
+
+               The `.vinfo` line below the tabs deliberately stays. It is the one
+               place that still names the current version and says what it is, which
+               is worth keeping now that the header no longer shows it. (It would
+               have stayed regardless: `.gone` is declared before `.vinfo`, so the
+               class it is given here never won the specificity race. Made explicit
+               rather than left as an accident that a stylesheet tidy could undo.) */
             if (VERSIONS.length < 2) {
                 vbox.classList.add("hide");
-                document.querySelector(".vinfo").classList.add("gone");
+                vbox.nextElementSibling.classList.add("hide");
+                document.getElementById("difftoggle").classList.add("gone");
             }
             renderVList();
             render();
