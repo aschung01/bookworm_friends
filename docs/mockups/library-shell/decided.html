@@ -1718,11 +1718,10 @@
                     with per-ISBN size jitter (<code>BookWidget</code>); the
                     read pile is brand-green spines at
                     0.4&thinsp;/&thinsp;0.7&thinsp;/&thinsp;1.0 opacity
-                    (<code>BookVertical</code>). The two open decisions are
-                    branched as <b>versions</b> &mdash; switch with
-                    <span class="kbd">v</span>, compare with
-                    <span class="kbd">&#8679;Enter</span>. Filter with
-                    <span class="kbd">/</span>.
+                    (<code>BookVertical</code>). The nine branched
+                    <b>versions</b> that argued the shell out have been folded
+                    into one &mdash; what is drawn here is the decided design.
+                    Filter with <span class="kbd">/</span>.
                 </p>
                 <div id="screens"></div>
                 <div class="noneleft gone" id="screens-none">
@@ -2349,11 +2348,12 @@
                         ],
                         [
                             "fr-collapsed",
-                            "Friend &middot; collapsed",
-                            "Rail appears, holding friends only. Background and sheet are both hers; her count reads against yours with no interaction.",
+                            "Visiting jisoo",
+                            "A visit, not a mode. Flighty's globe is one shared space, so panning between friends really is one world &mdash; a bookshelf is <b>personal property</b>, and swapping the background was substituting one object for another. Naming it a visit gives departure and return for free. The tab bar steps aside because it cannot honestly report a position here, and the rail becomes the visit's own chrome: glass &times; to leave, friends to switch between.",
                             {
-                                tab: "friends",
+                                tab: false,
                                 rail: 1,
+                                railLead: "close",
                                 bar: { kind: "friend", friend: "jisoo" },
                                 well: HERSHELVES,
                                 sheet: {
@@ -2369,11 +2369,12 @@
                         ],
                         [
                             "fr-expanded",
-                            "Friend &middot; expanded",
-                            "Her reading history by month. Retires the stats block in <code>_showFriendInfoDialog</code>.",
+                            "Visiting jisoo &middot; her history",
+                            "The same sheet language as your own library, so nothing new is learned. The rail is <b>not</b> new here &mdash; <b>main</b>'s friend screens already carry it, so a visit adds no row. What the visit frees is the bottom: with no floating tab bar over the sheet, her month grid is not partly covered by chrome. Worth knowing separately that the bar-to-sheet clearance on friend screens measures 5.8px in <i>every</i> version, <b>main</b> included &mdash; a pre-existing tightness this model neither causes nor cures.",
                             {
-                                tab: "friends",
+                                tab: false,
                                 rail: 1,
+                                railLead: "close",
                                 bar: { kind: "friend", friend: "jisoo" },
                                 well: {
                                     type: "shelves",
@@ -2382,7 +2383,10 @@
                                 },
                                 sheet: {
                                     h: 72,
-                                    hdr: { title: "Books read", count: 24 },
+                                    hdr: {
+                                        title: "Books read",
+                                        count: 24,
+                                    },
                                     caps: {
                                         items: ["All time", "2026", "2025"],
                                         on: "2026",
@@ -2501,9 +2505,145 @@
                                 },
                             },
                         ],
+                        [
+                            "visit-praise",
+                            "Praise &middot; emoji palette",
+                            "The reason to be in someone else's library, though it is <b>not</b> reachable from the shelf: the palette is a modal over <b>book details</b>, opened by the Praise pill. One tap, no keyboard, and the row it writes to <code>book_compliments</code> is the only <b>persisted</b> social object in the app. &#128293; is marked because it is already yours &mdash; tapping it withdraws, tapping another replaces.",
+                            {
+                                bar: false,
+                                tab: false,
+                                page: {
+                                    type: "detail",
+                                    self: false,
+                                    title: "The Vegetarian",
+                                    author: "Han Kang",
+                                    status: "Read",
+                                    shelf: "Novels",
+                                    color: "#6b8f71",
+                                    period: [
+                                        "2026.03.02 ~ 2026.03.14",
+                                        "12 days",
+                                    ],
+                                    praise: "&#128293;",
+                                    praised: ["&#128293;", "&#128079;"],
+                                    info: [
+                                        ["Publisher", "Changbi"],
+                                        ["ISBN", "9788936434120"],
+                                    ],
+                                },
+                                sheet: {
+                                    h: 62,
+                                    modal: true,
+                                    body: {
+                                        type: "praise",
+                                        on: "&#128293;",
+                                    },
+                                },
+                            },
+                        ],
+                        [
+                            "book-friend",
+                            "Book details &middot; a friend's, Read",
+                            "<b>This is where Praise actually lives.</b> <code>_ComplimentButton</code> sits in the details header and returns <code>SizedBox.shrink()</code> unless <code>book.status == 2</code> &mdash; so you can only praise a book a friend has <i>finished</i>, never one they are reading. Praise is for accomplishment, not for what is in progress.",
+                            {
+                                bar: false,
+                                tab: false,
+                                page: {
+                                    type: "detail",
+                                    self: false,
+                                    title: "The Vegetarian",
+                                    author: "Han Kang",
+                                    status: "Read",
+                                    shelf: "Novels",
+                                    color: "#6b8f71",
+                                    period: [
+                                        "2026.03.02 ~ 2026.03.14",
+                                        "12 days",
+                                    ],
+                                    praise: true,
+                                    info: [
+                                        ["Publisher", "Changbi"],
+                                        ["ISBN", "9788936434120"],
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "book-praised",
+                            "Book details &middot; praised",
+                            "The payoff state, one chip per person. The row is <code>ComplimentBlock</code>, fed by <code>bookComplimentsProvider</code>; it was dead code until <code>e67ca75</code> put it on both sides of the visit. The chips do not say <i>who</i> gave what &mdash; which is why the pill carries your own praise instead.",
+                            {
+                                bar: false,
+                                tab: false,
+                                page: {
+                                    type: "detail",
+                                    self: false,
+                                    title: "The Vegetarian",
+                                    author: "Han Kang",
+                                    status: "Read",
+                                    shelf: "Novels",
+                                    color: "#6b8f71",
+                                    period: [
+                                        "2026.03.02 ~ 2026.03.14",
+                                        "12 days",
+                                    ],
+                                    praise: true,
+                                    praised: [
+                                        "&#128293;",
+                                        "&#128079;",
+                                        "&#10084;&#65039;",
+                                    ],
+                                    info: [
+                                        ["Publisher", "Changbi"],
+                                        ["ISBN", "9788936434120"],
+                                    ],
+                                },
+                            },
+                        ],
+                    ],
+                    ["Proposed &mdash; not built", []],
+                ],
+                [
+                    "Proposed &mdash; not built",
+                    [
+                        [
+                            "shelf-hint",
+                            "Praise visible on the shelf",
+                            "<b>Does not exist today.</b> Drawn because the flow above exposes a problem: praise is four taps deep (cover &rarr; details &rarr; Praise &rarr; emoji) and <i>nothing on a shelf hints it exists</i>. Surfacing the count on the cover would advertise the loop, and since the <code>compliment_uniqueness</code> migration the count is well-defined &mdash; one per person, the same number for every viewer. Half the gap closed in <code>e67ca75</code> &mdash; the owner can now at least see praise on the detail page &mdash; but nothing still hints at it from a shelf, in either direction. Costs a new query on the shelf, so it is a proposal, not a decision.",
+                            {
+                                tab: false,
+                                rail: 1,
+                                railLead: "close",
+                                bar: { kind: "friend", friend: "jisoo" },
+                                well: {
+                                    type: "shelves",
+                                    list: [
+                                        ["Fiction", 3],
+                                        ["Essays", 2],
+                                    ],
+                                    badgeShelf: 0,
+                                    badges: { 1: ["&#128293;"] },
+                                },
+                                sheet: {
+                                    h: 30,
+                                    hdr: {
+                                        title: "Books read",
+                                        count: 24,
+                                    },
+                                    body: HERPILE,
+                                },
+                            },
+                        ],
                     ],
                 ],
             ];
+
+            /* Lets a flow step reuse a screen's spec instead of restating it, so a
+               flow that walks through an existing screen cannot drift from it.
+               Defined here because FLOWS calls it while initialising; it reads
+               SCREENS, which is built above. */
+            const screenSpec = (id) =>
+                SCREENS.flatMap(([, l]) => l).find((s) => s[0] === id)[3];
 
             const FLOWS = [
                 [
@@ -2757,11 +2897,11 @@
                         [
                             "visit-friend",
                             "Visiting a friend",
-                            "Everyone is the picker; the rail is the switcher. The middle step is the one decision still open.",
+                            "Friends stays a real destination &mdash; a hub of people and what they are reading, not a picker you summon. Tapping someone enters a focused visit: tab bar out, rail in, &times; at its head.",
                             [
                                 [
-                                    "Friends &middot; Everyone",
-                                    "No rail yet. Tap jisoo.",
+                                    "Friends &middot; the hub",
+                                    "A destination in its own right: who your friends are and what each is reading now. Tap jisoo.",
                                     {
                                         tab: "friends",
                                         well: SHELVES1,
@@ -2782,11 +2922,12 @@
                                     },
                                 ],
                                 [
-                                    "Transition",
-                                    "Mechanic C: the background cross-fades to hers while the rail descends and the sheet content swaps mid-fall. Three things move at once.",
+                                    "Departing",
+                                    "Your shelf recedes as hers rises. The spatial model is carried by the motion, so no permanent pixels are spent reminding you that you will come back.",
                                     {
-                                        tab: "friends",
+                                        tab: false,
                                         rail: 1,
+                                        railLead: "close",
                                         bar: {
                                             kind: "friend",
                                             friend: "jisoo",
@@ -2806,59 +2947,22 @@
                                     },
                                 ],
                                 [
-                                    "Her library",
-                                    "Rail holds friends only; bar is hers, with Poke.",
+                                    "In her library",
+                                    "Full-bleed and unambiguous: her rail, her bar, her sheet, and one glass &times; to leave.",
                                     {
-                                        tab: "friends",
-                                        rail: 1,
-                                        bar: {
-                                            kind: "friend",
-                                            friend: "jisoo",
-                                        },
-                                        well: HERSHELVES,
-                                        sheet: {
-                                            h: 30,
-                                            hdr: {
-                                                title: "Books read",
-                                                count: 24,
-                                                filter: "All time &#9662;",
-                                            },
-                                            body: HERPILE,
-                                        },
+                                        ...screenSpec("fr-collapsed"),
+                                        tab: false,
+                                        railLead: "close",
                                         sm: true,
                                     },
                                 ],
                                 [
                                     "Her history",
-                                    "Same drag as your own library.",
+                                    "Same drag as your own library. The rail was already on friend screens in <b>main</b>, so the visit adds no row &mdash; it removes the floating tab bar that would otherwise sit over her month grid.",
                                     {
-                                        tab: "friends",
-                                        rail: 1,
-                                        bar: {
-                                            kind: "friend",
-                                            friend: "jisoo",
-                                        },
-                                        well: {
-                                            type: "shelves",
-                                            list: [["Fiction", 2]],
-                                            base: 24,
-                                        },
-                                        sheet: {
-                                            h: 72,
-                                            hdr: {
-                                                title: "Books read",
-                                                count: 24,
-                                            },
-                                            caps: {
-                                                items: [
-                                                    "All time",
-                                                    "2026",
-                                                    "2025",
-                                                ],
-                                                on: "2026",
-                                            },
-                                            body: HERMONTHS,
-                                        },
+                                        ...screenSpec("fr-expanded"),
+                                        tab: false,
+                                        railLead: "close",
                                         sm: true,
                                     },
                                 ],
@@ -2866,58 +2970,22 @@
                         ],
                         [
                             "return-to-friends",
-                            "Returning to the Friends list",
-                            "Mechanic C leaves exactly one free way back: tap the Friends tab you are already on. Standard iOS pop-to-root, nothing to learn, no pixels spent &mdash; but it is invisible, and with your own avatar out of the rail it is the <b>only</b> route back to Everyone. That is what makes it load-bearing rather than a nicety.",
+                            "Leaving a visit",
+                            "<b>Decision 2 is answered, not dodged.</b> Naming it a visit means it has an end, so the &times; at the head of the rail is a control that ends something rather than one that pretends you navigated. It costs nothing outside a visit, because neither it nor the rail exists there.",
                             [
                                 [
-                                    "A friend is open",
-                                    "Rail on her, bar hers, sheet at her count. Nothing on screen mentions Everyone.",
+                                    "In a visit",
+                                    "The &times; has been there since the rail dropped in. Swipe down does the same thing.",
                                     {
-                                        tab: "friends",
-                                        rail: 1,
-                                        bar: {
-                                            kind: "friend",
-                                            friend: "jisoo",
-                                        },
-                                        well: HERSHELVES,
-                                        sheet: {
-                                            h: 30,
-                                            hdr: {
-                                                title: "Books read",
-                                                count: 24,
-                                                filter: "All time &#9662;",
-                                            },
-                                            body: HERPILE,
-                                        },
+                                        ...screenSpec("fr-collapsed"),
+                                        tab: false,
+                                        railLead: "close",
                                         sm: true,
                                     },
                                 ],
                                 [
-                                    "Tap the active tab",
-                                    "Friends is already lit, so the gesture is a second tap on a control that looks finished. Ringed here only to mark the target &mdash; the app draws nothing at all.",
-                                    {
-                                        tab: "friends",
-                                        tapTab: "friends",
-                                        rail: 1,
-                                        bar: {
-                                            kind: "friend",
-                                            friend: "jisoo",
-                                        },
-                                        well: HERSHELVES,
-                                        sheet: {
-                                            h: 30,
-                                            hdr: {
-                                                title: "Books read",
-                                                count: 24,
-                                            },
-                                            body: HERPILE,
-                                        },
-                                        sm: true,
-                                    },
-                                ],
-                                [
-                                    "Back at Everyone",
-                                    "Selection cleared: rail gone, background and bar back to yours, sheet back to the friends list.",
+                                    "Back at the hub",
+                                    "The visit ends and the tab bar returns with Friends still lit &mdash; you are back where you started, not somewhere new.",
                                     {
                                         tab: "friends",
                                         well: SHELVES1,
@@ -2938,63 +3006,51 @@
                         ],
                         [
                             "switch-friend",
-                            "Switching between friends",
-                            "Two routes to the same state: the rail, or a horizontal swipe on the background.",
+                            "Switching friends inside a visit",
+                            "Lateral swipe, exactly as <code>PageView</code> does today, with the rail as the map: it shows the set and where in it you are. Both gestures stay inside the visit, so nothing competes with a tab bar that is not there.",
                             [
                                 [
-                                    "Viewing jisoo",
-                                    "Rail selection sits on her.",
+                                    "On jisoo",
+                                    "Second of five on the rail.",
                                     {
-                                        tab: "friends",
-                                        rail: 1,
-                                        bar: {
-                                            kind: "friend",
-                                            friend: "jisoo",
-                                        },
-                                        well: HERSHELVES,
-                                        sheet: {
-                                            h: 30,
-                                            hdr: {
-                                                title: "Books read",
-                                                count: 24,
-                                                filter: "All time &#9662;",
-                                            },
-                                            body: HERPILE,
-                                        },
+                                        ...screenSpec("fr-collapsed"),
+                                        tab: false,
+                                        railLead: "close",
                                         sm: true,
                                     },
                                 ],
                                 [
                                     "Swipe",
-                                    "Horizontal <code>PageView</code>, as today.",
+                                    "Her shelves leave, minho's arrive, and the rail selection moves with them &mdash; you can see how many are left in each direction.",
                                     {
-                                        tab: "friends",
-                                        rail: 1,
+                                        tab: false,
+                                        rail: 2,
+                                        railLead: "close",
                                         bar: {
                                             kind: "friend",
-                                            friend: "jisoo",
+                                            friend: "minho",
                                         },
                                         well: {
                                             type: "shelves",
-                                            list: [["Essays", 2]],
-                                            base: 26,
+                                            list: [["Essays", 3]],
                                         },
                                         sheet: {
                                             h: 30,
                                             hdr: {
                                                 title: "Books read",
-                                                count: 24,
+                                                count: 9,
                                             },
                                         },
                                         sm: true,
                                     },
                                 ],
                                 [
-                                    "Now minho",
-                                    "Rail selection follows the swipe.",
+                                    "On minho",
+                                    "Settled. The &times; still ends the visit outright rather than stepping back through everyone you passed.",
                                     {
-                                        tab: "friends",
+                                        tab: false,
                                         rail: 2,
+                                        railLead: "close",
                                         bar: {
                                             kind: "friend",
                                             friend: "minho",
@@ -3002,8 +3058,8 @@
                                         well: {
                                             type: "shelves",
                                             list: [
-                                                ["Sci-fi", 3],
-                                                ["Comics", 2],
+                                                ["Essays", 3],
+                                                ["Novels", 2],
                                             ],
                                         },
                                         sheet: {
@@ -3013,38 +3069,6 @@
                                                 count: 9,
                                                 filter: "All time &#9662;",
                                             },
-                                            body: {
-                                                type: "pile",
-                                                titles: [
-                                                    "Snow",
-                                                    "Circe",
-                                                    "Dune",
-                                                    "Neuromancer",
-                                                    "Solaris",
-                                                    "Ubik",
-                                                    "Akira",
-                                                    "Blame!",
-                                                ],
-                                            },
-                                        },
-                                        sm: true,
-                                    },
-                                ],
-                                [
-                                    "Back to the list",
-                                    "Tap the active Friends tab; the rail disappears with the selection.",
-                                    {
-                                        tab: "friends",
-                                        well: SHELVES1,
-                                        sheet: {
-                                            h: 72,
-                                            hdr: { title: "Friends" },
-                                            caps: {
-                                                items: ["Everyone", "Activity"],
-                                                on: "Everyone",
-                                                add: true,
-                                            },
-                                            body: { type: "everyone" },
                                         },
                                         sm: true,
                                     },
@@ -3110,6 +3134,227 @@
                                                 add: true,
                                             },
                                             body: { type: "everyone" },
+                                        },
+                                        sm: true,
+                                    },
+                                ],
+                            ],
+                        ],
+                        [
+                            "praise-book",
+                            "Praising a book: the peak",
+                            "Four taps, not two &mdash; cover, then the Praise pill, then an emoji. It runs through <b>book details</b>, because that is where <code>_ComplimentButton</code> lives, and the button only exists on a book the friend has finished. You hold <b>one praise per book</b>, so the last two steps are the toggle: same emoji withdraws, different emoji replaces.",
+                            [
+                                [
+                                    "Her shelf",
+                                    "Tap a cover. Nothing here says praise is available &mdash; you have to already know.",
+                                    {
+                                        ...screenSpec("fr-collapsed"),
+                                        tab: false,
+                                        railLead: "close",
+                                        sm: true,
+                                    },
+                                ],
+                                [
+                                    "Her book, Read",
+                                    "Details open as their own screen. The Praise pill is present because <code>status == 2</code>; on a book she is still reading it is simply absent. The generic &#127881; means you have not praised this one.",
+                                    {
+                                        bar: false,
+                                        tab: false,
+                                        page: {
+                                            type: "detail",
+                                            self: false,
+                                            title: "The Vegetarian",
+                                            author: "Han Kang",
+                                            status: "Read",
+                                            shelf: "Novels",
+                                            color: "#6b8f71",
+                                            period: [
+                                                "2026.03.02 ~ 2026.03.14",
+                                                "12 days",
+                                            ],
+                                            praise: true,
+                                            info: [
+                                                ["Publisher", "Changbi"],
+                                                ["ISBN", "9788936434120"],
+                                            ],
+                                        },
+                                        sm: true,
+                                    },
+                                ],
+                                [
+                                    "Picker",
+                                    "Search, Recents, categories &mdash; <code>AwesomeEmojiPicker</code> over 3,500 emoji. Nothing is marked yet: the highlight means <i>your</i> praise, and you hold none here. The Recents run is seeded with the sixteen that used to be the whole palette, so a first-timer is not staring at a blank shelf.",
+                                    {
+                                        bar: false,
+                                        tab: false,
+                                        page: {
+                                            type: "detail",
+                                            self: false,
+                                            title: "The Vegetarian",
+                                            author: "Han Kang",
+                                            status: "Read",
+                                            shelf: "Novels",
+                                            color: "#6b8f71",
+                                            period: [
+                                                "2026.03.02 ~ 2026.03.14",
+                                                "12 days",
+                                            ],
+                                            praise: true,
+                                            info: [
+                                                ["Publisher", "Changbi"],
+                                                ["ISBN", "9788936434120"],
+                                            ],
+                                        },
+                                        sheet: {
+                                            h: 62,
+                                            modal: true,
+                                            body: { type: "praise" },
+                                        },
+                                        sm: true,
+                                    },
+                                ],
+                                [
+                                    "It lands",
+                                    "The emoji joins the row under her title <i>and</i> the pill takes it on. She gets a push, and unlike a poke the row is permanent.",
+                                    {
+                                        bar: false,
+                                        tab: false,
+                                        page: {
+                                            type: "detail",
+                                            self: false,
+                                            title: "The Vegetarian",
+                                            author: "Han Kang",
+                                            status: "Read",
+                                            shelf: "Novels",
+                                            color: "#6b8f71",
+                                            period: [
+                                                "2026.03.02 ~ 2026.03.14",
+                                                "12 days",
+                                            ],
+                                            praise: "&#128293;",
+                                            praised: ["&#128293;"],
+                                            info: [
+                                                ["Publisher", "Changbi"],
+                                                ["ISBN", "9788936434120"],
+                                            ],
+                                        },
+                                        sm: true,
+                                    },
+                                ],
+                                [
+                                    "Re-opened",
+                                    "Now &#128293; is marked, and the strip above the grid repeats it with a <b>Remove</b>. Tapping &#128293; again withdraws your praise; tapping any other swaps it. There is no tap that adds a second one &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15.",
+                                    {
+                                        bar: false,
+                                        tab: false,
+                                        page: {
+                                            type: "detail",
+                                            self: false,
+                                            title: "The Vegetarian",
+                                            author: "Han Kang",
+                                            status: "Read",
+                                            shelf: "Novels",
+                                            color: "#6b8f71",
+                                            period: [
+                                                "2026.03.02 ~ 2026.03.14",
+                                                "12 days",
+                                            ],
+                                            praise: "&#128293;",
+                                            praised: ["&#128293;"],
+                                            info: [
+                                                ["Publisher", "Changbi"],
+                                                ["ISBN", "9788936434120"],
+                                            ],
+                                        },
+                                        sheet: {
+                                            h: 62,
+                                            modal: true,
+                                            body: {
+                                                type: "praise",
+                                                on: "&#128293;",
+                                            },
+                                        },
+                                        sm: true,
+                                    },
+                                ],
+                                [
+                                    "Swapped",
+                                    "&#128079; replaces &#128293; in place. Praise stays one-per-person, so a book's chip count means the same thing to every viewer &mdash; but the <i>vocabulary</i> is now unbounded, so a count is the only thing safe to aggregate.",
+                                    {
+                                        bar: false,
+                                        tab: false,
+                                        page: {
+                                            type: "detail",
+                                            self: false,
+                                            title: "The Vegetarian",
+                                            author: "Han Kang",
+                                            status: "Read",
+                                            shelf: "Novels",
+                                            color: "#6b8f71",
+                                            period: [
+                                                "2026.03.02 ~ 2026.03.14",
+                                                "12 days",
+                                            ],
+                                            praise: "&#128079;",
+                                            praised: ["&#128079;"],
+                                            info: [
+                                                ["Publisher", "Changbi"],
+                                                ["ISBN", "9788936434120"],
+                                            ],
+                                        },
+                                        sm: true,
+                                    },
+                                ],
+                            ],
+                        ],
+                        [
+                            "praise-received",
+                            "Being praised: the ending",
+                            "The other half of the loop, working as of <code>e67ca75</code>. Activity is worth shipping because praise gives it real content with no migration &mdash; and the row now has somewhere to land: the chips render for the owner as well as for visitors. Since the <code>compliment_uniqueness</code> migration the chips are also one-per-person, and readable by anyone who can see the book, so the row is the same for her, for you, and for a third visitor.",
+                            [
+                                [
+                                    "Activity",
+                                    "Persisted rows only: finishes, ratings and praise. Pokes cannot appear here without a <code>poke_events</code> table.",
+                                    {
+                                        tab: "friends",
+                                        well: SHELVES1,
+                                        sheet: {
+                                            h: 72,
+                                            hdr: { title: "Friends" },
+                                            caps: {
+                                                items: ["Everyone", "Activity"],
+                                                on: "Activity",
+                                                add: true,
+                                            },
+                                            body: { type: "activity" },
+                                        },
+                                        sm: true,
+                                    },
+                                ],
+                                [
+                                    "Your book",
+                                    "The chips sit under the status badge in your own hero corner. They were previously wrapped in the same <code>if (!isSelf)</code> guard as the Praise button, so the recipient never saw them &mdash; fixed in <code>e67ca75</code>, which also retired <code>ComplimentBlock</code> from being dead code. The button stays owner-hidden: you still cannot praise yourself.",
+                                    {
+                                        bar: false,
+                                        tab: false,
+                                        page: {
+                                            type: "detail",
+                                            self: true,
+                                            title: "Pachinko",
+                                            author: "Min Jin Lee",
+                                            status: "Read",
+                                            shelf: "Novels",
+                                            color: "#4a6c8c",
+                                            praised: ["&#128079;", "&#128293;"],
+                                            period: [
+                                                "2026.01.11 ~ 2026.02.02",
+                                                "22 days",
+                                            ],
+                                            info: [
+                                                ["Publisher", "Grand Central"],
+                                                ["ISBN", "9781455563937"],
+                                            ],
                                         },
                                         sm: true,
                                     },
@@ -3310,7 +3555,7 @@
                         [
                             "el-tabbar",
                             "Floating tab bar",
-                            "Three tabs plus a detached circular search button. Real Liquid Glass on iOS&nbsp;26 via <code>cupertino_native_better</code>, blur fallback elsewhere.",
+                            "Three tabs plus a detached circular search button. Real Liquid Glass on iOS&nbsp;26 via <code>cupertino_native_better</code>, blur fallback elsewhere. <b>Hidden during a visit.</b> A tab bar that is visible but cannot say where you are is the lie every other version had to work around; focused dismissible contexts drop their chrome, and that makes the way out unambiguous.",
                             `<div style="position:relative;width:170px;height:34px">${tabbar("library", false, false).replace("bottom:8px", "bottom:4px")}</div>`,
                         ],
                         [
@@ -3322,8 +3567,8 @@
                         [
                             "el-rail",
                             "Friend rail",
-                            "Appears only once a friend is selected, and holds friends only &mdash; <b>not you</b>. Selection follows background swipes.",
-                            `<div style="width:170px">${railRow(1)}</div>`,
+                            "Scoped to a visit rather than to the app: it exists only while you are in someone else's library, holds friends only, and carries the glass &times; that ends the visit. Matched with lateral swipe &mdash; the rail is the map, the swipe is the movement, and neither works without the other.",
+                            `<div style="width:170px">${railRow(1, "close")}</div>`,
                         ],
                     ],
                 ],
@@ -3420,19 +3665,37 @@
                         [
                             "el-poke",
                             "Poke pill",
-                            "<code>brandFill</code> pill in a friend&rsquo;s bar, calling the existing <code>poke_user()</code> RPC.",
+                            "<code>brandFill</code> pill in a friend&rsquo;s bar, calling the existing <code>poke_user()</code> RPC. Person-level and <b>ephemeral</b> &mdash; <code>poke_user()</code> fires a push and writes no row, so a poke can never appear in Activity. Praise is the durable counterpart, which is why it gets the shelf and the feed and this only gets the bar.",
                             `<span class="poke" style="font-size:9px;padding:5px 12px">Poke</span>`,
+                        ],
+                        [
+                            "el-praise",
+                            "Praise picker",
+                            "<code>AwesomeEmojiPicker</code> over ~3,500 emoji, with search, categories and a persisted Recents run. Opened by the Praise button in <b>book details</b> &mdash; not from the shelf. It replaced a fixed 16 once the live data showed 28 of 39 praises had gone outside that set anyway; the sixteen now only <i>seed</i> an empty Recents. The marked cell is <i>your</i> praise, drawn through <code>emojiRenderer</code> since the package has no selected state, and the strip above repeats it because a highlight alone cannot be found in a grid this size.",
+                            `<div style="background:#fff;padding:10px;border-radius:8px;width:100%">${praisePicker("&#128293;", true)}</div>`,
+                        ],
+                        [
+                            "el-badge",
+                            "Praise button and received praise",
+                            "<code>brandFill</code> pill, shown in book details only when <code>status == 2</code>. It wears the celebration icon until you praise, then your own emoji &mdash; you hold one praise per book and the chips beside it do not say who gave what, so this is the only thing that can tell you where you stand. The received chips are <code>ComplimentBlock</code>, live on both sides since <code>e67ca75</code>.",
+                            `<div style="background:#fff;padding:10px 12px;border-radius:8px;display:flex;gap:10px;align-items:center">${praiseCluster(["&#128293;", "&#128079;", "&#10084;&#65039;"])}<span class="ppill" style="margin:0">&#127881; Praise</span><span class="ppill" style="margin:0">&#128293; Praise</span></div>`,
                         ],
                     ],
                 ],
             ];
 
-            /* Mark an id as an unresolved decision; renders inline as a red callout. */
+            /* Mark an id as an unresolved decision; renders inline as a red callout.
+
+               The two callouts that used to live here -- how a visit begins, and how
+               you get back out -- are gone because they are answered: the visit
+               model settled both, and the reasoning now sits in the notes on the
+               screens and flows themselves rather than hovering over them as an
+               open question. What is left is genuinely undecided. */
             const OPEN = {
-                "visit-friend":
-                    "Open decision &mdash; the transition itself. Drawn here as mechanic C: background swaps, rail drops in, sheet falls to her count. Switch to <b>pushed-page</b> for mechanic B, or compare the two side by side with <b>&#8679;Enter</b>. Statically the two differ only by the tab bar; what you are really choosing is the answer to &ldquo;where did Friends go?&rdquo;",
-                "return-to-friends":
-                    "Open decision &mdash; whether this invisible tap is enough, and if not, which explicit control replaces it. Four are drawn: <b>back-chevron</b> in the bar, <b>rail-close</b> as a glass &times; at the head of the rail, <b>rail-me</b> as your avatar there instead, and <b>sheet-back</b> as a named &lsquo;&#8249; Everyone&rsquo; in the sheet header. Moot under <b>pushed-page</b>, where swipe-to-dismiss is already the way back.",
+                "praise-book":
+                    "<b>Data settled and shipped:</b> praise is <b>one per person per book</b> &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15 &mdash; and a tap is a toggle: same emoji withdraws, different emoji replaces. Reads widened to match the book's own visibility, so a third visitor sees the same praise the owner does and a count means the same thing to everyone; verified against the real database, where a third party went from seeing 0 rows to 2. <b>Vocabulary settled too:</b> the fixed 16 are gone. 28 of the 39 live praises were already outside them (&#129412; &#128050; &#129528; &#128760;), so the palette was never what people used; both emoji columns widened from <code>varchar(6)</code> to <code>text</code> with a 16-code-point cap, because 290 of the 3,544 emoji do not fit six. <b>Still open &mdash; discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page.",
+                "fr-collapsed":
+                    "<b>Open at build time, not in the design &mdash; measure it in Flutter.</b> The rail and the sheet are both positioned from opposite edges, so a rail above a sheet does not push it down: the clearance under the bar falls from 38.8px to 5.8px on a friend's screen, and tips into overlap at the smaller size the flow steps are drawn at. It measures the same in every version this file ever held, <code>main</code> included, so it is a pre-existing tightness rather than anything the visit model introduced &mdash; but Phase 1 lays out this screen, and that is the moment to fix it.",
             };
 
             /* ==================================================================
@@ -3440,1594 +3703,27 @@
 
      [id, label, note, parentId, patch]
 
-   The first entry is the root and must have parentId null; its data is
-   SECTION 3 above. Every other version stores ONLY a patch over its
-   parent, so unchanged screens stay defined once.
+   There is one version now, and the machinery hides itself below two, so this
+   section is effectively dormant. It earned its keep: nine versions branched
+   from here while the shell was being argued out, and the eight explorations
+   are what settled it. They were folded away once `visit-model` won —
+   consolidated into SECTION 3 above, which now describes the decided design
+   directly rather than as a patch over a superseded one.
 
-   Both branches here answer an open decision from the session:
-     pushed-page   decision 1 — what tapping a friend does
-     back-chevron  decision 2 — how you get back out of a friend
+   The explorations are not lost, they are just not live: index.html keeps a
+   one-line record of what each tried and why it lost, and git has the drawings
+   themselves. Deleting them was not tidying — their patches were written
+   against the *old* root, so against this one they would render hybrids that
+   were never proposed.
    ================================================================== */
-
-            /* Reach into the root data so a patch restates only what it changes. */
-            const rootScreen = (id) =>
-                SCREENS.flatMap(([, l]) => l).find((s) => s[0] === id)[3];
-            const rootFlow = (id) =>
-                FLOWS.flatMap(([, l]) => l).find((f) => f[0] === id)[3];
-
-            /* Mechanic B: same content, but the page covers the tab bar. */
-            const asPushed = (id) =>
-                rootFlow(id).map(([n, c, s]) => [n, c, { ...s, tab: false }]);
-
-            /* Decision 2's alternative: a chevron on every bar that is a friend's. */
-            const withBack = (s) => ({ ...s, bar: { ...s.bar, back: true } });
-            const chevronFlow = (id) =>
-                rootFlow(id).map(([n, c, s]) =>
-                    s.bar && s.bar.kind === "friend"
-                        ? [n, c, withBack(s)]
-                        : [n, c, s],
-                );
-
-            /* visit-friend under B: step 1 is still your own world, so it keeps its
-               tab bar; only the steps after the tap lose it. */
-            function visitFriendPushed() {
-                const s = asPushed("visit-friend");
-                s[0][2] = { ...s[0][2], tab: "friends" };
-                s[1][1] =
-                    "Her page rises over yours, taking the tab bar with it. Two libraries exist for the length of the animation, then yours is simply behind.";
-                s[2][1] =
-                    "Settled: her screen, her bar, her sheet. No ambiguity about whose library the title names.";
-                return s;
-            }
-
-            /* Decision 2's options are all mechanic C with one control added, so
-               each is a one-key patch over the friend specs. */
-            const withRailLead = (s, lead) => ({ ...s, railLead: lead });
-            const railLeadFlow = (id, lead) =>
-                rootFlow(id).map(([n, c, s]) =>
-                    s.rail !== undefined && s.rail !== false
-                        ? [n, c, withRailLead(s, lead)]
-                        : [n, c, s],
-                );
-            const withSheetBack = (s, label) =>
-                s.sheet && s.sheet.hdr
-                    ? {
-                          ...s,
-                          sheet: {
-                              ...s.sheet,
-                              hdr: { ...s.sheet.hdr, back: label },
-                          },
-                      }
-                    : s;
-            const sheetBackFlow = (id, label) =>
-                rootFlow(id).map(([n, c, s]) =>
-                    s.bar && s.bar.kind === "friend"
-                        ? [n, c, withSheetBack(s, label)]
-                        : [n, c, s],
-                );
-
-            /* Where every explicit way back lands: selection cleared, your library
-               behind, the Friends sheet showing Everyone. */
-            const AT_EVERYONE = {
-                tab: "friends",
-                well: SHELVES1,
-                sheet: {
-                    h: 72,
-                    hdr: { title: "Friends" },
-                    caps: {
-                        items: ["Everyone", "Activity"],
-                        on: "Everyone",
-                        add: true,
-                    },
-                    body: { type: "everyone" },
-                },
-                sm: true,
-            };
-            function wayBack(openSpec, openCaption, backCaption, backSpec) {
-                return [
-                    [
-                        "A friend is open",
-                        openCaption,
-                        { ...openSpec, sm: true },
-                    ],
-                    ["Back at Everyone", backCaption, backSpec || AT_EVERYONE],
-                ];
-            }
-
-            /* rail-me's premise is a permanent rail, so it has to be drawn on every
-               state that shows a library — not just a friend's. Anything less and the
-               version argues for a cost it never puts on screen. */
-            const withMe = (s) => ({
-                ...s,
-                rail: -1,
-                railLead: "me",
-                railLeadOn: true,
-            });
-            const noRail = (s) => ({ ...s, rail: false });
-            function meRail(notes) {
-                const out = {};
-                for (const [id, note] of Object.entries(notes))
-                    out[id] = { note, spec: withMe(rootScreen(id)) };
-                return out;
-            }
-
-            /* The friends list demoted to a picker you summon: a modal over whichever
-               world you are in, tab bar inert behind it. Defined once and shared by
-               both coupling versions, so the two cannot drift apart. */
-            const PICKER = {
-                tab: "library",
-                dimTab: true,
-                well: SHELVES1,
-                sheet: {
-                    h: 72,
-                    modal: true,
-                    hdr: { title: "Friends" },
-                    caps: {
-                        items: ["Everyone", "Activity"],
-                        on: "Everyone",
-                        add: true,
-                    },
-                    body: { type: "everyone" },
-                },
-            };
-            const PICKER_ACTIVITY = {
-                ...PICKER,
-                sheet: {
-                    ...PICKER.sheet,
-                    caps: { ...PICKER.sheet.caps, on: "Activity" },
-                    body: { type: "activity" },
-                },
-            };
-            const PICKER_NOTE =
-                "The list stops being a place and becomes a picker, summoned over whichever world you are in &mdash; same modal treatment as Add&nbsp;Book, tab bar inert behind it. That is what resolves the contradiction: if the Friends tab means &ldquo;you are in someone else&rsquo;s library&rdquo;, it cannot also mean &ldquo;you are reading a list of friends&rdquo;.";
 
             const VERSIONS = [
                 [
                     "main",
                     "main",
-                    "The settled design. Friend selection is mechanic C: background swaps, rail drops in, sheet falls to her count.",
+                    "The decided design: your library is home and always the background, a friend's is somewhere you visit. Folded in from <code>visit-model</code> once it won.",
                     null,
                     {},
-                ],
-
-                [
-                    "pushed-page",
-                    "pushed-page",
-                    "Decision 1, mechanic B: her library as a pushed page rather than a swap inside the world. Cleanest semantics, but it covers the tab bar.",
-                    "main",
-                    {
-                        screens: {
-                            "fr-collapsed": {
-                                name: "Friend &middot; pushed page",
-                                note: "Her library as its own screen: rail and bar ride inside it and the tab bar is gone rather than inert. Nothing on screen says which tab you came from, which is the trade for the unambiguous title.",
-                                spec: {
-                                    ...rootScreen("fr-collapsed"),
-                                    tab: false,
-                                },
-                            },
-                            "fr-expanded": {
-                                name: "Friend &middot; pushed page, expanded",
-                                note: "Her history by month, still inside the pushed page. The drag is the same one as your own library; what differs is that there is no tab bar underneath it to return to.",
-                                spec: {
-                                    ...rootScreen("fr-expanded"),
-                                    tab: false,
-                                },
-                            },
-                        },
-                        flows: {
-                            "visit-friend": {
-                                note: "Mechanic B, and the cheapest home for swipe paging: one layer replaces another, so the page owns horizontal paging outright while the short sheet inside it owns the vertical drag &mdash; no arbitration to design. The cost is that it covers the tab bar, so you are modal, and the persistent world the rest of the design commits to is exactly what this abandons.",
-                                steps: visitFriendPushed(),
-                            },
-                            "switch-friend": {
-                                note: "Paging lives inside the pushed page, which is the cheapest place to put it &mdash; no vertical sheet drag competing for the same pixels.",
-                                steps: asPushed("switch-friend"),
-                            },
-                            "return-to-friends": {
-                                note: "Moot under B: her library is a page, so the system swipe-to-dismiss pops it. No affordance to invent, and no risk of the Everyone list becoming unreachable after your first pick.",
-                                steps: [
-                                    [
-                                        "A friend is open",
-                                        "Pushed page; the tab bar is covered.",
-                                        {
-                                            ...rootScreen("fr-collapsed"),
-                                            tab: false,
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Swipe down",
-                                        "The system gesture, already understood. Nothing was added to the bar or the tab bar to make this work.",
-                                        {
-                                            tab: false,
-                                            rail: 1,
-                                            bar: {
-                                                kind: "friend",
-                                                friend: "jisoo",
-                                            },
-                                            well: {
-                                                type: "shelves",
-                                                list: [["Fiction", 2]],
-                                            },
-                                            sheet: {
-                                                h: 16,
-                                                hdr: {
-                                                    title: "Books read",
-                                                    count: 24,
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Back at Everyone",
-                                        "The tab bar reappears with the page gone, and the sheet is the friends list again.",
-                                        {
-                                            tab: "friends",
-                                            well: SHELVES1,
-                                            sheet: {
-                                                h: 72,
-                                                hdr: { title: "Friends" },
-                                                caps: {
-                                                    items: [
-                                                        "Everyone",
-                                                        "Activity",
-                                                    ],
-                                                    on: "Everyone",
-                                                    add: true,
-                                                },
-                                                body: { type: "everyone" },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                        },
-                        elements: {
-                            "el-tabbar": {
-                                note: "Covered outright while a friend is open rather than staying live. That is the trade B makes, and the reason the persistent-world rule does not survive it.",
-                            },
-                            "el-rail": {
-                                note: "Rides inside the pushed page instead of dropping into the world. Still friends only &mdash; <b>not you</b>.",
-                            },
-                        },
-                        open: {
-                            "return-to-friends": null,
-                            "visit-friend":
-                                "This is mechanic B. Compare with <b>main</b> (<b>&#8679;Enter</b>) for mechanic C. Statically they differ only by the tab bar &mdash; the decision is about meaning, not pixels.",
-                        },
-                    },
-                ],
-
-                [
-                    "back-chevron",
-                    "back-chevron",
-                    "Decision 2: an explicit back chevron in the bar, instead of a tap on the already-active Friends tab.",
-                    "main",
-                    {
-                        screens: {
-                            "fr-collapsed": {
-                                note: "Chevron left of &ldquo;jisoo&rsquo;s Library&rdquo;. The way out is now visible in the same place the identity is, at the cost of the width the name had.",
-                                spec: withBack(rootScreen("fr-collapsed")),
-                            },
-                            "fr-expanded": {
-                                note: "The chevron persists while the sheet is expanded, so the way out never depends on the sheet's position.",
-                                spec: withBack(rootScreen("fr-expanded")),
-                            },
-                        },
-                        elements: {
-                            "el-bar-friend": {
-                                note: "Chevron, name, Poke. Compare with <b>main</b>, where the same bar carries no back affordance and the tab bar has to serve as one.",
-                                demo: `<div style="width:170px">${bar({ kind: "friend", friend: "jisoo", back: true })}</div>`,
-                            },
-                        },
-                        flows: {
-                            "visit-friend": {
-                                note: "Still mechanic C &mdash; the background swaps and the rail drops in. The only difference from <b>main</b> is that every one of her bars now carries a chevron.",
-                                steps: chevronFlow("visit-friend"),
-                            },
-                            "return-to-friends": {
-                                note: "Two steps instead of a hidden one. The chevron is a normal, unmissable control, and tapping the active tab can stay a nicety rather than the only route. It costs a little bar width, and it is the only control in the design that exists purely to undo a navigation.",
-                                steps: [
-                                    [
-                                        "A friend is open",
-                                        "The chevron is present from the moment her library is.",
-                                        {
-                                            ...withBack(
-                                                rootScreen("fr-collapsed"),
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Back at Everyone",
-                                        "Rail gone, bar and background yours again. One tap, on a control that was visible the whole time.",
-                                        {
-                                            tab: "friends",
-                                            well: SHELVES1,
-                                            sheet: {
-                                                h: 72,
-                                                hdr: { title: "Friends" },
-                                                caps: {
-                                                    items: [
-                                                        "Everyone",
-                                                        "Activity",
-                                                    ],
-                                                    on: "Everyone",
-                                                    add: true,
-                                                },
-                                                body: { type: "everyone" },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                        },
-                        open: {
-                            "return-to-friends":
-                                "Resolved in this version by spending bar width. Compare with <b>main</b> to see exactly what the chevron costs and what it buys.",
-                        },
-                    },
-                ],
-
-                [
-                    "rail-close",
-                    "rail-close",
-                    "Decision 2: a glass &times; pinned at the head of the rail. The rail is the selection, so the control that clears it lives there.",
-                    "main",
-                    {
-                        screens: {
-                            "fr-collapsed": {
-                                note: "The &times; sits ahead of a hairline so it stays put while the avatars scroll. It exists only while the rail does, so it costs nothing in the default state &mdash; unlike a chevron, which has to hold its bar width permanently to be there when it is needed.",
-                                spec: withRailLead(
-                                    rootScreen("fr-collapsed"),
-                                    "close",
-                                ),
-                            },
-                            "fr-expanded": {
-                                note: "Riding on the rail rather than in the sheet means the way out does not move when the sheet does.",
-                                spec: withRailLead(
-                                    rootScreen("fr-expanded"),
-                                    "close",
-                                ),
-                            },
-                        },
-                        elements: {
-                            "el-rail": {
-                                note: "Head control pinned before the hairline; friends scroll past it. Still no <b>you</b> in the list &mdash; a &times; is an action, not an identity, which is why it can occupy a slot that was rejected for an avatar.",
-                                demo: `<div style="width:170px">${railRow(1, "close")}</div>`,
-                            },
-                        },
-                        flows: {
-                            "visit-friend": {
-                                note: "Mechanic C, with the way out arriving in the same motion as the rail &mdash; it drops in already carrying its own dismiss.",
-                                steps: railLeadFlow("visit-friend", "close"),
-                            },
-                            "return-to-friends": {
-                                note: "Reads as clearing a selection rather than going back, which is what actually happens: the rail is the selector and the &times; empties it. Nothing was opened under mechanic C, so there is nothing to go back <i>from</i> &mdash; exactly where a chevron's semantics strain.",
-                                steps: wayBack(
-                                    withRailLead(
-                                        rootScreen("fr-collapsed"),
-                                        "close",
-                                    ),
-                                    "The &times; is present from the moment the rail is.",
-                                    "One tap at the head of the rail: selection cleared, and the rail goes with it.",
-                                ),
-                            },
-                        },
-                        open: {
-                            "return-to-friends":
-                                "Cheapest of the explicit options &mdash; zero pixels until a friend is picked, and the only one whose semantics match mechanic C. The open question is the material: this would be the third glass surface on one screen, alongside the tab bar and the collapsed filter popover.",
-                        },
-                    },
-                ],
-
-                [
-                    "rail-me",
-                    "rail-me",
-                    "Decision 2, and it reopens a settled one: your avatar at the head of the rail, making it a whose-library switcher rather than a friend picker.",
-                    "main",
-                    {
-                        screens: {
-                            ...meRail({
-                                "lib-collapsed":
-                                    "<b>Where the bill lands.</b> A row above the bar in the state the app opens on, with you selected and nothing else it can do &mdash; the cost of a rail that can never be conditional again.",
-                                "lib-expanded":
-                                    "<b>Where it nearly breaks.</b> The sheet is a share of the frame measured from the bottom, so a rail above it does not push it down: the clearance under the bar falls from 38.8px to 5.8px here, and tips into outright overlap at the smaller size the flow steps are drawn at. The rail eats essentially all the breathing room &mdash; whether it strictly collides depends on real rail height against the sheet fraction, so this needs checking in Flutter rather than settling from a mockup.",
-                                "lib-popover":
-                                    "And above the collapsed filter popover, which now sits under a rail as well as a bar.",
-                                "fr-everyone":
-                                    "The friends list with a rail above it. The rail says the library behind is yours; the tab bar says you are on the Friends tab. Two questions, two answers &mdash; coherent here, but this is the seam <b>tab-follows-world</b> pulls on.",
-                                "fr-activity": "Same seam, other capsule.",
-                                "card-open":
-                                    "The Card too, since a permanent rail cannot be conditional on which tab you are in. Rail, bar, sheet header and tab bar now stack four rows of chrome around one card.",
-                                "card-down":
-                                    "Dragged down, the rail is the only thing between the bar and the library.",
-                            }),
-                            "fr-collapsed": {
-                                note: "Positional rather than an action &mdash; you are another stop on the rail, so there is no &ldquo;no selection&rdquo; state left to explain and the rail always answers &ldquo;whose library is this?&rdquo;. <b>But it contradicts a settled decision:</b> the rail was scoped to friends only, and if you are always on it the rail can no longer appear on first selection.",
-                                spec: withRailLead(
-                                    rootScreen("fr-collapsed"),
-                                    "me",
-                                ),
-                            },
-                            "fr-expanded": {
-                                note: "Unchanged from <b>main</b> apart from the head of the rail; her history reads the same either way.",
-                                spec: withRailLead(
-                                    rootScreen("fr-expanded"),
-                                    "me",
-                                ),
-                            },
-                        },
-                        elements: {
-                            "el-rail": {
-                                note: "You first, then friends, split by the hairline. Reverses the settled &ldquo;friends only &mdash; <b>not you</b>&rdquo; rule; the payoff is that the rail becomes self-explanatory, the cost is that it can never be conditional again.",
-                                demo: `<div style="width:170px">${railRow(1, "me")}</div>`,
-                            },
-                        },
-                        flows: {
-                            "visit-friend": {
-                                note: "Selection moves along a rail that was already there, so the transition loses a moving part &mdash; the rail no longer has to drop in. Step 1 is where the bill arrives: the rail is on screen before you have picked anyone.",
-                                steps: [
-                                    [
-                                        "Friends &middot; Everyone",
-                                        "The rail is already present with you selected, because a rail that holds you cannot wait for a friend. Tap jisoo.",
-                                        {
-                                            tab: "friends",
-                                            rail: -1,
-                                            railLead: "me",
-                                            railLeadOn: true,
-                                            well: SHELVES1,
-                                            sheet: {
-                                                h: 72,
-                                                hdr: { title: "Friends" },
-                                                caps: {
-                                                    items: [
-                                                        "Everyone",
-                                                        "Activity",
-                                                    ],
-                                                    on: "Everyone",
-                                                    add: true,
-                                                },
-                                                body: {
-                                                    type: "everyone",
-                                                    hit: "jisoo",
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Transition",
-                                        "Only the selection and the background move. The rail was already in place, so one of mechanic C's three moving parts disappears.",
-                                        {
-                                            tab: "friends",
-                                            rail: 1,
-                                            railLead: "me",
-                                            bar: {
-                                                kind: "friend",
-                                                friend: "jisoo",
-                                            },
-                                            well: {
-                                                type: "shelves",
-                                                list: [["Fiction", 2]],
-                                            },
-                                            sheet: {
-                                                h: 50,
-                                                hdr: {
-                                                    title: "Books read",
-                                                    count: 24,
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her library",
-                                        "Hers, with you still one tap away at the head of the rail. The rail now holds you <i>and</i> friends, which is the rule this version overturns.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("fr-collapsed"),
-                                                "me",
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her history",
-                                        "Same drag as your own library.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("fr-expanded"),
-                                                "me",
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "return-to-friends": {
-                                note: "There is no dismissing here, only selecting yourself. The second step is the tell: the rail survives, because a rail that holds you cannot be conditional on a friend being picked.",
-                                steps: wayBack(
-                                    withRailLead(
-                                        rootScreen("fr-collapsed"),
-                                        "me",
-                                    ),
-                                    "You are the first stop; jisoo is the selected one.",
-                                    "Tapping yourself selects your own library. The rail stays, now with you lit.",
-                                    {
-                                        ...AT_EVERYONE,
-                                        rail: -1,
-                                        railLead: "me",
-                                        railLeadOn: true,
-                                    },
-                                ),
-                            },
-                        },
-                        open: {
-                            "return-to-friends":
-                                "Most intuitive to read, most expensive to adopt, and <b>self-undermining</b>. It overturns &ldquo;the rail holds friends only&rdquo; and &ldquo;the rail appears only once a friend is selected&rdquo; at once, has to be drawn on every library state including the Card &mdash; and then leaves the expanded sheet almost no clearance under the bar, 5.8px of 38.8px, overlapping outright at the smaller size the flows use. The fix is either a shorter expanded sheet, or hiding the rail when the sheet is up &mdash; and hiding it makes the rail conditional again, which is the premise collapsing. Edit mode is the one state left undrawn, since the bar already gives both its slots away there.",
-                        },
-                    },
-                ],
-
-                [
-                    "sheet-back",
-                    "sheet-back",
-                    "Decision 2: &lsquo;&#8249; Everyone&rsquo; in the sheet header &mdash; the only option that names where you will land.",
-                    "main",
-                    {
-                        screens: {
-                            "fr-collapsed": {
-                                note: "<b>Drawing it found the flaw:</b> back label, title, count and filter do not fit one 170px row &mdash; the title wraps and the spine pile is pushed under the tab bar. The label is precisely what does not fit, so the advantage and the defect are the same feature.",
-                                spec: withSheetBack(
-                                    rootScreen("fr-collapsed"),
-                                    "Everyone",
-                                ),
-                            },
-                            "fr-expanded": {
-                                note: "Roomier here, since the filter moves out to the capsules when the sheet is up. The control is in the sheet, though, which is the one surface the user is constantly dragging.",
-                                spec: withSheetBack(
-                                    rootScreen("fr-expanded"),
-                                    "Everyone",
-                                ),
-                            },
-                        },
-                        elements: {
-                            "el-sheethdr": {
-                                note: "Back label, title, count, filter &mdash; four things in one 170px row. Compare with <b>main</b>, where the header carries no navigation at all.",
-                                demo: `<div style="background:#fff;padding:8px 10px;border-radius:8px;width:100%">${sheetHdr({ back: "Everyone", title: "Books read", count: 24, filter: "All time &#9662;" })}</div>`,
-                            },
-                        },
-                        flows: {
-                            "visit-friend": {
-                                note: "Mechanic C. The sheet swapping content is what strands you, so this puts the way out on the thing that changed.",
-                                steps: sheetBackFlow(
-                                    "visit-friend",
-                                    "Everyone",
-                                ),
-                            },
-                            "return-to-friends": {
-                                note: "The only option where the first step already tells you the destination by name, so the second step holds no surprise.",
-                                steps: wayBack(
-                                    withSheetBack(
-                                        rootScreen("fr-collapsed"),
-                                        "Everyone",
-                                    ),
-                                    "&lsquo;&#8249; Everyone&rsquo; sits where her Books read title begins.",
-                                    "Straight back to the named destination &mdash; no inference required.",
-                                ),
-                            },
-                        },
-                        open: {
-                            "return-to-friends":
-                                "Clearest label, and the only one that breaks its own layout: collapsed, the row cannot hold the name and the filter at once. Viable only if the collapsed filter yields the space &mdash; and if it degrades to a bare chevron to fit, it has given up the one thing it was for. It also mixes levels, since the sheet is tab content and this makes it carry navigation between whose world you are in.",
-                        },
-                    },
-                ],
-
-                [
-                    "tab-follows-world",
-                    "tab-follows-world",
-                    "Builds on rail-me: the tab bar reports whose world you are in. Swiping moves the selection and the tab together, Library is the way home, and the friends list becomes a picker you summon. Inherits rail-me's permanent-rail problem.",
-                    "rail-me",
-                    {
-                        screens: {
-                            "fr-everyone": {
-                                name: "Friends list &middot; summoned",
-                                note: PICKER_NOTE,
-                                spec: withMe(PICKER),
-                            },
-                            "fr-activity": {
-                                name: "Activity &middot; summoned",
-                                note: "Other capsule of the same summoned picker. Activity is still one tap from anywhere, which is the thing demoting the list to a modal could easily have cost.",
-                                spec: withMe(PICKER_ACTIVITY),
-                            },
-                            "fr-collapsed": {
-                                note: "Identical pixels to <b>rail-me</b>, different meaning: the lit Friends tab is now a <i>readout</i> of whose library this is, not a place you chose to go. Two indicators agree at all times &mdash; the rail and the tab bar &mdash; which is either reassuring redundancy or a second thing to keep in sync.",
-                                spec: withRailLead(
-                                    rootScreen("fr-collapsed"),
-                                    "me",
-                                ),
-                            },
-                        },
-                        flows: {
-                            "switch-friend": {
-                                name: "Swiping between libraries",
-                                note: "The headline mechanic. One horizontal gesture moves the background, the rail selection and the tab highlight together, so your own library is simply the leftmost page rather than a different mode. Note what this costs: the tab bar now changes without being touched.",
-                                steps: [
-                                    [
-                                        "Your library",
-                                        "Leftmost page. Library lit, you lit on the rail &mdash; the two indicators agree.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("lib-collapsed"),
-                                                "me",
-                                            ),
-                                            rail: -1,
-                                            railLeadOn: true,
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Mid-swipe",
-                                        "Her page arrives and the tab selection comes with it, drawn here half-lit. Nothing was tapped &mdash; the tab bar is reporting, not obeying.",
-                                        {
-                                            tab: "library",
-                                            tabHalf: "friends",
-                                            rail: 1,
-                                            railLead: "me",
-                                            bar: {
-                                                kind: "friend",
-                                                friend: "jisoo",
-                                            },
-                                            well: {
-                                                type: "shelves",
-                                                list: [["Fiction", 2]],
-                                            },
-                                            sheet: {
-                                                h: 30,
-                                                hdr: {
-                                                    title: "Books read",
-                                                    count: 24,
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her library",
-                                        "Settled: Friends lit, jisoo lit. Swipe again for hana, and the tab stays put because you are still in someone else&rsquo;s world.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("fr-collapsed"),
-                                                "me",
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "visit-friend": {
-                                name: "Picking a friend from the list",
-                                note: "The deliberate route, for when swiping is not how you think about it. Tapping Friends summons the picker over your world &mdash; whether or not the tab is already lit, which is simpler than making the second tap a special case.",
-                                steps: [
-                                    [
-                                        "Your library",
-                                        "Library lit, you lit. Tap Friends.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("lib-collapsed"),
-                                                "me",
-                                            ),
-                                            rail: -1,
-                                            railLeadOn: true,
-                                            tapTab: "friends",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Picker summoned",
-                                        "A modal over your library, tab bar inert. You have not gone anywhere yet, and both indicators still say so.",
-                                        {
-                                            tab: "library",
-                                            rail: -1,
-                                            railLead: "me",
-                                            railLeadOn: true,
-                                            dimTab: true,
-                                            well: SHELVES1,
-                                            sheet: {
-                                                h: 72,
-                                                modal: true,
-                                                hdr: { title: "Friends" },
-                                                caps: {
-                                                    items: [
-                                                        "Everyone",
-                                                        "Activity",
-                                                    ],
-                                                    on: "Everyone",
-                                                    add: true,
-                                                },
-                                                body: {
-                                                    type: "everyone",
-                                                    hit: "jisoo",
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her library",
-                                        "Picker dismisses, world swaps, and both indicators move to her at once.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("fr-collapsed"),
-                                                "me",
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her history",
-                                        "Same drag as your own library.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("fr-expanded"),
-                                                "me",
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "return-to-friends": {
-                                name: "Getting back to your own library",
-                                note: "<b>Decision 2 dissolves here.</b> The way home is the Library tab &mdash; already on screen, already understood, already named. No chevron, no &times;, no second tap on a lit tab, and nothing new to learn.",
-                                steps: [
-                                    [
-                                        "In her library",
-                                        "Friends lit, jisoo lit. Tap Library.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("fr-collapsed"),
-                                                "me",
-                                            ),
-                                            tapTab: "library",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Home",
-                                        "Your world, your bar, you lit on the rail. The control that did it was a destination you already had.",
-                                        {
-                                            ...withRailLead(
-                                                rootScreen("lib-collapsed"),
-                                                "me",
-                                            ),
-                                            rail: -1,
-                                            railLeadOn: true,
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                        },
-                        elements: {
-                            "el-tabbar": {
-                                note: "Now a readout as well as a control: lit Library means your world, lit Friends means someone else&rsquo;s. <b>Library and Card stay destinations while Friends becomes a picker</b> &mdash; the asymmetry to argue about, since one of the three tabs no longer behaves like a tab.",
-                            },
-                            "el-rail": {
-                                note: "Redundant with the tab bar by design: rail says <i>who</i>, tab bar says <i>whose world</i>. Cheap reassurance, or two things to keep in sync &mdash; and the reason to ask whether the rail is still carrying its row.",
-                            },
-                        },
-                        open: {
-                            "return-to-friends": null,
-                            "switch-friend":
-                                "Open question this version creates: a tab bar that changes selection without being tapped. It is honest about position and it makes your library just another page &mdash; but iOS tab bars are normally set by the user, and nothing else in the app moves a selection on your behalf.",
-                            "visit-friend":
-                                "This version <b>settles decision 1 as a side effect</b>: the tab bar can only report position if it is on screen, so <b>pushed-page</b> is off the table. Choosing this is choosing mechanic C for good.",
-                        },
-                    },
-                ],
-
-                [
-                    "tab-only",
-                    "tab-only",
-                    "The same coupling with no rail at all: the tab bar is the only position readout, the bar names who, and swiping pages between libraries. Everything tab-follows-world proposes, without the part that breaks.",
-                    "main",
-                    {
-                        screens: {
-                            "fr-collapsed": {
-                                note: "Two readouts instead of three: the bar names <i>who</i>, the lit Friends tab says <i>not your world</i>. Nothing is redundant and nothing is stacked &mdash; your own library keeps the exact geometry it has in <b>main</b>, because this version adds no row to it at all.",
-                                spec: noRail(rootScreen("fr-collapsed")),
-                            },
-                            "fr-expanded": {
-                                note: "<b>The clearance comes back.</b> With no rail taking a row, the expanded sheet keeps the full 38.8px gap under the bar &mdash; the same geometry as <b>main</b>, where <b>rail-me</b> and <b>tab-follows-world</b> are left with 5.8px.",
-                                spec: noRail(rootScreen("fr-expanded")),
-                            },
-                            "fr-everyone": {
-                                name: "Friends list &middot; summoned",
-                                note: PICKER_NOTE,
-                                spec: PICKER,
-                            },
-                            "fr-activity": {
-                                name: "Activity &middot; summoned",
-                                note: "Other capsule of the same picker. With no rail, this modal is now the <i>only</i> place the set of friends is ever visible as a set.",
-                                spec: PICKER_ACTIVITY,
-                            },
-                        },
-                        elements: {
-                            "el-rail": null,
-                            "el-tabbar": {
-                                note: "Carries the whole job: lit Library means your world, lit Friends means someone else&rsquo;s. <b>Library and Card stay destinations while Friends becomes a picker</b> &mdash; the asymmetry to argue about, since one of the three no longer behaves like a tab.",
-                            },
-                            "el-bar-friend": {
-                                note: "Now the only thing on screen that names <i>who</i> you are looking at, so the name has to carry more weight than it did when an avatar was lit above it.",
-                            },
-                        },
-                        flows: {
-                            "switch-friend": {
-                                name: "Swiping between libraries",
-                                note: "One horizontal gesture moves the background and the tab highlight together, so your own library is the leftmost page rather than a different mode. Cheaper than tab-follows-world by a whole row &mdash; and blinder by exactly the same amount.",
-                                steps: [
-                                    [
-                                        "Your library",
-                                        "Leftmost page, Library lit. Identical to <b>main</b> &mdash; this version costs your own library nothing.",
-                                        {
-                                            ...rootScreen("lib-collapsed"),
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Mid-swipe",
-                                        "Her page arrives and the tab selection comes with it, drawn half-lit. The bar takes over naming who; nothing was tapped.",
-                                        {
-                                            tab: "library",
-                                            tabHalf: "friends",
-                                            bar: {
-                                                kind: "friend",
-                                                friend: "jisoo",
-                                            },
-                                            well: {
-                                                type: "shelves",
-                                                list: [["Fiction", 2]],
-                                            },
-                                            sheet: {
-                                                h: 30,
-                                                hdr: {
-                                                    title: "Books read",
-                                                    count: 24,
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her library",
-                                        "Settled: Friends lit, bar hers. <b>What is lost:</b> nothing says how many friends there are or where among them you are &mdash; swiping is now a guess, where the rail made it a map.",
-                                        {
-                                            ...noRail(
-                                                rootScreen("fr-collapsed"),
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "visit-friend": {
-                                name: "Picking a friend from the list",
-                                note: "The deliberate route, and the only way to see the set of friends at all now. Tapping Friends summons the picker over your world, lit or not, which is simpler than making the second tap a special case.",
-                                steps: [
-                                    [
-                                        "Your library",
-                                        "Library lit. Tap Friends.",
-                                        {
-                                            ...rootScreen("lib-collapsed"),
-                                            tapTab: "friends",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Picker summoned",
-                                        "A modal over your library, tab bar inert. You have not gone anywhere yet and the tab bar still says so.",
-                                        {
-                                            ...PICKER,
-                                            sheet: {
-                                                ...PICKER.sheet,
-                                                body: {
-                                                    type: "everyone",
-                                                    hit: "jisoo",
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her library",
-                                        "Picker dismisses, world swaps, Friends lights. One indicator moved, not two.",
-                                        {
-                                            ...noRail(
-                                                rootScreen("fr-collapsed"),
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her history",
-                                        "Same drag as your own library, and with no rail above it the sheet has the room it does in <b>main</b>.",
-                                        {
-                                            ...noRail(
-                                                rootScreen("fr-expanded"),
-                                            ),
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "return-to-friends": {
-                                name: "Getting back to your own library",
-                                note: "<b>Decision 2 dissolves here too.</b> The way home is the Library tab &mdash; already on screen, already named, and it costs nothing that a rail, a chevron or a &times; would have cost.",
-                                steps: [
-                                    [
-                                        "In her library",
-                                        "Friends lit, bar hers. Tap Library.",
-                                        {
-                                            ...noRail(
-                                                rootScreen("fr-collapsed"),
-                                            ),
-                                            tapTab: "library",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Home",
-                                        "Your world, your bar, Library lit. The control that did it was a destination you already had.",
-                                        {
-                                            ...rootScreen("lib-collapsed"),
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                        },
-                        open: {
-                            "return-to-friends": null,
-                            "switch-friend":
-                                "Two open questions, both cheaper than the ones the rail created. A tab bar that changes selection without being tapped &mdash; honest, but nothing else in the app moves a selection for you. And <b>no affordance says the background can be swiped</b>, nor how far it goes: the rail was doing that work, and page dots would be the small answer if it turns out to matter.",
-                            "visit-friend":
-                                "Also <b>settles decision 1 as a side effect</b>: a tab bar can only report position if it is on screen, so <b>pushed-page</b> is off the table. Compare with <b>tab-follows-world</b> to see exactly what the rail was buying.",
-                        },
-                    },
-                ],
-
-                [
-                    "visit-model",
-                    "visit-model",
-                    "Fixes the axiom instead of the symptom: your library is home, a friend's is somewhere you visit. Rail and glass × live inside the visit, the tab bar steps aside, and praise is the payoff.",
-                    "main",
-                    {
-                        screens: {
-                            "fr-collapsed": {
-                                name: "Visiting jisoo",
-                                note: "A visit, not a mode. Flighty's globe is one shared space, so panning between friends really is one world &mdash; a bookshelf is <b>personal property</b>, and swapping the background was substituting one object for another. Naming it a visit gives departure and return for free. The tab bar steps aside because it cannot honestly report a position here, and the rail becomes the visit's own chrome: glass &times; to leave, friends to switch between.",
-                                spec: {
-                                    tab: false,
-                                    rail: 1,
-                                    railLead: "close",
-                                    bar: { kind: "friend", friend: "jisoo" },
-                                    well: HERSHELVES,
-                                    sheet: {
-                                        h: 30,
-                                        hdr: {
-                                            title: "Books read",
-                                            count: 24,
-                                            filter: "All time &#9662;",
-                                        },
-                                        body: HERPILE,
-                                    },
-                                },
-                            },
-                            "fr-expanded": {
-                                name: "Visiting jisoo &middot; her history",
-                                note: "The same sheet language as your own library, so nothing new is learned. The rail is <b>not</b> new here &mdash; <b>main</b>'s friend screens already carry it, so a visit adds no row. What the visit frees is the bottom: with no floating tab bar over the sheet, her month grid is not partly covered by chrome. Worth knowing separately that the bar-to-sheet clearance on friend screens measures 5.8px in <i>every</i> version, <b>main</b> included &mdash; a pre-existing tightness this model neither causes nor cures.",
-                                spec: {
-                                    tab: false,
-                                    rail: 1,
-                                    railLead: "close",
-                                    bar: { kind: "friend", friend: "jisoo" },
-                                    well: {
-                                        type: "shelves",
-                                        list: [["Fiction", 2]],
-                                        base: 24,
-                                    },
-                                    sheet: {
-                                        h: 72,
-                                        hdr: {
-                                            title: "Books read",
-                                            count: 24,
-                                        },
-                                        caps: {
-                                            items: ["All time", "2026", "2025"],
-                                            on: "2026",
-                                        },
-                                        body: HERMONTHS,
-                                    },
-                                },
-                            },
-                            "visit-praise": {
-                                group: "Book",
-                                name: "Praise &middot; emoji palette",
-                                note: "The reason to be in someone else's library, though it is <b>not</b> reachable from the shelf: the palette is a modal over <b>book details</b>, opened by the Praise pill. One tap, no keyboard, and the row it writes to <code>book_compliments</code> is the only <b>persisted</b> social object in the app. &#128293; is marked because it is already yours &mdash; tapping it withdraws, tapping another replaces.",
-                                spec: {
-                                    bar: false,
-                                    tab: false,
-                                    page: {
-                                        type: "detail",
-                                        self: false,
-                                        title: "The Vegetarian",
-                                        author: "Han Kang",
-                                        status: "Read",
-                                        shelf: "Novels",
-                                        color: "#6b8f71",
-                                        period: [
-                                            "2026.03.02 ~ 2026.03.14",
-                                            "12 days",
-                                        ],
-                                        praise: "&#128293;",
-                                        praised: ["&#128293;", "&#128079;"],
-                                        info: [
-                                            ["Publisher", "Changbi"],
-                                            ["ISBN", "9788936434120"],
-                                        ],
-                                    },
-                                    sheet: {
-                                        h: 62,
-                                        modal: true,
-                                        body: {
-                                            type: "praise",
-                                            on: "&#128293;",
-                                        },
-                                    },
-                                },
-                            },
-                            "book-friend": {
-                                group: "Book",
-                                name: "Book details &middot; a friend's, Read",
-                                note: "<b>This is where Praise actually lives.</b> <code>_ComplimentButton</code> sits in the details header and returns <code>SizedBox.shrink()</code> unless <code>book.status == 2</code> &mdash; so you can only praise a book a friend has <i>finished</i>, never one they are reading. Praise is for accomplishment, not for what is in progress.",
-                                spec: {
-                                    bar: false,
-                                    tab: false,
-                                    page: {
-                                        type: "detail",
-                                        self: false,
-                                        title: "The Vegetarian",
-                                        author: "Han Kang",
-                                        status: "Read",
-                                        shelf: "Novels",
-                                        color: "#6b8f71",
-                                        period: [
-                                            "2026.03.02 ~ 2026.03.14",
-                                            "12 days",
-                                        ],
-                                        praise: true,
-                                        info: [
-                                            ["Publisher", "Changbi"],
-                                            ["ISBN", "9788936434120"],
-                                        ],
-                                    },
-                                },
-                            },
-                            "book-praised": {
-                                group: "Book",
-                                name: "Book details &middot; praised",
-                                note: "The payoff state, one chip per person. The row is <code>ComplimentBlock</code>, fed by <code>bookComplimentsProvider</code>; it was dead code until <code>e67ca75</code> put it on both sides of the visit. The chips do not say <i>who</i> gave what &mdash; which is why the pill carries your own praise instead.",
-                                spec: {
-                                    bar: false,
-                                    tab: false,
-                                    page: {
-                                        type: "detail",
-                                        self: false,
-                                        title: "The Vegetarian",
-                                        author: "Han Kang",
-                                        status: "Read",
-                                        shelf: "Novels",
-                                        color: "#6b8f71",
-                                        period: [
-                                            "2026.03.02 ~ 2026.03.14",
-                                            "12 days",
-                                        ],
-                                        praise: true,
-                                        praised: [
-                                            "&#128293;",
-                                            "&#128079;",
-                                            "&#10084;&#65039;",
-                                        ],
-                                        info: [
-                                            ["Publisher", "Changbi"],
-                                            ["ISBN", "9788936434120"],
-                                        ],
-                                    },
-                                },
-                            },
-                            "shelf-hint": {
-                                group: "Proposed &mdash; not built",
-                                name: "Praise visible on the shelf",
-                                note: "<b>Does not exist today.</b> Drawn because the flow above exposes a problem: praise is four taps deep (cover &rarr; details &rarr; Praise &rarr; emoji) and <i>nothing on a shelf hints it exists</i>. Surfacing the count on the cover would advertise the loop, and since the <code>compliment_uniqueness</code> migration the count is well-defined &mdash; one per person, the same number for every viewer. Half the gap closed in <code>e67ca75</code> &mdash; the owner can now at least see praise on the detail page &mdash; but nothing still hints at it from a shelf, in either direction. Costs a new query on the shelf, so it is a proposal, not a decision.",
-                                spec: {
-                                    tab: false,
-                                    rail: 1,
-                                    railLead: "close",
-                                    bar: { kind: "friend", friend: "jisoo" },
-                                    well: {
-                                        type: "shelves",
-                                        list: [
-                                            ["Fiction", 3],
-                                            ["Essays", 2],
-                                        ],
-                                        badgeShelf: 0,
-                                        badges: { 1: ["&#128293;"] },
-                                    },
-                                    sheet: {
-                                        h: 30,
-                                        hdr: {
-                                            title: "Books read",
-                                            count: 24,
-                                        },
-                                        body: HERPILE,
-                                    },
-                                },
-                            },
-                        },
-                        elements: {
-                            "el-rail": {
-                                note: "Scoped to a visit rather than to the app: it exists only while you are in someone else's library, holds friends only, and carries the glass &times; that ends the visit. Matched with lateral swipe &mdash; the rail is the map, the swipe is the movement, and neither works without the other.",
-                                demo: `<div style="width:170px">${railRow(1, "close")}</div>`,
-                            },
-                            "el-tabbar": {
-                                note: "Hidden during a visit. A tab bar that is visible but cannot say where you are is the lie every other version had to work around; focused dismissible contexts drop their chrome, and that makes the way out unambiguous.",
-                            },
-                            "el-praise": {
-                                group: "Social",
-                                name: "Praise palette",
-                                note: "<code>AwesomeEmojiPicker</code> over ~3,500 emoji, with search, categories and a persisted Recents run. Opened by the Praise button in <b>book details</b> &mdash; not from the shelf. It replaced a fixed 16 once the live data showed 28 of 39 praises had gone outside that set anyway; the sixteen now only <i>seed</i> an empty Recents. The marked cell is <i>your</i> praise, drawn through <code>emojiRenderer</code> since the package has no selected state, and the strip above repeats it because a highlight alone cannot be found in a grid this size.",
-                                demo: `<div style="background:#fff;padding:10px;border-radius:8px;width:100%">${praisePicker("&#128293;", true)}</div>`,
-                            },
-                            "el-badge": {
-                                group: "Social",
-                                name: "Praise button and received praise",
-                                note: "<code>brandFill</code> pill, shown in book details only when <code>status == 2</code>. It wears the celebration icon until you praise, then your own emoji &mdash; you hold one praise per book and the chips beside it do not say who gave what, so this is the only thing that can tell you where you stand. The received chips are <code>ComplimentBlock</code>, live on both sides since <code>e67ca75</code>.",
-                                demo: `<div style="background:#fff;padding:10px 12px;border-radius:8px;display:flex;gap:10px;align-items:center">${praiseCluster(["&#128293;", "&#128079;", "&#10084;&#65039;"])}<span class="ppill" style="margin:0">&#127881; Praise</span><span class="ppill" style="margin:0">&#128293; Praise</span></div>`,
-                            },
-                            "el-poke": {
-                                note: "Person-level and <b>ephemeral</b> &mdash; <code>poke_user()</code> fires a push and writes no row, so a poke can never appear in Activity. Praise is the durable counterpart, which is why it gets the shelf and the feed and this only gets the bar.",
-                            },
-                        },
-                        flows: {
-                            "visit-friend": {
-                                name: "Visiting a friend",
-                                note: "Friends stays a real destination &mdash; a hub of people and what they are reading, not a picker you summon. Tapping someone enters a focused visit: tab bar out, rail in, &times; at its head.",
-                                steps: [
-                                    [
-                                        "Friends &middot; the hub",
-                                        "A destination in its own right: who your friends are and what each is reading now. Tap jisoo.",
-                                        {
-                                            tab: "friends",
-                                            well: SHELVES1,
-                                            sheet: {
-                                                h: 72,
-                                                hdr: { title: "Friends" },
-                                                caps: {
-                                                    items: [
-                                                        "Everyone",
-                                                        "Activity",
-                                                    ],
-                                                    on: "Everyone",
-                                                    add: true,
-                                                },
-                                                body: {
-                                                    type: "everyone",
-                                                    hit: "jisoo",
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Departing",
-                                        "Your shelf recedes as hers rises. The spatial model is carried by the motion, so no permanent pixels are spent reminding you that you will come back.",
-                                        {
-                                            tab: false,
-                                            rail: 1,
-                                            railLead: "close",
-                                            bar: {
-                                                kind: "friend",
-                                                friend: "jisoo",
-                                            },
-                                            well: {
-                                                type: "shelves",
-                                                list: [["Fiction", 2]],
-                                            },
-                                            sheet: {
-                                                h: 50,
-                                                hdr: {
-                                                    title: "Books read",
-                                                    count: 24,
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "In her library",
-                                        "Full-bleed and unambiguous: her rail, her bar, her sheet, and one glass &times; to leave.",
-                                        {
-                                            ...rootScreen("fr-collapsed"),
-                                            tab: false,
-                                            railLead: "close",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her history",
-                                        "Same drag as your own library. The rail was already on friend screens in <b>main</b>, so the visit adds no row &mdash; it removes the floating tab bar that would otherwise sit over her month grid.",
-                                        {
-                                            ...rootScreen("fr-expanded"),
-                                            tab: false,
-                                            railLead: "close",
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "switch-friend": {
-                                name: "Switching friends inside a visit",
-                                note: "Lateral swipe, exactly as <code>PageView</code> does today, with the rail as the map: it shows the set and where in it you are. Both gestures stay inside the visit, so nothing competes with a tab bar that is not there.",
-                                steps: [
-                                    [
-                                        "On jisoo",
-                                        "Second of five on the rail.",
-                                        {
-                                            ...rootScreen("fr-collapsed"),
-                                            tab: false,
-                                            railLead: "close",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Swipe",
-                                        "Her shelves leave, minho's arrive, and the rail selection moves with them &mdash; you can see how many are left in each direction.",
-                                        {
-                                            tab: false,
-                                            rail: 2,
-                                            railLead: "close",
-                                            bar: {
-                                                kind: "friend",
-                                                friend: "minho",
-                                            },
-                                            well: {
-                                                type: "shelves",
-                                                list: [["Essays", 3]],
-                                            },
-                                            sheet: {
-                                                h: 30,
-                                                hdr: {
-                                                    title: "Books read",
-                                                    count: 9,
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "On minho",
-                                        "Settled. The &times; still ends the visit outright rather than stepping back through everyone you passed.",
-                                        {
-                                            tab: false,
-                                            rail: 2,
-                                            railLead: "close",
-                                            bar: {
-                                                kind: "friend",
-                                                friend: "minho",
-                                            },
-                                            well: {
-                                                type: "shelves",
-                                                list: [
-                                                    ["Essays", 3],
-                                                    ["Novels", 2],
-                                                ],
-                                            },
-                                            sheet: {
-                                                h: 30,
-                                                hdr: {
-                                                    title: "Books read",
-                                                    count: 9,
-                                                    filter: "All time &#9662;",
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "return-to-friends": {
-                                name: "Leaving a visit",
-                                note: "<b>Decision 2 is answered, not dodged.</b> Naming it a visit means it has an end, so the &times; at the head of the rail is a control that ends something rather than one that pretends you navigated. It costs nothing outside a visit, because neither it nor the rail exists there.",
-                                steps: [
-                                    [
-                                        "In a visit",
-                                        "The &times; has been there since the rail dropped in. Swipe down does the same thing.",
-                                        {
-                                            ...rootScreen("fr-collapsed"),
-                                            tab: false,
-                                            railLead: "close",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Back at the hub",
-                                        "The visit ends and the tab bar returns with Friends still lit &mdash; you are back where you started, not somewhere new.",
-                                        {
-                                            tab: "friends",
-                                            well: SHELVES1,
-                                            sheet: {
-                                                h: 72,
-                                                hdr: { title: "Friends" },
-                                                caps: {
-                                                    items: [
-                                                        "Everyone",
-                                                        "Activity",
-                                                    ],
-                                                    on: "Everyone",
-                                                    add: true,
-                                                },
-                                                body: { type: "everyone" },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "praise-book": {
-                                group: "Social",
-                                name: "Praising a book: the peak",
-                                note: "Four taps, not two &mdash; cover, then the Praise pill, then an emoji. It runs through <b>book details</b>, because that is where <code>_ComplimentButton</code> lives, and the button only exists on a book the friend has finished. You hold <b>one praise per book</b>, so the last two steps are the toggle: same emoji withdraws, different emoji replaces.",
-                                steps: [
-                                    [
-                                        "Her shelf",
-                                        "Tap a cover. Nothing here says praise is available &mdash; you have to already know.",
-                                        {
-                                            ...rootScreen("fr-collapsed"),
-                                            tab: false,
-                                            railLead: "close",
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Her book, Read",
-                                        "Details open as their own screen. The Praise pill is present because <code>status == 2</code>; on a book she is still reading it is simply absent. The generic &#127881; means you have not praised this one.",
-                                        {
-                                            bar: false,
-                                            tab: false,
-                                            page: {
-                                                type: "detail",
-                                                self: false,
-                                                title: "The Vegetarian",
-                                                author: "Han Kang",
-                                                status: "Read",
-                                                shelf: "Novels",
-                                                color: "#6b8f71",
-                                                period: [
-                                                    "2026.03.02 ~ 2026.03.14",
-                                                    "12 days",
-                                                ],
-                                                praise: true,
-                                                info: [
-                                                    ["Publisher", "Changbi"],
-                                                    ["ISBN", "9788936434120"],
-                                                ],
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Picker",
-                                        "Search, Recents, categories &mdash; <code>AwesomeEmojiPicker</code> over 3,500 emoji. Nothing is marked yet: the highlight means <i>your</i> praise, and you hold none here. The Recents run is seeded with the sixteen that used to be the whole palette, so a first-timer is not staring at a blank shelf.",
-                                        {
-                                            bar: false,
-                                            tab: false,
-                                            page: {
-                                                type: "detail",
-                                                self: false,
-                                                title: "The Vegetarian",
-                                                author: "Han Kang",
-                                                status: "Read",
-                                                shelf: "Novels",
-                                                color: "#6b8f71",
-                                                period: [
-                                                    "2026.03.02 ~ 2026.03.14",
-                                                    "12 days",
-                                                ],
-                                                praise: true,
-                                                info: [
-                                                    ["Publisher", "Changbi"],
-                                                    ["ISBN", "9788936434120"],
-                                                ],
-                                            },
-                                            sheet: {
-                                                h: 62,
-                                                modal: true,
-                                                body: { type: "praise" },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "It lands",
-                                        "The emoji joins the row under her title <i>and</i> the pill takes it on. She gets a push, and unlike a poke the row is permanent.",
-                                        {
-                                            bar: false,
-                                            tab: false,
-                                            page: {
-                                                type: "detail",
-                                                self: false,
-                                                title: "The Vegetarian",
-                                                author: "Han Kang",
-                                                status: "Read",
-                                                shelf: "Novels",
-                                                color: "#6b8f71",
-                                                period: [
-                                                    "2026.03.02 ~ 2026.03.14",
-                                                    "12 days",
-                                                ],
-                                                praise: "&#128293;",
-                                                praised: ["&#128293;"],
-                                                info: [
-                                                    ["Publisher", "Changbi"],
-                                                    ["ISBN", "9788936434120"],
-                                                ],
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Re-opened",
-                                        "Now &#128293; is marked, and the strip above the grid repeats it with a <b>Remove</b>. Tapping &#128293; again withdraws your praise; tapping any other swaps it. There is no tap that adds a second one &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15.",
-                                        {
-                                            bar: false,
-                                            tab: false,
-                                            page: {
-                                                type: "detail",
-                                                self: false,
-                                                title: "The Vegetarian",
-                                                author: "Han Kang",
-                                                status: "Read",
-                                                shelf: "Novels",
-                                                color: "#6b8f71",
-                                                period: [
-                                                    "2026.03.02 ~ 2026.03.14",
-                                                    "12 days",
-                                                ],
-                                                praise: "&#128293;",
-                                                praised: ["&#128293;"],
-                                                info: [
-                                                    ["Publisher", "Changbi"],
-                                                    ["ISBN", "9788936434120"],
-                                                ],
-                                            },
-                                            sheet: {
-                                                h: 62,
-                                                modal: true,
-                                                body: {
-                                                    type: "praise",
-                                                    on: "&#128293;",
-                                                },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Swapped",
-                                        "&#128079; replaces &#128293; in place. Praise stays one-per-person, so a book's chip count means the same thing to every viewer &mdash; but the <i>vocabulary</i> is now unbounded, so a count is the only thing safe to aggregate.",
-                                        {
-                                            bar: false,
-                                            tab: false,
-                                            page: {
-                                                type: "detail",
-                                                self: false,
-                                                title: "The Vegetarian",
-                                                author: "Han Kang",
-                                                status: "Read",
-                                                shelf: "Novels",
-                                                color: "#6b8f71",
-                                                period: [
-                                                    "2026.03.02 ~ 2026.03.14",
-                                                    "12 days",
-                                                ],
-                                                praise: "&#128079;",
-                                                praised: ["&#128079;"],
-                                                info: [
-                                                    ["Publisher", "Changbi"],
-                                                    ["ISBN", "9788936434120"],
-                                                ],
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                            "praise-received": {
-                                group: "Social",
-                                name: "Being praised: the ending",
-                                note: "The other half of the loop, working as of <code>e67ca75</code>. Activity is worth shipping because praise gives it real content with no migration &mdash; and the row now has somewhere to land: the chips render for the owner as well as for visitors. Since the <code>compliment_uniqueness</code> migration the chips are also one-per-person, and readable by anyone who can see the book, so the row is the same for her, for you, and for a third visitor.",
-                                steps: [
-                                    [
-                                        "Activity",
-                                        "Persisted rows only: finishes, ratings and praise. Pokes cannot appear here without a <code>poke_events</code> table.",
-                                        {
-                                            tab: "friends",
-                                            well: SHELVES1,
-                                            sheet: {
-                                                h: 72,
-                                                hdr: { title: "Friends" },
-                                                caps: {
-                                                    items: [
-                                                        "Everyone",
-                                                        "Activity",
-                                                    ],
-                                                    on: "Activity",
-                                                    add: true,
-                                                },
-                                                body: { type: "activity" },
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                    [
-                                        "Your book",
-                                        "The chips sit under the status badge in your own hero corner. They were previously wrapped in the same <code>if (!isSelf)</code> guard as the Praise button, so the recipient never saw them &mdash; fixed in <code>e67ca75</code>, which also retired <code>ComplimentBlock</code> from being dead code. The button stays owner-hidden: you still cannot praise yourself.",
-                                        {
-                                            bar: false,
-                                            tab: false,
-                                            page: {
-                                                type: "detail",
-                                                self: true,
-                                                title: "Pachinko",
-                                                author: "Min Jin Lee",
-                                                status: "Read",
-                                                shelf: "Novels",
-                                                color: "#4a6c8c",
-                                                praised: [
-                                                    "&#128079;",
-                                                    "&#128293;",
-                                                ],
-                                                period: [
-                                                    "2026.01.11 ~ 2026.02.02",
-                                                    "22 days",
-                                                ],
-                                                info: [
-                                                    [
-                                                        "Publisher",
-                                                        "Grand Central",
-                                                    ],
-                                                    ["ISBN", "9781455563937"],
-                                                ],
-                                            },
-                                            sm: true,
-                                        },
-                                    ],
-                                ],
-                            },
-                        },
-                        open: {
-                            "return-to-friends": null,
-                            "visit-friend":
-                                "<b>This reframes decision 1 rather than picking a side.</b> It is close to <b>pushed-page</b> in mechanics, but for the opposite reason: not &ldquo;a page that unfortunately covers the tab bar&rdquo;, but a focused context that <i>should</i> drop the tab bar, because a bookshelf is property and visiting one is a place you leave. Your own library keeps the persistent background, which is the part of the world rule that was always true.",
-                            "praise-book":
-                                "<b>Data settled and shipped:</b> praise is <b>one per person per book</b> &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15 &mdash; and a tap is a toggle: same emoji withdraws, different emoji replaces. Reads widened to match the book's own visibility, so a third visitor sees the same praise the owner does and a count means the same thing to everyone; verified against the real database, where a third party went from seeing 0 rows to 2. <b>Vocabulary settled too:</b> the fixed 16 are gone. 28 of the 39 live praises were already outside them (🦄 🐲 🧸 🛸), so the palette was never what people used; both emoji columns widened from <code>varchar(6)</code> to <code>text</code> with a 16-code-point cap, because 290 of the 3,544 emoji do not fit six. <b>Still open &mdash; discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page.",
-                        },
-                    },
                 ],
             ];
             /* ==================================================================
