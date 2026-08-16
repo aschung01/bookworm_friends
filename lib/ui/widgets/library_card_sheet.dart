@@ -15,15 +15,24 @@ import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 /// Library tab, which already groups them by month; a second sortable list of the
 /// same rows here would be a second home for one set of data.
 class LibraryCardSheet extends StatelessWidget {
+  /// Springs the sheet shut and goes inert while the library is being edited — an
+  /// edit can be started from any tab, so every sheet has to get out of the way.
+  final bool isEditMode;
+
   /// See [LibrarySheet.bottomReserve].
   final double bottomReserve;
 
-  const LibraryCardSheet({super.key, this.bottomReserve = 0});
+  const LibraryCardSheet({
+    super.key,
+    this.isEditMode = false,
+    this.bottomReserve = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return LibrarySheet(
+      isEditMode: isEditMode,
       bottomReserve: bottomReserve,
       header: LibrarySheetTitle(title: l10n.libraryCard),
       body: SizedBox(

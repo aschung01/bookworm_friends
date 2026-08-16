@@ -26,6 +26,13 @@ class FriendsSheet extends StatelessWidget {
   final ValueChanged<Profile> onSelectFriend;
   final VoidCallback onAddFriend;
 
+  /// Springs the sheet shut and goes inert while the library is being edited.
+  ///
+  /// An edit can be started from any tab, so every sheet has to get out of the
+  /// way — not just the read-books one. Left expanded, this sheet would sit there
+  /// at full height taking room the library needs to be rearranged in.
+  final bool isEditMode;
+
   /// See [LibrarySheet.bottomReserve].
   final double bottomReserve;
 
@@ -35,6 +42,7 @@ class FriendsSheet extends StatelessWidget {
     required this.selectedFriend,
     required this.onSelectFriend,
     required this.onAddFriend,
+    this.isEditMode = false,
     this.bottomReserve = 0,
   });
 
@@ -42,6 +50,7 @@ class FriendsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return LibrarySheet(
+      isEditMode: isEditMode,
       bottomReserve: bottomReserve,
       header: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -50,7 +59,7 @@ class FriendsSheet extends StatelessWidget {
           // Icon-only: this is the home for `search_user_page`, and it is a
           // secondary action next to a list of people you already follow.
           IconButton(
-            onPressed: onAddFriend,
+            onPressed: isEditMode ? null : onAddFriend,
             tooltip: l10n.searchFriends,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.person_add_alt, size: 22),
@@ -66,7 +75,10 @@ class FriendsSheet extends StatelessWidget {
                   _FriendRow(
                     friend: friend,
                     isSelected: friend.id == selectedFriend?.id,
-                    onTap: () => onSelectFriend(friend),
+                    // Inert with the rest of the sheet: leaving an edit by
+                    // paging to someone else's library is not a way out anyone
+                    // asked for.
+                    onTap: isEditMode ? null : () => onSelectFriend(friend),
                   ),
                 const SizedBox(height: 6),
               ],
@@ -78,7 +90,7 @@ class FriendsSheet extends StatelessWidget {
 class _FriendRow extends StatelessWidget {
   final Profile friend;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _FriendRow({
     required this.friend,
@@ -97,7 +109,7 @@ class _FriendRow extends StatelessWidget {
             AvatarCircle(
               emoji: friend.emoji ?? '',
               isSelected: isSelected,
-              onTap: onTap,
+              onTap: onTap ?? () {},
             ),
             const SizedBox(width: 12),
             Expanded(

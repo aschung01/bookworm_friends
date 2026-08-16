@@ -27,6 +27,7 @@ import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/friend_rail.dart';
 import 'package:bookworm_friends/ui/widgets/friends_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/library_card_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
@@ -210,6 +211,60 @@ void main() {
         // and tapping it pages to hers. Task 5 makes that a visit and hides the
         // bar; today it is the existing pager behaviour, reached from the sheet.
         expect(find.byType(FriendsSheet), findsNothing);
+      },
+    );
+    // Card is the sharp case: its sheet has no reason of its own to move, so
+    // before this it sat at full height while the covers wiggled, taking room the
+    // library needed to be rearranged in. One test per tab rather than a loop:
+    // edit mode's wiggle repeats forever, so a second `pumpHome` in the same test
+    // never settles.
+    for (final tab in ['Library', 'Friends', 'Card']) {
+      testWidgets(
+        'Given the $tab tab, When the library enters edit mode, Then the bar is '
+        'hidden and the sheet springs shut',
+        (tester) async {
+          await _pumpShell(tester);
+          await _selectTab(tester, tab);
+          final sheetBefore = tester.getRect(find.byType(LibrarySheet));
+
+          await enterEditMode(tester);
+          await tester.pump(const Duration(seconds: 2));
+
+          expect(
+            find.byType(ShellTabBar),
+            findsNothing,
+            reason: 'an edit is a focused context and drops its chrome',
+          );
+          expect(
+            tester.getRect(find.byType(LibrarySheet)).height,
+            lessThan(sheetBefore.height),
+            reason: 'the sheet should give the library room to edit in',
+          );
+          expect(isEditing(), isTrue);
+        },
+      );
+    }
+
+    testWidgets(
+      'Given an edit in progress, When it ends, Then the bar comes back on the '
+      'same tab',
+      (tester) async {
+        await _pumpShell(tester);
+        await _selectTab(tester, 'Card');
+
+        await enterEditMode(tester);
+        await tester.pump(const Duration(seconds: 2));
+        expect(find.byType(ShellTabBar), findsNothing);
+
+        await tester.tap(find.text('Done'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ShellTabBar), findsOneWidget);
+        expect(
+          find.byType(LibraryCardSheet),
+          findsOneWidget,
+          reason: 'an edit should not quietly move you to another tab',
+        );
       },
     );
   });

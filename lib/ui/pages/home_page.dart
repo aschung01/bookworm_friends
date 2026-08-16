@@ -80,14 +80,18 @@ class _HomePageState extends ConsumerState<HomePage> {
     required List<Profile> following,
     required Profile? selectedFriend,
   }) {
+    final isEditMode = mode == LibraryMode.editLibrary;
+    // No bar to leave room for while editing, and the library wants every pixel
+    // it can get to be rearranged in.
+    final reserve = isEditMode ? 0.0 : ShellTabBar.reserve;
     switch (tab) {
       case LibraryTab.library:
         return FinishedBooksSheet(
           books: finishedBooks,
-          isEditMode: mode == LibraryMode.editLibrary,
+          isEditMode: isEditMode,
           filterYear: filterYear,
           filterMonth: filterMonth,
-          bottomReserve: ShellTabBar.reserve,
+          bottomReserve: reserve,
           onFilterPressed: () async {
             final result = await showYearMonthFilterBottomSheet(
               context,
@@ -104,7 +108,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         return FriendsSheet(
           following: following,
           selectedFriend: selectedFriend,
-          bottomReserve: ShellTabBar.reserve,
+          isEditMode: isEditMode,
+          bottomReserve: reserve,
           onSelectFriend: (profile) {
             ref.read(selectedFriendProvider.notifier).state = profile;
             ref.read(libraryModeProvider.notifier).state = LibraryMode.library;
@@ -113,7 +118,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Navigator.pushNamed(context, AppRoutes.searchUsers),
         );
       case LibraryTab.card:
-        return LibraryCardSheet(bottomReserve: ShellTabBar.reserve);
+        return LibraryCardSheet(isEditMode: isEditMode, bottomReserve: reserve);
     }
   }
 
@@ -395,17 +400,24 @@ class _HomePageState extends ConsumerState<HomePage> {
               // its bottom for exactly this. Both sides read the same constants,
               // so the gap above and below the bar is fixed by construction
               // rather than measured.
-              Positioned(
-                left: ShellTabBar.sideInset,
-                right: ShellTabBar.sideInset,
-                bottom: ShellTabBar.bottomOffset(context),
-                child: ShellTabBar(
-                  current: tab,
-                  onChanged: (next) =>
-                      ref.read(libraryTabProvider.notifier).state = next,
-                  onAddBook: _onAddBookPressed,
+              //
+              // Hidden while editing. An edit is a focused, dismissible context
+              // with its own way out (Done), and the design's rule for those is
+              // that they drop their chrome — the same reason a visit hides the
+              // bar. It also stops you leaving a half-finished edit sideways
+              // through a tab.
+              if (mode != LibraryMode.editLibrary)
+                Positioned(
+                  left: ShellTabBar.sideInset,
+                  right: ShellTabBar.sideInset,
+                  bottom: ShellTabBar.bottomOffset(context),
+                  child: ShellTabBar(
+                    current: tab,
+                    onChanged: (next) =>
+                        ref.read(libraryTabProvider.notifier).state = next,
+                    onAddBook: _onAddBookPressed,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
