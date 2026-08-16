@@ -262,7 +262,44 @@ holds — but it is visibly the wrong sheet state for the mode. Task 6.
 **Not done, and it is a real deviation from the design:** the orb opens Add Book as a **full-page push**
 (the existing `AppRoutes.search`), not the 95%-height modal the design specifies. Preserved rather than
 changed because re-presenting that page is its own piece of work — but it is unfinished Task 4 scope,
-not a decision.
+not a decision. **Now done — see below.**
+
+### Both Task 7 gaps closed
+
+**The edit-mode sheet state.** An edit now hides the bar, and every sheet takes `isEditMode`. The
+design's own rule decided it: focused dismissible contexts drop their chrome, which is the stated reason
+a visit hides the bar, and an edit is one — it has a Done. Hiding the bar alone was not enough, because
+an edit can start from any tab, so `FriendsSheet` and `LibraryCardSheet` spring shut too and
+`bottomReserve` drops to 0. Rejected: forcing the tab back to Library on entering an edit, which works
+but silently moves you and then makes Done decide whether to move you back.
+
+**Add Book is a 95% modal.** `search_book_page.dart` moved to
+`ui/widgets/bottom_sheets/add_book_bottom_sheet.dart`, and the `/search` route is gone — nothing pushed
+it but the orb, so keeping the pushed presentation would have left dead chrome. The field is extracted
+as `SearchTextField` / `SearchFieldPill` so the sheet and `search_user_page`'s header cannot drift.
+
+One trap worth recording: **`showDragHandle: true` adds Material's handle _outside_ the builder's
+child**, so its height lands on top of an exact requested height. A sheet asked for 95% measured ~98%,
+with no barrier left to see and no rounded corners — it read as a full-screen page, which is the one
+thing the modal was supposed not to be. Fixed by drawing `SheetGrabHandle` inside the box instead, and
+the test now pins the sheet's top edge at 5% ± 2pt rather than its height within a loose tolerance,
+because the loose bound is exactly what failed to notice.
+
+Verified on device: rounded corners, handle, visible dimmed barrier, real search results over the
+network, and the nested `book_info_bottom_sheet` still working over it. The native tab bar auto-hides
+behind the modal rather than being drawn dimmed behind it as `decided.html` shows — deliberate: a
+`UITabBar` composited over Flutter modal content is a real rendering bug, and auto-hide is the mechanism
+that prevents it.
+
+### Found on the way, pre-existing, not fixed
+
+**The app bar's native glass icon buttons bleed over stacked modals.** With Add Book open _and_ the
+book-info sheet open on top of it, `native-find-views --className ChildClippingView` reports the home
+app bar's search and menu buttons at y=70, x=299 and x=347, `hidden=false, alpha=1` — drawn over both
+sheets as a white rectangle beside the close button. Under a _single_ modal they hide correctly, so
+whatever depth tracking they use handles one level and not two. Reproducible today without any of this
+phase's changes (manage shelves → rename is two stacked sheets from the same app bar), so it is
+pre-existing and belongs to whatever revisits `AdaptiveIconButton`, not to Phase 1.
 
 ---
 
@@ -292,7 +329,7 @@ visit before it pops the page (extend `library_back_navigation_test.dart`).
 - [ ] Settle what the tab bar does during an edit. Task 7 confirmed on device that switching to Card
       mid-edit leaves that sheet expanded while the covers wiggle. Options: hide the bar for an edit
       (an edit is a focused context, and the design already hides the bar for the other one — a visit),
-      or give every sheet `isEditMode` so they all spring shut.
+      or give every sheet `isEditMode` so they all spring shut. **Done — both, see Task 4.**
 - [ ] Consider measuring the bar's height at runtime instead of the constants Task 7 landed. 83/62 are
       the real `UITabBar` box and platter heights on iPhone 17 Pro / iOS 26.4, but that is one device at
       one text size, and the package exposes no way to read what it measured. A `GlobalKey` +

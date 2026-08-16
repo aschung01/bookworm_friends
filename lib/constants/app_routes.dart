@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bookworm_friends/ui/pages/auth_page.dart';
 import 'package:bookworm_friends/ui/pages/home_page.dart';
-import 'package:bookworm_friends/ui/pages/search_book_page.dart';
 import 'package:bookworm_friends/ui/pages/search_user_page.dart';
 import 'package:bookworm_friends/ui/pages/settings_page.dart';
 import 'package:bookworm_friends/ui/pages/splash_page.dart';
@@ -17,7 +16,6 @@ class AppRoutes {
   static const String searchUsers = '/search_users';
   static const String userLibrary = '/user_library';
   static const String details = '/details';
-  static const String search = '/search';
   static const String settings = '/settings';
 
   static Map<String, WidgetBuilder> get routes => {
@@ -27,7 +25,6 @@ class AppRoutes {
     searchUsers: (_) => const SearchUserPage(),
     userLibrary: (_) => const UserLibraryPage(),
     details: (_) => const BookDetailsTabView(),
-    search: (_) => const SearchBookPage(),
     settings: (_) => const SettingsPage(),
   };
 }

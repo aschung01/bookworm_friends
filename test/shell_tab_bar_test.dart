@@ -18,16 +18,19 @@
 import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/profile.dart';
+import 'package:bookworm_friends/providers/book_search_provider.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/friend_rail.dart';
 import 'package:bookworm_friends/ui/widgets/friends_sheet.dart';
-import 'package:bookworm_friends/ui/widgets/library_card_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/headers/search_header.dart';
 import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/library_card_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
@@ -265,6 +268,62 @@ void main() {
           findsOneWidget,
           reason: 'an edit should not quietly move you to another tab',
         );
+      },
+    );
+    testWidgets(
+      'Given the shell, When Add Book is tapped, Then it opens as a modal at 95% '
+      'height rather than replacing the library',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        await pumpHome(
+          tester,
+          extraOverrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            finishedBooksProvider.overrideWith((ref, filter) async => <Book>[]),
+          ],
+        );
+
+        await tester.tap(
+          find.descendant(
+            of: find.byType(ShellTabBar),
+            matching: find.byIcon(Icons.search),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final sheet = find.byType(SearchTextField);
+        expect(
+          sheet,
+          findsOneWidget,
+          reason: 'the search field should be in it',
+        );
+        expect(find.text('Add book'), findsOneWidget);
+
+        // 95%, not full screen: the barrier stays visible at the top so it reads
+        // as covering the library rather than replacing it. Tight tolerance on
+        // purpose — Material's own drag handle silently pushed this to ~98% and a
+        // loose bound did not notice.
+        final screen = tester.getSize(find.byType(MaterialApp)).height;
+        // Scoped to the modal: the library's own sheet is still behind it, with a
+        // handle of its own.
+        final modal = find
+            .ancestor(
+              of: find.byType(SearchTextField),
+              matching: find.byType(Column),
+            )
+            .last;
+        final sheetBox = tester.getRect(
+          find.descendant(of: modal, matching: find.byType(SheetGrabHandle)),
+        );
+        expect(
+          sheetBox.top,
+          closeTo(screen * 0.05, 2),
+          reason: 'the sheet should start 5% down, leaving the barrier visible',
+        );
+
+        // The library is still there underneath, not popped.
+        expect(find.byType(ShelfRow), findsWidgets);
       },
     );
   });

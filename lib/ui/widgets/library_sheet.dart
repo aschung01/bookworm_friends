@@ -330,17 +330,7 @@ class _LibrarySheetState extends State<LibrarySheet>
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: interactive ? () => _snapTo(expand: !_isExpanded) : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: context.colors.secondaryText,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
+                child: const SheetGrabHandle(),
               ),
               Padding(
                 padding: const EdgeInsets.only(
@@ -354,6 +344,33 @@ class _LibrarySheetState extends State<LibrarySheet>
           ),
           widget.body,
         ],
+      ),
+    );
+  }
+}
+
+/// The grab handle at the top of a sheet.
+///
+/// Shared with the Add Book modal, which draws its own rather than using
+/// Material's `showDragHandle`: that one is added outside the builder's child, so
+/// it silently adds its height to a sheet asked for an exact fraction of the
+/// screen — a 95% sheet came out at ~98% with no barrier left to see.
+class SheetGrabHandle extends StatelessWidget {
+  const SheetGrabHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Center(
+        child: Container(
+          width: 44,
+          height: 5,
+          decoration: BoxDecoration(
+            color: context.colors.secondaryText,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
       ),
     );
   }

@@ -15,6 +15,7 @@ import 'package:bookworm_friends/ui/widgets/friend_rail.dart';
 import 'package:bookworm_friends/ui/widgets/friends_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/library_card_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/add_book_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/update_shelf_name_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_book_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_shelf_bottom_sheet.dart';
@@ -63,7 +64,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _onAddBookPressed() async {
-    await Navigator.pushNamed(context, AppRoutes.search);
+    await showAddBookBottomSheet(context);
   }
 
   /// The sheet the selected tab puts above the library.
