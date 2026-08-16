@@ -2470,7 +2470,7 @@
                         [
                             "add-modal",
                             "Add Book &middot; modal 95%",
-                            "Opened by the detached circular button. Tinted <code>sheetBackground</code>, covers the bar, tab bar inert behind it.",
+                            "Opened by the detached circular button. Tinted <code>sheetBackground</code>, covers the bar. <b>Built differently, and the drawing was wrong:</b> this showed the tab bar dimmed behind the modal, but on iOS 26 that bar is a native <code>UITabBar</code>, and a native view composited over Flutter modal content is the rendering bug <code>CNTabBarRouteObserver</code> exists to prevent. It auto-hides instead &mdash; the package triggers that on routes whose type name contains &ldquo;Sheet&rdquo; &mdash; so <code>tab: false</code> here rather than a dimmed bar. Confirmed on an iOS 26.4 simulator.",
                             {
                                 well: false,
                                 bar: false,
@@ -2480,14 +2480,13 @@
                                     hdr: { title: "Add Book" },
                                     body: { type: "search", n: 6 },
                                 },
-                                searchOn: true,
-                                dimTab: true,
+                                tab: false,
                             },
                         ],
                         [
                             "add-form",
                             "Add Book &middot; result tapped",
-                            "Shelf, status and dates before saving &mdash; the existing <code>book_info_bottom_sheet</code> flow, unchanged.",
+                            "Shelf, status and dates before saving &mdash; the existing <code>book_info_bottom_sheet</code> flow, unchanged. Confirmed on an iOS 26.4 simulator, nested over Add Book, and the tab bar is hidden here too for the reason given on the previous screen — hence <code>tab: false</code> rather than the dimmed bar this used to draw.",
                             {
                                 well: false,
                                 bar: false,
@@ -2501,8 +2500,7 @@
                                         start: "12 Aug 2026",
                                     },
                                 },
-                                searchOn: true,
-                                dimTab: true,
+                                tab: false,
                             },
                         ],
                     ],
@@ -3722,7 +3720,7 @@
                 "praise-book":
                     "<b>Data settled and shipped:</b> praise is <b>one per person per book</b> &mdash; <code>UNIQUE (book_id, from_user_id)</code>, applied to the live project on 2026-08-15 &mdash; and a tap is a toggle: same emoji withdraws, different emoji replaces. Reads widened to match the book's own visibility, so a third visitor sees the same praise the owner does and a count means the same thing to everyone; verified against the real database, where a third party went from seeing 0 rows to 2. <b>Vocabulary settled too:</b> the fixed 16 are gone. 28 of the 39 live praises were already outside them (&#129412; &#128050; &#129528; &#128760;), so the palette was never what people used; both emoji columns widened from <code>varchar(6)</code> to <code>text</code> with a 16-code-point cap, because 290 of the 3,544 emoji do not fit six. <b>Still open &mdash; discoverability:</b> praise is four taps deep and invisible from any shelf, so most users will never find it. The proposed shelf hint is the cheapest fix; the alternative is accepting that praise is something you only meet in a detail page.",
                 "fr-collapsed":
-                    "<b>Open at build time, not in the design &mdash; measure it in Flutter.</b> The rail and the sheet are both positioned from opposite edges, so a rail above a sheet does not push it down: the clearance under the bar falls from 38.8px to 5.8px on a friend's screen, and tips into overlap at the smaller size the flow steps are drawn at. It measures the same in every version this file ever held, <code>main</code> included, so it is a pre-existing tightness rather than anything the visit model introduced &mdash; but Phase 1 lays out this screen, and that is the moment to fix it.",
+                    "<b>Answered in Flutter &mdash; and inverted.</b> This drawing said the clearance under the bar falls to 5.8px on a friend's screen, because <code>.rail</code> and <code>.bar</code> are in flow while <code>.sheet</code> is <code>absolute; bottom:0</code> at a percentage height, so a rail row pushes the bar down without moving the sheet up. Flutter does not lay out that way: the rail sits in the app bar and the library is an <code>Expanded</code> between two measured siblings. Measured on a 375&times;667 phone, the band of library left is <b>319pt on your own library and 329pt on a friend's</b> &mdash; the friend screen is the <i>roomier</i> one, because a visit costs the rail's 48pt row but frees the tab bar's 78pt reservation. 304pt at 2&times; text. Nothing needed fixing; the numbers are pinned by <code>library_clearance_test.dart</code>, which also asserts that the read pile stays a fixed-height horizontal scroller &mdash; that is what stops the sheet growing with the library and is the only thing keeping the band bounded.",
             };
 
             /* ==================================================================

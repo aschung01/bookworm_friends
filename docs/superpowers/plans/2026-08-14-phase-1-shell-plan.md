@@ -457,8 +457,18 @@ mockups would have surfaced this; only laying it out at a size nobody had tried 
       **Done for Task 4 on iOS 26.4 via `argent` + `lib/main_shell_preview.dart`; three bugs found and
       fixed, written up under Task 4.** The z-order bleed did not materialise. Re-run after Task 5, which
       adds the transition this bullet is most worried about.
-- [ ] Update `decided.html` only where the build proves a drawing wrong, and say so in the note rather than
-      quietly redrawing.
+- [x] Update `decided.html` only where the build proves a drawing wrong, and say so in the note rather than
+      quietly redrawing. **Two drawings were wrong, both now corrected in place with the reason in the
+      note:** `add-modal` and `add-form` drew the tab bar dimmed behind the modal, which on iOS 26 would
+      mean a native `UITabBar` composited over Flutter modal content — the exact bug
+      `CNTabBarRouteObserver` prevents. Both are `tab: false` now. The `fr-collapsed` open callout is
+      answered with the measured Flutter numbers instead of the mockup's 5.8px.
+
+      Deliberately **not** redrawn: the Everyone row still shows a reading line and a read count, and the
+          bar still shows share. Those are the intended design and Phase 1 simply has not built them — a
+          drawing that is ahead of the code is not a drawing that is wrong, and flattening it to match would
+          lose the target. Other screens carrying `dimTab` are left alone because this phase never exercised
+          them; correcting drawings on the strength of a guess is what this bullet exists to prevent.
 
 **How to re-run it.** The simulator has no signed-in session and sign-in is Apple/Google, so verification
 goes through a fixture entrypoint:
