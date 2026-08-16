@@ -1739,10 +1739,13 @@
             <div class="view on" id="v-screens">
                 <h1>Every decided screen</h1>
                 <p class="lead">
-                    Only what survived the session &mdash; superseded options
-                    live in the <a href="index.html">full mockup index</a>.
-                    Rendered from the real tokens in
-                    <code>app_theme.dart</code>:
+                    Only what survived the session. The reasoning &mdash;
+                    settled decisions, what each rejected option taught, what is
+                    still open, and the phasing &mdash; is written up in
+                    <code
+                        >docs/superpowers/specs/2026-08-14-library-shell-design.md</code
+                    >. This page is the drawings. Rendered from the real tokens
+                    in <code>app_theme.dart</code>:
                     <code>pageBackground #F8F9FA</code>,
                     <code>surface #FFFFFF</code>, <code>brand #09BC8A</code>,
                     <code>brandText #067657</code>, with the bar as
@@ -3734,8 +3737,9 @@
    consolidated into SECTION 3 above, which now describes the decided design
    directly rather than as a patch over a superseded one.
 
-   The explorations are not lost, they are just not live: index.html keeps a
-   one-line record of what each tried and why it lost, and git has the drawings
+   The explorations are not lost, they are just not live:
+   docs/superpowers/specs/2026-08-14-library-shell-design.md keeps a written
+   record of what each tried and why it lost, and git has the drawings
    themselves. Deleting them was not tidying — their patches were written
    against the *old* root, so against this one they would render hybrids that
    were never proposed.
