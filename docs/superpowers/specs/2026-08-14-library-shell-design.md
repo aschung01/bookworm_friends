@@ -3,8 +3,9 @@
 **Date:** 2026-08-14
 **Status:** Decided. **Phase 1 (Shell) complete** — see
 `docs/superpowers/plans/2026-08-14-phase-1-shell-plan.md` for what shipped, what it deviated
-on and why, and the eight bugs building it surfaced. **Phase 2 (Read view) planned** in
-`docs/superpowers/plans/2026-08-16-phase-2-read-view-plan.md`; not started.
+on and why, and the eight bugs building it surfaced. **Phase 2 (Read view) complete** — see
+`docs/superpowers/plans/2026-08-16-phase-2-read-view-plan.md`, which records four more bugs, the
+drag-versus-scroll decision, and why `user_library_page.dart` survived. **Phase 3 (Library Card) next.**
 **Visual record:** `docs/mockups/library-shell/decided.html` — every screen, UI
 element and flow, browsable. Open it from disk; no server needed.
 

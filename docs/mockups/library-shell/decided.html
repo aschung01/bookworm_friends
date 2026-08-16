@@ -2184,7 +2184,11 @@
                 if (s.well) h += `<div class="well">${bodyOf(s.well)}</div>`;
                 if (s.page) h += bodyOf(s.page);
                 if (s.pop)
-                    h += `<div class="pop">${["All time", "2026", "2025", "2024"].map((x) => `<s class="${x === s.pop ? "on" : ""}">${x}</s>`).join("")}</div>`;
+                    // Bottom-up on purpose: see the lib-popover note. The popover
+                    // only ever opens from the collapsed header, which sits near
+                    // the bottom of the screen, so the real UIMenu opens upward
+                    // and iOS keeps the first item nearest the button.
+                    h += `<div class="pop">${["2024", "2025", "2026", "All time"].map((x) => `<s class="${x === s.pop ? "on" : ""}">${x}</s>`).join("")}</div>`;
                 if (s.sheet) {
                     const sh = s.sheet;
                     h += `<div class="sheet${sh.modal ? " modal" : ""}" style="height:${sh.h}%"><div class="hdl"></div>`;
@@ -2312,7 +2316,7 @@
                         [
                             "lib-popover",
                             "Read filter &middot; glass popover",
-                            "Collapsed, the filter is a compact popover select. Capsules there would cost the whole pile.",
+                            "Collapsed, the filter is a compact popover select. Capsules there would cost the whole pile. <b>Built differently, and the drawing was wrong:</b> this listed the options top-down from <code>All time</code>, but the popover only ever opens from the collapsed header &mdash; which sits near the bottom of the screen &mdash; so the real <code>UIMenu</code> opens <i>upward</i>, and iOS keeps the first item nearest the button. <code>All time</code> therefore lands at the bottom and the years read up from it. Left as the platform does it rather than forced with <code>preserveTopToBottomOrder</code>: the flip puts the most recent years closest to the thumb, and <code>shelf_selector</code> already accepts the same convention. Confirmed on an iOS 26.4 simulator; the drawn order is reversed to match.",
                             {
                                 well: SHELVES3,
                                 pop: "All time",
@@ -2850,7 +2854,7 @@
                                 ],
                                 [
                                     "Glass popover",
-                                    "Tapping it opens a native-style popover select.",
+                                    "Tapping it opens a native-style popover select. Built as a real <code>UIMenu</code>, so the current option carries a checkmark rather than the filled row drawn here, and the list reads bottom-up &mdash; see the <code>lib-popover</code> note.",
                                     {
                                         well: SHELVES3,
                                         pop: "All time",
