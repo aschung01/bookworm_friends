@@ -10,6 +10,7 @@ import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
+import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
@@ -26,19 +27,6 @@ import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_date_bottom_she
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart';
 import 'package:bookworm_friends/ui/widgets/loading_blocks.dart';
-
-enum LibraryMode { library, editLibrary }
-
-final _libraryModeProvider = StateProvider.autoDispose<LibraryMode>(
-  (ref) => LibraryMode.library,
-);
-final _selectedFriendProvider = StateProvider.autoDispose<Profile?>(
-  (ref) => null,
-);
-final _filterYearProvider = StateProvider.autoDispose<int>((ref) => 0);
-final _filterMonthProvider = StateProvider.autoDispose<int>((ref) => 0);
-final _friendFilterYearProvider = StateProvider.autoDispose<int>((ref) => 0);
-final _friendFilterMonthProvider = StateProvider.autoDispose<int>((ref) => 0);
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -160,13 +148,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final libraryAsync = ref.watch(libraryProvider);
-    final filterYear = ref.watch(_filterYearProvider);
-    final filterMonth = ref.watch(_filterMonthProvider);
+    final filterYear = ref.watch(readsFilterYearProvider);
+    final filterMonth = ref.watch(readsFilterMonthProvider);
     final finishedBooksAsync = ref.watch(
       finishedBooksProvider((year: filterYear, month: filterMonth)),
     );
-    final mode = ref.watch(_libraryModeProvider);
-    final selectedFriend = ref.watch(_selectedFriendProvider);
+    final mode = ref.watch(libraryModeProvider);
+    final selectedFriend = ref.watch(selectedFriendProvider);
     final myProfile = ref.watch(profileProvider);
     final followingAsync = ref.watch(followingListProvider);
     final following = followingAsync.valueOrNull ?? [];
@@ -175,7 +163,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     // Keep the horizontal pager in sync when a friend is selected by tapping
     // an avatar (or when selection is cleared).
-    ref.listen<Profile?>(_selectedFriendProvider, (prev, next) {
+    ref.listen<Profile?>(selectedFriendProvider, (prev, next) {
       _syncPageToFriend(following, next);
     });
 
@@ -186,7 +174,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         !following.any((f) => f.id == selectedFriend.id)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          ref.read(_selectedFriendProvider.notifier).state = null;
+          ref.read(selectedFriendProvider.notifier).state = null;
         }
       });
     }
@@ -196,13 +184,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       canPop: mode == LibraryMode.library,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && mode != LibraryMode.library) {
-          ref.read(_libraryModeProvider.notifier).state = LibraryMode.library;
+          ref.read(libraryModeProvider.notifier).state = LibraryMode.library;
         }
       },
       child: GestureDetector(
         onTap: () {
           if (mode == LibraryMode.editLibrary) {
-            ref.read(_libraryModeProvider.notifier).state = LibraryMode.library;
+            ref.read(libraryModeProvider.notifier).state = LibraryMode.library;
           }
         },
         child: Scaffold(
@@ -223,12 +211,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                       following: following,
                       selectedFriend: selectedFriend,
                       onSelectSelf: () {
-                        ref.read(_selectedFriendProvider.notifier).state = null;
+                        ref.read(selectedFriendProvider.notifier).state = null;
                       },
                       onSelectFriend: (profile) {
-                        ref.read(_selectedFriendProvider.notifier).state =
+                        ref.read(selectedFriendProvider.notifier).state =
                             profile;
-                        ref.read(_libraryModeProvider.notifier).state =
+                        ref.read(libraryModeProvider.notifier).state =
                             LibraryMode.library;
                       },
                     ),
@@ -269,12 +257,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ? (myProfile.valueOrNull?.username ?? '')
                     : (selectedFriend.username ?? ''),
                 onEditPressed: () {
-                  ref.read(_libraryModeProvider.notifier).state =
+                  ref.read(libraryModeProvider.notifier).state =
                       LibraryMode.editLibrary;
                 },
                 onAddPressed: _onAddBookPressed,
                 onDonePressed: () {
-                  ref.read(_libraryModeProvider.notifier).state =
+                  ref.read(libraryModeProvider.notifier).state =
                       LibraryMode.library;
                 },
                 onManageShelvesPressed: () =>
@@ -295,9 +283,9 @@ class _HomePageState extends ConsumerState<HomePage> {
             itemCount: following.length + 1,
             onPageChanged: (index) {
               if (index == 0) {
-                ref.read(_selectedFriendProvider.notifier).state = null;
+                ref.read(selectedFriendProvider.notifier).state = null;
               } else if (index - 1 < following.length) {
-                ref.read(_selectedFriendProvider.notifier).state =
+                ref.read(selectedFriendProvider.notifier).state =
                     following[index - 1];
               }
             },
@@ -319,9 +307,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                       currentMonth: filterMonth,
                     );
                     if (result != null) {
-                      ref.read(_filterYearProvider.notifier).state =
+                      ref.read(readsFilterYearProvider.notifier).state =
                           result.year;
-                      ref.read(_filterMonthProvider.notifier).state =
+                      ref.read(readsFilterMonthProvider.notifier).state =
                           result.month;
                     }
                   },
@@ -329,7 +317,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onDeleteShelf: _onDeleteShelf,
                   onAddShelf: _onAddShelfPressed,
                   onEnterEditMode: () {
-                    ref.read(_libraryModeProvider.notifier).state =
+                    ref.read(libraryModeProvider.notifier).state =
                         LibraryMode.editLibrary;
                   },
                   onMoveBook: (bookId, targetShelfId) {
@@ -373,8 +361,8 @@ class _FriendLibraryPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final friendFilterYear = ref.watch(_friendFilterYearProvider);
-    final friendFilterMonth = ref.watch(_friendFilterMonthProvider);
+    final friendFilterYear = ref.watch(friendReadsFilterYearProvider);
+    final friendFilterMonth = ref.watch(friendReadsFilterMonthProvider);
     final friendLibraryAsync = ref.watch(userLibraryProvider(friend.id));
     final friendFinishedBooksAsync = ref.watch(
       userFinishedBooksProvider((
@@ -398,8 +386,8 @@ class _FriendLibraryPage extends ConsumerWidget {
             currentMonth: friendFilterMonth,
           );
           if (result != null) {
-            ref.read(_friendFilterYearProvider.notifier).state = result.year;
-            ref.read(_friendFilterMonthProvider.notifier).state = result.month;
+            ref.read(friendReadsFilterYearProvider.notifier).state = result.year;
+            ref.read(friendReadsFilterMonthProvider.notifier).state = result.month;
           }
         },
         onEditShelfName: (_, __) {},
