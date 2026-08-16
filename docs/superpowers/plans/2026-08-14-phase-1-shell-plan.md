@@ -60,42 +60,66 @@ What already exists and must be reused, not rebuilt:
 
 ## Task 1: Lift the six providers out of `home_page.dart`
 
-- [ ] Move `_libraryModeProvider`, `_selectedFriendProvider` and the four filter providers into
+- [x] Move `_libraryModeProvider`, `_selectedFriendProvider` and the four filter providers into
       `lib/providers/library_shell_provider.dart`, made public.
-- [ ] Replace the two filter pairs with one family keyed by whose library it is, if they turn out to
+- [x] Replace the two filter pairs with one family keyed by whose library it is, if they turn out to
       be the same shape — check before merging; the friend pair exists because a visit filters a
-      different pile.
-- [ ] `home_page.dart` imports them; no behaviour changes.
+      different pile. **Checked, not merged:** the friend pair is deliberately shared by every friend
+      so paging keeps the filter, and `user_library_page.dart` holds a third pair — unifying them is a
+      behaviour change that belongs to Task 5, where that page's fate is decided.
+- [x] `home_page.dart` imports them; no behaviour changes.
 
 **Why first:** nothing else can be extracted while the state is file-private.
 
 **Done when:** `flutter test` is green with zero changes to any test, and `home_page.dart` declares no
 providers. A green suite here is the whole point — this task must be behaviour-neutral.
 
+**Done** in `6e8b2a4`: 183 tests green, no test edits.
+
 ---
 
 ## Task 2: Extract the pieces that do not care about the shell
 
-- [ ] `lib/ui/widgets/shelf_row.dart` — `ShelfRow`, `_DeleteBookButton`, `_DelayedReorderableListener`
+- [x] `lib/ui/widgets/shelf_row.dart` — `ShelfRow`, `_DeleteBookButton`, `_DelayedReorderableListener`
       (~350 lines, the largest single lift).
-- [ ] `lib/ui/widgets/avatar_circle.dart` — `AvatarCircle`.
-- [ ] `lib/ui/widgets/friend_rail.dart` — `FriendAvatarBar`, renamed `FriendRail`: the design scopes it
+- [x] `lib/ui/widgets/avatar_circle.dart` — `AvatarCircle`.
+- [x] `lib/ui/widgets/friend_rail.dart` — `FriendAvatarBar`, renamed `FriendRail`: the design scopes it
       to a visit and gives it a lead slot for the glass ✕, so it stops being an app-bar strip.
-- [ ] `lib/ui/views/library_view.dart` — `LibraryWithFinishedBooks`, which is the background plus sheet.
+- [x] `lib/ui/views/library_view.dart` — `LibraryWithFinishedBooks`, which is the background plus sheet.
 
 **Done when:** `home_page.dart` is under ~400 lines and the suite is still green with no test edits.
 Same rule as Task 1: pure motion, no behaviour.
+
+**Done** in `b8c7281`, but at **563 lines**, not under 400. What is left is `HomePage`,
+`_FriendLibraryPage` and `_LibrarySubHeader` — and those are exactly the three things Tasks 4 and 5
+rewrite, so splitting them further now would be churn against code about to change. 183 tests green,
+no test edits.
 
 ---
 
 ## Task 3: One sheet, per-tab contents
 
-- [ ] Generalise `FinishedBooksSheet` into `LibrarySheet`: keep the spring, snap positions, overdrag
+- [x] Generalise `FinishedBooksSheet` into `LibrarySheet`: keep the spring, snap positions, overdrag
       and inert-in-edit-mode behaviour; take the header row and body as parameters.
-- [ ] Keep a thin `FinishedBooksSheet` wrapper, or update both call sites (`home_page.dart`,
-      `user_library_page.dart`) — decide by which produces less churn.
+- [x] Keep a thin `FinishedBooksSheet` wrapper, or update both call sites (`home_page.dart`,
+      `user_library_page.dart`) — decide by which produces less churn. **Wrapper wins:**
+      `FinishedBooksSheet` stays as the Library tab's contents and composes `LibrarySheet`, so both
+      call sites and both test files are untouched. The name also matches the l10n keys
+      (`finishedBooksTitle`, `noFinishedBooks`), so renaming it would desync the vocabulary.
 - [ ] Sheet contents per tab: **Library** → today's read-books pile; **Friends** → the Everyone list;
       **Card** → header and empty state only, since stats are Phase 3.
+      **Moved to Task 4.** Only the Library body is built here. A Friends or Card body written now
+      would be unreachable — nothing can select it until the tab bar exists — and the Everyone list
+      needs a per-friend currently-reading book and read count, which is a data question Phase 1 said
+      it would not open. Task 4 builds the bar and the two remaining bodies together, where each is
+      reachable and testable.
+
+What landed: `lib/ui/widgets/library_sheet.dart` holds `LibrarySheet` (chrome and motion, taking
+`header` / `body` / `isEditMode`) and `LibrarySheetTitle` (the shared title-and-count pair, so three
+tabs don't become three type sizes). The handle, the 25px gutter, the corner radius, the shadow and the
+home-indicator inset are chrome; interactive controls inside `header` and `body` stay the caller's to
+gate, because children win hit tests and the sheet cannot disable them from outside — the read-books
+filter therefore nulls its own `onTap` in edit mode, as before.
 
 **The rule to preserve:** the sheet must keep reading as sitting _above_ the library, with nothing
 stranded underneath. Today that falls out of `Column(Expanded(library), sheet)`. If this task moves to
@@ -105,6 +129,13 @@ a `Stack`, the library needs a bottom inset equal to the collapsed sheet height,
 **Tests:** extend the existing sheet suite for a non-read-books body; assert the two snap positions
 still hold and that edit mode still springs it shut.
 
+**Done:** `Column(Expanded(library), sheet)` is unchanged, so `library_sheet_layout_test.dart` still
+passes untouched and the rule still holds by construction. `test/library_sheet_test.dart` adds six
+tests driving `LibrarySheet` with a 200px placeholder body; the sharp one asserts the collapsed height
+equals handle + header and is **unchanged when the body doubles** — a sheet that collapsed to some
+fraction of its content would pass every read-books test and still strand a tab's body underneath.
+189 tests green, no existing test edited.
+
 ---
 
 ## Task 4: The floating tab bar
@@ -113,6 +144,10 @@ still hold and that edit mode still springs it shut.
       native on iOS 26 via `CNTabBar` and a Flutter pill fallback elsewhere, gated by `useNativeGlass`.
 - [ ] Tab state in `library_shell_provider.dart`; switching a tab swaps only the sheet's contents, never
       the background.
+- [ ] The two sheet bodies deferred from Task 3: **Friends** → the Everyone list (decide first whether
+      Phase 1 shows each friend's currently-reading book and read count, or only names — that is the
+      data question Task 3 refused to open); **Card** → header and empty state only, since stats are
+      Phase 3.
 - [ ] Remove the app bar's search-friends and settings buttons; the bar becomes "My Library" with share
       and profile per the design. New l10n keys in `app_en.arb` / `app_ko.arb`, then `flutter gen-l10n`.
 
