@@ -62,8 +62,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  void _onAddBookPressed() {
-    Navigator.pushNamed(context, AppRoutes.search);
+  Future<void> _onAddBookPressed() async {
+    await Navigator.pushNamed(context, AppRoutes.search);
   }
 
   /// The sheet the selected tab puts above the library.
@@ -113,7 +113,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Navigator.pushNamed(context, AppRoutes.searchUsers),
         );
       case LibraryTab.card:
-        return const LibraryCardSheet(bottomReserve: ShellTabBar.reserve);
+        return LibraryCardSheet(bottomReserve: ShellTabBar.reserve);
     }
   }
 

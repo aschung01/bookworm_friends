@@ -26,7 +26,10 @@ class ShellTabBar extends StatefulWidget {
   /// Fires when the detached circular button is tapped. Add Book is a search, so
   /// on iOS 26 this is the system's search tab; see the class comment in
   /// [_buildNative].
-  final VoidCallback onAddBook;
+  ///
+  /// Awaited: the native bar keeps the search item lit while it is open, which is
+  /// truthful, and is put back only once Add Book closes.
+  final Future<void> Function() onAddBook;
 
   const ShellTabBar({
     super.key,
@@ -35,12 +38,22 @@ class ShellTabBar extends StatefulWidget {
     required this.onAddBook,
   });
 
-  /// Passed to `CNTabBar` explicitly rather than letting it measure its own
-  /// intrinsic height. The package measures that asynchronously from native and
-  /// keeps it private — there is no constant and no callback — so a caller that
-  /// has to reserve space beneath the bar cannot learn the number. Fixing it
-  /// makes the reservation exact instead of a guess.
-  static const double height = 50;
+  /// Height of the bar, which differs by path and is passed to `CNTabBar`
+  /// explicitly rather than letting it measure itself.
+  ///
+  /// The package measures its intrinsic height asynchronously from native and
+  /// keeps it private — no constant, no callback — so a caller that must reserve
+  /// space beneath the bar cannot learn the number. Fixing it makes [reserve]
+  /// exact.
+  ///
+  /// 83 is not a guess: it is `UITabBar.sizeThatFits` for an iOS 26 tab bar with
+  /// three labelled items and a search item, read off the rendered view on an
+  /// iPhone 17 Pro / iOS 26.4 simulator by building with `height: null` and
+  /// inspecting the native frame. The first attempt used 50 for both paths and
+  /// the native bar rendered its labels on top of its icons — a squashed
+  /// `UITabBar` is what too small looks like, and a covered last row of the sheet
+  /// is what it looks like from the sheet's side.
+  static double get height => useNativeGlass ? 83 : 50;
 
   /// Gap above and below the bar, and the inset from the screen's side edges.
   static const double gap = 8;
@@ -51,7 +64,7 @@ class ShellTabBar extends StatefulWidget {
   ///
   /// Excludes the home-indicator inset, which the sheet reserves separately —
   /// the bar is offset by the same inset, so the two stay in step.
-  static const double reserve = gap + height + gap;
+  static double get reserve => gap + height + gap;
 
   @override
   State<ShellTabBar> createState() => _ShellTabBarState();
@@ -75,12 +88,14 @@ class _ShellTabBarState extends State<ShellTabBar> {
     return [l10n.library, l10n.friends, l10n.tabCard];
   }
 
-  void _onAddBookTapped() {
-    widget.onAddBook();
-    // The native bar moves its own selection to the search item on tap and does
-    // not put it back, so without this the pill would keep claiming you are on a
-    // fourth tab that does not exist.
-    _searchController.deactivateSearch();
+  Future<void> _onAddBookTapped() async {
+    await widget.onAddBook();
+    // The native bar moves its own selection to the search item on tap and never
+    // puts it back, so without this the bar keeps claiming you are on a fourth
+    // tab that does not exist. Deferred until Add Book closes: called any earlier
+    // it runs while the pushed page covers the bar, and the search item comes
+    // back still tinted as the active tab.
+    if (mounted) _searchController.deactivateSearch();
   }
 
   @override

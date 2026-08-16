@@ -212,7 +212,46 @@ to Friends or Card mid-edit. `FinishedBooksSheet` springs shut for an edit; `Fri
 `LibraryCardSheet` take no `isEditMode` and stay expanded, so the library gets less room to rearrange
 in than it does today. Neither the design record nor the mockups say what the bar does during an edit.
 Left live rather than guessed at; settle it in Task 6 alongside the clearance, since both are about
-what the bottom of the screen owes the library.
+what the bottom of the screen owes the library. **Confirmed on device — see Task 7.**
+
+### Task 7 verified this task on an iOS 26.4 simulator, and it found three bugs
+
+Run through `argent` against an iPhone 17 Pro / iOS 26.4 simulator using
+`lib/main_shell_preview.dart` — a verification-only entrypoint that pumps the real `HomePage` with the
+real `MaterialApp`, theme and `CNTabBarRouteObserver`, with the Supabase-backed providers replaced by
+fixtures. It exists because reaching `HomePage` in the shipped app needs Apple or Google sign-in, and
+because `flutter test` reports Android — so **every widget test in this repo exercises the fallback
+chrome, and the native path had never once been rendered.** All three bugs below were invisible to the
+195 green tests.
+
+1. **The native bar was squashed: labels drawn on top of icons.** `height: 50` was a guess. Measured by
+   building with `height: null` and reading the rendered `UITabBar`'s frame: an iOS 26 tab bar with
+   three labelled items plus a search item wants **83**. Fixed by making the height path-specific — 83
+   native, 50 for our own pill — with the provenance recorded at the constant.
+2. **The sheet's last row was covered.** `reserve` was derived from the wrong height, so the shelf the
+   read pile stands on sat behind the bar. Fixed by the same change; `reserve` is a getter over
+   `height`, so the two cannot drift again.
+3. **The search orb stayed lit after Add Book closed.** `deactivateSearch()` was called immediately
+   after pushing, which runs while the pushed page covers the bar; the item came back still tinted as
+   the active tab. Fixed by making `onAddBook` awaited and deactivating once Add Book closes — which is
+   also the truthful behaviour, since the search item _is_ active while its UI is open.
+
+What the run confirmed as correct: the native path renders the design as drawn — a floating glass pill
+with a genuinely detached circular orb, no hand-rolling needed. A tab switch swaps only the sheet; the
+shelves keep their size and position and you simply see more or less of them, which is the "nothing
+scales" rule holding on real chrome. The collapsed sheet leaves handle and header above the bar. And
+there is **no native-view-over-Flutter bleed** on either pushed page (Add Book, book details), which is
+the `CNTabBar` failure mode `CNTabBarRouteObserver` exists to prevent.
+
+What it confirmed as a genuine gap: switching to Card mid-edit leaves the Card sheet **expanded** while
+the covers are still wiggling, so the library has less room to rearrange in than the Library tab gives
+it. Nothing is stranded — the shelf list is scrollable and `Column(Expanded(library), sheet)` still
+holds — but it is visibly the wrong sheet state for the mode. Task 6.
+
+**Not done, and it is a real deviation from the design:** the orb opens Add Book as a **full-page push**
+(the existing `AppRoutes.search`), not the 95%-height modal the design specifies. Preserved rather than
+changed because re-presenting that page is its own piece of work — but it is unfinished Task 4 scope,
+not a decision.
 
 ---
 
@@ -239,6 +278,14 @@ visit before it pops the page (extend `library_back_navigation_test.dart`).
 - [ ] Measure the real bar-to-sheet clearance on a friend screen in a widget test, then fix it — a shorter
       expanded sheet, or the rail participating in layout rather than overlaying.
 - [ ] Assert a minimum clearance so it cannot regress.
+- [ ] Settle what the tab bar does during an edit. Task 7 confirmed on device that switching to Card
+      mid-edit leaves that sheet expanded while the covers wiggle. Options: hide the bar for an edit
+      (an edit is a focused context, and the design already hides the bar for the other one — a visit),
+      or give every sheet `isEditMode` so they all spring shut.
+- [ ] Consider measuring the bar's height at runtime instead of the constant Task 7 landed. 83 is the
+      real `UITabBar.sizeThatFits` on iPhone 17 Pro / iOS 26.4, but it is one device at one text size,
+      and the package exposes no way to read what it measured. A `GlobalKey` + post-frame read feeding
+      the sheet's reserve would be self-correcting; the cost is a frame of resize on first build.
 
 This is pre-existing, measures the same in every mockup version including `main`, and Phase 1 is the moment
 it gets touched. Do it here rather than discovering it on device.
@@ -247,16 +294,32 @@ it gets touched. Do it here rather than discovering it on device.
 
 ## Task 7: Tests and verification
 
-- [ ] Suite green throughout; Tasks 1 and 2 must not need a single test edit.
-- [ ] `flutter analyze lib test` clean of new findings — the 12 pre-existing infos are catalogued and none
+- [x] Suite green throughout; Tasks 1 and 2 must not need a single test edit.
+- [x] `flutter analyze lib test` clean of new findings — the 12 pre-existing infos are catalogued and none
       are in files this phase creates.
 - [ ] Prove each regression test fails without its fix (`git stash push <files>`, run, pop).
-- [ ] **Run it on a simulator.** Native platform views inside and over scrolling content are the risk this
+- [x] **Run it on a simulator.** Native platform views inside and over scrolling content are the risk this
       phase carries, and no widget test reaches them: the tab bar's glass, the sheet's drag against the
       pager's horizontal swipe, and the visit transition. `CNSearchBar`'s documented z-order bleed through
       sheets (`autoHideOnModal`) is the precedent — assume the tab bar can do the same until seen otherwise.
+      **Done for Task 4 on iOS 26.4 via `argent` + `lib/main_shell_preview.dart`; three bugs found and
+      fixed, written up under Task 4.** The z-order bleed did not materialise. Re-run after Task 5, which
+      adds the transition this bullet is most worried about.
 - [ ] Update `decided.html` only where the build proves a drawing wrong, and say so in the note rather than
       quietly redrawing.
+
+**How to re-run it.** The simulator has no signed-in session and sign-in is Apple/Google, so verification
+goes through a fixture entrypoint:
+
+```sh
+flutter build ios --simulator --debug -t lib/main_shell_preview.dart --dart-define-from-file=env.json
+xcrun simctl install <udid> build/ios/iphonesimulator/Runner.app
+argent run launch-app --udid <udid> --bundleId com.unicorn.bookwormFriends
+argent run screenshot --udid <udid> --out .argent-shots/shot.png
+```
+
+`argent run native-find-views --className UITabBar --fields windowFrame` is what turned "the bar looks
+wrong" into "the bar is 50pt tall and wants 83" — reach for it before adjusting a number by eye.
 
 ---
 

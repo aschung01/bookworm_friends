@@ -82,3 +82,6 @@ supabase/.temp/
 
 # Brainstorming session mockups
 .superpowers/
+
+# Device-verification screenshots (transient; findings live in the plan)
+.argent-shots/
