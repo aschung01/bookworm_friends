@@ -23,6 +23,9 @@ class FinishedBooksSheet extends StatelessWidget {
   final int filterMonth;
   final VoidCallback onFilterPressed;
 
+  /// See [LibrarySheet.bottomReserve].
+  final double bottomReserve;
+
   const FinishedBooksSheet({
     super.key,
     required this.books,
@@ -30,6 +33,7 @@ class FinishedBooksSheet extends StatelessWidget {
     required this.filterYear,
     required this.filterMonth,
     required this.onFilterPressed,
+    this.bottomReserve = 0,
   });
 
   String _filterText(BuildContext context) {
@@ -44,6 +48,7 @@ class FinishedBooksSheet extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return LibrarySheet(
       isEditMode: isEditMode,
+      bottomReserve: bottomReserve,
       header: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

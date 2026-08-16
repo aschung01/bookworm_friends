@@ -140,16 +140,25 @@ fraction of its content would pass every read-books test and still strand a tab'
 
 ## Task 4: The floating tab bar
 
-- [ ] `lib/ui/widgets/shell_tab_bar.dart` — Library / Friends / Card plus the detached search control,
+- [x] `lib/ui/widgets/shell_tab_bar.dart` — Library / Friends / Card plus the detached search control,
       native on iOS 26 via `CNTabBar` and a Flutter pill fallback elsewhere, gated by `useNativeGlass`.
-- [ ] Tab state in `library_shell_provider.dart`; switching a tab swaps only the sheet's contents, never
+- [x] Tab state in `library_shell_provider.dart`; switching a tab swaps only the sheet's contents, never
       the background.
-- [ ] The two sheet bodies deferred from Task 3: **Friends** → the Everyone list (decide first whether
+- [x] The two sheet bodies deferred from Task 3: **Friends** → the Everyone list (decide first whether
       Phase 1 shows each friend's currently-reading book and read count, or only names — that is the
       data question Task 3 refused to open); **Card** → header and empty state only, since stats are
-      Phase 3.
+      Phase 3. **Decided: names and avatars only.** What each friend is reading and their read count
+      are per-friend queries (`userLibraryProvider`, `userFinishedBooksProvider` are keyed by user id),
+      so drawing the row as designed means one round trip per row the moment the tab opens. That wants
+      one batched query, which is a data change. The row is already enough to be the way into a visit,
+      which is all the shell needs from it — same reason the design puts Activity after Phase 1. Noted
+      in `friends_sheet.dart` so the gap against the drawing is not mistaken for an oversight.
 - [ ] Remove the app bar's search-friends and settings buttons; the bar becomes "My Library" with share
       and profile per the design. New l10n keys in `app_en.arb` / `app_ko.arb`, then `flutter gen-l10n`.
+      **Moved to Task 5.** Add Friend has already moved into the Friends sheet, but the app bar's title
+      slot is currently occupied by `FriendRail`, and where the rail lives is Task 5's first decision.
+      Retitling the bar before the rail moves would mean fitting a title and a rail into one row for
+      the length of one commit.
 
 **Decision needed here.** `CNTabBar` has a first-class `searchItem` that iOS 26 renders as exactly the
 detached circular button the design draws — but it expands into an _inline search field_
@@ -158,9 +167,52 @@ _is_ a search ("Title, author, or ISBN"), the native pattern may be the better v
 intent. Try the native search tab first; fall back to a plain button opening the modal if the inline
 field cannot host results well.
 
+**Settled — and the premise was wrong.** Read against `cupertino_native_better` 1.5.4's actual source:
+on iOS 26 the search item is _already_ a plain button. The Swift view behind it
+(`CupertinoTabBarSearchView.swift`) builds an ordinary `UITabBar` with a `.search` system item and
+contains no text field, `UISearchTab` or `UISearchController` at all; `onSearchChanged` and
+`onSearchSubmit` are published on the channel `CNSearchScaffold` uses and never fire from the tab bar.
+The only hook is `onSearchActiveChanged(true)`, which is the tap. So there is no trade-off: we get the
+native detached orb _and_ the modal.
+
+Two consequences worth knowing:
+
+- The inline field the package documents is **fallback-only**. So `CNTabBar`'s fallback is deliberately
+  not used — off iOS 26 it would grow a search field in the bar, which is a different interaction that
+  would appear on exactly the platforms we cannot see. The pill and circle are hand-rolled instead.
+- The native bar leaves the search item selected after a tap and never puts it back, so
+  `CNTabBarSearchController.deactivateSearch()` is called right after opening Add Book. Without it the
+  bar claims you are on a fourth tab that does not exist.
+
+Also settled by reading the source: `height` is passed explicitly rather than letting the bar measure
+itself, because the measured height is private with no constant and no callback — and the sheet has to
+reserve exactly that much room. And with a search item set the native view ignores rasterised icons and
+icon sizes entirely, so the three tabs must be SF Symbols.
+
 **Tests:** widget test that all three tabs render and switch the sheet body; a test that the fallback pill
 is used when `useNativeGlass` is false (which is what `flutter test` reports, so the fallback is the
 path under test by default — assert the native path only through the gate, not by pumping it).
+
+**Done.** `test/shell_tab_bar_test.dart`, six tests, 195 green with no existing test edited. The one
+that earns its keep asserts that a tab switch keeps the **same `ShelfRow` `State` object** — a `State`
+survives a rebuild but not a replacement, so it is the sharpest available proof that the background
+persisted rather than merely looked the same. Also pinned: the bar's floating geometry, and that it
+covers none of the sheet's contents.
+
+**How the bar and the sheet share the bottom**, taken from the drawings rather than invented:
+`decided.html` gives the sheet `padding-bottom: 32px` of its 340px frame and floats `.tb` at
+`bottom: 8px` with `z-index: 9` over the sheet's `5`. So the bar overlaps only the sheet's reserved
+band, never its contents. In Flutter that is `LibrarySheet.bottomReserve`, set to `ShellTabBar.reserve`
+(`gap + height + gap`), with the bar positioned at the same `gap` above the home-indicator inset the
+sheet already reserves. Both sides read the same constants, so the clearance is fixed by construction
+and is not a measurement — which is the shape Task 6 wants.
+
+**Found while building, not in the design:** in edit mode the tab bar is still live, so you can switch
+to Friends or Card mid-edit. `FinishedBooksSheet` springs shut for an edit; `FriendsSheet` and
+`LibraryCardSheet` take no `isEditMode` and stay expanded, so the library gets less room to rearrange
+in than it does today. Neither the design record nor the mockups say what the bar does during an edit.
+Left live rather than guessed at; settle it in Task 6 alongside the clearance, since both are about
+what the bottom of the screen owes the library.
 
 ---
 

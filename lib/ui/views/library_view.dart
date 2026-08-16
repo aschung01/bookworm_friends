@@ -6,21 +6,33 @@ import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
-import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
 import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
 
-/// A library: shelves scrolling behind the "Books read" sheet.
+/// A library — shelves scrolling behind a sheet.
 ///
-/// This is the layer the shell keeps persistent, so it takes everything it
-/// draws as parameters and reads no shell state itself.
-class LibraryWithFinishedBooks extends StatelessWidget {
+/// This is the layer the shell keeps persistent, so it takes everything it draws
+/// as parameters and reads no shell state itself.
+///
+/// [sheet] is supplied by the caller rather than built here, because a tab switch
+/// changes the sheet and must leave this untouched. Passing it in is what makes
+/// "the library is never drawn twice" structural instead of a convention: there is
+/// one instance of this widget per page and three possible sheets above it.
+class LibraryPane extends StatelessWidget {
   final List<Shelf> shelves;
+
+  /// Needed by the library itself, not only by the sheet: read books are kept off
+  /// the shelves, and the "add your first book" state depends on whether there are
+  /// any at all.
   final List<Book> finishedBooks;
+
   final LibraryMode mode;
-  final int filterYear;
-  final int filterMonth;
-  final VoidCallback onFilterPressed;
+
+  /// Sits above the library, pinned to the bottom. Expected to be a
+  /// [LibrarySheet] — it reports its own height, and the library is laid out in
+  /// whatever is left over.
+  final Widget sheet;
+
   final void Function(String shelfId, String name) onEditShelfName;
   final void Function(String shelfId) onDeleteShelf;
   final VoidCallback onEnterEditMode;
@@ -30,14 +42,12 @@ class LibraryWithFinishedBooks extends StatelessWidget {
   final void Function(String bookId)? onDeleteBook;
   final Future<void> Function()? onRefresh;
 
-  const LibraryWithFinishedBooks({
+  const LibraryPane({
     super.key,
     required this.shelves,
     required this.finishedBooks,
     required this.mode,
-    required this.filterYear,
-    required this.filterMonth,
-    required this.onFilterPressed,
+    required this.sheet,
     required this.onEditShelfName,
     required this.onDeleteShelf,
     required this.onEnterEditMode,
@@ -165,24 +175,17 @@ class LibraryWithFinishedBooks extends StatelessWidget {
       child: shelfList,
     );
 
-    // The library only gets the height left over by the "Books read" sheet, so
-    // the sheet is always fully visible without scrolling to the bottom. As the
-    // sheet is dragged down the library grows into the freed space. The library
-    // colour also backs the whole area so it shows through the sheet's rounded
-    // top corners.
+    // The library only gets the height left over by the sheet, so the sheet is
+    // always fully visible without scrolling. As the sheet is dragged down the
+    // library grows into the freed space. The library colour also backs the whole
+    // area so it shows through the sheet's rounded top corners.
     return ColoredBox(
       color: context.colors.surfaceVariant,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: library),
-          FinishedBooksSheet(
-            books: finishedBooks,
-            isEditMode: mode == LibraryMode.editLibrary,
-            filterYear: filterYear,
-            filterMonth: filterMonth,
-            onFilterPressed: onFilterPressed,
-          ),
+          sheet,
         ],
       ),
     );

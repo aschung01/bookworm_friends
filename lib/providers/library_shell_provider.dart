@@ -20,6 +20,19 @@ final libraryModeProvider = StateProvider.autoDispose<LibraryMode>(
   (ref) => LibraryMode.library,
 );
 
+/// Which of the floating tab bar's three tabs is selected.
+///
+/// A tab switch swaps only the *sheet's contents*. The library behind it is the
+/// one persistent background of the whole shell and is never rebuilt, never
+/// replaced and never drawn twice — that is the axiom the shell is designed
+/// around, and routing tabs through state rather than through a navigator is
+/// what keeps it true.
+enum LibraryTab { library, friends, card }
+
+final libraryTabProvider = StateProvider.autoDispose<LibraryTab>(
+  (ref) => LibraryTab.library,
+);
+
 /// The friend whose library is on screen, or `null` for your own.
 ///
 /// Also drives the horizontal pager: your library is page 0 and each followed

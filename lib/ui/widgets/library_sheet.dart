@@ -49,11 +49,23 @@ class LibrarySheet extends StatefulWidget {
   /// children win hit tests, so this widget cannot disable them from outside.
   final bool isEditMode;
 
+  /// Extra room left empty at the bottom, for chrome that floats over the sheet
+  /// — in the shell, the tab bar (`ShellTabBar.reserve`).
+  ///
+  /// Reserved *inside* the sheet rather than by insetting the floating widget,
+  /// because the sheet is what would otherwise be covered: at the collapsed snap
+  /// position the header is all that is left, and a bar floating over the bottom
+  /// edge would land straight on it.
+  ///
+  /// Additive with the home-indicator inset, which is always reserved.
+  final double bottomReserve;
+
   const LibrarySheet({
     super.key,
     required this.header,
     required this.body,
     this.isEditMode = false,
+    this.bottomReserve = 0,
   });
 
   @override
@@ -278,7 +290,9 @@ class _LibrarySheetState extends State<LibrarySheet>
             // Reserved outside the collapsible area so the handle and header
             // never sit under the home indicator.
             padding: EdgeInsets.only(
-              bottom: MediaQuery.viewPaddingOf(context).bottom,
+              bottom:
+                  MediaQuery.viewPaddingOf(context).bottom +
+                  widget.bottomReserve,
             ),
             child: ClipRRect(
               borderRadius: radius,

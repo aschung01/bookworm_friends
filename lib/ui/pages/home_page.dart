@@ -3,13 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
+import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/views/library_view.dart';
+import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/friend_rail.dart';
+import 'package:bookworm_friends/ui/widgets/friends_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/library_card_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/update_shelf_name_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_book_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_shelf_bottom_sheet.dart';
@@ -59,6 +64,57 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _onAddBookPressed() {
     Navigator.pushNamed(context, AppRoutes.search);
+  }
+
+  /// The sheet the selected tab puts above the library.
+  ///
+  /// Only the sheet changes here. The [LibraryPane] holding it is the same widget
+  /// in the same place with the same shelves, which is what keeps the background
+  /// persistent across a tab switch instead of merely looking persistent.
+  Widget _sheetForTab(
+    LibraryTab tab, {
+    required LibraryMode mode,
+    required List<Book> finishedBooks,
+    required int filterYear,
+    required int filterMonth,
+    required List<Profile> following,
+    required Profile? selectedFriend,
+  }) {
+    switch (tab) {
+      case LibraryTab.library:
+        return FinishedBooksSheet(
+          books: finishedBooks,
+          isEditMode: mode == LibraryMode.editLibrary,
+          filterYear: filterYear,
+          filterMonth: filterMonth,
+          bottomReserve: ShellTabBar.reserve,
+          onFilterPressed: () async {
+            final result = await showYearMonthFilterBottomSheet(
+              context,
+              currentYear: filterYear,
+              currentMonth: filterMonth,
+            );
+            if (result != null) {
+              ref.read(readsFilterYearProvider.notifier).state = result.year;
+              ref.read(readsFilterMonthProvider.notifier).state = result.month;
+            }
+          },
+        );
+      case LibraryTab.friends:
+        return FriendsSheet(
+          following: following,
+          selectedFriend: selectedFriend,
+          bottomReserve: ShellTabBar.reserve,
+          onSelectFriend: (profile) {
+            ref.read(selectedFriendProvider.notifier).state = profile;
+            ref.read(libraryModeProvider.notifier).state = LibraryMode.library;
+          },
+          onAddFriend: () =>
+              Navigator.pushNamed(context, AppRoutes.searchUsers),
+        );
+      case LibraryTab.card:
+        return const LibraryCardSheet(bottomReserve: ShellTabBar.reserve);
+    }
   }
 
   void _onAddShelfPressed() {
@@ -144,6 +200,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       finishedBooksProvider((year: filterYear, month: filterMonth)),
     );
     final mode = ref.watch(libraryModeProvider);
+    final tab = ref.watch(libraryTabProvider);
     final selectedFriend = ref.watch(selectedFriendProvider);
     final myProfile = ref.watch(profileProvider);
     final followingAsync = ref.watch(followingListProvider);
@@ -265,77 +322,92 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
           ),
-          body: PageView.builder(
-            controller: _pageController,
-            physics: mode == LibraryMode.library
-                ? const ClampingScrollPhysics()
-                : const NeverScrollableScrollPhysics(),
-            itemCount: following.length + 1,
-            onPageChanged: (index) {
-              if (index == 0) {
-                ref.read(selectedFriendProvider.notifier).state = null;
-              } else if (index - 1 < following.length) {
-                ref.read(selectedFriendProvider.notifier).state =
-                    following[index - 1];
-              }
-            },
-            itemBuilder: (context, index) {
-              if (index != 0) {
-                return _FriendLibraryPage(friend: following[index - 1]);
-              }
-              return libraryAsync.when(
-                data: (shelves) => LibraryWithFinishedBooks(
-                  shelves: shelves,
-                  finishedBooks: finishedBooksAsync.valueOrNull ?? [],
-                  mode: mode,
-                  filterYear: filterYear,
-                  filterMonth: filterMonth,
-                  onFilterPressed: () async {
-                    final result = await showYearMonthFilterBottomSheet(
-                      context,
-                      currentYear: filterYear,
-                      currentMonth: filterMonth,
-                    );
-                    if (result != null) {
-                      ref.read(readsFilterYearProvider.notifier).state =
-                          result.year;
-                      ref.read(readsFilterMonthProvider.notifier).state =
-                          result.month;
-                    }
-                  },
-                  onEditShelfName: _onEditShelfName,
-                  onDeleteShelf: _onDeleteShelf,
-                  onAddShelf: _onAddShelfPressed,
-                  onEnterEditMode: () {
-                    ref.read(libraryModeProvider.notifier).state =
-                        LibraryMode.editLibrary;
-                  },
-                  onMoveBook: (bookId, targetShelfId) {
-                    ref
-                        .read(libraryProvider.notifier)
-                        .moveBookToShelf(bookId, targetShelfId);
-                  },
-                  onReorderBooks: (shelfId, bookIds) {
-                    ref
-                        .read(libraryProvider.notifier)
-                        .reorderBooksInShelf(shelfId, bookIds);
-                  },
-                  onDeleteBook: _onDeleteBook,
-                  onRefresh: () async {
-                    ref.invalidate(libraryProvider);
-                    ref.invalidate(
-                      finishedBooksProvider((
-                        year: filterYear,
-                        month: filterMonth,
-                      )),
-                    );
-                  },
+          body: Stack(
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                physics: mode == LibraryMode.library
+                    ? const ClampingScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                itemCount: following.length + 1,
+                onPageChanged: (index) {
+                  if (index == 0) {
+                    ref.read(selectedFriendProvider.notifier).state = null;
+                  } else if (index - 1 < following.length) {
+                    ref.read(selectedFriendProvider.notifier).state =
+                        following[index - 1];
+                  }
+                },
+                itemBuilder: (context, index) {
+                  if (index != 0) {
+                    return _FriendLibraryPage(friend: following[index - 1]);
+                  }
+                  return libraryAsync.when(
+                    data: (shelves) => LibraryPane(
+                      shelves: shelves,
+                      finishedBooks: finishedBooksAsync.valueOrNull ?? [],
+                      mode: mode,
+                      sheet: _sheetForTab(
+                        tab,
+                        mode: mode,
+                        finishedBooks: finishedBooksAsync.valueOrNull ?? [],
+                        filterYear: filterYear,
+                        filterMonth: filterMonth,
+                        following: following,
+                        selectedFriend: selectedFriend,
+                      ),
+                      onEditShelfName: _onEditShelfName,
+                      onDeleteShelf: _onDeleteShelf,
+                      onAddShelf: _onAddShelfPressed,
+                      onEnterEditMode: () {
+                        ref.read(libraryModeProvider.notifier).state =
+                            LibraryMode.editLibrary;
+                      },
+                      onMoveBook: (bookId, targetShelfId) {
+                        ref
+                            .read(libraryProvider.notifier)
+                            .moveBookToShelf(bookId, targetShelfId);
+                      },
+                      onReorderBooks: (shelfId, bookIds) {
+                        ref
+                            .read(libraryProvider.notifier)
+                            .reorderBooksInShelf(shelfId, bookIds);
+                      },
+                      onDeleteBook: _onDeleteBook,
+                      onRefresh: () async {
+                        ref.invalidate(libraryProvider);
+                        ref.invalidate(
+                          finishedBooksProvider((
+                            year: filterYear,
+                            month: filterMonth,
+                          )),
+                        );
+                      },
+                    ),
+                    loading: () => const LoadingLibrary(),
+                    error: (e, _) => Center(
+                      child: Text(l10n.errorWithMessage(e.toString())),
+                    ),
+                  );
+                },
+              ),
+              // Floats over the sheet, which reserves `ShellTabBar.reserve` at
+              // its bottom for exactly this. Both sides read the same constants,
+              // so the gap above and below the bar is fixed by construction
+              // rather than measured.
+              Positioned(
+                left: ShellTabBar.sideInset,
+                right: ShellTabBar.sideInset,
+                bottom:
+                    MediaQuery.viewPaddingOf(context).bottom + ShellTabBar.gap,
+                child: ShellTabBar(
+                  current: tab,
+                  onChanged: (next) =>
+                      ref.read(libraryTabProvider.notifier).state = next,
+                  onAddBook: _onAddBookPressed,
                 ),
-                loading: () => const LoadingLibrary(),
-                error: (e, _) =>
-                    Center(child: Text(l10n.errorWithMessage(e.toString()))),
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),
@@ -363,25 +435,33 @@ class _FriendLibraryPage extends ConsumerWidget {
     );
 
     return friendLibraryAsync.when(
-      data: (shelves) => LibraryWithFinishedBooks(
+      data: (shelves) => LibraryPane(
         shelves: shelves,
         finishedBooks: friendFinishedBooksAsync.valueOrNull ?? [],
         mode: LibraryMode.library,
-        filterYear: friendFilterYear,
-        filterMonth: friendFilterMonth,
-        onFilterPressed: () async {
-          final result = await showYearMonthFilterBottomSheet(
-            context,
-            currentYear: friendFilterYear,
-            currentMonth: friendFilterMonth,
-          );
-          if (result != null) {
-            ref.read(friendReadsFilterYearProvider.notifier).state =
-                result.year;
-            ref.read(friendReadsFilterMonthProvider.notifier).state =
-                result.month;
-          }
-        },
+        // A friend's library always shows their read books, whichever tab you
+        // were on: the tabs describe *your* shell, and a visit leaves it. Once
+        // Task 5 lands, the bar is hidden here and `bottomReserve` goes with it.
+        sheet: FinishedBooksSheet(
+          books: friendFinishedBooksAsync.valueOrNull ?? [],
+          isEditMode: false,
+          filterYear: friendFilterYear,
+          filterMonth: friendFilterMonth,
+          bottomReserve: ShellTabBar.reserve,
+          onFilterPressed: () async {
+            final result = await showYearMonthFilterBottomSheet(
+              context,
+              currentYear: friendFilterYear,
+              currentMonth: friendFilterMonth,
+            );
+            if (result != null) {
+              ref.read(friendReadsFilterYearProvider.notifier).state =
+                  result.year;
+              ref.read(friendReadsFilterMonthProvider.notifier).state =
+                  result.month;
+            }
+          },
+        ),
         onEditShelfName: (_, __) {},
         onDeleteShelf: (_) {},
         onEnterEditMode: () {},
