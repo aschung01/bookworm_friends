@@ -1,5 +1,26 @@
 # Phase 1: the library shell — Implementation Plan
 
+> **Status: complete.** All 28 items done across `6e8b2a4`…`24d5520`. 206 tests green,
+> `flutter analyze lib test` at the same 12 pre-existing issues it started at, and the shell verified
+> on an iPhone 17 Pro / iOS 26.4 simulator.
+>
+> Eight bugs came out of building it, and only one was found by reading code:
+>
+> |                                                                                   | found by                                             |
+> | --------------------------------------------------------------------------------- | ---------------------------------------------------- |
+> | native tab bar squashed — labels drawn over icons                                 | rendering it on iOS 26 at all                        |
+> | sheet's last row hidden behind the bar                                            | the same run                                         |
+> | search orb stayed lit after Add Book closed                                       | the same run                                         |
+> | Card sheet stayed expanded mid-edit                                               | the same run                                         |
+> | bar floated 21pt high — a platform view's frame is not its drawing                | **reported by eye from the real app**                |
+> | Add Book modal was ~98%, not 95% — `showDragHandle` adds height outside the child | tightening a loose assertion                         |
+> | **long-press-to-edit never worked** — pre-existing, masked by the pencil          | removing the pencil and checking instead of assuming |
+> | sheet header overflowed by 195px at 2× text                                       | measuring the worst case rather than the default     |
+>
+> Two design numbers did not survive contact: the mockup's 5.8px clearance **inverts** in Flutter (a
+> friend's screen is the roomier one), and `CNTabBar`'s documented inline search field is fallback-only,
+> so the native search item was already the plain button the design asked for.
+
 > **For agentic workers:** Implement task-by-task, in order. Steps use checkbox (`- [ ]`) syntax
 > for tracking. Read `.agents/skills/flutter-tester/SKILL.md` before writing any test — this
 > project has established Given-When-Then and layer-isolation conventions.
@@ -106,7 +127,7 @@ no test edits.
       `FinishedBooksSheet` stays as the Library tab's contents and composes `LibrarySheet`, so both
       call sites and both test files are untouched. The name also matches the l10n keys
       (`finishedBooksTitle`, `noFinishedBooks`), so renaming it would desync the vocabulary.
-- [ ] Sheet contents per tab: **Library** → today's read-books pile; **Friends** → the Everyone list;
+- [x] Sheet contents per tab: **Library** → today's read-books pile; **Friends** → the Everyone list;
       **Card** → header and empty state only, since stats are Phase 3.
       **Moved to Task 4.** Only the Library body is built here. A Friends or Card body written now
       would be unreachable — nothing can select it until the tab bar exists — and the Everyone list
@@ -153,7 +174,7 @@ fraction of its content would pass every read-books test and still strand a tab'
       one batched query, which is a data change. The row is already enough to be the way into a visit,
       which is all the shell needs from it — same reason the design puts Activity after Phase 1. Noted
       in `friends_sheet.dart` so the gap against the drawing is not mistaken for an oversight.
-- [ ] Remove the app bar's search-friends and settings buttons; the bar becomes "My Library" with share
+- [x] Remove the app bar's search-friends and settings buttons; the bar becomes "My Library" with share
       and profile per the design. New l10n keys in `app_en.arb` / `app_ko.arb`, then `flutter gen-l10n`.
       **Moved to Task 5.** Add Friend has already moved into the Friends sheet, but the app bar's title
       slot is currently occupied by `FriendRail`, and where the rail lives is Task 5's first decision.
@@ -449,7 +470,23 @@ mockups would have surfaced this; only laying it out at a size nobody had tried 
 - [x] Suite green throughout; Tasks 1 and 2 must not need a single test edit.
 - [x] `flutter analyze lib test` clean of new findings — the 12 pre-existing infos are catalogued and none
       are in files this phase creates.
-- [ ] Prove each regression test fails without its fix (`git stash push <files>`, run, pop).
+- [x] Prove each regression test fails without its fix (`git stash push <files>`, run, pop).
+      Done for the ones guarding an actual bug, and worth listing because two were proven by accident
+      rather than by ceremony:
+
+      * **Edit drops the bar / every sheet springs shut** — stashed the three lib files, all four new
+                tests failed, popped. The deliberate check.
+              * **The 2× text header overflow** — the clearance test threw `RenderFlex overflowed by 195 pixels`
+                before the fix. It failed first and passed after, which is the same evidence.
+              * **The Add Book modal's height** — the first version of that test asserted the height within 6% and
+                passed a 98% sheet. Tightened to pin the top edge at 5% ± 2pt, which fails on the old code.
+              * **The long-press latch** — proven by the whole suite: with the pencil gone and no latch, edit mode
+                closed on release and every test that enters an edit failed.
+
+              Not provable by test, and said so rather than pretended: the tab bar's 21pt native inset. The
+              difference between a `UITabBar`'s frame and its platter is not visible to Flutter, so that one rests
+              on the device measurement recorded above.
+
 - [x] **Run it on a simulator.** Native platform views inside and over scrolling content are the risk this
       phase carries, and no widget test reaches them: the tab bar's glass, the sheet's drag against the
       pager's horizontal swipe, and the visit transition. `CNSearchBar`'s documented z-order bleed through
@@ -465,10 +502,10 @@ mockups would have surfaced this; only laying it out at a size nobody had tried 
       answered with the measured Flutter numbers instead of the mockup's 5.8px.
 
       Deliberately **not** redrawn: the Everyone row still shows a reading line and a read count, and the
-          bar still shows share. Those are the intended design and Phase 1 simply has not built them — a
-          drawing that is ahead of the code is not a drawing that is wrong, and flattening it to match would
-          lose the target. Other screens carrying `dimTab` are left alone because this phase never exercised
-          them; correcting drawings on the strength of a guess is what this bullet exists to prevent.
+              bar still shows share. Those are the intended design and Phase 1 simply has not built them — a
+              drawing that is ahead of the code is not a drawing that is wrong, and flattening it to match would
+              lose the target. Other screens carrying `dimTab` are left alone because this phase never exercised
+              them; correcting drawings on the strength of a guess is what this bullet exists to prevent.
 
 **How to re-run it.** The simulator has no signed-in session and sign-in is Apple/Google, so verification
 goes through a fixture entrypoint:
