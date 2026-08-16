@@ -1,7 +1,10 @@
 # Library shell — design record
 
 **Date:** 2026-08-14
-**Status:** Decided; Phase 1 not started
+**Status:** Decided. **Phase 1 (Shell) complete** — see
+`docs/superpowers/plans/2026-08-14-phase-1-shell-plan.md` for what shipped, what it deviated
+on and why, and the eight bugs building it surfaced. **Phase 2 (Read view) planned** in
+`docs/superpowers/plans/2026-08-16-phase-2-read-view-plan.md`; not started.
 **Visual record:** `docs/mockups/library-shell/decided.html` — every screen, UI
 element and flow, browsable. Open it from disk; no server needed.
 
@@ -63,7 +66,7 @@ edit, search button to add. Edit mode swaps in manage-shelves and Done.
 ### The sheet sits above the library, on every tab
 
 Library, Friends and Card all behave the same way, and the behaviour is stated as
-**what it looks like**: the sheet reads as sliding up *over* the library, which
+**what it looks like**: the sheet reads as sliding up _over_ the library, which
 stays exactly as it is. Nothing scales — shelves and covers keep their size and
 you simply see less of them — and nothing is stranded underneath, so anything
 behind the sheet stays reachable.
@@ -146,16 +149,16 @@ steps aside because it cannot honestly report a position there, the rail becomes
 the visit's own chrome, and the **glass ×** at its head ends the visit.
 
 "How do you get back?" is answered rather than dodged, because a visit is a thing
-that *has* an end. "What does tapping a friend do?" is reframed: mechanically
+that _has_ an end. "What does tapping a friend do?" is reframed: mechanically
 close to a pushed page, but for the opposite reason — not a page that
-unfortunately covers the tab bar, a focused context that *should*.
+unfortunately covers the tab bar, a focused context that _should_.
 
 ### ✓ Received praise is visible again — `e67ca75`
 
 `_ComplimentButton` **and** the received-emoji block both sat inside
 `if (!isSelf)`, so the person praised never saw it anywhere in the app; the push
-notification was the only trace. Hiding the *button* is right — you should not
-praise yourself — but hiding the *praise* defeated the point of storing it.
+notification was the only trace. Hiding the _button_ is right — you should not
+praise yourself — but hiding the _praise_ defeated the point of storing it.
 
 The fix also retired `ComplimentBlock` from being dead code: it was never
 referenced, and its `List<dynamic>` fallback would have rendered
@@ -203,7 +206,7 @@ query.
 
 Eight branched versions argued the shell out. They were deleted from
 `decided.html` when `visit-model` was folded into `main` — each stored only a
-*patch over the old root*, so against the decided design they would render
+_patch over the old root_, so against the decided design they would render
 hybrids nobody proposed. What they taught is here; the drawings are in git
 history (before `9820701`).
 
@@ -238,7 +241,7 @@ header. Drawing them is what killed them:
   is up — and hiding it makes the rail conditional again, which is the premise
   collapsing.
 
-The visit model made all four moot: the × lives *inside* the visit, which is the
+The visit model made all four moot: the × lives _inside_ the visit, which is the
 one context where a dismissal is unambiguous.
 
 ### Is the tab bar a control or a readout?
