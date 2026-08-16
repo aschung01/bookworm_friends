@@ -195,25 +195,61 @@ void main() {
     );
 
     testWidgets(
-      'Given the Friends sheet, When a friend is tapped, Then the shell moves to '
-      'that friend',
+      'Given the Friends sheet, When a friend is tapped, Then a visit begins: rail '
+      'in, tab bar out',
       (tester) async {
         await _pumpShell(tester);
+
+        expect(
+          find.byType(FriendRail),
+          findsNothing,
+          reason: 'the rail exists only inside a visit',
+        );
+
         await _selectTab(tester, 'Friends');
-
-        Profile? selected() =>
-            tester.widget<FriendRail>(find.byType(FriendRail)).selectedFriend;
-
-        expect(selected(), isNull, reason: 'starts in your own library');
-
         await tester.tap(find.text('jisoo'));
         await tester.pumpAndSettle();
 
-        expect(selected()?.username, 'jisoo');
-        // The row is gone with it: the Everyone list belongs to your own page,
-        // and tapping it pages to hers. Task 5 makes that a visit and hides the
-        // bar; today it is the existing pager behaviour, reached from the sheet.
-        expect(find.byType(FriendsSheet), findsNothing);
+        final rail = tester.widget<FriendRail>(find.byType(FriendRail));
+        expect(rail.selectedFriend?.username, 'jisoo');
+        expect(
+          rail.following.map((f) => f.username),
+          ['jisoo', 'minho'],
+          reason: 'friends only — you are not in your own visit rail',
+        );
+        expect(
+          find.byType(ShellTabBar),
+          findsNothing,
+          reason: 'a visit is a focused context and drops the tab bar',
+        );
+        expect(find.text('Poke'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given a visit, When the rail\'s ✕ is tapped, Then it ends and the tab bar '
+      'comes back on Friends',
+      (tester) async {
+        await _pumpShell(tester);
+        await enterVisit(tester, 'jisoo');
+
+        await tester.tap(
+          find.descendant(
+            of: find.byType(FriendRail),
+            matching: find.byIcon(Icons.close),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(FriendRail), findsNothing);
+        expect(find.byType(ShellTabBar), findsOneWidget);
+        expect(find.text('My Library'), findsOneWidget);
+        expect(
+          find.byType(FriendsSheet),
+          findsOneWidget,
+          reason:
+              'leaving a visit should land you back on the tab you left from',
+        );
       },
     );
     // Card is the sharp case: its sheet has no reason of its own to move, so

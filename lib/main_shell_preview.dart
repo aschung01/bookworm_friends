@@ -106,6 +106,13 @@ void main() async {
         currentUserIdProvider.overrideWithValue('u'),
         libraryProvider.overrideWith(_FixtureLibrary.new),
         finishedBooksProvider.overrideWith((ref, filter) async => _readBooks()),
+        // A visit reads a friend's library through its own providers, so without
+        // these the visit renders a Supabase-not-initialised error instead of the
+        // chrome this preview exists to show.
+        userLibraryProvider.overrideWith((ref, userId) async => _library()),
+        userFinishedBooksProvider.overrideWith(
+          (ref, args) async => _readBooks(),
+        ),
         profileProvider.overrideWith(
           (ref) async => _profile('u', 'tester', '📚'),
         ),

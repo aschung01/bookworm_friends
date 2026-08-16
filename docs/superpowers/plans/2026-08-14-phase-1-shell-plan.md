@@ -305,19 +305,88 @@ pre-existing and belongs to whatever revisits `AdaptiveIconButton`, not to Phase
 
 ## Task 5: A visit
 
-- [ ] Entering: tapping a friend in the Everyone list enters a visit — tab bar hidden, `FriendRail` inside
+- [x] Entering: tapping a friend in the Everyone list enters a visit — tab bar hidden, `FriendRail` inside
       the visit with the glass ✕ at its head, lateral swipe between friends on the existing `PageView`.
-- [ ] Leaving: the ✕ clears the selection and restores the tab bar with Friends still lit.
-- [ ] Keep `_syncPageToFriend`'s two existing guards: the pager sync when selection changes by tap, and the
+- [x] Leaving: the ✕ clears the selection and restores the tab bar with Friends still lit.
+- [x] Keep `_syncPageToFriend`'s two existing guards: the pager sync when selection changes by tap, and the
       fallback to your own library when the viewed friend is no longer followed.
-- [ ] `PopScope` must now handle three states, not two: edit mode exits first, then a visit ends, then the
+- [x] `PopScope` must now handle three states, not two: edit mode exits first, then a visit ends, then the
       page may pop.
+- [x] The app bar retitle deferred from Task 4.
 
 **Known-fine:** `home_page.dart` already nests horizontal drag-reorder inside the friend `PageView` and
 already gates paging physics by mode, so the swap is choreography, not gesture arbitration.
 
 **Tests:** entering a visit hides the tab bar and shows the rail; the ✕ restores it; system back exits a
 visit before it pops the page (extend `library_back_navigation_test.dart`).
+
+**Done.** 203 green. What landed, and the one thing that turned out to be broken all along:
+
+**The bar is now the whole of the top chrome.** The old `AppBar` held the rail plus a glass search and a
+hamburger; all three are gone. Search-friends moved into the Friends sheet in Task 4, settings became the
+profile action, and the rail moved into the visit — so outside a visit `toolbarHeight` is 0 and
+`_LibraryBar` (was `_LibrarySubHeader`) is the only row. Three states, title fixed: "My Library" +
+profile / "jisoo's Library" + Poke / ⇅ + Done.
+
+**Share is deliberately absent**, though the design draws it beside profile. There is nothing to share:
+the shareable artifacts it would offer belong to the Library Card, which is Phase 3, and a share sheet
+that can only offer a screenshot is worse than no button in the bar. Add it with the artifacts.
+
+**Edit and `+` are gone**, as the design says. `+` was already duplicated by the tab bar's orb, and
+`ShelfRow` already wired a long press to edit — which is where this got interesting.
+
+### Long-press-to-edit never worked, and removing the pencil exposed it
+
+With the pencil gone, long press is the only way into an edit, so it had to be checked rather than
+assumed. A probe test held the press and printed the mode each 100ms:
+
+```
+after 700ms: editing=false
+after 800ms: editing=true
+after release: editing=false      <-- letting go closed what the press opened
+```
+
+The cause is structural. Entering edit mode replaces the shelf's whole list — the plain row becomes a
+`ReorderableListView` of `Draggable`s — so the `BookWidget` element holding the in-flight tap is
+destroyed at the instant the mode flips. Its gesture-arena entry goes with it, and the page-level "tap
+anywhere to leave edit mode" handler inherits the release. `ShelfRow` already has a no-op `onTap` whose
+comment says it exists to stop cover taps reaching that handler; it cannot help here, because the widget
+that would swallow the tap no longer exists by the time the finger lifts.
+
+This was **pre-existing** — nothing in this phase caused it. The pencil simply masked it, and the earlier
+device attempt at a long press (which appeared to do nothing) was this bug, not a missed gesture.
+
+Fixed with a one-shot latch in `_HomePageState`: `_enterEditMode` sets it, the stray tap consumes it, and
+a `Listener(onPointerDown:)` clears it so it can never outlive the gesture that set it — which matters if
+that gesture ends in a drag rather than a tap, because then nothing consumes it. Verified on device: a
+long press now leaves the covers wiggling after release.
+
+### Two test-support changes, both deliberate
+
+`enterEditMode` no longer taps a pencil that does not exist. It hand-rolls the press rather than using
+`tester.longPress`, for two reasons worth keeping written down:
+
+- `BookWidget` does not use `GestureDetector.onLongPress`. It runs its own two-stage hold off a `Timer`
+  from `onTapDown`, and `kBookStageTwoDelay` is 700ms, so a 500ms `longPress` releases first and reads as
+  a plain tap — which pushes the book's details page.
+- It needs **two** pumps. `onTapDown` does not fire on pointer-down; the tap recogniser holds it until it
+  wins the arena or its ~100ms deadline passes, and only then is the 700ms timer scheduled. A single
+  750ms pump advances past the deadline in one step, so the timer lands at 800ms and never fires.
+
+`enterVisit` is new, and goes through the Friends sheet because there is no other way in — your avatar is
+not in the rail, and the rail only exists once you are already visiting.
+
+### Also fixed here
+
+A friend's sheet no longer reserves `ShellTabBar.reserve`. A visit hides the bar, so the reservation left
+an empty white band under the pile — visible in the device screenshots before the change.
+
+### Known, and left as it is
+
+The pager is still `[your library, ...friends]`, so swiping right off the first friend lands on page 0 and
+ends the visit. The design scopes the swipe to friends, which would mean clamping. Left unclamped because
+"your library is home" makes arriving home a reasonable outcome of swiping past the edge, and it is a
+second way out rather than a wrong one. Revisit if it reads as an accident on device.
 
 ---
 

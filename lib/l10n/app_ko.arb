@@ -68,12 +68,15 @@
     "placeholders": { "title": { "type": "String" } }
   },
 
+  "myLibrary": "내 서재",
   "friends": "친구",
   "tabCard": "카드",
   "libraryCard": "도서관 카드",
   "libraryCardEmpty": "독서 기록 통계가 이곳에 표시될 예정이에요",
   "addBook": "책 추가",
   "noFriendsYet": "아직 친구가 없어요",
+  "profile": "프로필",
+  "endVisit": "내 서재로 돌아가기",
 
   "searchBookHint": "책 제목, 저자, 출판사 등으로\n검색이 가능해요 ☺️",
   "searchBookPlaceholder": "책 제목, 저자, 출판사 등",

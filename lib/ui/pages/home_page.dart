@@ -7,7 +7,6 @@ import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
-import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/views/library_view.dart';
 import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
@@ -21,7 +20,6 @@ import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_book_bottom_she
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_shelf_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/manage_shelves_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_date_bottom_sheet.dart';
-import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/loading_blocks.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -63,8 +61,34 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  /// Set when a long press opens edit mode, and cleared by the stray tap that
+  /// same gesture produces on release.
+  ///
+  /// Entering edit mode replaces the shelf's whole list — the plain row becomes a
+  /// `ReorderableListView` of `Draggable`s — so the `BookWidget` element holding
+  /// the in-flight tap is destroyed at the moment the mode flips. Its arena entry
+  /// goes with it, and the page-level "tap anywhere to leave edit mode" handler
+  /// below inherits the release. Without this latch, letting go of the book you
+  /// just long-pressed closes the mode it opened, which made long-press-to-edit
+  /// look like it did nothing at all.
+  bool _editOpenedByThisGesture = false;
+
+  void _enterEditMode() {
+    _editOpenedByThisGesture = true;
+    ref.read(libraryModeProvider.notifier).state = LibraryMode.editLibrary;
+  }
+
   Future<void> _onAddBookPressed() async {
     await showAddBookBottomSheet(context);
+  }
+
+  /// Ends a visit: back to your own library, which is always page 0.
+  ///
+  /// Clearing the selection is the whole of it — `_syncPageToFriend` listens and
+  /// animates the pager home, the rail and Poke go with it, and the tab bar comes
+  /// back. A visit is a selection, not a route, so there is nothing to pop.
+  void _endVisit() {
+    ref.read(selectedFriendProvider.notifier).state = null;
   }
 
   /// The sheet the selected tab puts above the library.
@@ -208,7 +232,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final mode = ref.watch(libraryModeProvider);
     final tab = ref.watch(libraryTabProvider);
     final selectedFriend = ref.watch(selectedFriendProvider);
-    final myProfile = ref.watch(profileProvider);
     final followingAsync = ref.watch(followingListProvider);
     final following = followingAsync.valueOrNull ?? [];
 
@@ -233,193 +256,167 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
 
     return PopScope(
-      // Android back / iOS predictive back should leave edit mode, not the page.
-      canPop: mode == LibraryMode.library,
+      // Three states, innermost first: an edit ends, then a visit ends, then the
+      // page may pop. Each is a context the user opened and expects back out of
+      // in the order they opened it.
+      canPop: mode == LibraryMode.library && isSelf,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && mode != LibraryMode.library) {
+        if (didPop) return;
+        if (mode != LibraryMode.library) {
           ref.read(libraryModeProvider.notifier).state = LibraryMode.library;
+          return;
         }
+        if (!isSelf) _endVisit();
       },
-      child: GestureDetector(
-        onTap: () {
-          if (mode == LibraryMode.editLibrary) {
-            ref.read(libraryModeProvider.notifier).state = LibraryMode.library;
-          }
-        },
-        child: Scaffold(
-          backgroundColor: context.colors.pageBackground,
-          appBar: AppBar(
-            backgroundColor: context.colors.surface,
-            automaticallyImplyLeading: false,
-            centerTitle: false,
-            elevation: 0,
-            titleSpacing: 0,
-            title: SizedBox(
-              height: 56,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: FriendRail(
-                      myProfile: myProfile.valueOrNull,
+      child: Listener(
+        // Any new pointer sequence means the gesture that opened edit mode is
+        // over, so the latch must not outlive it: if that gesture ended in a drag
+        // rather than a tap, nothing consumed it.
+        onPointerDown: (_) => _editOpenedByThisGesture = false,
+        child: GestureDetector(
+          onTap: () {
+            if (_editOpenedByThisGesture) {
+              _editOpenedByThisGesture = false;
+              return;
+            }
+            if (mode == LibraryMode.editLibrary) {
+              ref.read(libraryModeProvider.notifier).state =
+                  LibraryMode.library;
+            }
+          },
+          child: Scaffold(
+            backgroundColor: context.colors.pageBackground,
+            appBar: AppBar(
+              backgroundColor: context.colors.surface,
+              automaticallyImplyLeading: false,
+              centerTitle: false,
+              elevation: 0,
+              titleSpacing: 0,
+              // The rail exists only inside a visit, so outside one the toolbar row
+              // collapses and the bar below is the whole of the chrome.
+              toolbarHeight: isSelf ? 0 : 56,
+              title: isSelf
+                  ? null
+                  : FriendRail(
                       following: following,
                       selectedFriend: selectedFriend,
-                      onSelectSelf: () {
-                        ref.read(selectedFriendProvider.notifier).state = null;
-                      },
+                      onEndVisit: _endVisit,
                       onSelectFriend: (profile) {
                         ref.read(selectedFriendProvider.notifier).state =
                             profile;
-                        ref.read(libraryModeProvider.notifier).state =
-                            LibraryMode.library;
                       },
                     ),
-                  ),
-                  AdaptiveIconButton(
-                    symbol: 'magnifyingglass',
-                    icon: Icons.search,
-                    filledFallback: true,
-                    semanticLabel: l10n.searchFriends,
-                    onPressed: () =>
-                        Navigator.pushNamed(context, AppRoutes.searchUsers),
-                  ),
-                  // Keeps the search button off the settings button next to it,
-                  // which the glass rendering would otherwise sit flush against.
-                  const AdaptiveIconButtonGap(),
-                ],
-              ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 15),
-                child: AdaptiveIconButton(
-                  symbol: 'line.3.horizontal',
-                  icon: Icons.menu,
-                  iconSize: 26,
-                  semanticLabel: l10n.settings,
-                  onPressed: () =>
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(56),
+                child: _LibraryBar(
+                  isSelf: isSelf,
+                  mode: mode,
+                  username: selectedFriend?.username ?? '',
+                  onDonePressed: () {
+                    ref.read(libraryModeProvider.notifier).state =
+                        LibraryMode.library;
+                  },
+                  onManageShelvesPressed: () =>
+                      showManageShelvesBottomSheet(context),
+                  onProfilePressed: () =>
                       Navigator.pushNamed(context, AppRoutes.settings),
+                  onPokePressed: !isSelf
+                      ? () => ref
+                            .read(userActionsProvider)
+                            .pokeUser(selectedFriend.username ?? '')
+                      : null,
                 ),
-              ),
-            ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(56),
-              child: _LibrarySubHeader(
-                isSelf: isSelf,
-                mode: mode,
-                username: isSelf
-                    ? (myProfile.valueOrNull?.username ?? '')
-                    : (selectedFriend.username ?? ''),
-                onEditPressed: () {
-                  ref.read(libraryModeProvider.notifier).state =
-                      LibraryMode.editLibrary;
-                },
-                onAddPressed: _onAddBookPressed,
-                onDonePressed: () {
-                  ref.read(libraryModeProvider.notifier).state =
-                      LibraryMode.library;
-                },
-                onManageShelvesPressed: () =>
-                    showManageShelvesBottomSheet(context),
-                onPokePressed: !isSelf
-                    ? () => ref
-                          .read(userActionsProvider)
-                          .pokeUser(selectedFriend.username ?? '')
-                    : null,
               ),
             ),
-          ),
-          body: Stack(
-            children: [
-              PageView.builder(
-                controller: _pageController,
-                physics: mode == LibraryMode.library
-                    ? const ClampingScrollPhysics()
-                    : const NeverScrollableScrollPhysics(),
-                itemCount: following.length + 1,
-                onPageChanged: (index) {
-                  if (index == 0) {
-                    ref.read(selectedFriendProvider.notifier).state = null;
-                  } else if (index - 1 < following.length) {
-                    ref.read(selectedFriendProvider.notifier).state =
-                        following[index - 1];
-                  }
-                },
-                itemBuilder: (context, index) {
-                  if (index != 0) {
-                    return _FriendLibraryPage(friend: following[index - 1]);
-                  }
-                  return libraryAsync.when(
-                    data: (shelves) => LibraryPane(
-                      shelves: shelves,
-                      finishedBooks: finishedBooksAsync.valueOrNull ?? [],
-                      mode: mode,
-                      sheet: _sheetForTab(
-                        tab,
-                        mode: mode,
+            body: Stack(
+              children: [
+                PageView.builder(
+                  controller: _pageController,
+                  physics: mode == LibraryMode.library
+                      ? const ClampingScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
+                  itemCount: following.length + 1,
+                  onPageChanged: (index) {
+                    if (index == 0) {
+                      ref.read(selectedFriendProvider.notifier).state = null;
+                    } else if (index - 1 < following.length) {
+                      ref.read(selectedFriendProvider.notifier).state =
+                          following[index - 1];
+                    }
+                  },
+                  itemBuilder: (context, index) {
+                    if (index != 0) {
+                      return _FriendLibraryPage(friend: following[index - 1]);
+                    }
+                    return libraryAsync.when(
+                      data: (shelves) => LibraryPane(
+                        shelves: shelves,
                         finishedBooks: finishedBooksAsync.valueOrNull ?? [],
-                        filterYear: filterYear,
-                        filterMonth: filterMonth,
-                        following: following,
-                        selectedFriend: selectedFriend,
+                        mode: mode,
+                        sheet: _sheetForTab(
+                          tab,
+                          mode: mode,
+                          finishedBooks: finishedBooksAsync.valueOrNull ?? [],
+                          filterYear: filterYear,
+                          filterMonth: filterMonth,
+                          following: following,
+                          selectedFriend: selectedFriend,
+                        ),
+                        onEditShelfName: _onEditShelfName,
+                        onDeleteShelf: _onDeleteShelf,
+                        onAddShelf: _onAddShelfPressed,
+                        onEnterEditMode: _enterEditMode,
+                        onMoveBook: (bookId, targetShelfId) {
+                          ref
+                              .read(libraryProvider.notifier)
+                              .moveBookToShelf(bookId, targetShelfId);
+                        },
+                        onReorderBooks: (shelfId, bookIds) {
+                          ref
+                              .read(libraryProvider.notifier)
+                              .reorderBooksInShelf(shelfId, bookIds);
+                        },
+                        onDeleteBook: _onDeleteBook,
+                        onRefresh: () async {
+                          ref.invalidate(libraryProvider);
+                          ref.invalidate(
+                            finishedBooksProvider((
+                              year: filterYear,
+                              month: filterMonth,
+                            )),
+                          );
+                        },
                       ),
-                      onEditShelfName: _onEditShelfName,
-                      onDeleteShelf: _onDeleteShelf,
-                      onAddShelf: _onAddShelfPressed,
-                      onEnterEditMode: () {
-                        ref.read(libraryModeProvider.notifier).state =
-                            LibraryMode.editLibrary;
-                      },
-                      onMoveBook: (bookId, targetShelfId) {
-                        ref
-                            .read(libraryProvider.notifier)
-                            .moveBookToShelf(bookId, targetShelfId);
-                      },
-                      onReorderBooks: (shelfId, bookIds) {
-                        ref
-                            .read(libraryProvider.notifier)
-                            .reorderBooksInShelf(shelfId, bookIds);
-                      },
-                      onDeleteBook: _onDeleteBook,
-                      onRefresh: () async {
-                        ref.invalidate(libraryProvider);
-                        ref.invalidate(
-                          finishedBooksProvider((
-                            year: filterYear,
-                            month: filterMonth,
-                          )),
-                        );
-                      },
-                    ),
-                    loading: () => const LoadingLibrary(),
-                    error: (e, _) => Center(
-                      child: Text(l10n.errorWithMessage(e.toString())),
-                    ),
-                  );
-                },
-              ),
-              // Floats over the sheet, which reserves `ShellTabBar.reserve` at
-              // its bottom for exactly this. Both sides read the same constants,
-              // so the gap above and below the bar is fixed by construction
-              // rather than measured.
-              //
-              // Hidden while editing. An edit is a focused, dismissible context
-              // with its own way out (Done), and the design's rule for those is
-              // that they drop their chrome — the same reason a visit hides the
-              // bar. It also stops you leaving a half-finished edit sideways
-              // through a tab.
-              if (mode != LibraryMode.editLibrary)
-                Positioned(
-                  left: ShellTabBar.sideInset,
-                  right: ShellTabBar.sideInset,
-                  bottom: ShellTabBar.bottomOffset(context),
-                  child: ShellTabBar(
-                    current: tab,
-                    onChanged: (next) =>
-                        ref.read(libraryTabProvider.notifier).state = next,
-                    onAddBook: _onAddBookPressed,
-                  ),
+                      loading: () => const LoadingLibrary(),
+                      error: (e, _) => Center(
+                        child: Text(l10n.errorWithMessage(e.toString())),
+                      ),
+                    );
+                  },
                 ),
-            ],
+                // Floats over the sheet, which reserves `ShellTabBar.reserve` at
+                // its bottom for exactly this. Both sides read the same constants,
+                // so the gap above and below the bar is fixed by construction
+                // rather than measured.
+                //
+                // Hidden while editing, and hidden inside a visit. A tab bar that
+                // is visible but cannot say where you are is the lie four rejected
+                // design rounds kept working around; both are focused contexts with
+                // their own way out, so both drop their chrome.
+                if (mode != LibraryMode.editLibrary && isSelf)
+                  Positioned(
+                    left: ShellTabBar.sideInset,
+                    right: ShellTabBar.sideInset,
+                    bottom: ShellTabBar.bottomOffset(context),
+                    child: ShellTabBar(
+                      current: tab,
+                      onChanged: (next) =>
+                          ref.read(libraryTabProvider.notifier).state = next,
+                      onAddBook: _onAddBookPressed,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -452,14 +449,15 @@ class _FriendLibraryPage extends ConsumerWidget {
         finishedBooks: friendFinishedBooksAsync.valueOrNull ?? [],
         mode: LibraryMode.library,
         // A friend's library always shows their read books, whichever tab you
-        // were on: the tabs describe *your* shell, and a visit leaves it. Once
-        // Task 5 lands, the bar is hidden here and `bottomReserve` goes with it.
+        // were on: the tabs describe *your* shell, and a visit leaves it.
+        //
+        // No `bottomReserve`: a visit hides the tab bar, so reserving room for it
+        // would leave an empty white band under the pile.
         sheet: FinishedBooksSheet(
           books: friendFinishedBooksAsync.valueOrNull ?? [],
           isEditMode: false,
           filterYear: friendFilterYear,
           filterMonth: friendFilterMonth,
-          bottomReserve: ShellTabBar.reserve,
           onFilterPressed: () async {
             final result = await showYearMonthFilterBottomSheet(
               context,
@@ -494,24 +492,37 @@ class _FriendLibraryPage extends ConsumerWidget {
   }
 }
 
-class _LibrarySubHeader extends StatelessWidget {
+/// The shell's bar: whose library you are looking at, and the actions for it.
+///
+/// Three states, and the title never moves between them — it keeps you oriented,
+/// and it keeps actions out of the slot where users expect Cancel:
+///
+///  * your library — "My Library" and your profile
+///  * a visit      — "jisoo's Library" and Poke
+///  * an edit      — manage shelves and Done
+///
+/// Edit and `+` are gone. Long-pressing a book is how an edit starts (`ShelfRow`
+/// already does it), and the tab bar's search button is how a book is added, so
+/// both were duplicate entry points sitting in the most valuable row on screen.
+class _LibraryBar extends StatelessWidget {
   final bool isSelf;
   final LibraryMode mode;
+
+  /// The friend's name during a visit; ignored when [isSelf].
   final String username;
-  final VoidCallback onEditPressed;
-  final VoidCallback onAddPressed;
+
   final VoidCallback onDonePressed;
   final VoidCallback onManageShelvesPressed;
+  final VoidCallback onProfilePressed;
   final VoidCallback? onPokePressed;
 
-  const _LibrarySubHeader({
+  const _LibraryBar({
     required this.isSelf,
     required this.mode,
     required this.username,
-    required this.onEditPressed,
-    required this.onAddPressed,
     required this.onDonePressed,
     required this.onManageShelvesPressed,
+    required this.onProfilePressed,
     this.onPokePressed,
   });
 
@@ -529,40 +540,45 @@ class _LibrarySubHeader extends StatelessWidget {
           padding: EdgeInsets.only(left: 15, right: isEditing ? 4 : 15),
           child: Row(
             children: [
-              // The title stays put in every mode: it keeps the user oriented,
-              // and it keeps actions out of the slot where users expect Cancel.
               Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    text: username.isEmpty ? l10n.library : username,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: isSelf
-                            ? l10n.librarySuffixSelf
-                            : l10n.librarySuffixOther,
+                child: isSelf
+                    ? Text(
+                        l10n.myLibrary,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.normal,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : Text.rich(
+                        TextSpan(
+                          text: username.isEmpty ? l10n.library : username,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: l10n.librarySuffixOther,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
               if (isEditing)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // A bare icon, matching the pencil/plus in this same band.
-                    // Glass capsules (AdaptiveIconButton) belong to the app bar
-                    // above; using one here made the secondary action heavier
-                    // than Done.
+                    // A bare icon, matching the rest of this band. Glass capsules
+                    // belong to sheet corners and the floating bar; using one here
+                    // made the secondary action heavier than Done.
                     SizedBox(
                       width: 44,
                       height: 44,
@@ -590,29 +606,20 @@ class _LibrarySubHeader extends StatelessWidget {
                   ],
                 )
               else if (isSelf)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: IconButton(
-                        onPressed: onEditPressed,
-                        tooltip: l10n.edit,
-                        splashRadius: 22,
-                        icon: const Icon(Icons.edit_outlined, size: 22),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: IconButton(
-                        onPressed: onAddPressed,
-                        splashRadius: 22,
-                        icon: const Icon(Icons.add, size: 24),
-                      ),
-                    ),
-                  ],
+                // Share is drawn in the design beside this, and is deliberately
+                // absent: there is nothing to share yet. The shareable artifacts
+                // it would offer are the Library Card's, which is Phase 3, and a
+                // share sheet that can only offer a screenshot is worse than no
+                // button in the bar.
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: IconButton(
+                    onPressed: onProfilePressed,
+                    tooltip: l10n.profile,
+                    splashRadius: 22,
+                    icon: const Icon(Icons.person_outline, size: 24),
+                  ),
                 )
               else if (onPokePressed != null)
                 GestureDetector(

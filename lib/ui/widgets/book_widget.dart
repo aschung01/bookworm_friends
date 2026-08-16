@@ -255,11 +255,17 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
       ),
     );
 
+    // Callbacks are wired unconditionally and gate on `pressEffect` internally.
+    // Conditioning them here changed the recogniser set mid-gesture, because the
+    // long press that enters edit mode flips `pressEffect` to false while the
+    // finger is still down: the in-flight tap was dropped, the page-level
+    // "tap anywhere to leave edit mode" handler claimed it on release, and edit
+    // mode ended the instant you let go of the book that started it.
     child = GestureDetector(
       onTap: _onTap,
-      onTapDown: widget.pressEffect ? _onTapDown : null,
-      onTapUp: widget.pressEffect ? (_) => _endHold() : null,
-      onTapCancel: widget.pressEffect ? _endHold : null,
+      onTapDown: _onTapDown,
+      onTapUp: (_) => _endHold(),
+      onTapCancel: _endHold,
       child: child,
     );
 

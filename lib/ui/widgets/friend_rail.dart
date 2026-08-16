@@ -6,55 +6,86 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/widgets/avatar_circle.dart';
+import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart';
 
-/// The horizontal strip of friend avatars.
+/// The horizontal strip of friend avatars, shown only inside a visit.
 ///
-/// Named a rail rather than a bar because the decided shell scopes it to a
-/// visit: it exists while you are in someone else's library, holds friends
-/// only, and will carry the control that ends the visit at its head.
+/// Named a rail rather than a bar because the shell scopes it to a visit: it
+/// exists while you are in someone else's library, holds **friends only** — not
+/// you — and carries the control that ends the visit at its head.
+///
+/// Your own avatar is deliberately absent. A permanent rail with you in it was
+/// drawn on all nine states it would have to appear on and undermined itself: a
+/// sheet measured from the bottom is not pushed down by a rail above it, so the
+/// clearance under the bar collapsed, and the fix (hide the rail when the sheet is
+/// up) makes the rail conditional again — which is the premise gone. Scoping it to
+/// a visit is what made the ✕ unambiguous, because a visit is the one context
+/// where a dismissal has an obvious meaning.
 class FriendRail extends StatelessWidget {
-  final Profile? myProfile;
   final List<Profile> following;
   final Profile? selectedFriend;
-  final VoidCallback onSelectSelf;
+
+  /// Ends the visit. Rendered as the glass ✕ pinned at the rail's head, ahead of
+  /// a hairline, so it stays put while the avatars scroll.
+  final VoidCallback onEndVisit;
+
   final ValueChanged<Profile> onSelectFriend;
 
   const FriendRail({
     super.key,
-    required this.myProfile,
     required this.following,
     required this.selectedFriend,
-    required this.onSelectSelf,
+    required this.onEndVisit,
     required this.onSelectFriend,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.only(left: 16, right: 10),
-      itemCount: following.length + 1,
-      separatorBuilder: (_, __) => const SizedBox(width: 10),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          final isSelected = selectedFriend == null;
-          return AvatarCircle(
-            emoji: myProfile?.emoji ?? '📚',
-            isSelected: isSelected,
-            onTap: onSelectSelf,
-          );
-        }
-        final friend = following[index - 1];
-        final isSelected = selectedFriend?.id == friend.id;
-        return AvatarCircle(
-          emoji: friend.emoji ?? '📖',
-          isSelected: isSelected,
-          onTap: () => onSelectFriend(friend),
-          onLongPress: () => _showFriendInfoDialog(context, friend),
-        );
-      },
+    final l10n = AppLocalizations.of(context);
+    // The rail owns its own height: it is a row of 40pt avatars, and the
+    // horizontal list inside needs a bounded cross axis wherever it is placed.
+    return SizedBox(
+      height: 48,
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 10),
+            child: AdaptiveIconButton(
+              symbol: 'xmark',
+              icon: Icons.close,
+              diameter: 36,
+              symbolSize: 14,
+              iconSize: 18,
+              semanticLabel: l10n.endVisit,
+              onPressed: onEndVisit,
+            ),
+          ),
+          // The hairline the head is pinned ahead of: it separates "leave" from
+          // "go somewhere else", which are different kinds of action.
+          Container(width: 1, height: 24, color: context.colors.divider),
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.only(left: 10, right: 10),
+              itemCount: following.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final friend = following[index];
+                return Center(
+                  child: AvatarCircle(
+                    emoji: friend.emoji ?? '📖',
+                    isSelected: selectedFriend?.id == friend.id,
+                    onTap: () => onSelectFriend(friend),
+                    onLongPress: () => _showFriendInfoDialog(context, friend),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

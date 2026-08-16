@@ -89,12 +89,15 @@
     "placeholders": { "title": { "type": "String" } }
   },
 
+  "myLibrary": "My Library",
   "friends": "Friends",
   "tabCard": "Card",
   "libraryCard": "Library Card",
   "libraryCardEmpty": "Your reading stats will live here",
   "addBook": "Add book",
   "noFriendsYet": "No friends yet",
+  "profile": "Profile",
+  "endVisit": "Back to my library",
 
   "searchBookHint": "Search by book title,\nauthor, or publisher ☺️",
   "searchBookPlaceholder": "Title, author, publisher…",

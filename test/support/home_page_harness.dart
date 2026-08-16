@@ -28,6 +28,8 @@ import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/pages/home_page.dart';
+import 'package:bookworm_friends/ui/widgets/book_widget.dart';
+import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
 
 /// Sends the platform-channel message the engine sends on a system back.
 /// Copied from Flutter's own `test/widgets/navigator_utils.dart`.
@@ -125,10 +127,31 @@ Future<void> pumpHome(
   await tester.pumpAndSettle();
 }
 
-/// Enters edit mode via the pencil. Cannot use `pumpAndSettle` afterwards: the
-/// covers wiggle on a repeating animation.
+/// Enters edit mode by long-pressing a cover, which is the only way in since the
+/// bar's pencil was removed: `+` and the pencil were duplicate entry points
+/// sitting in the most valuable row on screen, and `ShelfRow` already wired a
+/// long-press to it.
+///
+/// Hand-rolled rather than `tester.longPress`, because [BookWidget] does not use
+/// `GestureDetector.onLongPress`: it runs its own two-stage hold off a `Timer`
+/// from `onTapDown`, and [kBookStageTwoDelay] is 700ms. A 500ms `longPress`
+/// releases before that timer fires, which reads as a plain tap and pushes the
+/// book's details page instead.
+///
+/// Cannot use `pumpAndSettle` afterwards: the covers wiggle on a repeating
+/// animation.
 Future<void> enterEditMode(WidgetTester tester) async {
-  await tester.tap(find.byIcon(Icons.edit_outlined));
+  final gesture = await tester.startGesture(
+    tester.getCenter(find.byType(BookWidget).first),
+  );
+  // Two pumps, not one. `onTapDown` does not fire on pointer-down: the tap
+  // recognizer holds it until it wins the arena or its ~100ms deadline passes,
+  // and only then is the 700ms stage-two timer scheduled. A single pump of 750ms
+  // advances the clock past the deadline in one step, so the timer is scheduled
+  // at 800ms and never fires before the release.
+  await tester.pump(const Duration(milliseconds: 150));
+  await tester.pump(kBookStageTwoDelay + const Duration(milliseconds: 50));
+  await gesture.up();
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 600));
 }
@@ -136,3 +159,20 @@ Future<void> enterEditMode(WidgetTester tester) async {
 /// True while the library is in edit mode. Keyed off the `Done` button, which
 /// only exists in that mode.
 bool isEditing() => find.text('Done').evaluate().isNotEmpty;
+
+/// Enters a visit the way the shell intends: the Friends tab's Everyone list.
+///
+/// There is no other way in. Your own avatar is not in the rail (the rail only
+/// exists *inside* a visit), so the sheet is the entry point and the rail is only
+/// how you move between friends once you are there.
+Future<void> enterVisit(WidgetTester tester, String username) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byType(ShellTabBar),
+      matching: find.text('Friends'),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(username));
+  await tester.pumpAndSettle();
+}
