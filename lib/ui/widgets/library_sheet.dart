@@ -32,14 +32,52 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 /// grows as the sheet is dragged down.
 class LibrarySheet extends StatefulWidget {
   /// The row kept visible when collapsed, drawn below the drag handle and inset
-  /// to the sheet's horizontal gutter. Its height *is* the collapsed snap
-  /// position.
+  /// to the sheet's horizontal gutter.
   final Widget header;
 
-  /// Shown when expanded, hidden by a collapse. Laid out at its natural height;
-  /// it is clipped rather than squeezed, so it must not be scrollable in the
-  /// vertical axis.
+  /// Replaces [header] once expanded, for sheets whose header changes with the
+  /// state — the read view moves its filter out of the header and into a capsule
+  /// row when it expands. Defaults to [header].
+  final Widget? expandedHeader;
+
+  /// Shown when expanded. Laid out at its natural height and clipped rather than
+  /// squeezed — so it must not scroll vertically — **unless** [expandedExtent] is
+  /// given, in which case it is handed a bounded height and may scroll.
   final Widget body;
+
+  /// Shown at the collapsed snap position, below the header. `null` means the
+  /// collapsed state is the handle and header alone, which is what every sheet
+  /// but the read view wants.
+  ///
+  /// The read view puts its spine pile here: "collapsed is today's spine pile with
+  /// the count" in the design record, with the month grid as [body] above it.
+  final Widget? collapsedBody;
+
+  /// Height of [collapsedBody], which the caller has to state because the sheet
+  /// cannot measure a subtree it is not currently rendering — and it needs the
+  /// collapsed snap position while the expanded body is on screen.
+  ///
+  /// Passing it is honest rather than a shortcut: the pile is a fixed-height
+  /// horizontal scroller (`ReadPile.extent`), so its height is a constant and not
+  /// something a measurement would tell us more accurately.
+  final double collapsedBodyExtent;
+
+  /// Total content height at the expanded snap position, capping it.
+  ///
+  /// `null` keeps Phase 1's behaviour: expanded is the content's natural height.
+  /// Given a value, the expanded position is exactly that and [body] is handed
+  /// the leftover after the header — which is what lets a month grid scroll inside
+  /// a sheet that deliberately stops short of the top of the screen.
+  final double? expandedExtent;
+
+  /// Whether the sheet starts expanded.
+  ///
+  /// True for sheets whose expanded state is just their natural content — Friends
+  /// and the Card, which have nothing to rest on. The read view starts **false**:
+  /// the drawings label the collapsed pile "default state on launch", and opening
+  /// the app into a full-screen grid of covers would bury the library the shell is
+  /// built around.
+  final bool initiallyExpanded;
 
   /// While the library is being edited the sheet springs shut to get out of the
   /// way and goes inert (no dragging, no tapping the handle), then springs back
@@ -64,6 +102,11 @@ class LibrarySheet extends StatefulWidget {
     super.key,
     required this.header,
     required this.body,
+    this.expandedHeader,
+    this.collapsedBody,
+    this.collapsedBodyExtent = 0,
+    this.expandedExtent,
+    this.initiallyExpanded = true,
     this.isEditMode = false,
     this.bottomReserve = 0,
   });
@@ -117,11 +160,16 @@ class _LibrarySheetState extends State<LibrarySheet>
   /// Drag position before overdrag resistance is applied.
   double _rawTravel = 0;
 
-  bool _isExpanded = true;
+  late bool _isExpanded = widget.initiallyExpanded;
+
+  /// Which body is on screen. Distinct from [_isExpanded], which is the *target*:
+  /// this flips as the sheet passes the midpoint of a drag, so the content changes
+  /// under the finger rather than waiting for the release.
+  late bool _showExpanded = widget.initiallyExpanded;
 
   /// Remembered across an edit-mode round trip so leaving edit mode doesn't
   /// override a sheet the user had deliberately collapsed.
-  bool _expandedBeforeEdit = true;
+  late bool _expandedBeforeEdit = widget.initiallyExpanded;
 
   @override
   void initState() {
@@ -129,6 +177,22 @@ class _LibrarySheetState extends State<LibrarySheet>
     _snapController = AnimationController.unbounded(vsync: this)
       ..addListener(_onSnapTick)
       ..addStatusListener(_onSnapStatus);
+    if (!widget.initiallyExpanded) {
+      // The first frame already *looks* right — with `_showExpanded` false the
+      // content is the collapsed body, so its natural height is the collapsed
+      // position. But `_travel` is derived from `_clipHeight`, which is null for
+      // "expanded", so without this the first drag would start from the cap and
+      // jump. Deferred because the position can only be measured once laid out.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final min = _minHeight;
+        if (min <= 0 || _clipHeight != null) return;
+        setState(() {
+          _clipHeight = min;
+          _slideDown = 0;
+        });
+      });
+    }
   }
 
   @override
@@ -157,14 +221,21 @@ class _LibrarySheetState extends State<LibrarySheet>
     return box.size.height;
   }
 
-  /// Natural content height — the sheet's expanded snap position.
-  double get _maxHeight => _measure(_contentKey);
+  /// The expanded snap position.
+  ///
+  /// Either the cap the caller set, or the content's natural height when it did
+  /// not. Known without laying out the expanded body, which matters because the
+  /// midpoint and the spring target are needed while the *collapsed* body is the
+  /// one on screen.
+  double get _maxHeight => widget.expandedExtent ?? _measure(_contentKey);
 
-  /// Handle + header height — the sheet's collapsed snap position.
+  /// The collapsed snap position: handle + header, plus the collapsed body's
+  /// stated height.
   double get _minHeight {
     final max = _maxHeight;
-    final min = _measure(_headerKey);
-    if (max <= 0 || min <= 0) return max;
+    final headerExtent = _measure(_headerKey);
+    if (max <= 0 || headerExtent <= 0) return max;
+    final min = headerExtent + widget.collapsedBodyExtent;
     return min > max ? max : min;
   }
 
@@ -178,7 +249,12 @@ class _LibrarySheetState extends State<LibrarySheet>
   /// against the sheet.
   void _setTravel(double travel) {
     final min = _minHeight;
+    final max = _maxHeight;
+    // Swap the body as the sheet passes halfway, so a drag shows the state it is
+    // heading for instead of stretching the one it is leaving.
+    final showExpanded = max > min ? travel >= (min + max) / 2 : _showExpanded;
     setState(() {
+      _showExpanded = showExpanded;
       if (travel < min) {
         _clipHeight = min;
         _slideDown = min - travel;
@@ -206,12 +282,31 @@ class _LibrarySheetState extends State<LibrarySheet>
 
   /// Springs the sheet to one of its two snap positions, carrying [velocity]
   /// (px/s, positive = downwards) over from the gesture that triggered it.
+  ///
+  /// Swaps the body *before* measuring when it is about to change. The two states
+  /// can have different headers — the read view's grows a capsule row when it
+  /// expands — so a target computed against the outgoing header is wrong by the
+  /// difference, and the sheet would spring to a height it then had to jump away
+  /// from. One frame of the new content at the old height is invisible, because it
+  /// is clipped.
   void _snapTo({required bool expand, double velocity = 0}) {
+    if (_showExpanded != expand) {
+      setState(() => _showExpanded = expand);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _springTo(expand: expand, velocity: velocity);
+      });
+      return;
+    }
+    _springTo(expand: expand, velocity: velocity);
+  }
+
+  void _springTo({required bool expand, double velocity = 0}) {
     final max = _maxHeight;
     final min = _minHeight;
     if (max <= 0 || min >= max) return;
 
     _isExpanded = expand;
+    _showExpanded = expand;
     final from = _travel;
     final to = expand ? max : min;
     if ((from - to).abs() < 0.5 && velocity.abs() < 1) {
@@ -318,34 +413,65 @@ class _LibrarySheetState extends State<LibrarySheet>
 
   Widget _buildContent(BuildContext context) {
     final interactive = !widget.isEditMode;
-    return KeyedSubtree(
-      key: _contentKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Column(
-            key: _headerKey,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: interactive ? () => _snapTo(expand: !_isExpanded) : null,
-                child: const SheetGrabHandle(),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: _gutter,
-                  right: _gutter,
-                  bottom: 6,
-                ),
-                child: widget.header,
-              ),
-            ],
+    final expanded = _showExpanded;
+    final header = expanded
+        ? (widget.expandedHeader ?? widget.header)
+        : widget.header;
+
+    final chrome = Column(
+      key: _headerKey,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: interactive ? () => _snapTo(expand: !_isExpanded) : null,
+          child: const SheetGrabHandle(),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(
+            left: _gutter,
+            right: _gutter,
+            bottom: 6,
           ),
-          widget.body,
-        ],
-      ),
+          child: header,
+        ),
+      ],
     );
+
+    // Swap only when there is something to swap to. Without a `collapsedBody`
+    // this keeps Phase 1's behaviour exactly: one body, always rendered, clipped
+    // by the box as it shrinks. Swapping it for an empty box instead would make
+    // the measured natural height collapse with the sheet, and it could never
+    // expand again.
+    final body = expanded || widget.collapsedBody == null
+        ? widget.body
+        : widget.collapsedBody!;
+
+    // Capped: the content is exactly `expandedExtent` tall and the body takes
+    // whatever the header leaves, which is what gives a scrollable body a bounded
+    // height to scroll inside. Uncapped keeps Phase 1's behaviour exactly — a
+    // min-sized column measured at its natural height.
+    final cap = widget.expandedExtent;
+    final Widget content;
+    if (expanded && cap != null) {
+      content = SizedBox(
+        height: cap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            chrome,
+            Expanded(child: body),
+          ],
+        ),
+      );
+    } else {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [chrome, body],
+      );
+    }
+
+    return KeyedSubtree(key: _contentKey, child: content);
   }
 }
 

@@ -38,6 +38,7 @@ Book _book(
   String title, {
   int status = 0,
   int pos = 0,
+  DateTime? finished,
 }) => Book(
   id: id,
   userId: 'u',
@@ -47,6 +48,7 @@ Book _book(
   thumbnail: '',
   status: status,
   position: pos,
+  finishDate: finished,
   createdAt: DateTime(2024),
 );
 
@@ -76,10 +78,63 @@ List<Shelf> _library() => [
 ];
 
 List<Book> _readBooks() => [
-  _book('r1', 's1', 'Dune', status: bookStatusFinished, pos: 0),
-  _book('r2', 's1', 'Circe', status: bookStatusFinished, pos: 1),
-  _book('r3', 's1', 'Beloved', status: bookStatusFinished, pos: 2),
-  _book('r4', 's1', 'Human Acts', status: bookStatusFinished, pos: 3),
+  _book(
+    'r1',
+    's1',
+    'Dune',
+    status: bookStatusFinished,
+    pos: 0,
+    finished: DateTime(2026, 3, 4),
+  ),
+  _book(
+    'r2',
+    's1',
+    'Circe',
+    status: bookStatusFinished,
+    pos: 1,
+    finished: DateTime(2026, 3, 19),
+  ),
+  _book(
+    'r3',
+    's1',
+    'Beloved',
+    status: bookStatusFinished,
+    pos: 2,
+    finished: DateTime(2026, 2, 8),
+  ),
+  _book(
+    'r4',
+    's1',
+    'Human Acts',
+    status: bookStatusFinished,
+    pos: 3,
+    finished: DateTime(2026, 1, 30),
+  ),
+  _book(
+    'r5',
+    's1',
+    'Snow',
+    status: bookStatusFinished,
+    pos: 4,
+    finished: DateTime(2025, 12, 2),
+  ),
+  _book(
+    'r6',
+    's1',
+    'Kafka on the Shore',
+    status: bookStatusFinished,
+    pos: 5,
+    finished: DateTime(2025, 11, 11),
+  ),
+  _book(
+    'r7',
+    's1',
+    'The Vegetarian',
+    status: bookStatusFinished,
+    pos: 6,
+    finished: DateTime(2025, 11, 1),
+  ),
+  _book('r8', 's1', 'Almond', status: bookStatusFinished, pos: 7),
 ];
 
 Profile _profile(String id, String name, String emoji) => Profile(
@@ -105,13 +160,13 @@ void main() async {
         sharedPreferencesProvider.overrideWithValue(prefs),
         currentUserIdProvider.overrideWithValue('u'),
         libraryProvider.overrideWith(_FixtureLibrary.new),
-        finishedBooksProvider.overrideWith((ref, filter) async => _readBooks()),
+        finishedBooksProvider.overrideWith((ref) async => _readBooks()),
         // A visit reads a friend's library through its own providers, so without
         // these the visit renders a Supabase-not-initialised error instead of the
         // chrome this preview exists to show.
         userLibraryProvider.overrideWith((ref, userId) async => _library()),
         userFinishedBooksProvider.overrideWith(
-          (ref, args) async => _readBooks(),
+          (ref, userId) async => _readBooks(),
         ),
         profileProvider.overrideWith(
           (ref) async => _profile('u', 'tester', '📚'),

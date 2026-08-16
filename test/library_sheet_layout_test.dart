@@ -47,7 +47,7 @@ List<Book> _readBooks() => [
 Future<void> _pumpWithPile(WidgetTester tester) => pumpHome(
   tester,
   extraOverrides: [
-    finishedBooksProvider.overrideWith((ref, filter) async => _readBooks()),
+    finishedBooksProvider.overrideWith((ref) async => _readBooks()),
   ],
 );
 

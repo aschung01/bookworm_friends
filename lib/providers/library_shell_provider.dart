@@ -41,25 +41,18 @@ final selectedFriendProvider = StateProvider.autoDispose<Profile?>(
   (ref) => null,
 );
 
-/// Year and month the "Books read" pile is filtered to, where `0` means "all".
+/// Year the read view is filtered to, where `0` means all time.
 ///
-/// Kept as two separate providers, and as a separate pair per library, because
-/// that is exactly what the pre-shell code did and this move is meant to change
-/// no behaviour. Two things to know before tidying them:
+/// Month-level filtering is gone: the expanded read view groups by month already,
+/// so filtering to one month would leave a grid with a single group in it. What
+/// remains is one year per library — yours and, separately, the friend you are
+/// visiting.
 ///
-///  * The friend pair is shared by *every* friend, so switching friends inside a
-///    visit keeps the filter. Keying a family on the friend's id would give each
-///    friend their own filter instead — defensible, but a behaviour change.
-///  * `user_library_page.dart` has a third private pair of its own, so a friend's
-///    library filters independently depending on whether you reached it through
-///    the pager or through that route. Worth resolving when the shell decides
-///    whether that page survives, not before.
+/// The friend pair is shared by *every* friend, so paging between them inside a
+/// visit keeps the filter. Keying a family on the friend's id would give each their
+/// own; still a behaviour change, still not this change.
 final readsFilterYearProvider = StateProvider.autoDispose<int>((ref) => 0);
-final readsFilterMonthProvider = StateProvider.autoDispose<int>((ref) => 0);
 
 final friendReadsFilterYearProvider = StateProvider.autoDispose<int>(
-  (ref) => 0,
-);
-final friendReadsFilterMonthProvider = StateProvider.autoDispose<int>(
   (ref) => 0,
 );

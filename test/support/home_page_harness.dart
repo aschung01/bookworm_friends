@@ -61,6 +61,7 @@ Book testBook(
   int position = 0,
   String? title,
   int status = 0,
+  DateTime? finishDate,
 }) => Book(
   id: id,
   userId: 'u',
@@ -70,6 +71,7 @@ Book testBook(
   thumbnail: '',
   status: status,
   position: position,
+  finishDate: finishDate,
   createdAt: DateTime(2024),
 );
 
@@ -112,7 +114,7 @@ Future<void> pumpHome(
         libraryProvider.overrideWith(
           () => FakeLibraryNotifier(shelves ?? singleBookLibrary()),
         ),
-        finishedBooksProvider.overrideWith((ref, filter) async => <Book>[]),
+        finishedBooksProvider.overrideWith((ref) async => <Book>[]),
         profileProvider.overrideWith(
           (ref) async => Profile(
             id: 'u',

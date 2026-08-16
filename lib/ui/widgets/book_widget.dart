@@ -56,6 +56,15 @@ class BookWidget extends StatefulWidget {
   /// belongs to the reorder drag instead.
   final bool pressEffect;
 
+  /// Whether the book picks up its hashed height and thickness variation.
+  ///
+  /// True on the shelves, where the variation is the point: a row of books at
+  /// slightly different heights reads as physical books rather than as a chart.
+  /// Passed `false` by the read view's month grid, whose cells are uniform by
+  /// construction — there the same 6% reads as misalignment instead of as
+  /// character, which is exactly how it looked on device.
+  final bool jitter;
+
   const BookWidget({
     super.key,
     this.height,
@@ -66,6 +75,7 @@ class BookWidget extends StatefulWidget {
     this.onLongPress,
     this.heroTag,
     this.pressEffect = true,
+    this.jitter = true,
   });
 
   @override
@@ -240,7 +250,9 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
       // 2/3 until the real ratio is known, so the book never jumps size
       // mid-load.
       coverAspect: _coverAspect ?? kDefaultCoverAspect,
-      jitter: BookJitter.fromIsbn(widget.isbn),
+      jitter: widget.jitter
+          ? BookJitter.fromIsbn(widget.isbn)
+          : BookJitter.neutral,
     );
 
     Widget child = RepaintBoundary(

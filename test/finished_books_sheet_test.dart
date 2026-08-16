@@ -1,10 +1,20 @@
-// Widget tests for the "Books read" bottom sheet.
+// Widget tests for the read view — the Library tab's sheet.
 //
-// The sheet is pinned below the library: it reports its (possibly collapsed)
-// height to the parent Column so the library above only ever gets the leftover
-// space. These tests guard both halves of that contract — the sheet is fully
-// visible without scrolling, and dragging/tapping it snaps between its natural
-// (max) height and the collapsed handle+title height while the library grows.
+// Phase 2 gave this sheet two genuinely different states rather than one body
+// clipped at two heights, so what is asserted here changed shape with it:
+//
+//   collapsed  handle + header (title, count, popover filter) + the spine pile
+//   expanded   handle + header + year capsules + covers grouped by month
+//
+// Note what that means for the old tests: before Phase 2 the pile *was* the
+// expanded state and collapsed showed nothing but the title. Today's expanded is
+// new and today's collapsed is what used to be expanded. The snap positions are
+// therefore both different numbers, and the drag is a content swap rather than a
+// reveal.
+//
+// The sheet reads as sitting above the library and never strands anything, which
+// `library_sheet_layout_test.dart` and `library_clearance_test.dart` pin from the
+// outside; this file is about the read view's own two states.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,51 +22,95 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
+import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/read_month_grid.dart';
+import 'package:bookworm_friends/ui/widgets/read_pile.dart';
 
 const _libraryKey = Key('library');
 
-List<Book> _books(int count) => List.generate(
-  count,
-  (i) => Book(
-    id: '$i',
-    userId: 'u',
-    shelfId: 's',
-    isbn: '$i',
-    title: 'Book $i',
-    thumbnail: '',
-    status: 2,
-    position: i,
-    createdAt: DateTime(2024),
-  ),
+/// Surface tall enough that the expanded cap leaves the pile's height behind it,
+/// so collapsed and expanded are clearly different numbers.
+const _surface = Size(390, 800);
+
+Book _read(String id, String title, DateTime? finished) => Book(
+  id: id,
+  userId: 'u',
+  shelfId: 's',
+  isbn: id,
+  title: title,
+  thumbnail: '',
+  status: 2,
+  position: 0,
+  finishDate: finished,
+  createdAt: DateTime(2024),
 );
 
-Widget _wrap(List<Book> books, {ValueNotifier<bool>? editMode}) {
-  return MaterialApp(
-    locale: const Locale('en'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Container(key: _libraryKey, color: const Color(0xffE9ECEF)),
+/// Two months in 2026, one in 2025, and one undated — enough for grouping, the
+/// year capsules and the undated group all to be visible at once.
+List<Book> _books() => [
+  _read('a', 'Dune', DateTime(2026, 3, 4)),
+  _read('b', 'Circe', DateTime(2026, 3, 19)),
+  _read('c', 'Beloved', DateTime(2026, 2, 8)),
+  _read('d', 'Snow', DateTime(2025, 11, 2)),
+  _read('e', 'Almond', null),
+];
+
+class _Host extends StatefulWidget {
+  final List<Book> books;
+  final ValueNotifier<bool>? editMode;
+
+  const _Host({required this.books, this.editMode});
+
+  @override
+  State<_Host> createState() => _HostState();
+}
+
+class _HostState extends State<_Host> {
+  int _year = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Container(key: _libraryKey, color: const Color(0xffE9ECEF)),
+        ),
+        ValueListenableBuilder<bool>(
+          valueListenable: widget.editMode ?? ValueNotifier(false),
+          builder: (context, isEditMode, _) => FinishedBooksSheet(
+            books: widget.books,
+            isEditMode: isEditMode,
+            filterYear: _year,
+            maxExtent: _surface.height,
+            onFilterChanged: (year) => setState(() => _year = year),
           ),
-          ValueListenableBuilder<bool>(
-            valueListenable: editMode ?? ValueNotifier(false),
-            builder: (context, isEditMode, _) => FinishedBooksSheet(
-              books: books,
-              isEditMode: isEditMode,
-              filterYear: 0,
-              filterMonth: 0,
-              onFilterPressed: () {},
-            ),
-          ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _pump(
+  WidgetTester tester, {
+  List<Book>? books,
+  ValueNotifier<bool>? editMode,
+}) async {
+  tester.view.physicalSize = _surface * tester.view.devicePixelRatio;
+  addTearDown(tester.view.resetPhysicalSize);
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: _Host(books: books ?? _books(), editMode: editMode),
       ),
     ),
   );
+  await tester.pumpAndSettle();
 }
 
 Rect _sheetRect(WidgetTester tester) =>
@@ -65,37 +119,36 @@ Rect _sheetRect(WidgetTester tester) =>
 double _libraryHeight(WidgetTester tester) =>
     tester.getSize(find.byKey(_libraryKey)).height;
 
-/// Drags the sheet by [dy] (positive = downwards) starting from its title row.
-Future<void> _dragSheet(WidgetTester tester, double dy) async {
-  await tester.drag(find.text('Books read'), Offset(0, dy));
-  await tester.pumpAndSettle();
-}
-
-/// The drag handle sits at the top-center of the sheet.
 Offset _handleCenter(WidgetTester tester) {
   final sheet = _sheetRect(tester);
   return Offset(sheet.center.dx, sheet.top + 12);
 }
 
+Future<void> _drag(WidgetTester tester, double dy) async {
+  await tester.drag(find.text('Books read'), Offset(0, dy));
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  group('FinishedBooksSheet', () {
+  group('Read view, collapsed', () {
     testWidgets(
-      'Given finished books, When first laid out, Then the sheet is fully visible and the library takes the leftover height',
+      'Given read books, When first laid out, Then the pile is the resting state '
+      'and the library takes the leftover height',
       (tester) async {
-        await tester.pumpWidget(_wrap(_books(12)));
-        await tester.pumpAndSettle();
+        await _pump(tester);
 
         final body = tester.getRect(find.byType(Scaffold));
         final sheet = _sheetRect(tester);
 
-        // Pinned to the bottom, entirely on screen, no scrolling needed.
         expect(sheet.bottom, moreOrLessEquals(body.bottom));
-        expect(sheet.top, greaterThan(body.top));
         expect(find.text('Books read'), findsOneWidget);
-        expect(find.text('12'), findsOneWidget);
-        expect(find.byType(BookVertical), findsWidgets);
+        expect(find.text('5'), findsOneWidget);
 
-        // Library height is exactly what the sheet left over.
+        // The pile, not the grid.
+        expect(find.byType(ReadPile), findsOneWidget);
+        expect(find.byType(BookVertical), findsWidgets);
+        expect(find.byType(ReadMonthGrid), findsNothing);
+
         expect(
           _libraryHeight(tester),
           moreOrLessEquals(body.height - sheet.height),
@@ -104,154 +157,229 @@ void main() {
     );
 
     testWidgets(
-      'Given an expanded sheet, When dragged down, Then it snaps to the handle+title height and the library grows',
+      'Given the collapsed sheet, When measured, Then it is the handle, the header '
+      'and exactly the pile',
       (tester) async {
-        await tester.pumpWidget(_wrap(_books(12)));
-        await tester.pumpAndSettle();
+        await _pump(tester);
 
-        final expandedHeight = _sheetRect(tester).height;
-        final expandedLibraryHeight = _libraryHeight(tester);
-
-        await _dragSheet(tester, 200);
-
-        final collapsedHeight = _sheetRect(tester).height;
-        expect(collapsedHeight, lessThan(expandedHeight / 2));
-        // The handle and title survive the collapse.
-        expect(collapsedHeight, greaterThan(20));
-        expect(find.text('Books read'), findsOneWidget);
-        expect(_sheetRect(tester).bottom, moreOrLessEquals(600));
-
-        // Every pixel the sheet gave up goes to the library.
+        // The pile's height is a constant the sheet is told rather than measures,
+        // because it needs the collapsed position while the grid is on screen.
+        // This is the check that the constant matches what the pile draws.
         expect(
-          _libraryHeight(tester) - expandedLibraryHeight,
-          moreOrLessEquals(expandedHeight - collapsedHeight),
+          tester.getSize(find.byType(ReadPile)).height,
+          closeTo(ReadPile.extent, 0.5),
+        );
+      },
+    );
+  });
+
+  group('Read view, expanded', () {
+    testWidgets(
+      'Given the pile, When dragged up, Then it becomes covers grouped by month',
+      (tester) async {
+        await _pump(tester);
+        final collapsed = _sheetRect(tester).height;
+
+        await _drag(tester, -300);
+
+        expect(_sheetRect(tester).height, greaterThan(collapsed));
+        expect(find.byType(ReadMonthGrid), findsOneWidget);
+        expect(
+          find.byType(ReadPile),
+          findsNothing,
+          reason: 'the pile is the collapsed state; expanded is the grid',
+        );
+        expect(find.byType(BookWidget), findsWidgets);
+
+        // Newest month first, and the undated group last.
+        expect(find.text('March 2026'), findsOneWidget);
+        expect(find.text('February 2026'), findsOneWidget);
+        expect(find.text('November 2025'), findsOneWidget);
+        expect(find.text('No finish date'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given the expanded sheet, When measured, Then it stops short of the top so '
+      'a shelf stays visible',
+      (tester) async {
+        await _pump(tester);
+        await _drag(tester, -300);
+
+        final expected = FinishedBooksSheet.expandedExtentFor(
+          _surface.height,
+          bookRowExtent(_surface.height * 0.15),
+        );
+        // The sheet's box adds the home-indicator inset, which is 0 here.
+        expect(_sheetRect(tester).height, closeTo(expected, 1));
+        expect(
+          _sheetRect(tester).height,
+          lessThan(_surface.height),
+          reason: 'an expanded sheet that covered everything would be a page',
         );
       },
     );
 
     testWidgets(
-      'Given a collapsed sheet, When dragged up, Then it snaps back to its natural (max) height',
+      'Given more books than fit, When expanded, Then the grid scrolls inside the '
+      'sheet rather than making it taller',
       (tester) async {
-        await tester.pumpWidget(_wrap(_books(12)));
-        await tester.pumpAndSettle();
+        final many = [
+          for (var i = 0; i < 60; i++)
+            _read('b$i', 'Book $i', DateTime(2026, 1 + (i % 12), 1 + i % 27)),
+        ];
+        await _pump(tester, books: many);
+        await _drag(tester, -300);
 
-        final expandedHeight = _sheetRect(tester).height;
+        final expected = FinishedBooksSheet.expandedExtentFor(
+          _surface.height,
+          bookRowExtent(_surface.height * 0.15),
+        );
+        expect(_sheetRect(tester).height, closeTo(expected, 1));
 
-        await _dragSheet(tester, 200);
-        expect(_sheetRect(tester).height, lessThan(expandedHeight));
+        // Scrollable, and lazy: not every one of the sixty covers is built.
+        final grid = find.descendant(
+          of: find.byType(ReadMonthGrid),
+          matching: find.byType(Scrollable),
+        );
+        expect(grid, findsWidgets);
+        expect(
+          find.byType(BookWidget).evaluate().length,
+          lessThan(60),
+          reason: 'the outer list must build only the months that fit',
+        );
+      },
+    );
+  });
 
-        await _dragSheet(tester, -200);
-        expect(_sheetRect(tester).height, moreOrLessEquals(expandedHeight));
+  group('Read view, the filter', () {
+    testWidgets(
+      'Given several years, When collapsed, Then the filter is a popover in the '
+      'header and not a capsule row',
+      (tester) async {
+        await _pump(tester);
+
+        expect(find.text('All time'), findsOneWidget);
+        // A capsule row would show every year at once; the popover shows only the
+        // current selection.
+        expect(find.text('2025'), findsNothing);
       },
     );
 
     testWidgets(
-      'Given an expanded sheet, When the drag handle is tapped, Then it toggles collapsed and back',
+      'Given several years, When expanded, Then the years are capsules',
       (tester) async {
-        await tester.pumpWidget(_wrap(_books(12)));
-        await tester.pumpAndSettle();
+        await _pump(tester);
+        await _drag(tester, -300);
 
-        final expandedHeight = _sheetRect(tester).height;
-
-        await tester.tapAt(_handleCenter(tester));
-        await tester.pumpAndSettle();
-        expect(_sheetRect(tester).height, lessThan(expandedHeight));
-
-        await tester.tapAt(_handleCenter(tester));
-        await tester.pumpAndSettle();
-        expect(_sheetRect(tester).height, moreOrLessEquals(expandedHeight));
+        expect(find.text('All time'), findsWidgets);
+        expect(find.text('2026'), findsWidgets);
+        expect(find.text('2025'), findsWidgets);
       },
     );
 
     testWidgets(
-      'Given no finished books, When rendered, Then the empty state is shown and the sheet still collapses',
+      'Given a year is chosen, When it filters, Then the count and the grid follow '
+      'it and the year list does not shrink',
       (tester) async {
-        await tester.pumpWidget(_wrap(const []));
+        await _pump(tester);
+        await _drag(tester, -300);
+
+        await tester.tap(find.text('2025').first);
         await tester.pumpAndSettle();
+
+        // Scoped to the header: the month group shows a count of 1 as well.
+        expect(
+          tester
+              .widget<LibrarySheetTitle>(find.byType(LibrarySheetTitle))
+              .count,
+          1,
+          reason: 'one book read in 2025',
+        );
+        expect(find.text('November 2025'), findsOneWidget);
+        expect(find.text('March 2026'), findsNothing);
+        expect(
+          find.text('2026'),
+          findsWidgets,
+          reason:
+              'the capsules come from every read book, not the filtered set — '
+              'filtering to 2025 must not remove 2026 from the choices',
+        );
+      },
+    );
+
+    testWidgets(
+      'Given only one year of reading, When laid out, Then there is no filter to '
+      'show',
+      (tester) async {
+        await _pump(tester, books: [_read('a', 'Dune', DateTime(2026, 3, 4))]);
+
+        expect(find.text('All time'), findsNothing);
+      },
+    );
+  });
+
+  group('Read view, unchanged behaviours', () {
+    testWidgets(
+      'Given no read books, When rendered, Then the empty state shows in place of '
+      'the pile',
+      (tester) async {
+        await _pump(tester, books: const []);
 
         expect(find.text('No books read yet 🥲'), findsOneWidget);
-        final expandedHeight = _sheetRect(tester).height;
-
-        await _dragSheet(tester, 200);
-        expect(_sheetRect(tester).height, lessThan(expandedHeight));
+        expect(find.text('0'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'Given an expanded sheet, When the library enters edit mode, Then it springs shut and reopens when editing ends',
+      'Given an expanded sheet, When the library enters edit mode, Then it springs '
+      'shut and reopens when editing ends',
       (tester) async {
         final editMode = ValueNotifier(false);
         addTearDown(editMode.dispose);
 
-        await tester.pumpWidget(_wrap(_books(12), editMode: editMode));
-        await tester.pumpAndSettle();
-        final expandedHeight = _sheetRect(tester).height;
-        final expandedLibraryHeight = _libraryHeight(tester);
+        await _pump(tester, editMode: editMode);
+        await _drag(tester, -300);
+        final expanded = _sheetRect(tester).height;
+        final expandedLibrary = _libraryHeight(tester);
 
         editMode.value = true;
         await tester.pumpAndSettle();
 
-        expect(_sheetRect(tester).height, lessThan(expandedHeight / 2));
-        expect(find.text('Books read'), findsOneWidget);
-        // The library gets the freed space to edit shelves in.
-        expect(_libraryHeight(tester), greaterThan(expandedLibraryHeight));
+        expect(_sheetRect(tester).height, lessThan(expanded));
+        expect(find.byType(ReadPile), findsOneWidget);
+        expect(_libraryHeight(tester), greaterThan(expandedLibrary));
 
         editMode.value = false;
         await tester.pumpAndSettle();
-
-        expect(_sheetRect(tester).height, moreOrLessEquals(expandedHeight));
+        expect(_sheetRect(tester).height, closeTo(expanded, 1));
       },
     );
 
     testWidgets(
-      'Given a sheet the user already collapsed, When edit mode ends, Then it stays collapsed',
+      'Given the sheet, When the handle is tapped, Then it toggles between the two '
+      'states',
       (tester) async {
-        final editMode = ValueNotifier(false);
-        addTearDown(editMode.dispose);
-
-        await tester.pumpWidget(_wrap(_books(12), editMode: editMode));
-        await tester.pumpAndSettle();
-        await _dragSheet(tester, 200);
-        final collapsedHeight = _sheetRect(tester).height;
-
-        editMode.value = true;
-        await tester.pumpAndSettle();
-        editMode.value = false;
-        await tester.pumpAndSettle();
-
-        expect(_sheetRect(tester).height, moreOrLessEquals(collapsedHeight));
-      },
-    );
-
-    testWidgets(
-      'Given the library is in edit mode, When the sheet is dragged or tapped, Then it stays pinned shut',
-      (tester) async {
-        final editMode = ValueNotifier(false);
-        addTearDown(editMode.dispose);
-
-        await tester.pumpWidget(_wrap(_books(12), editMode: editMode));
-        await tester.pumpAndSettle();
-        editMode.value = true;
-        await tester.pumpAndSettle();
-        final collapsedHeight = _sheetRect(tester).height;
-
-        await _dragSheet(tester, -200);
-        expect(_sheetRect(tester).height, moreOrLessEquals(collapsedHeight));
+        await _pump(tester);
+        final collapsed = _sheetRect(tester).height;
 
         await tester.tapAt(_handleCenter(tester));
         await tester.pumpAndSettle();
-        expect(_sheetRect(tester).height, moreOrLessEquals(collapsedHeight));
+        expect(_sheetRect(tester).height, greaterThan(collapsed));
+        expect(find.byType(ReadMonthGrid), findsOneWidget);
+
+        await tester.tapAt(_handleCenter(tester));
+        await tester.pumpAndSettle();
+        expect(_sheetRect(tester).height, closeTo(collapsed, 1));
+        expect(find.byType(ReadPile), findsOneWidget);
       },
     );
 
-    // The spring is what makes the sheet feel springy: if these two ever stop
-    // overshooting, the motion has degenerated into a plain ease.
     testWidgets(
-      'Given a collapsed sheet, When it springs open, Then it overshoots the expanded position before settling',
+      'Given a collapsed sheet, When it springs open, Then it still overshoots '
+      'before settling',
       (tester) async {
-        await tester.pumpWidget(_wrap(_books(12)));
-        await tester.pumpAndSettle();
-        await _dragSheet(tester, 200);
+        await _pump(tester);
 
         await tester.tapAt(_handleCenter(tester));
         var tallest = 0.0;
@@ -263,30 +391,6 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(tallest, greaterThan(_sheetRect(tester).height + 4));
-      },
-    );
-
-    testWidgets(
-      'Given an expanded sheet, When it springs closed, Then it dips past the collapsed position before settling',
-      (tester) async {
-        await tester.pumpWidget(_wrap(_books(12)));
-        await tester.pumpAndSettle();
-
-        await tester.tapAt(_handleCenter(tester));
-        var lowest = 0.0;
-        for (var frame = 0; frame < 40; frame++) {
-          await tester.pump(const Duration(milliseconds: 16));
-          // The title rides along with the sheet, so it tracks the dip even
-          // though the laid-out slot stays at the collapsed height.
-          final titleTop = tester.getRect(find.text('Books read')).top;
-          if (titleTop > lowest) lowest = titleTop;
-        }
-        await tester.pumpAndSettle();
-
-        expect(
-          lowest,
-          greaterThan(tester.getRect(find.text('Books read')).top + 4),
-        );
       },
     );
   });

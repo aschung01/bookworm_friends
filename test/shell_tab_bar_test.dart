@@ -53,7 +53,7 @@ List<Book> _readBooks() => [
 Future<void> _pumpShell(WidgetTester tester) => pumpHome(
   tester,
   extraOverrides: [
-    finishedBooksProvider.overrideWith((ref, filter) async => _readBooks()),
+    finishedBooksProvider.overrideWith((ref) async => _readBooks()),
     followingListProvider.overrideWith(
       (ref) async => [
         _friend('f1', 'jisoo', '🦊'),
@@ -316,7 +316,7 @@ void main() {
           tester,
           extraOverrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            finishedBooksProvider.overrideWith((ref, filter) async => <Book>[]),
+            finishedBooksProvider.overrideWith((ref) async => <Book>[]),
           ],
         );
 

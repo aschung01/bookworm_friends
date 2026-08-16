@@ -39,7 +39,7 @@ Future<void> _pumpMixedLibrary(WidgetTester tester) => pumpHome(
   tester,
   shelves: [testShelf('s1', _mixedShelfBooks(), name: 'Dev')],
   extraOverrides: [
-    finishedBooksProvider.overrideWith((ref, filter) async => [_readBook()]),
+    finishedBooksProvider.overrideWith((ref) async => [_readBook()]),
   ],
 );
 
@@ -69,7 +69,7 @@ Future<void> _pumpFriendPage(
           (ref, userId) async => [testShelf('s1', shelfBooks, name: 'Dev')],
         ),
         userFinishedBooksProvider.overrideWith(
-          (ref, params) async => pileBooks,
+          (ref, userId) async => pileBooks,
         ),
       ],
       child: MaterialApp(
@@ -169,9 +169,7 @@ void main() {
             testShelf('s1', [_readBook()], name: 'Dev'),
           ],
           extraOverrides: [
-            finishedBooksProvider.overrideWith(
-              (ref, filter) async => [_readBook()],
-            ),
+            finishedBooksProvider.overrideWith((ref) async => [_readBook()]),
           ],
         );
 
@@ -191,7 +189,7 @@ void main() {
           ],
           // Stands in for a year/month filter that matches nothing.
           extraOverrides: [
-            finishedBooksProvider.overrideWith((ref, filter) async => <Book>[]),
+            finishedBooksProvider.overrideWith((ref) async => <Book>[]),
           ],
         );
 

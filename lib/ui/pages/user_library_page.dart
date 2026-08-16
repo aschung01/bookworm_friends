@@ -11,16 +11,26 @@ import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
+import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
-import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_date_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart';
 
-/// Year/month the "Books read" pile is filtered by. Zero means "all".
-final _filterYearProvider = StateProvider.autoDispose<int>((ref) => 0);
-final _filterMonthProvider = StateProvider.autoDispose<int>((ref) => 0);
-
+/// This page exists for a case a **visit** cannot serve: someone you do not
+/// follow.
+///
+/// The shell shows a friend's library as a visit, but a visit is a selection into
+/// the friend pager, whose pages are the people you follow — `_syncPageToFriend`
+/// ignores anyone else and `HomePage` actively clears a selection that is no longer
+/// followed. Search finds arbitrary users and the follower lists include
+/// non-followed ones, so removing this page would remove the only way to look at
+/// someone before deciding to follow them.
+///
+/// It shares `friendReadsFilterYearProvider` with the visit rather than keeping a
+/// private filter, so someone else's library filters the same way however you
+/// arrived at it. That inconsistency was flagged in Phase 1 Task 1 and is fixed
+/// here.
 class UserLibraryPage extends ConsumerWidget {
   const UserLibraryPage({super.key});
 
@@ -35,15 +45,8 @@ class UserLibraryPage extends ConsumerWidget {
     final libraryAsync = ref.watch(userLibraryProvider(userId));
     final isFollowingAsync = ref.watch(isFollowingProvider(userId));
     final currentUserId = ref.watch(currentUserIdProvider);
-    final filterYear = ref.watch(_filterYearProvider);
-    final filterMonth = ref.watch(_filterMonthProvider);
-    final finishedBooksAsync = ref.watch(
-      userFinishedBooksProvider((
-        userId: userId,
-        year: filterYear,
-        month: filterMonth,
-      )),
-    );
+    final filterYear = ref.watch(friendReadsFilterYearProvider);
+    final finishedBooksAsync = ref.watch(userFinishedBooksProvider(userId));
 
     return Scaffold(
       backgroundColor: context.colors.pageBackground,
@@ -118,27 +121,11 @@ class UserLibraryPage extends ConsumerWidget {
           shelves: shelves,
           finishedBooks: finishedBooksAsync.valueOrNull ?? const [],
           filterYear: filterYear,
-          filterMonth: filterMonth,
-          onFilterPressed: () async {
-            final result = await showYearMonthFilterBottomSheet(
-              context,
-              currentYear: filterYear,
-              currentMonth: filterMonth,
-            );
-            if (result != null) {
-              ref.read(_filterYearProvider.notifier).state = result.year;
-              ref.read(_filterMonthProvider.notifier).state = result.month;
-            }
-          },
+          onFilterChanged: (year) =>
+              ref.read(friendReadsFilterYearProvider.notifier).state = year,
           onRefresh: () async {
             ref.invalidate(userLibraryProvider(userId));
-            ref.invalidate(
-              userFinishedBooksProvider((
-                userId: userId,
-                year: filterYear,
-                month: filterMonth,
-              )),
-            );
+            ref.invalidate(userFinishedBooksProvider(userId));
           },
         ),
         loading: () =>
@@ -153,26 +140,24 @@ class _UserLibraryBody extends StatelessWidget {
   final List<Shelf> shelves;
   final List<Book> finishedBooks;
   final int filterYear;
-  final int filterMonth;
-  final VoidCallback onFilterPressed;
+  final ValueChanged<int> onFilterChanged;
   final Future<void> Function() onRefresh;
 
   const _UserLibraryBody({
     required this.shelves,
     required this.finishedBooks,
     required this.filterYear,
-    required this.filterMonth,
-    required this.onFilterPressed,
+    required this.onFilterChanged,
     required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Read books belong to the "Books read" pile at the bottom, so they are kept
-    // off the shelves above it. The emptiness check still looks at the unfiltered
-    // shelves: `finishedBooks` only covers the pile's year/month filter, and a
-    // library of nothing but read books isn't empty.
+    // Read books belong to the read sheet at the bottom, so they are kept off the
+    // shelves above it. The emptiness check looks at the unfiltered shelves and
+    // the unfiltered read set: a library of nothing but read books isn't empty,
+    // and neither is one whose current year filter happens to exclude them all.
     final shelvesOnDisplay = withoutFinishedBooks(shelves);
     final hasNoBooks =
         (shelves.isEmpty || shelves.every((s) => s.books.isEmpty)) &&
@@ -208,22 +193,24 @@ class _UserLibraryBody extends StatelessWidget {
       ),
     );
 
-    // The library only gets the height the pile leaves over, so the pile is
+    // The library only gets the height the sheet leaves over, so the sheet is
     // always fully visible without scrolling to the bottom of the page.
-    return ColoredBox(
-      color: context.colors.surfaceVariant,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: library),
-          FinishedBooksSheet(
-            books: finishedBooks,
-            isEditMode: false,
-            filterYear: filterYear,
-            filterMonth: filterMonth,
-            onFilterPressed: onFilterPressed,
-          ),
-        ],
+    return LayoutBuilder(
+      builder: (context, constraints) => ColoredBox(
+        color: context.colors.surfaceVariant,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: library),
+            FinishedBooksSheet(
+              books: finishedBooks,
+              isEditMode: false,
+              filterYear: filterYear,
+              maxExtent: constraints.maxHeight,
+              onFilterChanged: onFilterChanged,
+            ),
+          ],
+        ),
       ),
     );
   }

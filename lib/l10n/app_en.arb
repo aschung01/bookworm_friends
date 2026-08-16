@@ -12,7 +12,6 @@
   "close": "Close",
   "confirm": "Confirm",
   "select": "Select",
-  "all": "All",
   "no": "No",
   "library": "Library",
   "followers": "Followers",
@@ -72,10 +71,12 @@
   "@yearLabel": {
     "placeholders": { "year": { "type": "int" } }
   },
-  "yearMonthLabel": "{year}.{month}",
-  "@yearMonthLabel": {
-    "placeholders": { "year": { "type": "int" }, "month": { "type": "int" } }
+  "monthYearLabel": "{month, select, 1{January} 2{February} 3{March} 4{April} 5{May} 6{June} 7{July} 8{August} 9{September} 10{October} 11{November} 12{December} other{{month}}} {year}",
+  "@monthYearLabel": {
+    "placeholders": { "year": { "type": "int" }, "month": { "type": "String" } }
   },
+  "readNoDate": "No finish date",
+  "allTime": "All time",
   "bookCountLabel": "{count}",
   "@bookCountLabel": {
     "placeholders": { "count": { "type": "int" } }

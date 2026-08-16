@@ -226,59 +226,41 @@ class LibraryNotifier extends AutoDisposeAsyncNotifier<List<Shelf>> {
   }
 }
 
-final finishedBooksProvider = FutureProvider.autoDispose
-    .family<List<Book>, ({int year, int month})>((ref, filter) async {
-      final userId = ref.watch(currentUserIdProvider);
-      if (userId == null) return [];
+/// Every finished book, newest finish date first.
+///
+/// Deliberately **unfiltered**, where this used to take a year and a month. The
+/// read view groups by month and filters by year on the client, and it needs the
+/// whole set to do either: the year capsules are the set of years you have
+/// finished books in, which a year-filtered query cannot tell you. It is also what
+/// the library itself wants — whether to offer "add your first book" depends on
+/// whether you have read anything at all, not on whether the current filter
+/// happens to exclude it.
+///
+/// Unbounded by design, and bounded in practice by how much one person has read.
+final finishedBooksProvider = FutureProvider.autoDispose<List<Book>>((
+  ref,
+) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return [];
 
-      var query = supabase
+  final data = await supabase
+      .from('books')
+      .select()
+      .eq('user_id', userId)
+      .eq('status', bookStatusFinished)
+      .order('finish_date', ascending: false);
+  return data.map((b) => Book.fromJson(b)).toList();
+});
+
+/// The same, for someone else's library. Keyed by user id alone.
+final userFinishedBooksProvider = FutureProvider.autoDispose
+    .family<List<Book>, String>((ref, userId) async {
+      final data = await supabase
           .from('books')
           .select()
           .eq('user_id', userId)
-          .eq('status', bookStatusFinished);
-
-      if (filter.year > 0) {
-        final start = DateTime(
-          filter.year,
-          filter.month > 0 ? filter.month : 1,
-        );
-        final end = filter.month > 0
-            ? DateTime(filter.year, filter.month + 1)
-            : DateTime(filter.year + 1);
-        query = query
-            .gte('finish_date', DateFormat('yyyy-MM-dd').format(start))
-            .lt('finish_date', DateFormat('yyyy-MM-dd').format(end));
-      }
-
-      final data = await query.order('finish_date', ascending: false);
-      return data.map((b) => Book.fromJson(b)).toList();
-    });
-
-final userFinishedBooksProvider = FutureProvider.autoDispose
-    .family<List<Book>, ({String userId, int year, int month})>((
-      ref,
-      params,
-    ) async {
-      var query = supabase
-          .from('books')
-          .select()
-          .eq('user_id', params.userId)
-          .eq('status', bookStatusFinished);
-
-      if (params.year > 0) {
-        final start = DateTime(
-          params.year,
-          params.month > 0 ? params.month : 1,
-        );
-        final end = params.month > 0
-            ? DateTime(params.year, params.month + 1)
-            : DateTime(params.year + 1);
-        query = query
-            .gte('finish_date', DateFormat('yyyy-MM-dd').format(start))
-            .lt('finish_date', DateFormat('yyyy-MM-dd').format(end));
-      }
-
-      final data = await query.order('finish_date', ascending: false);
+          .eq('status', bookStatusFinished)
+          .order('finish_date', ascending: false);
       return data.map((b) => Book.fromJson(b)).toList();
     });
 

@@ -15,6 +15,15 @@
 //
 // The band is the library's own viewport, so `RefreshIndicator` (which wraps
 // exactly the shelf list) is the handle on it.
+//
+// **Phase 2 measures this twice, because the sheet now has two real states.**
+// Collapsed is handle + header + the spine pile, which is what Phase 1 called
+// expanded -- so the collapsed numbers barely moved and the first two tests below
+// are the Phase 1 ones. Expanded is new, and it is the case that can eat the
+// library: the month grid would happily grow to the top of the screen, so the
+// clearance there is not a consequence of the contents at all but of a deliberate
+// cap. What bounds it is `FinishedBooksSheet.expandedExtentFor`, and that is what
+// the last two tests assert.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,7 +32,9 @@ import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
-import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/book_widget.dart';
+import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/read_month_grid.dart';
 
 import 'support/home_page_harness.dart';
 
@@ -40,21 +51,54 @@ Profile _friend(String id, String name) => Profile(
 );
 
 List<Book> _readBooks() => [
-  testBook('r1', 's1', position: 1, title: 'Dune', status: bookStatusFinished),
-  testBook('r2', 's1', position: 2, title: 'Circe', status: bookStatusFinished),
+  testBook(
+    'r1',
+    's1',
+    position: 1,
+    title: 'Dune',
+    status: bookStatusFinished,
+    finishDate: DateTime(2026, 3, 4),
+  ),
+  testBook(
+    'r2',
+    's1',
+    position: 2,
+    title: 'Circe',
+    status: bookStatusFinished,
+    finishDate: DateTime(2025, 11, 2),
+  ),
 ];
+
+/// Enough read books, across enough months, that an uncapped grid would be
+/// taller than any phone.
+List<Book> _manyReadBooks() => List.generate(
+  40,
+  (i) => testBook(
+    'r$i',
+    's1',
+    position: i,
+    title: 'Book $i',
+    status: bookStatusFinished,
+    finishDate: DateTime(2026 - (i ~/ 12), 1 + (i % 12), 1 + (i % 27)),
+  ),
+);
 
 Future<void> _pump(
   WidgetTester tester, {
   TextScaler? textScaler,
   Size? surfaceSize,
+  List<Book>? readBooks,
 }) => pumpHome(
   tester,
   textScaler: textScaler,
   surfaceSize: surfaceSize,
   extraOverrides: [
-    finishedBooksProvider.overrideWith((ref, filter) async => _readBooks()),
-    userFinishedBooksProvider.overrideWith((ref, args) async => _readBooks()),
+    finishedBooksProvider.overrideWith(
+      (ref) async => readBooks ?? _readBooks(),
+    ),
+    userFinishedBooksProvider.overrideWith(
+      (ref, userId) async => readBooks ?? _readBooks(),
+    ),
     userLibraryProvider.overrideWith((ref, id) async => singleBookLibrary()),
     followingListProvider.overrideWith((ref) async => [_friend('f1', 'jisoo')]),
   ],
@@ -62,6 +106,16 @@ Future<void> _pump(
 
 double _clearance(WidgetTester tester) =>
     tester.getRect(find.byType(RefreshIndicator)).height;
+
+/// One shelf row of books, at the height the library draws it on this surface.
+double _shelfRow(Size surface) => bookRowExtent(surface.height * 0.15);
+
+/// Expands the sheet by tapping the grab handle, which is the one gesture that
+/// cannot be mistaken for a shelf scroll.
+Future<void> _expand(WidgetTester tester) async {
+  await tester.tap(find.byType(SheetGrabHandle));
+  await tester.pumpAndSettle();
+}
 
 void main() {
   group('Library left between the bar and the sheet', () {
@@ -120,43 +174,77 @@ void main() {
     );
 
     testWidgets(
-      'Given far more read books than fit, When laid out, Then the pile scrolls '
-      'instead of making the sheet taller',
+      'Given far more read books than fit, When expanded, Then the cap bounds '
+      'the sheet and one shelf of library survives',
       (tester) async {
-        // This is what bounds the clearance. The pile is a horizontally scrolling
-        // row of fixed height, so forty books take exactly as much vertical room
-        // as two. If it ever becomes a wrap or a grid, the sheet grows with the
-        // library and every number in this file stops holding.
-        await pumpHome(
+        // This is what bounds the clearance now. Before Phase 2 it was the pile:
+        // a horizontally scrolling row of fixed height, so forty books took
+        // exactly as much vertical room as two, and the comment here said that a
+        // grid would end it. The grid has arrived, and the bound is no longer a
+        // property of the contents — it is `expandedExtentFor`, which subtracts
+        // one shelf row from what the sheet and library share.
+        await _pump(
           tester,
           surfaceSize: _smallPhone,
-          extraOverrides: [
-            finishedBooksProvider.overrideWith(
-              (ref, filter) async => List.generate(
-                40,
-                (i) => testBook(
-                  'r$i',
-                  's1',
-                  position: i,
-                  title: 'Book $i',
-                  status: bookStatusFinished,
-                ),
-              ),
-            ),
-          ],
+          readBooks: _manyReadBooks(),
         );
+        await _expand(tester);
 
-        final pile = find.descendant(
-          of: find.byType(FinishedBooksSheet),
-          matching: find.byType(ListView),
-        );
-        expect(tester.widget<ListView>(pile).scrollDirection, Axis.horizontal);
+        expect(find.byType(ReadMonthGrid), findsOneWidget);
+
+        // Sharp on purpose: an uncapped grid would take the whole band and leave
+        // nothing, and a cap that forgot the tab bar's reservation would leave
+        // 40pt. Only a cap that sets aside exactly one shelf row lands here.
         expect(
-          tester.getSize(pile).height,
-          closeTo(124 + 13, 0.5),
-          reason: 'the pile is a fixed-height row, whatever it contains',
+          _clearance(tester),
+          closeTo(_shelfRow(_smallPhone), 1.5),
+          reason:
+              'forty books must not make the sheet taller than the cap, and the '
+              'cap exists so a shelf of covers stays visible behind it — that is '
+              'what makes it a sheet and not a page',
         );
-        expect(_clearance(tester), greaterThan(150));
+      },
+    );
+
+    testWidgets(
+      'Given the largest text scale on the smallest phone, When expanded, Then '
+      'the shelf still survives and nothing overflows',
+      (tester) async {
+        // The month headers are new text that scales, and the expanded state is
+        // taller than anything Phase 1 had — so the worst case has to be
+        // re-measured rather than inherited.
+        //
+        // Measured on a 375x667 phone: 106.1 of library left, which is exactly
+        // `bookRowExtent(667 * 0.15)` and identical to the default text scale.
+        // The first version of the cap left 40.1 here — 66pt less, which is the
+        // tab bar's whole reservation, taken out of the library instead of the
+        // grid.
+        await _pump(
+          tester,
+          surfaceSize: _smallPhone,
+          textScaler: const TextScaler.linear(2),
+          readBooks: _manyReadBooks(),
+        );
+        await _expand(tester);
+
+        expect(
+          _clearance(tester),
+          closeTo(_shelfRow(_smallPhone), 1.5),
+          reason:
+              'the cap is derived from the shelf row, which does not scale with '
+              'text, so accessibility sizes must cost the grid and not the '
+              'library',
+        );
+        expect(
+          tester.takeException(),
+          isNull,
+          reason:
+              'nothing in the sheet may overflow at accessibility sizes. Note the '
+              'test font makes every glyph one em wide, so "All time" measures '
+              '224pt here against ~125 on a device — this is a strict upper '
+              'bound, and it is what forced the collapsed header\'s two halves '
+              'to both be flexible',
+        );
       },
     );
   });
