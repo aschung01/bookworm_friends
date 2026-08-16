@@ -2208,6 +2208,11 @@
    ELEMENTS [group, [ [id, name, note, demoHTML], ... ] ]
    ================================================================== */
             /* ---------------- shared specs ---------------- */
+            /* The library, drawn the same way regardless of what the sheet is
+               doing. There used to be a second, smaller fixture for "the library
+               with a tall sheet up" -- fewer shelves, smaller covers -- which
+               quietly claimed the library shrinks as the sheet rises. It does not:
+               the shelves keep their size and you simply see less of them. */
             const SHELVES3 = {
                 type: "shelves",
                 list: [
@@ -2215,11 +2220,6 @@
                     ["Poetry", 3],
                     ["Non-fiction", 3],
                 ],
-            };
-            const SHELVES1 = {
-                type: "shelves",
-                list: [["Novels", 4]],
-                base: 25,
             };
             const HERSHELVES = {
                 type: "shelves",
@@ -2294,7 +2294,7 @@
                             "My Library &middot; expanded",
                             "Same sheet dragged up: covers grouped by month. One shelf stays visible so the library is never fully left behind.",
                             {
-                                well: SHELVES1,
+                                well: SHELVES3,
                                 sheet: {
                                     h: 79,
                                     hdr: { title: "Books read", count: 12 },
@@ -2325,9 +2325,9 @@
                                 well: {
                                     type: "shelves",
                                     list: [
-                                        ["Novels", 3],
-                                        ["Poetry", 2],
-                                        ["Non-fiction", 2],
+                                        ["Novels", 5],
+                                        ["Poetry", 3],
+                                        ["Non-fiction", 3],
                                     ],
                                     wig: true,
                                 },
@@ -2346,7 +2346,7 @@
                             "No rail until someone is selected. Everyone lists friends with what they&rsquo;re reading and their read count.",
                             {
                                 tab: "friends",
-                                well: SHELVES1,
+                                well: SHELVES3,
                                 sheet: {
                                     h: 72,
                                     hdr: { title: "Friends" },
@@ -2365,7 +2365,7 @@
                             "Same sheet, other capsule. Everyone is <em>who</em>; Activity is <em>what just happened</em>.",
                             {
                                 tab: "friends",
-                                well: SHELVES1,
+                                well: SHELVES3,
                                 sheet: {
                                     h: 72,
                                     hdr: { title: "Friends" },
@@ -2408,11 +2408,7 @@
                                 rail: 1,
                                 railLead: "close",
                                 bar: { kind: "friend", friend: "jisoo" },
-                                well: {
-                                    type: "shelves",
-                                    list: [["Fiction", 2]],
-                                    base: 24,
-                                },
+                                well: HERSHELVES,
                                 sheet: {
                                     h: 72,
                                     hdr: {
@@ -2438,7 +2434,7 @@
                             "Sheet carries its own share, since the card is the shareable artifact. Years are capsules, matching Flighty&rsquo;s Passport. <b>Stats only &mdash; no read-books list</b>: read books stay on the Library tab, which already groups them by month, so a sortable list here would be a second home for the same data.",
                             {
                                 tab: "card",
-                                well: SHELVES1,
+                                well: SHELVES3,
                                 sheet: {
                                     h: 74,
                                     hdr: { title: "Library Card", share: true },
@@ -2760,16 +2756,9 @@
                                 ],
                                 [
                                     "Dragging",
-                                    "The library above compresses rather than being covered.",
+                                    "Mid-drag. The sheet reads as sliding up <i>over</i> the library, which keeps its shelves and cover sizes throughout &mdash; you just see less of it. Nothing is stranded underneath: the library's scroll area ends where the sheet begins.",
                                     {
-                                        well: {
-                                            type: "shelves",
-                                            list: [
-                                                ["Novels", 4],
-                                                ["Poetry", 3],
-                                            ],
-                                            base: 24,
-                                        },
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 55,
                                             hdr: {
@@ -2796,7 +2785,7 @@
                                     "Expanded",
                                     "Covers by month, count pinned above them.",
                                     {
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 79,
                                             hdr: {
@@ -2899,7 +2888,7 @@
                                     "Or expand",
                                     "Expanded, the same choice is a capsule row.",
                                     {
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 79,
                                             hdr: {
@@ -2936,7 +2925,7 @@
                                     "A destination in its own right: who your friends are and what each is reading now. Tap jisoo.",
                                     {
                                         tab: "friends",
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 72,
                                             hdr: { title: "Friends" },
@@ -2964,10 +2953,7 @@
                                             kind: "friend",
                                             friend: "jisoo",
                                         },
-                                        well: {
-                                            type: "shelves",
-                                            list: [["Fiction", 2]],
-                                        },
+                                        well: HERSHELVES,
                                         sheet: {
                                             h: 50,
                                             hdr: {
@@ -3020,7 +3006,7 @@
                                     "The visit ends and the tab bar returns with Friends still lit &mdash; you are back where you started, not somewhere new.",
                                     {
                                         tab: "friends",
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 72,
                                             hdr: { title: "Friends" },
@@ -3117,7 +3103,7 @@
                                     "Tap the + beside the capsules.",
                                     {
                                         tab: "friends",
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 72,
                                             hdr: { title: "Friends" },
@@ -3156,7 +3142,7 @@
                                     "Dismisses back to Everyone with the new row in place.",
                                     {
                                         tab: "friends",
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 72,
                                             hdr: { title: "Friends" },
@@ -3350,7 +3336,7 @@
                                     "Persisted rows only: finishes, ratings and praise. Pokes cannot appear here without a <code>poke_events</code> table.",
                                     {
                                         tab: "friends",
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 72,
                                             hdr: { title: "Friends" },
@@ -3417,7 +3403,7 @@
                                     "Stats with their own share button.",
                                     {
                                         tab: "card",
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 74,
                                             hdr: {
@@ -3442,7 +3428,7 @@
                                     "Capsules re-scope every card.",
                                     {
                                         tab: "card",
-                                        well: SHELVES1,
+                                        well: SHELVES3,
                                         sheet: {
                                             h: 74,
                                             hdr: {
@@ -3505,9 +3491,9 @@
                                         well: {
                                             type: "shelves",
                                             list: [
-                                                ["Novels", 3],
-                                                ["Poetry", 2],
-                                                ["Non-fiction", 2],
+                                                ["Novels", 5],
+                                                ["Poetry", 3],
+                                                ["Non-fiction", 3],
                                             ],
                                             wig: true,
                                         },
@@ -3524,9 +3510,9 @@
                                         well: {
                                             type: "shelves",
                                             list: [
-                                                ["Novels", 2],
-                                                ["Poetry", 3],
-                                                ["Non-fiction", 2],
+                                                ["Novels", 4],
+                                                ["Poetry", 4],
+                                                ["Non-fiction", 3],
                                             ],
                                             wig: true,
                                         },
@@ -3630,6 +3616,12 @@
                 [
                     "Sheet",
                     [
+                        [
+                            "el-sheet",
+                            "The sheet, on every tab",
+                            "One sheet per tab, and all three behave the same way &mdash; Books read, Friends and the Card. It reads as sitting <b>above</b> the library: rounded top corners, an upward shadow, and the library visible behind it. Two rules follow from that reading. The library never changes size or scale when the sheet moves &mdash; shelves and covers are fixed, you just see less of them. And nothing is ever stranded underneath: whatever is behind the sheet must be reachable, which today falls out of the sheet reporting its height to a <code>Column</code> and the library taking what is left (<code>finished_books_sheet.dart</code>), and would need an equivalent bottom inset if it were ever built as a true overlay. How it is achieved is an implementation choice; that nothing hides is not.",
+                            `<div style="position:relative;width:120px;height:74px;background:var(--variant);border-radius:8px;overflow:hidden">${shelf("Novels", 3, 22, 0)}<div class="sheet" style="height:46%;padding:4px 7px"><div class="hdl"></div>${sheetHdr({ title: "Books read", count: 12 })}</div></div>`,
+                        ],
                         [
                             "el-sheethdr",
                             "Sheet header",

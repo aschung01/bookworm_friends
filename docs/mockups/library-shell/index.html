@@ -490,6 +490,28 @@
                         month. Sheet position replaces any Shelves/Read toggle.
                     </dd>
 
+                    <dt>The sheet sits above the library, on every tab</dt>
+                    <dd>
+                        Library, Friends and Card all behave the same way, and
+                        the behaviour is stated as <b>what it looks like</b>:
+                        the sheet reads as sliding up <i>over</i> the library,
+                        which stays exactly as it is. Nothing scales &mdash;
+                        shelves and covers keep their size and you simply see
+                        less of them &mdash; and nothing is stranded underneath,
+                        so anything behind the sheet stays reachable.
+                        <b>How</b> that is achieved is left to whatever is
+                        cheapest to build: today it falls out of the sheet
+                        reporting its height to a <code>Column</code> whose
+                        other child is an <code>Expanded</code> library, which
+                        means the two never overlap at all
+                        (<code>finished_books_sheet.dart</code>, pinned by
+                        <code>library_sheet_layout_test.dart</code>). An actual
+                        overlay would do just as well provided the library
+                        carried a matching bottom inset. The distinction is
+                        invisible on screen, which is the point: it is an
+                        implementation choice, not a design one.
+                    </dd>
+
                     <dt>Filters</dt>
                     <dd>
                         iOS 26 capsules when expanded, glass popover select when
