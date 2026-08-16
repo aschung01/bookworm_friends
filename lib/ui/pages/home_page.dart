@@ -398,8 +398,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Positioned(
                 left: ShellTabBar.sideInset,
                 right: ShellTabBar.sideInset,
-                bottom:
-                    MediaQuery.viewPaddingOf(context).bottom + ShellTabBar.gap,
+                bottom: ShellTabBar.bottomOffset(context),
                 child: ShellTabBar(
                   current: tab,
                   onChanged: (next) =>

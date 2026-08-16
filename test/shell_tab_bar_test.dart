@@ -176,7 +176,7 @@ void main() {
         expect(bar.left, closeTo(ShellTabBar.sideInset, 0.5));
         expect(bar.right, closeTo(screen.right - ShellTabBar.sideInset, 0.5));
         expect(bar.bottom, closeTo(screen.bottom - ShellTabBar.gap, 0.5));
-        expect(bar.height, closeTo(ShellTabBar.height, 0.5));
+        expect(bar.height, closeTo(ShellTabBar.visualHeight, 0.5));
 
         // The sheet reserves room for it, so the last thing the sheet draws --
         // the shelf the read pile stands on -- stops above the bar.

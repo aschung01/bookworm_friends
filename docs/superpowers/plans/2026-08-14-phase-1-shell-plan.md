@@ -235,6 +235,17 @@ chrome, and the native path had never once been rendered.** All three bugs below
    after pushing, which runs while the pushed page covers the bar; the item came back still tinted as
    the active tab. Fixed by making `onAddBook` awaited and deactivating once Add Book closes — which is
    also the truthful behaviour, since the search item _is_ active while its UI is open.
+4. **The bar floated ~20pt too high** (spotted by eye on the real app, then measured). The box was
+   pinned at `viewPadding.bottom + gap` = 42pt off the screen bottom, which is right — but the visible
+   glass is **not** the box. iOS lays the platter out as **62pt anchored to the top of the 83pt frame**,
+   keeping 21pt of padding at the bottom of its own box, because a `UITabBar` expects to sit flush with
+   the screen edge and own the home-indicator strip itself. So the glass ended up 63pt up, not 42.
+   Fixed by splitting `_boxHeight` (83) from `visualHeight` (62) and subtracting the difference in
+   `bottomOffset`; `reserve` is now derived from `visualHeight`, so the sheet reserves what is actually
+   drawn. Verified by reading `_UITabBarPlatterView`'s window frame: its bottom edge is now at 42pt.
+
+   Worth generalising: **a native platform view's frame is not its drawing.** Positioning by the frame
+   is what put the glass in the wrong place, and only the view hierarchy showed the difference.
 
 What the run confirmed as correct: the native path renders the design as drawn — a floating glass pill
 with a genuinely detached circular orb, no hand-rolling needed. A tab switch swaps only the sheet; the
@@ -282,10 +293,12 @@ visit before it pops the page (extend `library_back_navigation_test.dart`).
       mid-edit leaves that sheet expanded while the covers wiggle. Options: hide the bar for an edit
       (an edit is a focused context, and the design already hides the bar for the other one — a visit),
       or give every sheet `isEditMode` so they all spring shut.
-- [ ] Consider measuring the bar's height at runtime instead of the constant Task 7 landed. 83 is the
-      real `UITabBar.sizeThatFits` on iPhone 17 Pro / iOS 26.4, but it is one device at one text size,
-      and the package exposes no way to read what it measured. A `GlobalKey` + post-frame read feeding
-      the sheet's reserve would be self-correcting; the cost is a frame of resize on first build.
+- [ ] Consider measuring the bar's height at runtime instead of the constants Task 7 landed. 83/62 are
+      the real `UITabBar` box and platter heights on iPhone 17 Pro / iOS 26.4, but that is one device at
+      one text size, and the package exposes no way to read what it measured. A `GlobalKey` +
+      post-frame read feeding the sheet's reserve would be self-correcting; the cost is a frame of
+      resize on first build. Note the platter height cannot be read from Flutter at all — it is a
+      native subview — so the 21pt inset would still be a constant.
 
 This is pre-existing, measures the same in every mockup version including `main`, and Phase 1 is the moment
 it gets touched. Do it here rather than discovering it on device.

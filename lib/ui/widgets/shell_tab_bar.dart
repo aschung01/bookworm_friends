@@ -38,33 +38,53 @@ class ShellTabBar extends StatefulWidget {
     required this.onAddBook,
   });
 
-  /// Height of the bar, which differs by path and is passed to `CNTabBar`
-  /// explicitly rather than letting it measure itself.
+  /// Height of the box handed to the bar.
   ///
-  /// The package measures its intrinsic height asynchronously from native and
-  /// keeps it private — no constant, no callback — so a caller that must reserve
-  /// space beneath the bar cannot learn the number. Fixing it makes [reserve]
-  /// exact.
+  /// Passed to `CNTabBar` explicitly rather than letting it measure itself: the
+  /// package measures its intrinsic height asynchronously from native and keeps
+  /// it private — no constant, no callback — so a caller that must reserve space
+  /// beneath the bar cannot learn the number.
   ///
-  /// 83 is not a guess: it is `UITabBar.sizeThatFits` for an iOS 26 tab bar with
-  /// three labelled items and a search item, read off the rendered view on an
-  /// iPhone 17 Pro / iOS 26.4 simulator by building with `height: null` and
-  /// inspecting the native frame. The first attempt used 50 for both paths and
-  /// the native bar rendered its labels on top of its icons — a squashed
-  /// `UITabBar` is what too small looks like, and a covered last row of the sheet
-  /// is what it looks like from the sheet's side.
-  static double get height => useNativeGlass ? 83 : 50;
+  /// 83 is not a guess. It is `UITabBar.sizeThatFits` for an iOS 26 bar with three
+  /// labelled items and a search item, read off the rendered view on an iPhone 17
+  /// Pro / iOS 26.4 simulator. At 50 the native bar drew its labels on top of its
+  /// icons — a squashed `UITabBar` is what too small looks like.
+  static double get _boxHeight => useNativeGlass ? 83 : 50;
 
-  /// Gap above and below the bar, and the inset from the screen's side edges.
+  /// Height of what you can actually see, which on the native path is *not*
+  /// [_boxHeight].
+  ///
+  /// iOS lays the visible glass out as a 62pt platter anchored to the **top** of
+  /// the 83pt frame, keeping 21pt of padding at the bottom of its own box — a
+  /// `UITabBar` expects to sit flush with the screen edge and to own the
+  /// home-indicator strip itself. Both the platter and the search orb measure 62.
+  static double get visualHeight => useNativeGlass ? 62 : 50;
+
+  /// Empty space the bar keeps below its own glass, which the caller has to
+  /// subtract from the offset or the bar floats that much too high.
+  static double get _bottomInset => _boxHeight - visualHeight;
+
+  /// Gap above and below the visible bar, and the inset from the screen's side
+  /// edges.
   static const double gap = 8;
   static const double sideInset = 14;
 
-  /// Vertical room a sheet must leave free at its bottom so the floating bar
-  /// does not cover its contents: a gap, the bar, and a gap again.
+  /// Where to pin the bar's box so its *glass* clears the home indicator by
+  /// [gap]. Compensates for [_bottomInset]; without it the visible bar sits that
+  /// much higher than intended, which reads as a tab bar floating oddly far up
+  /// the screen.
+  static double bottomOffset(BuildContext context) {
+    final offset =
+        MediaQuery.viewPaddingOf(context).bottom + gap - _bottomInset;
+    return offset < 0 ? 0 : offset;
+  }
+
+  /// Vertical room a sheet must leave free at its bottom so the floating bar does
+  /// not cover its contents: a gap, the visible bar, and a gap again.
   ///
-  /// Excludes the home-indicator inset, which the sheet reserves separately —
-  /// the bar is offset by the same inset, so the two stay in step.
-  static double get reserve => gap + height + gap;
+  /// Excludes the home-indicator inset, which the sheet reserves separately — the
+  /// bar is offset by the same inset, so the two stay in step.
+  static double get reserve => gap + visualHeight + gap;
 
   @override
   State<ShellTabBar> createState() => _ShellTabBarState();
@@ -120,7 +140,7 @@ class _ShellTabBarState extends State<ShellTabBar> {
   Widget _buildNative(BuildContext context) {
     final labels = _labels(context);
     return CNTabBar(
-      height: ShellTabBar.height,
+      height: ShellTabBar._boxHeight,
       currentIndex: _tabs.indexOf(widget.current),
       onTap: (index) => widget.onChanged(_tabs[index]),
       tint: context.colors.brandText,
@@ -153,9 +173,9 @@ class _ShellTabBarState extends State<ShellTabBar> {
       children: [
         Expanded(
           child: _Glass(
-            borderRadius: BorderRadius.circular(ShellTabBar.height / 2),
+            borderRadius: BorderRadius.circular(ShellTabBar.visualHeight / 2),
             child: SizedBox(
-              height: ShellTabBar.height,
+              height: ShellTabBar.visualHeight,
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: Row(
@@ -176,9 +196,9 @@ class _ShellTabBarState extends State<ShellTabBar> {
         ),
         const SizedBox(width: 12),
         _Glass(
-          borderRadius: BorderRadius.circular(ShellTabBar.height / 2),
+          borderRadius: BorderRadius.circular(ShellTabBar.visualHeight / 2),
           child: SizedBox.square(
-            dimension: ShellTabBar.height,
+            dimension: ShellTabBar.visualHeight,
             child: IconButton(
               onPressed: _onAddBookTapped,
               tooltip: AppLocalizations.of(context).addBook,
@@ -240,7 +260,7 @@ class _TabSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular((ShellTabBar.height - 8) / 2);
+    final radius = BorderRadius.circular((ShellTabBar.visualHeight - 8) / 2);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
