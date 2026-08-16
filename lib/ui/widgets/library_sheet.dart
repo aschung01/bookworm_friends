@@ -391,8 +391,18 @@ class LibrarySheetTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 18);
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(title, style: style),
+        // Flexible, not fixed: at accessibility text sizes an 18pt bold title
+        // plus whatever sits beside it in the header overflowed the row outright.
+        Flexible(
+          child: Text(
+            title,
+            style: style,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         if (count != null) ...[
           const SizedBox(width: 12),
           Text(

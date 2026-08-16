@@ -53,9 +53,13 @@ class FriendsSheet extends StatelessWidget {
       isEditMode: isEditMode,
       bottomReserve: bottomReserve,
       header: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          LibrarySheetTitle(title: l10n.friends, count: following.length),
+          Expanded(
+            child: LibrarySheetTitle(
+              title: l10n.friends,
+              count: following.length,
+            ),
+          ),
           // Icon-only: this is the home for `search_user_page`, and it is a
           // secondary action next to a list of people you already follow.
           IconButton(

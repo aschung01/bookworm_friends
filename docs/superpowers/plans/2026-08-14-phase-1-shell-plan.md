@@ -392,22 +392,55 @@ second way out rather than a wrong one. Revisit if it reads as an accident on de
 
 ## Task 6: Fix the 5.8px clearance
 
-- [ ] Measure the real bar-to-sheet clearance on a friend screen in a widget test, then fix it — a shorter
+- [x] Measure the real bar-to-sheet clearance on a friend screen in a widget test, then fix it — a shorter
       expanded sheet, or the rail participating in layout rather than overlaying.
-- [ ] Assert a minimum clearance so it cannot regress.
-- [ ] Settle what the tab bar does during an edit. Task 7 confirmed on device that switching to Card
+- [x] Assert a minimum clearance so it cannot regress.
+- [x] Settle what the tab bar does during an edit. Task 7 confirmed on device that switching to Card
       mid-edit leaves that sheet expanded while the covers wiggle. Options: hide the bar for an edit
       (an edit is a focused context, and the design already hides the bar for the other one — a visit),
       or give every sheet `isEditMode` so they all spring shut. **Done — both, see Task 4.**
-- [ ] Consider measuring the bar's height at runtime instead of the constants Task 7 landed. 83/62 are
-      the real `UITabBar` box and platter heights on iPhone 17 Pro / iOS 26.4, but that is one device at
-      one text size, and the package exposes no way to read what it measured. A `GlobalKey` +
-      post-frame read feeding the sheet's reserve would be self-correcting; the cost is a frame of
-      resize on first build. Note the platter height cannot be read from Flutter at all — it is a
-      native subview — so the 21pt inset would still be a constant.
+- [x] Consider measuring the bar's height at runtime instead of the constants Task 7 landed.
+      **Decided against, and the reason is not effort.** The 21pt inset is the difference between the
+      `UITabBar`'s frame and its `_UITabBarPlatterView`, and that platter is a **native subview** — not
+      reachable from Flutter at all. Measuring the box at runtime would replace one constant (83) and
+      leave the other (the inset) exactly as hardcoded, while adding a provider and a frame of resize on
+      first build. Half a guess removed for a visible cost is a worse trade than a documented constant
+      with a device check next to it.
 
 This is pre-existing, measures the same in every mockup version including `main`, and Phase 1 is the moment
 it gets touched. Do it here rather than discovering it on device.
+
+**Measured, and the drawing's finding is inverted.** `test/library_clearance_test.dart` measures the band
+of library left between the bar and the sheet — the library's own viewport, so `RefreshIndicator` is the
+handle on it. On a 375×667 phone:
+
+|                      | clearance |
+| -------------------- | --------- |
+| your own library     | **319pt** |
+| a friend's (a visit) | **329pt** |
+| a visit at 2× text   | 304pt     |
+
+The mockup measured 38.8px and 5.8px and concluded the friend screen was the tight one. In Flutter the
+friend screen is the **roomier** one, and the arithmetic says why: a visit costs the rail's 48pt row but
+frees the tab bar's 78pt reservation, so it comes out 30pt ahead. There was nothing to fix.
+
+The reason the mockup's number does not transfer is its idiom, not its geometry: `.rail` and `.bar` are in
+flow while `.sheet` is `position: absolute; bottom: 0` at a percentage height, so adding a rail row pushes
+the bar down without moving the sheet up and the gap between them absorbs the whole difference. Flutter
+puts the rail in the app bar and the library in an `Expanded` between two measured siblings, so the same
+pressure lands on the library's viewport, which is 300pt+ deep. **The design record was right to say
+"measure it in Flutter" rather than carry the number over.**
+
+What bounds it, and is now pinned: the read pile is a horizontally scrolling row of **fixed** height, so
+forty books take exactly as much vertical room as two. If that ever becomes a wrap or a grid, the sheet
+grows with the library and every number above stops holding — hence a test asserting the pile's axis and
+height, not just the clearance.
+
+**A real bug did fall out of measuring the worst case.** At 2× text on a 375pt phone the read-books sheet
+header overflowed its `Row` by 195px: `LibrarySheetTitle` and the filter control were both unflexible, so
+at accessibility sizes they simply did not fit. Fixed by giving the title the flex and letting both
+ellipsize, in `LibrarySheetTitle`, `FinishedBooksSheet` and `FriendsSheet`. Nothing in the design or the
+mockups would have surfaced this; only laying it out at a size nobody had tried did.
 
 ---
 

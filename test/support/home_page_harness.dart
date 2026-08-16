@@ -90,11 +90,21 @@ List<Shelf> singleBookLibrary() => [
 /// Pumps [HomePage] with everything stubbed out. Pass [extraOverrides] to swap
 /// in fakes for whatever the test under exercise touches (e.g.
 /// `libraryActionsProvider`); they are applied last, so they win.
+///
+/// [textScaler] and [surfaceSize] exist for the clearance tests: the band of
+/// library left between the bar and the sheet is worst on a small screen at a
+/// large text scale, and that is exactly the case no default fixture covers.
 Future<void> pumpHome(
   WidgetTester tester, {
   List<Shelf>? shelves,
   List<Override> extraOverrides = const [],
+  TextScaler? textScaler,
+  Size? surfaceSize,
 }) async {
+  if (surfaceSize != null) {
+    tester.view.physicalSize = surfaceSize * tester.view.devicePixelRatio;
+    addTearDown(tester.view.resetPhysicalSize);
+  }
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -120,6 +130,12 @@ Future<void> pumpHome(
         locale: const Locale('en'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: textScaler == null
+            ? null
+            : (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                child: child!,
+              ),
         home: const HomePage(),
       ),
     ),

@@ -50,11 +50,12 @@ class FinishedBooksSheet extends StatelessWidget {
       isEditMode: isEditMode,
       bottomReserve: bottomReserve,
       header: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          LibrarySheetTitle(
-            title: l10n.finishedBooksTitle,
-            count: books.length,
+          Expanded(
+            child: LibrarySheetTitle(
+              title: l10n.finishedBooksTitle,
+              count: books.length,
+            ),
           ),
           GestureDetector(
             // Inert with the rest of the sheet during an edit: the pile is not
@@ -65,6 +66,8 @@ class FinishedBooksSheet extends StatelessWidget {
               children: [
                 Text(
                   _filterText(context),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w500,
                     fontSize: 14,
