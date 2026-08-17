@@ -923,21 +923,20 @@
         font-weight: 600;
         line-height: 1.25;
         color: var(--text);
+        /* Explicit, and load-bearing. The size ramps below centre their
+             captions, and `text-align` inherits — so every title in this
+             page was drawn centred while the Flutter widget has always
+             been left-aligned. A mockup that contradicts the code is worse
+             than no mockup. */
+        text-align: left;
         overflow: hidden;
         /* Flutter breaks a long word rather than letting it overflow a
-                   maxLines box; without this the browser clipped "Vegetarian"
-                   mid-word on the narrow variants. */
+             maxLines box; without this the browser clipped "Vegetarian"
+             mid-word on the narrow variants. */
         overflow-wrap: anywhere;
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
-      }
-      .bk .gl {
-        flex: 0 0 auto;
-        opacity: 0.55;
-      }
-      .bk .gl svg {
-        display: block;
       }
       .bk .ini {
         position: absolute;
@@ -1292,7 +1291,9 @@
           where the mascot collides. Contrast figures are WCAG 2.1, computed
           against a function checked against the three ratios
           <code>app_theme.dart</code> states for itself. Option 1 is what ships
-          today.
+          today. The title is left-aligned and top-anchored in every one of
+          them, and none carries a corner mark &mdash; a colophon is something a
+          real cover earns.
         </p>
         <div id="elements"></div>
         <div class="noneleft gone" id="elements-none">
@@ -1380,11 +1381,6 @@
         "#7C5CBF": { c: "#FFFFFF", r: "white 5.07" },
       };
 
-      /* The glyph now shipped in assets/icons/openBookGlyph.svg: the
-               logo's two pages, outlined, head removed. */
-      const GLYPH = (px, col) =>
-        `<span class="gl" style="width:${px}px"><svg viewBox="6 29 88 75" width="${px}" height="${px * 0.85}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M50 44.375C50 41.0598 51.317 37.8804 53.6612 35.5362C56.0054 33.192 59.1848 31.875 62.5 31.875H87.5C88.3288 31.875 89.1237 32.2042 89.7097 32.7903C90.2958 33.3763 90.625 34.1712 90.625 35V85C90.625 85.8288 90.2958 86.6237 89.7097 87.2097C89.1237 87.7958 88.3288 88.125 87.5 88.125H62.5C59.1848 88.125 56.0054 89.442 53.6612 91.7862C51.317 94.1304 50 97.3098 50 100.625"/><path d="M9.375 85C9.375 85.8288 9.70424 86.6237 10.2903 87.2097C10.8763 87.7958 11.6712 88.125 12.5 88.125H37.5C40.8152 88.125 43.9946 89.442 46.3388 91.7862C48.683 94.1304 50 97.3098 50 100.625V44.375C50 41.0598 48.683 37.8804 46.3388 35.5362C43.9946 33.192 40.8152 31.875 37.5 31.875H12.5C11.6712 31.875 10.8763 32.2042 10.2903 32.7903C9.70424 33.3763 9.375 34.1712 9.375 35V85Z"/></svg></span>`;
-
       /* smileBookwormIcon.svg, the two-tone mark. Drawn at its real
                colours because that is the whole point of the `illustrated`
                option — and the reason it collides on the green swatch. */
@@ -1398,19 +1394,15 @@
        * @param o.c      swatch hex (kGeneratedCoverPalette entry)
        * @param o.title  book title
        * @param o.w      rendered width in mockup px
-       * @param o.glyph  force the corner mark on/off; defaults to the
-       *                 real rule, w >= kCoverGlyphMinWidth (110)
        * @param o.real   the logical width this stands for, when the
        *                 mockup is drawing it scaled
        */
       function cover(o) {
         const w = o.w;
         const h = w * 1.5; // kDefaultCoverAspect = 2/3
-        const real = o.real === undefined ? w : o.real;
         const lr = clamp((6 * w) / 196, 2, 6); // metrics.leftRadius
         const rr = clamp((4 * w) / 196, 2, 4); // metrics.rightRadius
         const ss = clamp(w / 196, 0.35, 1); // metrics.shadowScale
-        const glyph = o.glyph === undefined ? real >= 110 : o.glyph;
         const c = o.c || PAL[0];
 
         // _lightShadows(scale), four layers.
@@ -1430,13 +1422,13 @@
         // GeneratedCover's own metrics.
         const padL = w * 0.143,
           padO = w * 0.061;
-        const ts = w * (glyph ? 0.115 : 0.135);
-        const gap = w * 0.06;
+        // One ratio at every size — _kTitleSizeRatio. There is no corner
+        // mark to share the title half with, so there is no size tier.
+        const ts = w * 0.135;
 
         let blockBg = c,
           areaBg = "#FFFFFF",
           titleCol = "var(--text)",
-          glyphCol = "#212529",
           split = 50,
           extra = "",
           inBlock = "",
@@ -1469,14 +1461,12 @@
           case "pale":
             split = 0;
             areaBg = pale(c);
-            glyphCol = darken(c, 0.35);
             break;
           case "solid": {
             split = 0;
             areaBg = c;
             const t = ON_SWATCH[c.toUpperCase()];
             titleCol = t ? t.c : "#FFFFFF";
-            glyphCol = titleCol;
             break;
           }
           /* Not a candidate — stands in for a real thumbnail, so the
@@ -1497,9 +1487,6 @@
         inner +=
           `<div class="txtarea" style="background:${areaBg};padding:${padO}px ${padO}px ${padO}px ${bandW ? bandW + padO : padL}px;position:relative;z-index:3">` +
           `<div class="ti" style="font-size:${ts}px;letter-spacing:${(-0.02 * ts).toFixed(2)}px;color:${titleCol}">${o.title || ""}</div>` +
-          (glyph
-            ? `<div style="height:${gap}px"></div>` + GLYPH(w * 0.185, glyphCol)
-            : "") +
           `</div>`;
 
         return (
@@ -1699,7 +1686,7 @@
         ],
       });
 
-      /** Book details — the only place wide enough for the corner glyph. */
+      /** Book details — the widest a book is drawn anywhere in the app. */
       const detailSpec = (v) => ({
         bar: {
           title: "",
@@ -1735,7 +1722,7 @@
             [
               "details",
               "Book details &middot; hero",
-              "~115pt, the widest book in the app and the only one clearing kCoverGlyphMinWidth (110), so the corner glyph appears here and nowhere else.",
+              "~115pt, the widest book in the app. Nothing about the treatment changes here — there is no size tier any more, because the corner mark that used to occupy the title half on wide covers is gone.",
               detailSpec("stripe"),
             ],
             [
@@ -1755,7 +1742,7 @@
             [
               "sizes",
               "One book, three sizes",
-              "The same cover at every width the app draws it. This is the axis every failure so far has been on: the palette bug was invisible at all three, the mascot only failed at the two small ones, and the glyph is only affordable at the largest.",
+              "The same cover at every width the app draws it. This is the axis every failure so far has been on: the palette bug was invisible at all three, the mascot failed at the small ones and then at every one, and a corner mark was only ever affordable at the largest &mdash; which is most of why there is no mark now.",
               [
                 [
                   "78pt &mdash; read grid",
@@ -1805,7 +1792,14 @@
                The options. Each is drawn at all three real widths, plus one at 2x
                so the artwork can be judged, plus the full palette so collisions
                and contrast are visible rather than asserted.
+
+               Captions carry `text-align:center` themselves rather than the wrapper
+               doing it: `text-align` inherits, and centring the wrapper silently
+               centred every book title in the page while the widget left-aligns.
                ------------------------------------------------------------------ */
+      const cap = (s) =>
+        `<div style="font-size:10px;color:var(--muted);margin-top:7px;text-align:center">${s}</div>`;
+
       const ramp = (v) =>
         `<div style="display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap">` +
         [
@@ -1815,10 +1809,10 @@
         ]
           .map(
             ([w, lbl]) =>
-              `<div style="text-align:center"><div>${cover({ v, c: SW.teal, title: "The Vegetarian", w, real: w })}</div><div style="font-size:10px;color:var(--muted);margin-top:7px">${lbl}</div></div>`,
+              `<div>${cover({ v, c: SW.teal, title: "The Vegetarian", w, real: w })}${cap(lbl)}</div>`,
           )
           .join("") +
-        `<div style="text-align:center"><div>${cover({ v, c: SW.teal, title: "The Vegetarian", w: 176, real: 115 })}</div><div style="font-size:10px;color:var(--muted);margin-top:7px">detail, 2&times;</div></div>` +
+        `<div>${cover({ v, c: SW.teal, title: "The Vegetarian", w: 176, real: 115 })}${cap("detail, 2&times;")}</div>` +
         `</div>`;
 
       const sweep = (v) =>
@@ -1826,7 +1820,7 @@
         Object.entries(SW)
           .map(
             ([n, c]) =>
-              `<div style="text-align:center">${cover({ v, c, title: "Human Acts", w: 74, real: 84 })}<div style="font-size:9px;color:var(--muted);margin-top:6px">${n}</div></div>`,
+              `<div>${cover({ v, c, title: "Human Acts", w: 74, real: 84 })}${cap(n)}</div>`,
           )
           .join("") +
         `</div>`;
@@ -1850,7 +1844,7 @@
             [
               "opt-initial",
               "3. Initial &mdash; the block earns its space",
-              "The title's first character, oversized and set in white at 30% inside the block. Fills the empty area without a new asset, scales to any size because it is type, and works for Korean titles where the first syllable is a whole glyph. Risk: two books whose titles start the same letter and hash to the same swatch become hard to tell apart.",
+              "The title's first character, oversized and set in white at 30% inside the block. Fills the empty area without a new asset, scales to any size because it is type, and works for Korean titles where the first syllable is a whole character. Risk: two books whose titles start the same letter and hash to the same swatch become hard to tell apart.",
               ramp("initial"),
             ],
             [
@@ -1868,7 +1862,7 @@
             [
               "opt-pale",
               "6. Pale &mdash; tinted paper",
-              "The whole cover is the swatch mixed 14% into white, with the title in primaryText and the glyph in the swatch darkened 35%. Contrast is 12.7:1 to 14.2:1 on every swatch, so it is as safe as stripe while being a single continuous surface. Calm, and closest to a real cloth-bound board. Loses the strong colour block that makes a shelf look varied from across the room.",
+              "The whole cover is the swatch mixed 14% into white, with the title in primaryText. Contrast is 12.7:1 to 14.2:1 on every swatch, so it is as safe as stripe while being a single continuous surface. Calm, and closest to a real cloth-bound board. Loses the strong colour block that makes a shelf look varied from across the room.",
               ramp("pale") + sweep("pale"),
             ],
             [
@@ -1880,7 +1874,7 @@
             [
               "opt-textured",
               "8. Texture &mdash; a modifier, not an option",
-              "The reference's <code>textured</code> prop: a paper grain at 50% opacity in hard-light. Composable with any option above rather than an alternative to them. Drawn here over stripe, and note the grain itself is a CSS approximation &mdash; the reference loads an AVIF, so treat the <i>texture</i> as indicative and the <i>effect</i> as real. Two costs, both genuine: it needs an image asset, and it is another blend layer per cover on top of the saveLayer the binding band already needs &mdash; in a 4-wide lazy grid that is the one option here with a measurable frame cost. Worth tiering to the details page the way the glyph is.",
+              "The reference's <code>textured</code> prop: a paper grain at 50% opacity in hard-light. Composable with any option above rather than an alternative to them. Drawn here over stripe, and note the grain itself is a CSS approximation &mdash; the reference loads an AVIF, so treat the <i>texture</i> as indicative and the <i>effect</i> as real. Two costs, both genuine: it needs an image asset, and it is another blend layer per cover on top of the saveLayer the binding band already needs &mdash; in a 4-wide lazy grid that is the one option here with a measurable frame cost. Worth restricting to the details page if it is taken.",
               ramp("textured"),
             ],
           ],
@@ -1895,22 +1889,22 @@
               `<div style="display:flex;gap:18px;align-items:flex-end">${cover({ v: "stripe", c: SW.slate, title: "Sapiens", w: 130, real: 115 })}${cover({ v: "solid", c: SW.slate, title: "Sapiens", w: 130, real: 115 })}</div>`,
             ],
             [
-              "part-glyph",
-              "Corner glyph",
-              "openBookGlyph.svg &mdash; the logo's two pages, outlined, head removed &mdash; at 18.5% of the width and 55% of the title's colour. Monochrome on purpose: the previous mark was the two-tone bookworm, and a srcIn tint flattened its white dome and eyes into a featureless blob. Only drawn above 110pt, because below that it costs the third line of the title.",
-              `<div style="display:flex;gap:26px;align-items:center">${GLYPH(54, "#212529")}${GLYPH(30, "#212529")}${GLYPH(18, "#212529")}<span style="font-size:11px;color:var(--muted)">54 / 30 / 18px &mdash; the real size on a 115pt cover is 21px</span></div>`,
-            ],
-            [
               "part-mascot",
               "The mascot, at both sizes",
-              "Left: the size auth_page.dart draws it, which is what it was authored for. Right: 21px, the size the cover slot used to give it. At that size only the dome and two eyes survive and it reads as an unrelated robot &mdash; and it was tinted flat black on top of that. Kept here as the record of why option 4 makes it big or not at all.",
+              "Left: the size auth_page.dart draws it, which is what it was authored for. Right: 21px, the size a corner mark on a 115pt cover would get. At that size only the dome and two eyes survive and it reads as an unrelated robot. Kept as the record of why option 4 makes it big or not at all, and of why the cover carries no mark at all now.",
               `<div style="display:flex;gap:30px;align-items:center;padding:6px 0"><span style="position:relative;display:inline-block;width:76px;height:84px">${MASCOT(76)}</span><span style="position:relative;display:inline-block;width:21px;height:24px">${MASCOT(21)}</span><span style="font-size:11px;color:var(--muted)">120px vs 21px</span></div>`,
+            ],
+            [
+              "part-title",
+              "The title, and where it sits",
+              "Left-aligned, inset 14.3% on the left so it clears the 8.2% binding band, 6.1% on the other three sides, and anchored to the <i>top</i> of the lower half so a short title leaves the space below it empty rather than floating in the middle. Type is 13.5% of the cover width at every size, <code>maxLines: 3</code>, and there is no size tier because there is no longer a mark to share the half with &mdash; the whole lower half is the title's. That is the deliberate departure from the reference, which sets a small triangle in the corner: a colophon is something a real cover earns, and a generated one has no publisher. Measured in book_generated_cover_test.dart rather than eyeballed &mdash; this page drew the title centred for a while and nothing caught it.",
+              `<div style="display:flex;gap:20px;align-items:flex-end">${cover({ v: "stripe", c: SW.amber, title: "Dune", w: 130, real: 115 })}${cover({ v: "stripe", c: SW.amber, title: "The user experience of the Frontend Cloud", w: 130, real: 115 })}</div>`,
             ],
             [
               "part-shadow",
               "Shadow and radius",
               "Four stacked shadows scaled by clamp(width/196, .35, 1), so an 84pt shelf book does not wear the shadow authored for a 196pt one. Corners are asymmetric: clamp(6&times;w/196, 2, 6) on the spine and clamp(4&times;w/196, 2, 4) on the fore-edge, because a spine is a fold and a page edge is cut. At rest the page block and back board sit exactly behind the cover, so nothing but this shadow separates a book from the shelf.",
-              `<div style="display:flex;gap:22px;align-items:flex-end">${cover({ v: "stripe", c: SW.amber, title: "Snow", w: 40, real: 78, glyph: false })}${cover({ v: "stripe", c: SW.amber, title: "Snow", w: 84, real: 84 })}${cover({ v: "stripe", c: SW.amber, title: "Snow", w: 176, real: 115 })}</div>`,
+              `<div style="display:flex;gap:22px;align-items:flex-end">${cover({ v: "stripe", c: SW.amber, title: "Snow", w: 40, real: 78 })}${cover({ v: "stripe", c: SW.amber, title: "Snow", w: 84, real: 84 })}${cover({ v: "stripe", c: SW.amber, title: "Snow", w: 176, real: 115 })}</div>`,
             ],
           ],
         ],
@@ -1919,7 +1913,7 @@
       /* Mark an id as an unresolved decision; renders inline as a red callout. */
       const OPEN = {
         sizes:
-          "Open: should the corner glyph appear below 110pt? It stays legible at ~14px, so the question is not whether it renders but whether a colophon is worth the third line of the title on a 78pt cover. Currently: no.",
+          "Settled: the cover carries no mark. The reference puts a small triangle in the corner and this carried a book glyph there for a while, but a colophon is something a real cover earns and a generated one does not — and at 78pt it cost the third line of the title. The whole lower half is the title's.",
         "opt-solid":
           "Open: the palette was authorised for a block carrying no text, and this option puts text on it. Shipping it means revising kGeneratedCoverPalette (at minimum darkening coral) and adding a per-swatch title colour, then extending test/color_contrast_test.dart to cover the pairs. That is a larger change than the drawing suggests.",
       };

@@ -81,27 +81,90 @@ void main() {
     });
   });
 
-  group('size tiers', () {
-    testWidgets('the glyph is dropped at shelf size', (tester) async {
-      // ~86px wide, the width used on every shelf. A cover that small is a
-      // thumbnail being scanned for its title, and the mark would cost a line of
-      // it.
+  group('the title', () {
+    testWidgets('is left-aligned and inset clear of the binding band', (
+      tester,
+    ) async {
+      // The one property of this cover a reader notices immediately when it is
+      // wrong, and it is measured rather than read off the widget: the mockup of
+      // this same design centred its titles for a while and nobody could tell
+      // from the code that it had.
+      await _pumpBook(tester, imageUrl: '', title: 'The Vegetarian');
+
+      final cover = tester.getRect(find.byType(GeneratedCover));
+      final text = tester.getRect(find.text('The Vegetarian'));
+
+      expect(
+        text.left - cover.left,
+        closeTo(cover.width * 0.143, 1),
+        reason:
+            'the reference insets the title by 14.3% on the left so it clears '
+            'the 8.2% binding band; anything less and the type sits on the fold',
+      );
+      expect(
+        tester.widget<Text>(find.text('The Vegetarian')).textAlign,
+        TextAlign.left,
+      );
+    });
+
+    testWidgets('starts at the top of the lower half, not centred in it', (
+      tester,
+    ) async {
+      await _pumpBook(tester, imageUrl: '', title: 'Dune');
+
+      final cover = tester.getRect(find.byType(GeneratedCover));
+      final text = tester.getRect(find.text('Dune'));
+
+      // Half the cover, plus the 6.1% top padding.
+      expect(
+        text.top - cover.top,
+        closeTo(cover.height / 2 + cover.width * 0.061, 1.5),
+        reason:
+            'a short title should sit against the top of the title half so the '
+            'block above it reads as a band, not as a frame around the text',
+      );
+    });
+
+    testWidgets('takes one type ratio at every size', (tester) async {
+      // There were two ratios, because a corner mark used to share the title
+      // half on wide covers. The mark is gone, so a size tier here would be
+      // unexplained.
+      await _pumpBook(tester, imageUrl: '', height: 130, title: 'Dune');
+      final small = tester.widget<Text>(find.text('Dune')).style!.fontSize!;
+      final smallWidth = tester.getRect(find.byType(GeneratedCover)).width;
+
+      expect(small / smallWidth, closeTo(0.135, 0.001));
+    });
+
+    testWidgets('takes the same ratio on the widest book in the app', (
+      tester,
+    ) async {
+      // Split from the test above because pumping twice in one test yields an
+      // empty tree.
+      await _pumpBook(tester, imageUrl: '', height: 180, title: 'Dune');
+      final big = tester.widget<Text>(find.text('Dune')).style!.fontSize!;
+      final bigWidth = tester.getRect(find.byType(GeneratedCover)).width;
+
+      expect(big / bigWidth, closeTo(0.135, 0.001));
+    });
+  });
+
+  group('no mark on the cover', () {
+    testWidgets('nothing is drawn beside the title at shelf size', (
+      tester,
+    ) async {
       await _pumpBook(tester, imageUrl: '', height: 130);
       expect(find.byType(SvgPicture), findsNothing);
     });
 
-    testWidgets('the glyph appears at details-page size', (tester) async {
-      // 180px tall is what the details page passes; at 2/3 that is 120px wide,
-      // clearing the 110px threshold. If the threshold were ever raised above
-      // 120 the glyph would become dead code, so this pins it.
-      await _pumpBook(tester, imageUrl: '', height: 180);
-      expect(find.byType(SvgPicture), findsOneWidget);
-    });
-
-    testWidgets('the threshold sits below the widest book in the app', (
+    testWidgets('nor on the widest book, where a colophon would fit', (
       tester,
     ) async {
-      expect(kCoverGlyphMinWidth, lessThan(180 * (2 / 3)));
+      // This is the size that used to carry one. A generated cover has no
+      // publisher, so it gets no publisher's mark; the lower half is the
+      // title's.
+      await _pumpBook(tester, imageUrl: '', height: 180);
+      expect(find.byType(SvgPicture), findsNothing);
     });
   });
 

@@ -54,7 +54,6 @@ flutter:
     - assets/icons/appleBlackIcon.svg
     - assets/icons/googleIcon.svg
     - assets/icons/bookmarkIcon.svg
-    - assets/icons/openBookGlyph.svg
     - assets/icons/sadCharacter.svg
   fonts:
     - family: DesignHouse
