@@ -68,6 +68,13 @@ class GeneratedCover extends StatelessWidget {
       // rounding when the two halves don't divide evenly.
       color: colors.surface,
       child: Column(
+        // Load-bearing, and its absence was invisible: a Column's default
+        // `center` hands loose cross-axis constraints, and a childless
+        // `ColoredBox` is a `RenderProxyBox` that sizes to
+        // `constraints.smallest` — so the colour block below was laid out 0pt
+        // wide and every generated cover rendered as a plain white card. Exactly
+        // the trap documented on `BookPageBlock`, which collapsed the same way.
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: ColoredBox(color: generatedCoverColor(isbn))),
           Expanded(
@@ -81,6 +88,7 @@ class GeneratedCover extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Flexible(
                     child: Text(

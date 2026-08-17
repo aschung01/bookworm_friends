@@ -104,6 +104,31 @@ void main() {
   });
 
   group('colour selection', () {
+    testWidgets('the swatch is actually painted on the cover', (tester) async {
+      // The palette function was unit-tested but nothing asserted the block
+      // reaches the tree *with a size*, so a cover that rendered all-white would
+      // have passed every test in this file.
+      await _pumpBook(tester, imageUrl: '', isbn: '9788936434120');
+
+      final swatch = generatedCoverColor('9788936434120');
+      final block = find.descendant(
+        of: find.byType(GeneratedCover),
+        matching: find.byWidgetPredicate(
+          (w) => w is ColoredBox && w.color == swatch,
+        ),
+      );
+      expect(block, findsOneWidget);
+
+      final cover = tester.getSize(find.byType(GeneratedCover));
+      final painted = tester.getSize(block);
+      expect(
+        painted.height,
+        closeTo(cover.height / 2, 1),
+        reason: 'the colour block is the top half of the cover',
+      );
+      expect(painted.width, closeTo(cover.width, 1));
+    });
+
     test('is stable for a given ISBN', () {
       expect(
         generatedCoverColor('9788936434120'),
