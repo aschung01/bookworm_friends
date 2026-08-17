@@ -1,0 +1,6 @@
+/* App name shown in Finder, the Dock and the menu bar. English is the project's
+   development region, so this is also the fallback for system locales that have
+   no .lproj of their own. Korean lives in ko.lproj/InfoPlist.strings.
+   PRODUCT_NAME (and therefore CFBundleName / the built .app filename) is left as
+   bookworm_friends on purpose. */
+"CFBundleDisplayName" = "Bookworm Friends";

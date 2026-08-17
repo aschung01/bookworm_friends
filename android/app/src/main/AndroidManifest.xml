@@ -1,5 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.unicorn.bookworm_friends">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <queries>
         <package android:name="com.kakao.talk" />
         <intent>
@@ -8,7 +7,7 @@
         </intent>
     </queries>
    <application
-        android:label="책벌레 친구들"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

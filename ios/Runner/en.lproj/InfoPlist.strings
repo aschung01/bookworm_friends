@@ -1,0 +1,4 @@
+/* Launcher name shown under the app icon. English is the project's development
+   region, so this is also the fallback for device locales that have no .lproj
+   of their own. Korean lives in ko.lproj/InfoPlist.strings. */
+"CFBundleDisplayName" = "Bookworm Friends";

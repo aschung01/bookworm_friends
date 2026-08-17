@@ -1,6 +1,6 @@
 {
-    "name": "bookworm_friends",
-    "short_name": "bookworm_friends",
+    "name": "Bookworm Friends",
+    "short_name": "Bookworm",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
