@@ -1,0 +1,184 @@
+<!doctype html>
+<!--
+  Index of the design mockup sets. Each row links to a self-contained page;
+  none of them need a server. Keep the rows in reverse-chronological order and
+  keep the status badges honest — a stale set presented as current is the
+  mistake these pages exist to avoid.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bookworm Friends &mdash; design mockups</title>
+    <style>
+      :root {
+        --ink: #1c1c1e;
+        --muted: #8a8a8f;
+        --line: #e6e4e0;
+        --brand: #067657;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 46px 22px 80px;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background: #fff;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 780px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 26px;
+        letter-spacing: -0.5px;
+        margin: 0 0 6px;
+      }
+      .lead {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0 0 34px;
+      }
+      h2 {
+        font-size: 12px;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 34px 0 12px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.86em;
+        background: #f2f1ee;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      /* The whole row is the link. A title-only <a> inside a big card is
+               an invisible hit target, which is the pitfall this avoids. */
+      a.row {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+        transition:
+          transform 0.14s ease,
+          box-shadow 0.14s ease,
+          border-color 0.14s ease;
+      }
+      a.row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+        border-color: #d6d3cd;
+      }
+      a.row:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+      }
+      a.row .nm {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--brand);
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        flex-wrap: wrap;
+      }
+      a.row:hover .nm span.t {
+        text-decoration: underline;
+      }
+      a.row .nm .arrow {
+        margin-left: auto;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      a.row .ds {
+        font-size: 13px;
+        color: #55555c;
+        margin-top: 5px;
+      }
+      .badge {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        padding: 2.5px 7px;
+        border-radius: 20px;
+        background: #e7f6ef;
+        color: var(--brand);
+      }
+      .badge.open {
+        background: #fdeeea;
+        color: #c05746;
+      }
+      .note {
+        font-size: 13px;
+        color: #55555c;
+        border-left: 3px solid var(--line);
+        padding: 2px 0 2px 14px;
+        margin: 0 0 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Design mockups</h1>
+      <p class="lead">
+        Self-contained pages &mdash; no build, no server, no network. Open any
+        of them straight from disk. Each is data-driven: screens are declared
+        once and drawn by one renderer, so a changed decision cannot leave half
+        the set stale.
+      </p>
+
+      <h2>Open questions</h2>
+      <a class="row" href="generated-cover/index.html">
+        <div class="nm">
+          <span class="t">Generated book cover</span>
+          <span class="badge open">deciding</span>
+          <span class="arrow">&rarr;</span>
+        </div>
+        <div class="ds">
+          Eight treatments for a cover with no thumbnail, each drawn at all
+          three widths the app uses (78pt grid, 84pt shelf, 115pt details) with
+          WCAG contrast measured per swatch. Switch options with
+          <code>v</code> and compare two side by side with
+          <code>&#8679;Enter</code>. Records why the mascot cannot be a 21pt
+          glyph, and that the <i>solid</i> direction needs a palette revision
+          before it can ship.
+        </div>
+      </a>
+
+      <h2>Decided</h2>
+      <p class="note">
+        Phases 1 (shell) and 2 (read view) are built. See
+        <code>docs/superpowers/plans/</code> for what shipped, what deviated,
+        and the twelve bugs building it surfaced.
+      </p>
+      <a class="row" href="library-shell/decided.html">
+        <div class="nm">
+          <span class="t">Library shell</span>
+          <span class="badge">current</span>
+          <span class="arrow">&rarr;</span>
+        </div>
+        <div class="ds">
+          The settled design: floating tab bar over one persistent library, a
+          per-tab sheet, a friend's library as a visit, and the read view's two
+          states. 17 screens, 12 flows, 19 UI elements. Two drawings carry
+          corrections the build proved &mdash; the tab bar auto-hiding behind
+          modals, and the read filter's popover opening upward.
+        </div>
+      </a>
+    </div>
+  </body>
+</html>
