@@ -82,16 +82,18 @@ void main() {
   });
 
   group('size tiers', () {
-    testWidgets('the mascot is dropped at shelf size', (tester) async {
-      // ~86px wide, the width used on every shelf.
+    testWidgets('the glyph is dropped at shelf size', (tester) async {
+      // ~86px wide, the width used on every shelf. A cover that small is a
+      // thumbnail being scanned for its title, and the mark would cost a line of
+      // it.
       await _pumpBook(tester, imageUrl: '', height: 130);
       expect(find.byType(SvgPicture), findsNothing);
     });
 
-    testWidgets('the mascot appears at details-page size', (tester) async {
+    testWidgets('the glyph appears at details-page size', (tester) async {
       // 180px tall is what the details page passes; at 2/3 that is 120px wide,
       // clearing the 110px threshold. If the threshold were ever raised above
-      // 120 the mascot would become dead code, so this pins it.
+      // 120 the glyph would become dead code, so this pins it.
       await _pumpBook(tester, imageUrl: '', height: 180);
       expect(find.byType(SvgPicture), findsOneWidget);
     });
@@ -99,7 +101,7 @@ void main() {
     testWidgets('the threshold sits below the widest book in the app', (
       tester,
     ) async {
-      expect(kMascotMinWidth, lessThan(180 * (2 / 3)));
+      expect(kCoverGlyphMinWidth, lessThan(180 * (2 / 3)));
     });
   });
 

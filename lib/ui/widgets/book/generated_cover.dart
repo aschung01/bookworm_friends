@@ -4,7 +4,21 @@ import 'package:flutter_svg/svg.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 
-const String _mascot = 'assets/icons/smileBookwormIcon.svg';
+/// The publisher's-mark slot at the bottom of the title half.
+///
+/// Deliberately **not** the bookworm. That asset is a two-tone illustration — a
+/// green open book under a white domed head with antennae and eyes — authored for
+/// the 120px it is drawn at on the auth page. At the ~21px this slot gives it, the
+/// dome and two eyes are all that survive and it reads as the Android robot, with
+/// the book beneath it illegible. Tinting made it worse rather than better: a
+/// `srcIn` filter replaced the white dome and the eyes with one colour and left a
+/// featureless blob.
+///
+/// So this is the same geometry reduced to what a glyph can carry — the logo's two
+/// pages, outlined rather than filled, monochrome so it can take the title's
+/// colour. Which is what the reference does: Geist can tint its mark because its
+/// mark is a triangle.
+const String _glyph = 'assets/icons/openBookGlyph.svg';
 
 /// Swatches for generated covers.
 ///
@@ -21,13 +35,18 @@ const List<Color> kGeneratedCoverPalette = [
   Color(0xFF7C5CBF), // violet
 ];
 
-/// Below this rendered width the mascot is dropped and the title takes the
-/// space instead.
+/// Below this rendered width the glyph is dropped and the title takes the space
+/// instead.
 ///
 /// The widest book anywhere in the app is the details page at roughly 120px, so
-/// this threshold means the mascot appears there and nowhere else. Any value
-/// above ~120 would be dead code.
-const double kMascotMinWidth = 110.0;
+/// this threshold means the glyph appears there and nowhere else. Any value above
+/// ~120 would be dead code.
+///
+/// It is kept even though the glyph stays legible smaller than this: on a shelf or
+/// in the read grid a cover is a thumbnail you are scanning to *identify* a book,
+/// and there the mark would cost the third line of the title. A colophon is worth
+/// less than the title it would push out.
+const double kCoverGlyphMinWidth = 110.0;
 
 /// Picks a stable palette entry for a book.
 Color generatedCoverColor(String isbn) {
@@ -38,8 +57,9 @@ Color generatedCoverColor(String isbn) {
 /// Stand-in cover for books with no usable thumbnail.
 ///
 /// Follows the reference's `stripe` variant: a colour block on top, title below
-/// on a light ground. Replaces what used to be a gray box reading "no image", so
-/// a missing cover reads as a design choice rather than a failure.
+/// on a light ground, with a small mark in the corner. Replaces what used to be a
+/// gray box reading "no image", so a missing cover reads as a design choice rather
+/// than a failure.
 class GeneratedCover extends StatelessWidget {
   final String isbn;
   final String title;
@@ -58,10 +78,10 @@ class GeneratedCover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final showMascot = width >= kMascotMinWidth;
-    // Larger type on smaller books: they have no mascot to share the space with,
+    final showGlyph = width >= kCoverGlyphMinWidth;
+    // Larger type on smaller books: they have no glyph to share the space with,
     // and a title set at the large book's ratio would be unreadable.
-    final titleSize = width * (showMascot ? 0.115 : 0.135);
+    final titleSize = width * (showGlyph ? 0.115 : 0.135);
 
     return ColoredBox(
       // Shows through beneath the title half, and covers the sliver left by
@@ -107,13 +127,15 @@ class GeneratedCover extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (showMascot) ...[
+                  if (showGlyph) ...[
                     SizedBox(height: width * 0.06),
                     SvgPicture.asset(
-                      _mascot,
+                      _glyph,
                       width: width * 0.185,
                       colorFilter: ColorFilter.mode(
-                        colors.primaryText,
+                        // Same tone as the title, at the weight of a printed
+                        // colophon rather than a second piece of content.
+                        colors.primaryText.withValues(alpha: 0.55),
                         BlendMode.srcIn,
                       ),
                     ),
