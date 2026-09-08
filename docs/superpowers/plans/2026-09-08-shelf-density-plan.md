@@ -106,7 +106,7 @@ documented as "the width of the gap the receiving shelf has to open for it". Any
 drawing _changes_ on entering edit mode therefore reports a gap for the wrong-sized book. `spines`
 avoids this by not changing; `leaning` cannot, so Task 9 overrides it there and only there.
 
-**`LibraryPane` must keep reading no shell state.** `library_view.dart:13-21` is explicit that the
+**`LibraryPane` must keep reading no shell state.** `library_view.dart:16-21` is explicit that the
 pane "takes everything it draws as parameters and reads no shell state itself", because the shell
 keeps it persistent across tab switches. So `ShelfDensity` is **passed down from `HomePage`**
 exactly as `mode` is (`home_page.dart:480` watches `libraryModeProvider` and threads it through).
@@ -199,7 +199,7 @@ Inert — nothing reads it until Task 3.
 **Mostly a refactor. No new density behaviour.** The existing suite staying green _is_ the test for
 the extraction. Do not add `leaning` or `spines` geometry here.
 
-The seam is the **contents of a slot**, not the row. `_buildBook` (`shelf_row.dart:597`) wraps every
+The seam is the **contents of a slot**, not the row. `_buildBook` (`shelf_row.dart:835`) wraps every
 book in a `LongPressDraggable` and hands the drawing to `_buildBookContent` (`:331`) in three
 places — `childWhenDragging` (`:709`), `child` (`:716`), and the drag `feedback` (`:679`). Density
 changes what goes in those, plus the slot's width. Everything else stays.
@@ -211,7 +211,7 @@ changes what goes in those, plus the slot's width. Everything else stays.
       `_ShelfRowState`, which is what makes it movable at all.
 - [ ] Thread `ShelfDensity` from `HomePage` → `LibraryPane` → `ShelfRow` as a constructor
       parameter, alongside `mode`. `HomePage` is the only place that `ref.watch`es it. See "What
-      this changes" — `library_view.dart:13-21` forbids the shortcut.
+      this changes" — `library_view.dart:16-21` forbids the shortcut.
 - [ ] A single private `_drawingFor(book, ...)` on `_ShelfRowState` that `switch`es on the
       **effective** density and returns the tile. Effective, not active: `covers` in edit mode when
       the active density is `leaning`, per the table above. Put that resolution in one getter
@@ -240,7 +240,7 @@ Extractions plus a doc correction. Still no new UI.
 - [ ] `spineMetricsFor(Book book, {required double baseHeight})` in
       `lib/ui/widgets/book/book_geometry.dart`, holding what `readSpineMetrics`
       (`read_pile.dart:48`) does today. `readSpineMetrics` becomes a delegation passing
-      `ReadPile.spineBase` (`read_pile.dart:53`, `:139`).
+      `ReadPile.spineBase` (`read_pile.dart:41`, `:133`).
       Preserve its doc's guarantee verbatim — "**One** function, used by the flat spine, by the
       chassis that replaces it, and by the row that lays both out" — and extend it to name the third
       caller.
