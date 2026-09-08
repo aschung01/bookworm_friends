@@ -1,3 +1,6 @@
+import 'dart:ui' show Color;
+
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
@@ -15,6 +18,13 @@ final libraryProvider =
       LibraryNotifier.new,
     );
 
+/// The status a book carries while its owner is part-way through it.
+///
+/// Spelled out here rather than as a literal `1`, because two features now depend
+/// on agreeing about it: the Friends row's "Reading …" subtitle and
+/// `book_info_bottom_sheet`'s status selector.
+const int bookStatusReading = 1;
+
 /// The status a book carries once its owner has finished reading it.
 const int bookStatusFinished = 2;
 
@@ -25,6 +35,11 @@ const int bookStatusFinished = 2;
 /// twice. The book keeps its shelf in the database — the details page still
 /// shows which shelf it belongs to, and clearing the "Read" status puts the
 /// cover straight back where it was.
+///
+/// That last promise is narrower than it reads, and [withReadingFirst] below is
+/// why: once a drag has persisted a promoted row, "where it was" is the promoted
+/// position rather than the one the reader originally chose. Filtering here still
+/// writes nothing — the qualification belongs to the drag, not to this function.
 List<Shelf> withoutFinishedBooks(List<Shelf> shelves) => [
   for (final shelf in shelves)
     shelf.copyWith(
@@ -33,6 +48,75 @@ List<Shelf> withoutFinishedBooks(List<Shelf> shelves) => [
           .toList(),
     ),
 ];
+
+/// How many of [shelf]'s books actually stand on its plank.
+///
+/// The count the shelf's name tab shows, and therefore **the number a reader will
+/// check by scrolling the row to its end.** It has to be the length of the row they
+/// are looking at, not the size of the shelf in the database: a finished book keeps
+/// its `shelf_id` but is drawn in the read pile instead of on the plank
+/// ([withoutFinishedBooks]), so counting the raw list would advertise covers that
+/// are provably not there.
+///
+/// A function of one shelf rather than a getter on [Shelf], because it is a
+/// statement about how the *library view* draws a shelf, and the model has no
+/// opinion about that. It is also what lets the two ends of the shelf-tab hero
+/// flight — the library and the book-details page — agree without sharing a widget.
+int shelvedBookCount(Shelf shelf) =>
+    shelf.books.where((book) => book.status != bookStatusFinished).length;
+
+/// [shelves] with each shelf's in-progress books moved to the front of its row.
+///
+/// A display transform, exactly like [withoutFinishedBooks] above it, and applied
+/// in the same place — see `LibraryPane.build`, which composes the two.
+/// **`Book.position` is never written by this.** What is stored stays the order
+/// the reader arranged; what is drawn puts the book they are actually reading
+/// where they will see it first.
+///
+/// **Why the view needs it at all.** Two of the three shelf densities compress
+/// every book that is not in progress — shingled in `ShelfDensity.leaning`,
+/// spine-on in `ShelfDensity.spines` — so a reading book left in the middle of a
+/// row would be compressed along with the rest and, on a long shelf, sit off the
+/// end of it. Promotion is what makes the compression safe to apply. It runs in
+/// `ShelfDensity.covers` too, so that switching density changes how a shelf is
+/// drawn and never what order it is in.
+///
+/// **A stable partition, not a sort.** `List.sort` is not stable in Dart, so
+/// sorting on a status key would let two books that compare equal swap places for
+/// no reason a reader could account for. Both groups keep their authored order.
+///
+/// **One consequence worth knowing, because it is a real cost.** Edit mode draws
+/// the promoted row, and `LibraryNotifier.reorderBooksInShelf` writes positions
+/// from the row it is handed — so the first drag on a shelf persists the
+/// promotion into `position`, and after that, clearing a book's reading status
+/// leaves it where the promotion put it rather than where it originally sat. That
+/// is narrower than what [withoutFinishedBooks] promises for the "Read" status,
+/// and the difference is deliberate: a drag is an authoring act, the reader was
+/// looking at the promoted row when they made it, and writing back an order they
+/// were never shown would persist an arrangement nobody chose.
+List<Shelf> withReadingFirst(List<Shelf> shelves) => [
+  for (final shelf in shelves)
+    shelf.copyWith(
+      books: [
+        ...shelf.books.where((book) => book.status == bookStatusReading),
+        ...shelf.books.where((book) => book.status != bookStatusReading),
+      ],
+    ),
+];
+
+/// How many books stand at the head of [shelf] because they are in progress.
+///
+/// Where the reading block ends and the compressible remainder begins. Read by
+/// `ShelfBooksRow` to place the compressed group, and by `_ShelfRowState` to clamp
+/// a drag's drop index to the zone the dragged book belongs to — one function, so
+/// the drawing and the drag cannot disagree about the boundary.
+///
+/// **Defined on an already-promoted shelf**, hence `takeWhile` and not `where`: it
+/// measures the *leading run*, so a shelf that has not been through
+/// [withReadingFirst] gets a wrong answer rather than an error. Callers get their
+/// shelves from `LibraryPane`, which promotes them before anything sees them.
+int readingHeadCount(Shelf shelf) =>
+    shelf.books.takeWhile((book) => book.status == bookStatusReading).length;
 
 /// A book taken out of local state but not yet deleted from the database, held
 /// so the library's undo can put it back at the exact shelf and position.
@@ -175,29 +259,34 @@ class LibraryNotifier extends AutoDisposeAsyncNotifier<List<Shelf>> {
     ]);
   }
 
-  /// Moves a book to another shelf optimistically, then persists.
-  Future<void> moveBookToShelf(String bookId, String targetShelfId) async {
+  /// Moves a book to another shelf, at a chosen place in that shelf's row,
+  /// optimistically, then persists.
+  ///
+  /// [orderedBookIds] is the target shelf's row as it should read *after* the drop,
+  /// the moved book included. A place rather than an append, because a drag can now
+  /// be dropped between two covers on a shelf it did not come from, and "where the
+  /// reader let go" is a fact only the receiving shelf knows.
+  ///
+  /// Like [reorderBooksInShelf] it only has to cover the books the caller can see:
+  /// whatever it leaves out is a finished book, hidden from the shelves, and keeps
+  /// its stored position.
+  Future<void> moveBookToShelf(
+    String bookId,
+    String targetShelfId,
+    List<String> orderedBookIds,
+  ) async {
     final current = state.valueOrNull;
     if (current == null) return;
 
-    Book? book;
+    Book? found;
     for (final shelf in current) {
       for (final b in shelf.books) {
-        if (b.id == bookId) book = b;
+        if (b.id == bookId) found = b;
       }
     }
-    if (book == null || book.shelfId == targetShelfId) return;
+    if (found == null || found.shelfId == targetShelfId) return;
+    final book = found;
     final sourceShelfId = book.shelfId;
-
-    final targetBooks = current.firstWhere((s) => s.id == targetShelfId).books;
-    final newPosition = targetBooks.isEmpty
-        ? 0
-        : targetBooks.map((b) => b.position).reduce((a, b) => a > b ? a : b) +
-              1;
-    final movedBook = book.copyWith(
-      shelfId: targetShelfId,
-      position: newPosition,
-    );
 
     final updated = current.map((shelf) {
       if (shelf.id == sourceShelfId) {
@@ -206,7 +295,18 @@ class LibraryNotifier extends AutoDisposeAsyncNotifier<List<Shelf>> {
         );
       }
       if (shelf.id == targetShelfId) {
-        return shelf.copyWith(books: [...shelf.books, movedBook]);
+        final byId = {
+          for (final b in shelf.books) b.id: b,
+          bookId: book.copyWith(shelfId: targetShelfId),
+        };
+        final ordered = <Book>[
+          for (var i = 0; i < orderedBookIds.length; i++)
+            if (byId.remove(orderedBookIds[i]) case final b?)
+              b.copyWith(position: i),
+        ];
+        // Whatever wasn't listed is hidden from this shelf, so where it lands in
+        // the list doesn't matter — only that it survives the move.
+        return shelf.copyWith(books: [...ordered, ...byId.values]);
       }
       return shelf;
     }).toList();
@@ -215,8 +315,14 @@ class LibraryNotifier extends AutoDisposeAsyncNotifier<List<Shelf>> {
     try {
       await supabase
           .from('books')
-          .update({'shelf_id': targetShelfId, 'position': newPosition})
+          .update({'shelf_id': targetShelfId})
           .eq('id', bookId);
+      for (var i = 0; i < orderedBookIds.length; i++) {
+        await supabase
+            .from('books')
+            .update({'position': i})
+            .eq('id', orderedBookIds[i]);
+      }
     } catch (e) {
       EasyLoading.showError(
         AppLocalizations.of(navigatorKey.currentContext!).moveFailed,
@@ -252,9 +358,41 @@ final finishedBooksProvider = FutureProvider.autoDispose<List<Book>>((
   return data.map((b) => Book.fromJson(b)).toList();
 });
 
+/// The books the reader has open right now, across every shelf.
+///
+/// **Derived rather than queried.** [libraryProvider] already holds every shelf with its
+/// books, so a second round trip would buy nothing but a second answer free to disagree
+/// with the shelves on screen. Unlike [finishedBooksProvider] this is not sorted by date:
+/// a book being read has no finish date to sort by, and shelf order is the order the
+/// reader themselves put them in.
+///
+/// Read by the Library Card, which draws these at the front of its shelf wearing a
+/// bookmark and **does not count them** — the hero figure counts books read. See
+/// `CardCoverRow.reading`.
+final readingBooksProvider = Provider.autoDispose<List<Book>>((ref) {
+  final shelves = ref.watch(libraryProvider).valueOrNull ?? const <Shelf>[];
+  return [
+    for (final shelf in shelves)
+      ...shelf.books.where((book) => book.status == bookStatusReading),
+  ];
+});
+
 /// The same, for someone else's library. Keyed by user id alone.
+///
+/// **Kept alive on purpose, against the `autoDispose` the rest of this file uses.**
+/// The family is keyed by user id and revisiting the same reader is the common
+/// case: the Friends sheet is the shell's one switcher, so moving between two
+/// friends and back is three taps in the same list. Left to `autoDispose` each of
+/// those taps was a fresh round trip and a fresh loading state, which the pane
+/// above it has to draw as *something* — and the honest something is the outgoing
+/// library held and faded, which only works if the incoming one is usually already
+/// there.
+///
+/// The memory this costs is one list of shelves per friend looked at in a session,
+/// which is bounded by how many people one reader follows.
 final userFinishedBooksProvider = FutureProvider.autoDispose
     .family<List<Book>, String>((ref, userId) async {
+      ref.keepAlive();
       final data = await supabase
           .from('books')
           .select()
@@ -296,6 +434,19 @@ final libraryActionsProvider = Provider((ref) => LibraryActions(ref));
 class LibraryActions {
   final Ref ref;
   LibraryActions(this.ref);
+
+  /// Book ids whose cover colour has already been written this session.
+  ///
+  /// [recordCoverColor] deliberately does not invalidate anything, so the `Book`
+  /// objects on screen keep their null `coverColor` until the next fetch and every
+  /// later decode of the same book would look like a book that still needs one. A
+  /// shelf scrolled past twice, or the same book shown on a shelf and in the read
+  /// grid at once, would otherwise write two or three times.
+  ///
+  /// Safe as instance state because [libraryActionsProvider] is a plain [Provider]
+  /// and so lives as long as the container. It is a write-once cache, not a source
+  /// of truth: losing it costs one redundant UPDATE.
+  final Set<String> _coverColorWritten = <String>{};
 
   /// The "Books read" pile is its own query rather than a slice of the library,
   /// so anything that can change which books are finished has to refetch it —
@@ -365,6 +516,9 @@ class LibraryActions {
     required int status,
     DateTime? startDate,
     DateTime? finishDate,
+    List<String> authors = const [],
+    int? pageCount,
+    Color? coverColor,
   }) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
@@ -390,6 +544,23 @@ class LibraryActions {
         'finish_date': dates.finishDate != null
             ? DateFormat('yyyy-MM-dd').format(dates.finishDate!)
             : null,
+        // Captured at save time, from the search result the user picked. The
+        // catalogue was already asked; not storing this is what forced the detail
+        // page to ask again on every open, and made an author aggregate
+        // impossible.
+        'authors': authors,
+        // Nullable on purpose: null means "no credible count", which the book's
+        // drawn thickness treats differently from a real number by falling back to
+        // a hash. Kakao never supplies one, so for most Korean titles this stays
+        // null and the shelf looks exactly as it did before.
+        'page_count': pageCount,
+        // The cover the user just picked, averaged, if whatever showed it to them
+        // had decoded it by the time they saved. Null is ordinary and costs
+        // nothing: the book falls back to a swatch derived from its ISBN until
+        // something decodes its cover and reports the sample back.
+        'cover_color': coverColor == null
+            ? null
+            : bookCoverColorToHex(coverColor),
       });
 
       ref.invalidate(libraryProvider);
@@ -399,6 +570,64 @@ class LibraryActions {
       EasyLoading.showError(l10n.bookAddFailed);
     }
   }
+
+  /// Fills in `books.cover_color` from a cover that has just been decoded.
+  ///
+  /// The backfill for rows written before the column existed, and for every row
+  /// added by a path that had no decoded image to sample. Called from a *render*
+  /// path — [BookWidget.onCoverSampled] — which dictates everything about how it
+  /// behaves:
+  ///
+  ///  * **Silent.** No [EasyLoading], no rethrow, no error surfaced. Nothing the
+  ///    reader did caused this write, so nothing they see should depend on it: a
+  ///    book scrolling into view on a train with no signal must not raise a
+  ///    failure toast over the shelf. This is the one write in this class that
+  ///    swallows its error on purpose.
+  ///  * **No invalidation.** Refetching the library because a cosmetic column was
+  ///    filled in would rebuild every shelf and re-resolve every image, from a
+  ///    callback that fires *while the first frame of that image is being drawn*.
+  ///    The value is already on screen — it came from the pixels. The database is
+  ///    just catching up, and the next ordinary fetch will carry it.
+  ///  * **Idempotent, twice over.** Skipped outright for a book that already has a
+  ///    colour, and remembered in [_coverColorWritten] so the same book decoding
+  ///    again in another widget does not write again.
+  ///
+  /// Only for books the signed-in user owns. A friend's library renders through
+  /// the same [BookWidget], so without this check scrolling their shelves would
+  /// attempt to write rows that are not yours — rejected by RLS, but the right
+  /// place to decline is here, before the request.
+  Future<void> recordCoverColor(Book book, Color color) async {
+    if (book.coverColor != null) return;
+    if (_coverColorWritten.contains(book.id)) return;
+
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null || book.userId != userId) return;
+
+    // Claimed before the await, not after: two books' decodes can land in the
+    // same frame, and an async gap between the check and the mark is long enough
+    // for both to pass it.
+    _coverColorWritten.add(book.id);
+    try {
+      await writeCoverColor(book.id, color);
+    } catch (_) {
+      // Left in the written set. A retry would need a fresh decode to be worth
+      // anything, and the cost of not retrying is a book that keeps deriving its
+      // tone from its ISBN -- which is exactly what it did before this column
+      // existed.
+    }
+  }
+
+  /// The write itself, split from the rules above it.
+  ///
+  /// A seam, and the reason for it is that the rules are the whole substance of
+  /// [recordCoverColor] — who may write, when, and how often — while the UPDATE is
+  /// one line. Overriding this in a test asserts all four rules against the real
+  /// method rather than against a reimplementation of it.
+  @visibleForTesting
+  Future<void> writeCoverColor(String bookId, Color color) => supabase
+      .from('books')
+      .update({'cover_color': bookCoverColorToHex(color)})
+      .eq('id', bookId);
 
   Future<void> updateBookStatus(
     String bookId,
