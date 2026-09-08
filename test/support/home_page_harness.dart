@@ -1,6 +1,6 @@
 // Shared harness for widget tests that need the real `HomePage`.
 //
-// `HomePage` pulls in auth, profile, following and library providers, so pumping
+// `HomePage` pulls in auth, profile, friends and library providers, so pumping
 // it takes a fair amount of scaffolding. More than one test file needs it, so it
 // lives here rather than being copied.
 //
@@ -18,6 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
@@ -27,9 +28,13 @@ import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
+import 'package:bookworm_friends/providers/shell_chrome_provider.dart';
 import 'package:bookworm_friends/ui/pages/home_page.dart';
+import 'package:bookworm_friends/ui/widgets/shell_chrome.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
+
+import 'prefs.dart';
 
 /// Sends the platform-channel message the engine sends on a system back.
 /// Copied from Flutter's own `test/widgets/navigator_utils.dart`.
@@ -61,7 +66,9 @@ Book testBook(
   int position = 0,
   String? title,
   int status = 0,
+  DateTime? startDate,
   DateTime? finishDate,
+  List<String> authors = const [],
 }) => Book(
   id: id,
   userId: 'u',
@@ -71,8 +78,10 @@ Book testBook(
   thumbnail: '',
   status: status,
   position: position,
+  startDate: startDate,
   finishDate: finishDate,
   createdAt: DateTime(2024),
+  authors: authors,
 );
 
 Shelf testShelf(String id, List<Book> books, {String? name}) => Shelf(
@@ -89,6 +98,10 @@ List<Shelf> singleBookLibrary() => [
   testShelf('s1', [testBook('b1', 's1', title: 'Clean Code')], name: 'Dev'),
 ];
 
+/// `ShellChrome` sits above the navigator, so it needs a key to reach one. A
+/// single global key is safe here because each test pumps one app at a time.
+final _harnessNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Pumps [HomePage] with everything stubbed out. Pass [extraOverrides] to swap
 /// in fakes for whatever the test under exercise touches (e.g.
 /// `libraryActionsProvider`); they are applied last, so they win.
@@ -96,12 +109,17 @@ List<Shelf> singleBookLibrary() => [
 /// [textScaler] and [surfaceSize] exist for the clearance tests: the band of
 /// library left between the bar and the sheet is worst on a small screen at a
 /// large text scale, and that is exactly the case no default fixture covers.
+///
+/// Pass `settle: false` to stop at a couple of `pump`s. `LoadingLibrary`'s blocks
+/// shimmer on a repeating animation, so `pumpAndSettle` never returns while the
+/// library is still loading — the same trap [enterEditMode] documents for `Wiggle`.
 Future<void> pumpHome(
   WidgetTester tester, {
   List<Shelf>? shelves,
   List<Override> extraOverrides = const [],
   TextScaler? textScaler,
   Size? surfaceSize,
+  bool settle = true,
 }) async {
   if (surfaceSize != null) {
     tester.view.physicalSize = surfaceSize * tester.view.devicePixelRatio;
@@ -110,6 +128,9 @@ Future<void> pumpHome(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        // The card's display setting is a stored preference now, and the Card tab reads it
+        // — so every tree with a `HomePage` in it needs somewhere to read it from.
+        await sharedPreferencesOverride(),
         currentUserIdProvider.overrideWithValue('u'),
         libraryProvider.overrideWith(
           () => FakeLibraryNotifier(shelves ?? singleBookLibrary()),
@@ -124,24 +145,61 @@ Future<void> pumpHome(
             updatedAt: DateTime(2024),
           ),
         ),
-        followingListProvider.overrideWith((ref) async => <Profile>[]),
+        friendsProvider.overrideWith((ref) async => <Profile>[]),
         ...extraOverrides,
       ],
-      child: MaterialApp(
-        theme: AppTheme.light,
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        builder: textScaler == null
-            ? null
-            : (context, child) => MediaQuery(
-                data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-                child: child!,
-              ),
-        home: const HomePage(),
+      child: Consumer(
+        // `ref` for the observer, the way `main.dart` gets it from
+        // `ConsumerState`. It has to be a provider instance rather than a fresh
+        // `ShellRouteObserver` per build: an observer must outlive rebuilds.
+        builder: (context, ref, _) => MaterialApp(
+          navigatorKey: _harnessNavigatorKey,
+          // The bar lives above the navigator now (see `ShellChrome`), so the
+          // harness has to build the same shell the app does or no test would
+          // find it. `ShellRouteObserver` publishes the top page route that
+          // `shellBarVisibleProvider` compares against — without it the bar
+          // never appears at all.
+          navigatorObservers: [ref.watch(shellRouteObserverProvider)],
+          // The app's own table, less its `/` entry — `home` may not coexist with
+          // one. Without this any `pushNamed` from the shell throws instead of
+          // navigating, which is the difference between a test that exercises a
+          // destination and one that only proves a button exists.
+          routes: {
+            for (final entry in AppRoutes.routes.entries)
+              if (entry.key != AppRoutes.splash) entry.key: entry.value,
+          },
+          theme: AppTheme.light,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) {
+            final scaled = textScaler == null
+                ? child!
+                : MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: textScaler),
+                    child: child!,
+                  );
+            return ShellChrome(
+              navigatorKey: _harnessNavigatorKey,
+              child: scaled,
+            );
+          },
+          home: const HomePage(),
+        ),
       ),
     ),
   );
+  if (!settle) {
+    // Two pumps rather than one: the first frame is where `ShellRouteObserver`
+    // queues the microtask that publishes the top page route, and
+    // `shellBarVisibleProvider` compares against it — without the second the tab
+    // bar is not on screen yet and nothing about it can be asserted.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    return;
+  }
   await tester.pumpAndSettle();
 }
 
@@ -174,15 +232,39 @@ Future<void> enterEditMode(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 600));
 }
 
-/// True while the library is in edit mode. Keyed off the `Done` button, which
+/// True while the library is in edit mode. Keyed off the confirm button, which
 /// only exists in that mode.
-bool isEditing() => find.text('Done').evaluate().isNotEmpty;
+///
+/// By tooltip rather than by text: the button used to be the word `Done` and is a
+/// checkmark disc now, so its accessible name is the only part of it a test can
+/// hold on to. `AdaptiveIconButton` hands [semanticLabel] to the fallback
+/// `IconButton` as its tooltip, and the fallback is the only path `flutter test`
+/// ever takes.
+bool isEditing() => libraryDoneButton().evaluate().isNotEmpty;
+
+/// The library bar's confirm button — the check that leaves edit mode.
+Finder libraryDoneButton() => find.byTooltip('Done');
+
+/// The [ProviderContainer] the harness's `ProviderScope` is backing, reached through
+/// the pumped page.
+///
+/// For assertions about shell state that has no single widget of its own —
+/// `selectedFriendProvider` and `friendsSheetLevelProvider` are the pair that
+/// matters, since the navigation design is a claim about how they move together and
+/// the UI shows their *consequences* rather than their values.
+ProviderContainer shellContainer(WidgetTester tester) =>
+    ProviderScope.containerOf(tester.element(find.byType(HomePage)));
 
 /// Enters a visit the way the shell intends: the Friends tab's Everyone list.
 ///
-/// There is no other way in. Your own avatar is not in the rail (the rail only
-/// exists *inside* a visit), so the sheet is the entry point and the rail is only
-/// how you move between friends once you are there.
+/// There is no other way in, and there is deliberately no longer a second one. The
+/// `FriendRail` and the lateral swipe that used to move between friends are gone, so
+/// this list is both the entry point and the switcher — tapping a row here is what
+/// every test means by "visiting".
+///
+/// Leaves the Friends sheet on its **second level**, showing that friend's read
+/// books, which is where a tap on a row lands. `find.text(username)` will not match
+/// afterwards: the list it was in has been swapped for her pile.
 Future<void> enterVisit(WidgetTester tester, String username) async {
   await tester.tap(
     find.descendant(
@@ -192,5 +274,26 @@ Future<void> enterVisit(WidgetTester tester, String username) async {
   );
   await tester.pumpAndSettle();
   await tester.tap(find.text(username));
+  await tester.pumpAndSettle();
+}
+
+/// Goes back up to the Friends list from a friend's read books, **without** ending
+/// the visit: her library stays behind the sheet.
+///
+/// Tapping the Friends tab — which is already the selected tab at that point — is the
+/// whole of the gesture. There is no control inside the sheet, deliberately.
+Future<void> backToFriendsList(WidgetTester tester) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byType(ShellTabBar),
+      matching: find.text('Friends'),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Ends the visit through the library bar's ✕, which is where the rail's used to be.
+Future<void> endVisit(WidgetTester tester) async {
+  await tester.tap(find.byIcon(Icons.close));
   await tester.pumpAndSettle();
 }

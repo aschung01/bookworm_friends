@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bookworm_friends/constants/constants.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/shelf.dart';
@@ -15,6 +16,13 @@ import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/manage_shelves_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
+
+/// Counts the overlapping cover previews a row drew. At preview size a cover is a
+/// colour block with no text, so the keys are the only handle on it.
+Finder _coverFinder() => find.byWidgetPredicate((widget) {
+  final key = widget.key;
+  return key is ValueKey<String> && key.value.startsWith(kShelfCoverKeyPrefix);
+});
 
 /// Stands in for the Supabase-backed notifier: serves a fixture and records the
 /// reorder calls the sheet makes.
@@ -51,7 +59,7 @@ class FakeLibraryActions extends LibraryActions {
 final deletedShelves = <String>[];
 final renamedShelves = <(String, String)>[];
 
-Shelf _shelf(String id, String name, int bookCount) => Shelf(
+Shelf _shelf(String id, String name, int bookCount, {int status = 0}) => Shelf(
   id: id,
   userId: 'u',
   name: name,
@@ -66,7 +74,7 @@ Shelf _shelf(String id, String name, int bookCount) => Shelf(
       isbn: '$i',
       title: 'B$i',
       thumbnail: '',
-      status: 0,
+      status: status,
       position: i,
       createdAt: DateTime(2024),
     ),
@@ -146,15 +154,23 @@ void main() {
           _shelf('b', 'Self-help', 2),
         ]);
 
+        // Measured rather than hard-coded. This drag was two nudges totalling 70pt,
+        // which silently stopped reordering the day the rows grew from 48pt to 66pt
+        // to make room for the covers — a test failure that said nothing about the
+        // widget under test. A drag expressed in rows cannot rot that way.
+        final rowHeight = tester
+            .getSize(find.byKey(const ValueKey('a')))
+            .height;
+
         final grip = find.byIcon(Icons.drag_handle).at(1);
         final gesture = await tester.startGesture(tester.getCenter(grip));
         // The grip uses an immediate drag listener, so a nudge starts the drag.
         // Frames need a non-zero duration or the list never processes the move.
         await tester.pump(const Duration(milliseconds: 20));
-        await gesture.moveBy(const Offset(0, -30));
-        await tester.pump(const Duration(milliseconds: 20));
-        await gesture.moveBy(const Offset(0, -40));
-        await tester.pump(const Duration(milliseconds: 20));
+        for (var i = 0; i < 3; i++) {
+          await gesture.moveBy(Offset(0, -rowHeight / 2));
+          await tester.pump(const Duration(milliseconds: 20));
+        }
         await gesture.up();
         await tester.pumpAndSettle();
 
@@ -194,22 +210,32 @@ void main() {
     );
 
     testWidgets(
-      'Given a shelf row, When the name or the pencil is tapped, Then the rename sheet opens',
+      'Given a shelf row, When the pencil is tapped, Then the rename sheet opens',
       (tester) async {
         await _pumpAndOpenSheet(tester, [_shelf('a', 'Dev', 1)]);
-
-        await tester.tap(find.text('Dev'));
-        await tester.pumpAndSettle();
-        expect(find.byType(TextField), findsOneWidget);
-
-        // Dismiss by tapping the modal barrier above the sheet.
-        await tester.tapAt(const Offset(10, 10));
-        await tester.pumpAndSettle();
-        expect(find.byType(TextField), findsNothing);
 
         await tester.tap(find.byIcon(Icons.edit_outlined));
         await tester.pumpAndSettle();
         expect(find.byType(TextField), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given a shelf row, When its name is tapped, Then nothing opens and the name is not wrapped in a press target',
+      (tester) async {
+        await _pumpAndOpenSheet(tester, [_shelf('a', 'Dev', 1)]);
+
+        // The pencil is the only way to rename, so the name must not be a second
+        // one: a tappable name meant a full-width InkWell, and the theme's press
+        // tint lit the whole row grey — on a drag as much as on a tap.
+        await tester.tap(find.text('Dev'), warnIfMissed: false);
+        await tester.pumpAndSettle();
+        expect(find.byType(TextField), findsNothing);
+
+        expect(
+          find.ancestor(of: find.text('Dev'), matching: find.byType(InkWell)),
+          findsNothing,
+        );
       },
     );
     testWidgets(
@@ -251,6 +277,123 @@ void main() {
               .tooltip,
           'Close',
         );
+      },
+    );
+
+    testWidgets(
+      'Given a shelf with more books than fit, When the sheet opens, Then the row previews the first few covers and states the full count',
+      (tester) async {
+        await _pumpAndOpenSheet(tester, [_shelf('a', 'Dev', 6)]);
+
+        // Capped rather than one per book: the preview is for recognising the
+        // shelf, and a fourth cover buys no recognition.
+        expect(_coverFinder(), findsNWidgets(3));
+
+        // The cap is only honest because the number is on the row: without it a
+        // shelf of six and a shelf of three drew the same stack.
+        expect(find.text('6'), findsOneWidget);
+
+        // Overlapping, so the stack is narrower than three covers end to end.
+        final coverWidth = tester.getSize(_coverFinder().first).width;
+        final stackWidth = tester
+            .getSize(
+              find
+                  .ancestor(
+                    of: _coverFinder().first,
+                    matching: find.byType(SizedBox),
+                  )
+                  .first,
+            )
+            .width;
+        expect(stackWidth, lessThan(coverWidth * 3));
+
+        // The leftmost cover is the unobstructed one, so it must paint last.
+        final covers = tester.widgetList(_coverFinder()).toList();
+        expect(
+          (covers.last.key! as ValueKey<String>).value,
+          '${kShelfCoverKeyPrefix}a-0',
+        );
+      },
+    );
+
+    testWidgets(
+      'Given shelves with different book counts, When the sheet opens, Then every cover slot is the same width so the names line up',
+      (tester) async {
+        await _pumpAndOpenSheet(tester, [
+          _shelf('a', 'Dev', 6),
+          _shelf('b', 'Self-help', 1),
+          _shelf('c', 'Empty', 0),
+        ]);
+
+        // The defect this replaces: the stack sized to its contents, so a
+        // one-book shelf's cover sat marooned and no two rows agreed on where the
+        // name began.
+        final lefts = <double>{
+          for (final name in ['Dev', 'Self-help', 'Empty'])
+            tester.getTopLeft(find.text(name)).dx,
+        };
+        expect(lefts, hasLength(1));
+      },
+    );
+
+    testWidgets(
+      'Given an empty shelf, When the sheet opens, Then the row draws a placeholder instead of covers',
+      (tester) async {
+        await _pumpAndOpenSheet(tester, [_shelf('a', 'Dev', 0)]);
+
+        expect(find.text('Dev'), findsOneWidget);
+        expect(_coverFinder(), findsNothing);
+        // Blank space read as a rendering fault, so the slot is outlined.
+        expect(find.byKey(kShelfCoverEmptyKey), findsOneWidget);
+        expect(find.text('0'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given a shelf whose books are all read, When the sheet opens, Then neither its covers nor its count include them',
+      (tester) async {
+        // Read books are drawn in the library's pile rather than on the plank, so a
+        // sheet built from the raw list advertised covers that were not on the
+        // shelf — three of them, under a plank showing none.
+        await _pumpAndOpenSheet(tester, [
+          _shelf('a', 'Dev', 4, status: bookStatusFinished),
+        ]);
+
+        expect(_coverFinder(), findsNothing);
+        expect(find.byKey(kShelfCoverEmptyKey), findsOneWidget);
+        expect(find.text('0'), findsOneWidget);
+        expect(find.text('4'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Given a shelf row, When its actions are inspected, Then the bin is not drawn in alarm red',
+      (tester) async {
+        await _pumpAndOpenSheet(tester, [_shelf('a', 'Dev', 1)]);
+
+        // Eleven red bins outranked the shelf names they act on. The red belongs to
+        // the confirmation, which is where the decision is taken.
+        final bin = tester.widget<Icon>(find.byIcon(Icons.delete_outline));
+        expect(bin.color, isNot(softRedColor));
+        final pencil = tester.widget<Icon>(find.byIcon(Icons.edit_outlined));
+        expect(pencil.color, bin.color);
+      },
+    );
+
+    testWidgets(
+      'Given more shelves than fit on screen, When the sheet opens, Then it may grow to 80% of the screen',
+      (tester) async {
+        final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+        await _pumpAndOpenSheet(tester, [
+          for (var i = 0; i < 20; i++) _shelf('s$i', 'Shelf $i', 3),
+        ]);
+
+        final height = tester.getSize(find.byType(BottomSheet)).height;
+        expect(height, closeTo(screen.height * 0.8, 0.5));
+        // Regression guard for the real defect: without `isScrollControlled`,
+        // `showModalBottomSheet` holds the sheet at 9/16 of the screen and the
+        // cap above is unreachable however large it is set.
+        expect(height, greaterThan(screen.height * 9 / 16));
       },
     );
   });

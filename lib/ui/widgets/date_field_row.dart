@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 
@@ -42,13 +43,12 @@ class DateFieldRow extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 14)),
+            Text(label, style: AppTextStyles.body),
             Text(
               date != null
                   ? DateFormat('yyyy.MM.dd').format(date!)
                   : l10n.select,
-              style: TextStyle(
-                fontSize: 14,
+              style: AppTextStyles.body.copyWith(
                 color: date != null
                     ? context.colors.primaryText
                     : context.colors.secondaryText,

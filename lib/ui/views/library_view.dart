@@ -7,6 +7,7 @@ import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
+import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
 import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
 
@@ -28,6 +29,13 @@ class LibraryPane extends StatelessWidget {
   final List<Book> finishedBooks;
 
   final LibraryMode mode;
+
+  /// How the shelves draw the books that are not in progress.
+  ///
+  /// **A parameter, like everything else here.** This pane is the layer the shell
+  /// keeps persistent, so it reads no shell state itself — see the note above. The
+  /// density is watched once, in `HomePage`, and handed down.
+  final ShelfDensity density;
 
   /// Whose library this is. Only the empty state cares: "Your library is empty…"
   /// with a hint about adding a book is the wrong sentence to show over somebody
@@ -90,6 +98,7 @@ class LibraryPane extends StatelessWidget {
     required this.onEditShelfName,
     required this.onDeleteShelf,
     required this.onEnterEditMode,
+    this.density = ShelfDensity.covers,
     this.isSelf = true,
     this.stale = false,
     this.topInset = 0,
@@ -204,6 +213,7 @@ class LibraryPane extends StatelessWidget {
               (shelf) => ShelfRow(
                 shelf: shelf,
                 mode: mode,
+                density: density,
                 onEditName: () => onEditShelfName(shelf.id, shelf.name),
                 onDelete: () => onDeleteShelf(shelf.id),
                 onLongPress: onEnterEditMode,

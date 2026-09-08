@@ -191,11 +191,20 @@ void main() {
 
           final coverTopLeft = tester.getTopLeft(_cover());
           final targetCenter = tester.getCenter(_deleteBadge());
-          final visibleBadge = find.descendant(
+          // The disc, not the minus drawn inside it — the badge is two
+          // `DecoratedBox`es. Matched on the shape rather than taken by position in
+          // the subtree, so this keeps meaning "the thing the reader can see" if the
+          // badge is ever put together differently.
+          final disc = find.descendant(
             of: _deleteBadge(),
-            matching: find.byType(DecoratedBox),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is DecoratedBox &&
+                  widget.decoration is BoxDecoration &&
+                  (widget.decoration as BoxDecoration).shape == BoxShape.circle,
+            ),
           );
-          expect(visibleBadge, findsOneWidget);
+          expect(disc, findsOneWidget);
           // The badge is pinned to the cover's top-left corner, but edit mode
           // wiggles the cover (see [Wiggle]) with a per-instance random phase
           // and amplitude, so global positions drift a pixel or two between
@@ -206,7 +215,7 @@ void main() {
             offsetMoreOrLessEquals(coverTopLeft, epsilon: 3),
           );
           expect(
-            tester.getCenter(visibleBadge),
+            tester.getCenter(disc),
             offsetMoreOrLessEquals(coverTopLeft, epsilon: 3),
           );
 

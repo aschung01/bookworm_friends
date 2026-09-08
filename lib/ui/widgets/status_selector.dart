@@ -1,6 +1,7 @@
 import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 
@@ -86,9 +87,11 @@ class _StatusChip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: TextStyle(
+          // One token for both states. The fill and the white-on-brand label are
+          // already the whole of what marks the selection, and the row is three
+          // chips wide — bolding the chosen one made it read as a fourth size.
+          style: AppTextStyles.label.copyWith(
             color: selected ? Colors.white : context.colors.primaryText,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),

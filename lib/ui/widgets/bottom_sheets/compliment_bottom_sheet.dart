@@ -1,7 +1,10 @@
 import 'package:awesome_emoji_picker/awesome_emoji_picker.dart';
 import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
+import 'package:bookworm_friends/ui/widgets/headers/search_header.dart'
+    show kSearchPillRadius;
 import 'package:flutter/material.dart';
 
 /// The emoji praise the app used to offer, now only a starting point.
@@ -51,19 +54,45 @@ Future<void> seedRecentEmojis() async {
   }
 }
 
+/// How tall the emoji grid should be, given the screen and the keyboard.
+///
+/// Pulled out of the sheet so it can be tested without a modal route, and so the
+/// reasoning is somewhere other than a widget tree.
+///
+/// [keyboardInset] is subtracted rather than ignored. Focusing the search field
+/// used to leave two visible rows: the sheet neither lifted nor shrank, so the
+/// keyboard covered the grid in the one flow where you most need to see results.
+/// The inset is spent once — taken off the grid here, and added to the sheet's
+/// bottom padding so nothing hides behind the keyboard either.
+///
+/// The 240 floor is about four rows. Below that the grid stops being worth
+/// shrinking, and on a small phone with a tall keyboard the sheet is better off
+/// overflowing into its own scroll than collapsing to a sliver.
+double emojiGridHeight({
+  required double screenHeight,
+  required double keyboardInset,
+}) {
+  return ((screenHeight * 0.55) - keyboardInset).clamp(240.0, 460.0);
+}
+
 /// Presents the emoji picker in a sheet.
 ///
-/// [selected] is the emoji the viewer already holds. It is marked in the grid
-/// and repeated in a strip above it, because praise is one-per-person: the same
-/// emoji withdraws it and any other replaces it, and neither reads correctly if
-/// the sheet cannot say where you stand. [onRemove], when given, is the strip's
-/// explicit way out -- the grid alone cannot express "take it back" to someone
-/// whose praise is a legacy emoji sitting hundreds of rows down.
+/// [selected] is the emoji the viewer already holds. It is marked in the grid,
+/// which matters because praise is one-per-person: the same emoji withdraws it
+/// and any other replaces it, so the sheet has to be able to say where you stand.
+///
+/// There used to be a strip above the grid repeating [selected] with an explicit
+/// "Remove" button. It is gone. The marked cell already says which emoji is
+/// yours, and tapping it already withdraws — `praiseTapFor` reads a tap on what
+/// you hold as removal — so the strip restated one thing and duplicated the
+/// other. It also cost: shared between praise and the profile-emoji picker, it
+/// captioned avatar emoji as "Your praise" until the label was parameterised, and
+/// a label that has to be threaded through two callers to stay correct is a lot
+/// of surface for a caption.
 Future<void> showEmojiBottomSheet(
   BuildContext context, {
   required void Function(String emoji) onEmojiPressed,
   String? selected,
-  VoidCallback? onRemove,
   String? title,
 }) async {
   final l10n = AppLocalizations.of(context);
@@ -76,38 +105,50 @@ Future<void> showEmojiBottomSheet(
     // to be told it may exceed the 9/16 of the screen `showModalBottomSheet`
     // otherwise caps it at.
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title ?? l10n.selectComplimentEmoji,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          if (selected != null)
-            CurrentPraiseStrip(emoji: selected, onRemove: onRemove),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: (MediaQuery.sizeOf(context).height * 0.55).clamp(320, 460),
-            child: PraiseEmojiPicker(
-              selected: selected,
-              onEmojiSelected: onEmojiPressed,
+    builder: (context) {
+      // The inset is spent once: taken off the grid by [emojiGridHeight], and
+      // added to the padding below so nothing hides behind the keyboard either.
+      final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+      final gridHeight = emojiGridHeight(
+        screenHeight: MediaQuery.sizeOf(context).height,
+        keyboardInset: keyboard,
+      );
+
+      return Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 24,
+          bottom: 24 + keyboard,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title ?? l10n.selectComplimentEmoji,
+              style: AppTextStyles.subtitle,
             ),
-          ),
-        ],
-      ),
-    ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: gridHeight,
+              child: PraiseEmojiPicker(
+                selected: selected,
+                onEmojiSelected: onEmojiPressed,
+              ),
+            ),
+          ],
+        ),
+      );
+    },
   );
 }
 
 /// The picker, wired to the app's strings and marking [selected].
 ///
 /// Split out from the sheet so the grid can be pumped in a test without a modal
-/// route, the way [CurrentPraiseStrip] can. Note the widget class is
+/// route. That mark is now the only thing telling you which emoji is already
+/// yours, since the strip that used to repeat it above the grid is gone — so the
+/// marked cell is load-bearing rather than decorative. Note the widget class is
 /// `AwesomeEmojiPicker`, not the `EmojiPicker` the package's README shows.
 class PraiseEmojiPicker extends StatelessWidget {
   const PraiseEmojiPicker({
@@ -124,6 +165,60 @@ class PraiseEmojiPicker extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final colors = context.colors;
 
+    // The package's search field is a plain `TextField` that sets only its hint,
+    // its two icons, `filled: true` and a content padding — no border, no fill
+    // colour, no hint style. Everything else came from Material's defaults, and
+    // since `AppTheme` defines no `inputDecorationTheme`, that meant a grey slab
+    // with a hard underline that turned brand-green on focus: the one search
+    // field in the app that did not look like the other two.
+    //
+    // Restyled from here rather than by forking the package, which works
+    // precisely because those properties are left unset — the field even reads
+    // `prefixIconColor` and `suffixIconColor` off the theme. This keeps the
+    // package's controller sync, clear button and results wiring untouched.
+    final pill = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(kSearchPillRadius),
+      borderSide: BorderSide.none,
+    );
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        // The picker wraps itself in `ColoredBox(scaffoldBackgroundColor)` and
+        // paints its sticky category headers the same, which is the wrong token
+        // inside a sheet: `scaffoldBackgroundColor` is `pageBackground`
+        // (#F8F9FA), while the sheet is `sheetBackground` (#EFF5EF, the
+        // deliberate mint tint pinned by `sheet_theme_test.dart`). The two are
+        // close enough to look like a rendering artefact and far enough apart to
+        // be a visible seam under the search field. Pointing the token at the
+        // sheet fixes the grid and the headers together.
+        scaffoldBackgroundColor: colors.sheetBackground,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: colors.surfaceVariant,
+          // All three, not just `border`: the enabled and focused states are
+          // where the underline and its green focus variant actually come from.
+          border: pill,
+          enabledBorder: pill,
+          focusedBorder: pill,
+          hintStyle: AppTextStyles.body.copyWith(color: colors.secondaryText),
+          prefixIconColor: colors.secondaryText,
+          suffixIconColor: colors.secondaryText,
+          // Material reserves a 48x48 box for `prefixIcon`. The package's
+          // magnifier is 24px centred in it, which is the dead space that had the
+          // icon floating away from the placeholder.
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 36,
+            minHeight: 36,
+          ),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 9),
+        ),
+      ),
+      child: _picker(l10n, colors),
+    );
+  }
+
+  Widget _picker(AppLocalizations l10n, AppColors colors) {
     return AwesomeEmojiPicker(
       onEmojiSelected: (EmojiModel emoji) => onEmojiSelected(emoji.char),
       searchHintText: l10n.emojiSearchHint,
@@ -160,64 +255,12 @@ class PraiseEmojiPicker extends StatelessWidget {
                 )
               : null,
           alignment: Alignment.center,
-          child: Text(emoji.char, style: const TextStyle(fontSize: 24)),
+          child: Text(
+            emoji.char,
+            style: const TextStyle(fontSize: kEmojiGlyphSize),
+          ),
         );
       },
-    );
-  }
-}
-
-/// "Here is your praise, and here is how to take it back."
-///
-/// Absent entirely when the viewer holds no praise, so it never offers a
-/// withdrawal that cannot happen.
-class CurrentPraiseStrip extends StatelessWidget {
-  const CurrentPraiseStrip({super.key, required this.emoji, this.onRemove});
-
-  final String emoji;
-  final VoidCallback? onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final colors = context.colors;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            l10n.yourPraise,
-            style: TextStyle(fontSize: 13, color: colors.secondaryText),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: colors.pageBackground,
-              border: Border.all(color: colors.brand.withValues(alpha: 0.3)),
-            ),
-            alignment: Alignment.center,
-            child: Text(emoji, style: const TextStyle(fontSize: 14)),
-          ),
-          if (onRemove != null) ...[
-            const SizedBox(width: 4),
-            TextButton(
-              onPressed: onRemove,
-              style: TextButton.styleFrom(
-                foregroundColor: colors.brandText,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 32),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(l10n.removePraise),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

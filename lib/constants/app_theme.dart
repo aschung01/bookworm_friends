@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 
 /// Semantic, mode-dependent colors for the app.
@@ -25,6 +26,17 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color primaryText;
 
   /// Secondary/muted text and icons (was `grayColor`).
+  ///
+  /// **Light mode is `#626A72`, not the `#ADB5BD` this started as.** That value
+  /// measured **2.07:1** on white and about 2.0:1 on `surfaceVariant` — nowhere
+  /// near AA, and `stat_tile.dart` had already recorded exactly this ("the labels
+  /// were visibly washed out on a device") and worked around it locally while
+  /// twenty-nine other files kept using the token as a text colour. The empty
+  /// state in the read sheet was the visible symptom: nearly invisible.
+  ///
+  /// `#626A72` clears AA on all three light surfaces, with `surfaceVariant` the
+  /// binding one at 4.63:1 — the same reasoning [brandText] already uses. Pinned
+  /// by `test/color_contrast_test.dart`.
   final Color secondaryText;
 
   /// Hairline dividers and subtle borders.
@@ -88,7 +100,7 @@ class AppColors extends ThemeExtension<AppColors> {
     surface: Color(0xffFFFFFF),
     surfaceVariant: Color(0xffE9ECEF),
     primaryText: Color(0xff212529),
-    secondaryText: Color(0xffADB5BD),
+    secondaryText: Color(0xff626A72),
     divider: Color(0xffE9ECEF),
     brand: Color(0xff09BC8A),
     // 5.6:1 on white and 4.7:1 on surfaceVariant — AA for normal text on every
@@ -104,7 +116,12 @@ class AppColors extends ThemeExtension<AppColors> {
     surface: Color(0xff1E1E1E),
     surfaceVariant: Color(0xff2C2C2E),
     primaryText: Color(0xffF1F3F5),
-    secondaryText: Color(0xff8E8E93),
+    // 4.66:1 on `surfaceVariant`, which is the binding dark surface because it is
+    // the lightest. `#8E8E93` — the iOS system grey this started as — measured
+    // 4.27:1 there, so dark mode had a milder version of the same defect as
+    // light and nothing caught it either. The shift is small enough that the dark
+    // theme is visually unchanged.
+    secondaryText: Color(0xff949599),
     divider: Color(0xff3A3A3C),
     brand: Color(0xff09BC8A),
     // 6.8:1 on the dark surface, so the vivid green needs no adjustment.
@@ -182,6 +199,26 @@ extension AppColorsContext on BuildContext {
   }
 }
 
+/// The corner radius every modal bottom sheet is drawn with.
+///
+/// Set once on [ThemeData.bottomSheetTheme] rather than passed at each call site.
+/// It used to be thirteen copies of the same `RoundedRectangleBorder`, which is
+/// thirteen chances to be the odd one out — and the sheet that forgot to pass one
+/// silently got Material 3's own 28 instead, so the default was not even the same
+/// shape as the convention.
+///
+/// Only the top corners use it: a modal sheet is full-width and flush with the
+/// bottom of the screen, where the display's own mask does the rounding. Same
+/// reasoning as `LibrarySheet._cornerRadii`, which the sheet *card* uses — that one
+/// floats, so it is concentric with the display instead.
+///
+/// 24 rather than the 20 the call sites carried. The card's corners are derived
+/// (concentric with the display, so 41 while it floats), and a flush sheet has
+/// nothing to derive from — its bottom corners are the display's own, masked well
+/// wider than this. So the two will not meet, and the move is toward the card
+/// rather than all the way: 20 was the tightest corner in the app by some margin.
+const double kSheetCornerRadius = 24;
+
 /// Light and dark [ThemeData] for the app.
 abstract final class AppTheme {
   static ThemeData get light => _build(Brightness.light, AppColors.light);
@@ -212,6 +249,11 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
+      // Set explicitly, and this is the load-bearing line of this file. Without
+      // it `Material` seeds every `DefaultTextStyle` in the app from Material 3's
+      // Roboto `bodyMedium` — `letterSpacing: 0.25`, `height: 1.43`, and
+      // `black87`/pure-white instead of the tokens below. See [AppTextStyles].
+      textTheme: AppTextStyles.textTheme(colors.primaryText),
       scaffoldBackgroundColor: colors.pageBackground,
       canvasColor: colors.surface,
       dividerColor: colors.divider,
@@ -234,6 +276,12 @@ abstract final class AppTheme {
         backgroundColor: colors.sheetBackground,
         modalBackgroundColor: colors.sheetBackground,
         surfaceTintColor: Colors.transparent,
+        // The shape every sheet gets for free. See [kSheetCornerRadius].
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(kSheetCornerRadius),
+          ),
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: colors.surface,

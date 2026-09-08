@@ -1,4 +1,5 @@
 import 'package:bookworm_friends/ui/widgets/native_glass.dart';
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 import 'package:cupertino_native_better/cupertino_native_better.dart';
@@ -18,6 +19,16 @@ class ElevatedActionButton extends StatelessWidget {
   final bool isDestructive;
   final Color? overlayColor;
 
+  /// Inner padding around the label.
+  ///
+  /// Defaults to none, which is right for the buttons that take their width
+  /// from the outside — a `SizedBox(width: double.infinity)`, an [Expanded], or
+  /// an explicit [width] tuned to a label — where padding only eats into the
+  /// room the label has to fit in. A button that sizes itself *to* its label
+  /// needs it, or the text ends up flush against the pill's rounded ends.
+  /// Ignored on the native glass path, which brings its own padding.
+  final EdgeInsetsGeometry? padding;
+
   const ElevatedActionButton({
     super.key,
     this.width,
@@ -32,6 +43,7 @@ class ElevatedActionButton extends StatelessWidget {
     this.disabledStyleOutline = false,
     this.isDestructive = false,
     this.overlayColor,
+    this.padding,
   });
 
   @override
@@ -101,7 +113,7 @@ class ElevatedActionButton extends StatelessWidget {
                 ? BorderSide(color: colors.secondaryText)
                 : BorderSide.none,
           ),
-          padding: EdgeInsets.zero,
+          padding: padding ?? EdgeInsets.zero,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -119,10 +131,8 @@ class ElevatedActionButton extends StatelessWidget {
                   maxLines: 1,
                   style:
                       textStyle ??
-                      TextStyle(
+                      AppTextStyles.label.copyWith(
                         color: activated ? Colors.white : colors.secondaryText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
                       ),
                 ),
               ),
@@ -139,8 +149,6 @@ class TextActionButton extends StatelessWidget {
   final Widget? icon;
   final bool isUnderlined;
   final Color? textColor;
-  final FontWeight fontWeight;
-  final double fontSize;
   final VoidCallback? onPressed;
 
   const TextActionButton({
@@ -149,8 +157,6 @@ class TextActionButton extends StatelessWidget {
     this.icon,
     this.isUnderlined = true,
     this.textColor,
-    this.fontWeight = FontWeight.normal,
-    this.fontSize = 14,
     this.onPressed,
   });
 
@@ -164,10 +170,8 @@ class TextActionButton extends StatelessWidget {
         children: [
           Text(
             buttonText,
-            style: TextStyle(
+            style: AppTextStyles.label.copyWith(
               color: color,
-              fontWeight: fontWeight,
-              fontSize: fontSize,
               decoration: isUnderlined
                   ? TextDecoration.underline
                   : TextDecoration.none,

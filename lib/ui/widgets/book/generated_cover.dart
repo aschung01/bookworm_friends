@@ -33,6 +33,18 @@ Color generatedCoverColor(String isbn) {
 /// to survive at 78pt.
 const double _kTitleSizeRatio = 0.135;
 
+/// Narrowest cover width at which the title is worth drawing at all.
+///
+/// The title is [_kTitleSizeRatio] of the width, so a 20pt cover sets it at 2.7pt.
+/// Phase 4 shipped that exact smudge on the friends rail, and it looked like a
+/// rendering fault rather than a small title. Below this width a caller should draw
+/// the colour block alone — `CardCoverRow` does — which reads as a deliberately blank
+/// cover instead of a broken one.
+///
+/// 7pt is the floor the type has to clear; the constant is derived rather than typed
+/// so it cannot drift away from the ratio above it.
+const double kGeneratedCoverMinWidth = 7 / _kTitleSizeRatio;
+
 /// Stand-in cover for books with no usable thumbnail.
 ///
 /// Follows the reference's `stripe` variant: a colour block on top, title below on

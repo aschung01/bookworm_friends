@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
-import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/read_filter.dart';
 import 'package:bookworm_friends/ui/widgets/read_month_grid.dart';
@@ -29,11 +28,23 @@ class FinishedBooksSheet extends StatelessWidget {
   final ValueChanged<int> onFilterChanged;
 
   /// Height available to the whole sheet — the band it shares with the library.
-  /// The expanded cap is taken from this. See [expandedExtentFor].
+  /// The expanded cap is taken from this. See [sheetExpandedExtent].
   final double maxExtent;
 
   /// See [LibrarySheet.bottomReserve].
   final double bottomReserve;
+
+  /// See [LibrarySheet.onRestingExtent].
+  final ValueChanged<double>? onRestingExtent;
+
+  /// Handed to the [LibrarySheet] inside, not to this widget.
+  ///
+  /// The shell passes the *same* `GlobalKey` to all three tabs' sheets, which is what
+  /// makes a tab switch re-parent one sheet element rather than build a new one — and
+  /// therefore what makes the height spring instead of jump. It cannot be this
+  /// widget's own `key`: this widget is the part that changes on a switch, and the
+  /// sheet underneath is the part that stays. See [LibrarySheet].
+  final Key? sheetKey;
 
   const FinishedBooksSheet({
     super.key,
@@ -43,30 +54,18 @@ class FinishedBooksSheet extends StatelessWidget {
     required this.onFilterChanged,
     required this.maxExtent,
     this.bottomReserve = 0,
+    this.onRestingExtent,
+    this.sheetKey,
   });
 
-  /// The expanded sheet stops short of the top so **one shelf stays visible** —
-  /// the library is the shell's persistent background, and a sheet that covered it
-  /// entirely would be a page pretending to be a sheet.
+  /// The expanded sheet fills the band it is given.
   ///
-  /// Derived from [bookRowExtent], the same function the library uses to size a
-  /// shelf row, so the two cannot disagree about what one shelf is. The drawings'
-  /// 79% is a consequence of this, not the rule.
-  ///
-  /// [available] is the height the sheet's **collapsible content** may occupy, not
-  /// the whole band: the sheet's box is this plus the chrome it reserves below
-  /// itself for the tab bar and the home indicator. Getting that wrong is not a
-  /// rounding error — the first version of this subtracted only the shelf row, and
-  /// `library_clearance_test.dart` measured the shelf it was supposed to leave
-  /// coming out at 40pt instead of 106pt on a 375x667 phone, because the tab bar's
-  /// 66pt reservation was taken out of the library rather than out of the grid.
-  static double expandedExtentFor(double available, double shelfRowExtent) {
-    final cap = available - shelfRowExtent;
-    // Never smaller than a third of what is available: on a very short screen,
-    // leaving a shelf visible matters less than the grid being usable at all.
-    final floor = available / 3;
-    return cap < floor ? floor : cap;
-  }
+  /// Forwards to [sheetExpandedExtent] in `library_sheet.dart`, which is where the
+  /// expanded position is defined for both capped sheets. Kept as an alias because
+  /// the clearance and sheet tests name it, and because this is where a reader of
+  /// the read view looks for it.
+  static double expandedExtentFor(double available) =>
+      sheetExpandedExtent(available);
 
   List<Book> get _filtered => filterYear == 0
       ? books
@@ -82,25 +81,52 @@ class FinishedBooksSheet extends StatelessWidget {
     final visible = _filtered;
     final years = readFilterYears(books);
 
+    // Where a sideways swipe on the sheet lands: the year rail's own list, in the
+    // rail's own order, so swiping and tapping cannot disagree about which way is
+    // next. Clamped exactly as `ReadFilter` clamps it — `filterYear` need not be one
+    // of the offered years, since the provider defaults to the current one and the
+    // friend pair is shared by every friend, so a year picked in one library may sit
+    // outside the range of the next.
+    final pageIndex = years.indexOf(filterYear).clamp(0, years.length - 1);
+
+    // What the *content* may occupy: the sheet keeps the tab bar's band and the home
+    // indicator below the collapsible area, so both come off the top.
+    final available =
+        maxExtent - bottomReserve - MediaQuery.viewPaddingOf(context).bottom;
+
     final title = LibrarySheetTitle(
       title: l10n.finishedBooksTitle,
       count: visible.length,
     );
 
     return LibrarySheet(
+      key: sheetKey,
+      // What this sheet is showing, so a tab switch springs the height rather than
+      // jumping it. See [LibrarySheet.contentId].
+      contentId: FinishedBooksSheet,
       isEditMode: isEditMode,
       bottomReserve: bottomReserve,
+      onRestingExtent: onRestingExtent,
       // Rests on the pile: the drawings call the collapsed state the default on
       // launch, and opening into a full grid would bury the library.
-      initiallyExpanded: false,
-      expandedExtent: expandedExtentFor(
-        // What the *content* may occupy: the sheet reserves the tab bar's band
-        // and the home indicator outside the collapsible area, so both come off
-        // the top before a shelf is set aside.
-        maxExtent - bottomReserve - MediaQuery.viewPaddingOf(context).bottom,
-        _shelfRowExtent(context),
-      ),
+      initialDetent: LibrarySheetDetent.collapsed,
+      fullExtent: maxExtent,
+      expandedExtent: expandedExtentFor(available),
+      // The grid is worth the whole band, but a whole band of grid is also the
+      // library gone. See [sheetMidExtent].
+      midExtent: sheetMidExtent(available),
       collapsedBodyExtent: ReadPile.extent,
+      minHeightFraction: sheetMinHeightFraction,
+      // A swipe across the card moves along the same year list the capsules offer, and
+      // the grid slides a page's width to answer. See [LibrarySheet.pageIndex].
+      //
+      // Collapsed, the spine pile is a horizontal scroller and takes the swipe for
+      // itself whenever it is long enough to move — which is the right split, since
+      // running along the pile is what a sideways drag means there. A pile that fits
+      // the card declines the drag and the year turns instead.
+      pageIndex: pageIndex,
+      pageCount: years.length,
+      onPageChanged: (index) => onFilterChanged(years[index]),
       // Collapsed, the filter is a popover in the header: there is only the pile
       // to show and capsules would cost all of it.
       //
@@ -126,33 +152,61 @@ class FinishedBooksSheet extends StatelessWidget {
         ],
       ),
       // Expanded, the filter moves out of the header and becomes the capsule row
-      // above the grid.
+      // above the grid. Unconditional: [readFilterYears] always offers all time plus
+      // at least the current year, and whether the rail is worth drawing at all is
+      // `ReadFilter`'s own decision, made once.
       expandedHeader: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           title,
-          if (years.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: ReadFilter(
-                years: years,
-                selected: filterYear,
-                onChanged: onFilterChanged,
-                expanded: true,
-                enabled: !isEditMode,
-              ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: ReadFilter(
+              years: years,
+              selected: filterYear,
+              onChanged: onFilterChanged,
+              expanded: true,
+              enabled: !isEditMode,
             ),
+          ),
         ],
       ),
-      collapsedBody: ReadPile(books: visible),
+      collapsedBody: ReadPile(
+        books: visible,
+        filterYear: filterYear,
+        isEditMode: isEditMode,
+      ),
       body: ReadMonthGrid(
+        // **A different filter is a different list, and it is read from the top.**
+        // The key is what does that: it changes with the year, the grid is
+        // remounted, and a fresh `ListView` starts at offset 0.
+        //
+        // Without it the viewport keeps the offset it had. Scrolled 880pt into all
+        // time, choosing a year left you *inside* some arbitrary month with the
+        // newest one above the fold — and only sometimes, because a year short
+        // enough to fit the viewport clamps back to the top by itself. Landing at
+        // the top sometimes and mid-list otherwise is the part that reads as broken.
+        //
+        // Keyed on the **filter**, not on the books, so a book that appears while
+        // someone is scrolling — a finish logged on another device, a refresh —
+        // leaves the viewport where they left it. Only a tap moves it.
+        //
+        // Instant on purpose. An animated scroll here would read as the list moving
+        // of its own accord rather than as the answer to the tap, and the tap has
+        // already been answered: the capsule shrinks under the finger and the
+        // selection haptic fires before the content changes. See `ReadFilter`.
+        key: ValueKey(filterYear),
         months: ReadMonthGrid.group(visible),
-        bottomPadding: 16,
+        // Drives the month headers and the empty state; see [ReadMonthGrid].
+        filterYear: filterYear,
+        // The grid's viewport reaches the card's bottom edge and its rows pass under
+        // the floating tab bar, so what keeps the *last* row clear of it is this
+        // padding — the same band the sheet is told to reserve, plus the 16 the grid
+        // wanted anyway. Short of it, the bottom row would be unreachable behind the
+        // bar; over it, there would be a gap where the reference shows a cover.
+        bottomPadding:
+            16 + bottomReserve + MediaQuery.viewPaddingOf(context).bottom,
       ),
     );
   }
-
-  /// One shelf row, at the height the library draws it.
-  double _shelfRowExtent(BuildContext context) =>
-      bookRowExtent(MediaQuery.sizeOf(context).height * 0.15);
 }

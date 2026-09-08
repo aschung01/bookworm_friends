@@ -14,7 +14,6 @@
 //   flutter build ios --simulator --debug -t lib/main_shell_preview.dart \
 //     --dart-define-from-file=env.json
 
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,13 +23,16 @@ import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
+import 'package:bookworm_friends/models/friend_reading.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/book_search_provider.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
+import 'package:bookworm_friends/providers/shell_chrome_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
+import 'package:bookworm_friends/ui/widgets/shell_chrome.dart';
 
 Book _book(
   String id,
@@ -38,7 +40,9 @@ Book _book(
   String title, {
   int status = 0,
   int pos = 0,
+  DateTime? started,
   DateTime? finished,
+  List<String> authors = const [],
 }) => Book(
   id: id,
   userId: 'u',
@@ -48,8 +52,10 @@ Book _book(
   thumbnail: '',
   status: status,
   position: pos,
+  startDate: started,
   finishDate: finished,
   createdAt: DateTime(2024),
+  authors: authors,
 );
 
 Shelf _shelf(String id, String name, List<Book> books) => Shelf(
@@ -77,6 +83,20 @@ List<Shelf> _library() => [
   ]),
 ];
 
+/// Read books with **start dates and authors**, which the Library Card needs and
+/// the read view does not.
+///
+/// Deliberately mixed rather than uniformly complete, because the real data is
+/// mixed and the card's whole design is about which tiles it can honestly show:
+///
+///  * `r4` and `r7` are both Han Kang, so the most-read-author tile clears its floor
+///    of two. Every other author has one book, which is what 40 of 53 real readers
+///    look like.
+///  * `r5` has `start == finish` — the shape 57% of real finished books have, from
+///    flipping a book straight to finished — so it must be excluded from pace rather
+///    than counted as a zero-day read.
+///  * `r8` has no dates at all, so it counts toward books read and nothing else.
+///  * Finish dates span 2026 and 2025, so the year capsules have something to do.
 List<Book> _readBooks() => [
   _book(
     'r1',
@@ -84,7 +104,9 @@ List<Book> _readBooks() => [
     'Dune',
     status: bookStatusFinished,
     pos: 0,
+    started: DateTime(2026, 2, 18),
     finished: DateTime(2026, 3, 4),
+    authors: const ['Frank Herbert'],
   ),
   _book(
     'r2',
@@ -92,7 +114,9 @@ List<Book> _readBooks() => [
     'Circe',
     status: bookStatusFinished,
     pos: 1,
+    started: DateTime(2026, 3, 10),
     finished: DateTime(2026, 3, 19),
+    authors: const ['Madeline Miller'],
   ),
   _book(
     'r3',
@@ -100,7 +124,9 @@ List<Book> _readBooks() => [
     'Beloved',
     status: bookStatusFinished,
     pos: 2,
+    started: DateTime(2026, 1, 22),
     finished: DateTime(2026, 2, 8),
+    authors: const ['Toni Morrison'],
   ),
   _book(
     'r4',
@@ -108,7 +134,9 @@ List<Book> _readBooks() => [
     'Human Acts',
     status: bookStatusFinished,
     pos: 3,
+    started: DateTime(2026, 1, 19),
     finished: DateTime(2026, 1, 30),
+    authors: const ['한강'],
   ),
   _book(
     'r5',
@@ -116,7 +144,9 @@ List<Book> _readBooks() => [
     'Snow',
     status: bookStatusFinished,
     pos: 4,
+    started: DateTime(2025, 12, 2),
     finished: DateTime(2025, 12, 2),
+    authors: const ['Orhan Pamuk'],
   ),
   _book(
     'r6',
@@ -124,7 +154,9 @@ List<Book> _readBooks() => [
     'Kafka on the Shore',
     status: bookStatusFinished,
     pos: 5,
+    started: DateTime(2025, 10, 24),
     finished: DateTime(2025, 11, 11),
+    authors: const ['무라별열'],
   ),
   _book(
     'r7',
@@ -132,7 +164,9 @@ List<Book> _readBooks() => [
     'The Vegetarian',
     status: bookStatusFinished,
     pos: 6,
+    started: DateTime(2025, 10, 20),
     finished: DateTime(2025, 11, 1),
+    authors: const ['한강'],
   ),
   _book('r8', 's1', 'Almond', status: bookStatusFinished, pos: 7),
 ];
@@ -144,6 +178,9 @@ Profile _profile(String id, String name, String emoji) => Profile(
   createdAt: DateTime(2024),
   updatedAt: DateTime(2024),
 );
+
+/// `ShellChrome` sits above the navigator, so it needs a key to reach one.
+final _previewNavigatorKey = GlobalKey<NavigatorState>();
 
 class _FixtureLibrary extends LibraryNotifier {
   @override
@@ -171,12 +208,35 @@ void main() async {
         profileProvider.overrideWith(
           (ref) async => _profile('u', 'tester', '📚'),
         ),
-        followingListProvider.overrideWith(
+        friendsProvider.overrideWith(
           (ref) async => [
             _profile('f1', 'jisoo', '🦊'),
             _profile('f2', 'minho', '🐣'),
             _profile('f3', 'hana', '🐨'),
           ],
+        ),
+        // The four states the `EVERYONE` fixture draws, minus one: jisoo is reading
+        // one book, minho two at once, hana nothing. The fourth — a friend absent
+        // from the map, i.e. still loading or invisible to us — cannot be shown in a
+        // fixture that resolves instantly, so it is covered in
+        // `test/friend_reading_test.dart` instead.
+        friendsReadingProvider.overrideWith(
+          (ref) async => {
+            'f1': FriendReading(
+              inProgress: [
+                _book('p1', 's1', 'The Vegetarian', status: bookStatusReading),
+              ],
+              finishedCount: 24,
+            ),
+            'f2': FriendReading(
+              inProgress: [
+                _book('p2', 's1', 'Snow', status: bookStatusReading),
+                _book('p3', 's1', 'Circe', status: bookStatusReading),
+              ],
+              finishedCount: 9,
+            ),
+            'f3': const FriendReading(finishedCount: 31),
+          },
         ),
       ],
       child: const _PreviewApp(),
@@ -184,15 +244,18 @@ void main() async {
   );
 }
 
-class _PreviewApp extends StatelessWidget {
+class _PreviewApp extends ConsumerWidget {
   const _PreviewApp();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      // Registered exactly as `main.dart` does: without it `CNTabBar` cannot
-      // auto-hide behind a modal, which is one of the things worth looking at.
-      navigatorObservers: [CNTabBarRouteObserver()],
+      navigatorKey: _previewNavigatorKey,
+      // Wired exactly as `main.dart` does. `CNTabBarRouteObserver` is deliberately
+      // gone: it destroys `CNTabBar` for sheet routes, and the floating bar is
+      // meant to stay in front of Add Book. `ShellRouteObserver` keeps the
+      // halo-containment half that `CNButton` needs.
+      navigatorObservers: [ref.watch(shellRouteObserverProvider)],
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       debugShowCheckedModeBanner: false,
@@ -204,10 +267,17 @@ class _PreviewApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
+      // Hosts the floating tab bar above the navigator, which is what lets it
+      // float over the Add Book sheet.
+      builder: (context, child) =>
+          ShellChrome(navigatorKey: _previewNavigatorKey, child: child!),
       // The real route table, so Add Book and Add Friend push the pages they
       // push in production. `initialRoute` rather than `home:` because the table
       // already owns '/'.
       routes: AppRoutes.routes,
+      // The preview pushes the real routes, so it needs the real fall-through too —
+      // without this, `View and share` is an unknown route here and throws.
+      onGenerateRoute: AppRoutes.onGenerateRoute,
       initialRoute: AppRoutes.home,
     );
   }

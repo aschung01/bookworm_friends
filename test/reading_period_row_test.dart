@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
+import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 import 'package:bookworm_friends/ui/widgets/reading_period_row.dart';
 
 Widget _wrap(Widget child, {required double width, Locale? locale}) {
@@ -40,6 +41,7 @@ void main() {
         await tester.pumpWidget(
           _wrap(
             ReadingPeriodRow(
+              status: 2,
               startDate: DateTime(2022, 11, 13),
               finishDate: DateTime(2022, 11, 15),
             ),
@@ -49,8 +51,13 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(tester.getSize(find.byType(ReadingPeriodRow)).width, width);
-        // Nothing is truncated: each value is present in full.
-        expect(find.text('Reading period'), findsOneWidget);
+        // Nothing is truncated: each value is present in full. The status badge
+        // now stands in for the old "Reading period" label — status, dates and
+        // duration are one class of fact, and the badge does more work than the
+        // label did, so this removed a string rather than adding one.
+        expect(find.byType(BookStatusBadge), findsOneWidget);
+        expect(find.text('Read'), findsOneWidget);
+        expect(find.text('Reading period'), findsNothing);
         expect(find.text('2022.11.13 ~ 2022.11.15'), findsOneWidget);
         expect(find.text('2 days'), findsOneWidget);
       },
@@ -63,6 +70,7 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         ReadingPeriodRow(
+          status: 1,
           startDate: DateTime(2022, 11, 13),
           finishDate: DateTime(2024, 12, 31),
         ),
@@ -78,11 +86,40 @@ void main() {
     'Given no finish date, Then the row renders the open-ended range without overflowing',
     (tester) async {
       await tester.pumpWidget(
-        _wrap(ReadingPeriodRow(startDate: DateTime(2022, 11, 13)), width: 255),
+        _wrap(
+          ReadingPeriodRow(status: 1, startDate: DateTime(2022, 11, 13)),
+          width: 255,
+        ),
       );
 
       expect(tester.takeException(), isNull);
       expect(find.textContaining('2022.11.13'), findsOneWidget);
+      expect(find.text('Reading'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Given no start date, Then the badge is drawn bare instead of inside a card',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(const ReadingPeriodRow(status: 0), width: 255),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Interested'), findsOneWidget);
+      // Wrapping a lone chip in a full-width white card was drawn at real scale
+      // and looked worse than the corner it replaced, so the card is skipped
+      // entirely and the badge shrink-wraps.
+      //
+      // Compared against the 255pt it is offered rather than against an absolute
+      // figure: `flutter_test` draws every glyph as a square of the font size, so
+      // "Interested" measures 144pt here against roughly 87pt on device. This is
+      // the assertion that caught the badge stretching edge to edge when the
+      // parent passed tight constraints — which the band does not, so nothing
+      // else would have.
+      expect(tester.getSize(find.byType(BookStatusBadge)).width, lessThan(255));
+      // And no date range came along with it.
+      expect(find.textContaining('~'), findsNothing);
     },
   );
 }

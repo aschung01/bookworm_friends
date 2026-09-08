@@ -1,3 +1,4 @@
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 import 'package:cupertino_native_better/cupertino_native_better.dart';
@@ -43,19 +44,13 @@ Future<void> showMenuBottomSheet({
 }) {
   return CNBottomSheet.show<void>(
     context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (ctx) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            child: Text(title, style: AppTextStyles.subtitle),
           ),
           for (final action in actions)
             ListTile(

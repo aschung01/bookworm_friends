@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 
@@ -90,9 +91,7 @@ class CollapsingBookTitle extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                    style: AppTextStyles.subtitle.copyWith(
                       color: context.colors.primaryText,
                     ),
                   ),

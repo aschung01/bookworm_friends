@@ -8,6 +8,14 @@ const Color lightGrayColor = Color(0xffE9ECEF);
 const Color grayColor = Color(0xffADB5BD);
 const Color backgroundColor = Color(0xffF8F9FA);
 
+/// The read pile's original spine treatment: brand green at three opacities,
+/// cycled down the row so neighbours separated from each other.
+///
+/// No longer used. Each spine now takes its own book's tone through
+/// `spineTintFor`, and a 1pt hairline does the separating that the opacities used
+/// to. Kept because it is the fallback `BookVertical.opacity` still documents, and
+/// because a row of one colour at three opacities is a thing this app might want
+/// again for a set of books that have no covers to take a tone from.
 List<double> bookOpacityList = [0.4, 0.7, 1.0];
 
 const String kakaoBookSearchBaseUrl = 'https://dapi.kakao.com';

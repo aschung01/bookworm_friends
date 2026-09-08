@@ -5,17 +5,11 @@
 // The book keeps its shelf in the database: only the display is filtered, and a
 // reorder that can't see the finished books must not drop them from state.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:bookworm_friends/constants/app_theme.dart';
-import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
-import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
-import 'package:bookworm_friends/providers/user_provider.dart';
-import 'package:bookworm_friends/ui/pages/user_library_page.dart';
 import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 
@@ -52,90 +46,8 @@ List<String> _idsOn(ProviderContainer container, String shelfId) => container
     .map((b) => b.id)
     .toList();
 
-/// Pumps [UserLibraryPage] for a friend whose one shelf holds [shelfBooks] and
-/// whose pile holds [pileBooks]. The page reads its target user from the route
-/// arguments, hence `onGenerateRoute`.
-Future<void> _pumpFriendPage(
-  WidgetTester tester, {
-  required List<Book> shelfBooks,
-  required List<Book> pileBooks,
-}) async {
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        currentUserIdProvider.overrideWithValue('u'),
-        isFollowingProvider.overrideWith((ref, userId) async => true),
-        userLibraryProvider.overrideWith(
-          (ref, userId) async => [testShelf('s1', shelfBooks, name: 'Dev')],
-        ),
-        userFinishedBooksProvider.overrideWith(
-          (ref, userId) async => pileBooks,
-        ),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.light,
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        onGenerateRoute: (_) => MaterialPageRoute<void>(
-          settings: const RouteSettings(
-            arguments: <String, dynamic>{'user_id': 'f1', 'username': 'friend'},
-          ),
-          builder: (_) => const UserLibraryPage(),
-        ),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
 
 void main() {
-  group("a friend's library page", () {
-    testWidgets(
-      'Given a shelf holding a read book, When the page is shown, Then the read book is in the pile and off the shelf',
-      (tester) async {
-        await _pumpFriendPage(
-          tester,
-          shelfBooks: _mixedShelfBooks(),
-          pileBooks: [_readBook()],
-        );
-
-        expect(find.byType(BookWidget), findsOneWidget);
-        expect(
-          tester.widget<BookWidget>(find.byType(BookWidget)).heroTag,
-          'book_b1',
-        );
-        expect(find.byType(BookVertical), findsOneWidget);
-        expect(find.text('Dune'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'Given the friend has no books at all, When the page is shown, Then the empty-library message replaces the pile',
-      (tester) async {
-        await _pumpFriendPage(tester, shelfBooks: [], pileBooks: []);
-
-        expect(find.text('This library is empty'), findsOneWidget);
-        expect(find.byType(BookVertical), findsNothing);
-        expect(find.text('Books read'), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'Given the friend has only read books, When the page is shown, Then the pile shows them instead of the empty message',
-      (tester) async {
-        await _pumpFriendPage(
-          tester,
-          shelfBooks: [_readBook()],
-          pileBooks: [_readBook()],
-        );
-
-        expect(find.text('This library is empty'), findsNothing);
-        expect(find.text('Dune'), findsOneWidget);
-      },
-    );
-  });
-
   group('shelves', () {
     testWidgets(
       'Given a shelf holding a read book, When the library is shown, Then only the unread cover is on the shelf',

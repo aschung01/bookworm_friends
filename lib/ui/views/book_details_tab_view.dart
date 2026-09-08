@@ -4,6 +4,7 @@ import 'package:bookworm_friends/ui/widgets/bottom_sheets/menu_bottom_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
@@ -16,8 +17,9 @@ import 'package:bookworm_friends/providers/book_details_provider.dart';
 import 'package:bookworm_friends/providers/book_search_provider.dart';
 import 'package:bookworm_friends/services/book_search_service.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
-import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
-import 'package:bookworm_friends/ui/widgets/compliment_block.dart';
+import 'package:bookworm_friends/models/book_compliment.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/reactions_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/reaction_capsule.dart';
 import 'package:bookworm_friends/ui/widgets/headers/collapsing_book_title.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
@@ -121,13 +123,56 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     final isSelf = book.userId == currentUserId;
     final memosAsync = ref.watch(bookMemosProvider(book.id));
     final complimentsAsync = ref.watch(bookComplimentsProvider(book.id));
+    // Authors come from the row when the row has them, and from the catalogue only
+    // when it does not. Every book saved since `books.authors` landed carries its
+    // own, so the name under the title paints on the first frame instead of
+    // arriving a request later and resizing the hero under the reader. The lookup
+    // stays as the fallback for rows written before the column existed and for any
+    // the backfill could not resolve — 15 of the migrated books have no ISBN to
+    // look one up with.
+    //
+    // Note what this does *not* do: it does not save the request. The Book info tab
+    // below shows publisher, publication date and description, none of which the
+    // row owns, so the catalogue is asked either way. What the column buys here is
+    // that the header no longer depends on the answer.
     final bookInfoAsync = ref.watch(_bookInfoProvider(book.isbn));
+    final authors = book.authors.isNotEmpty
+        ? book.authors
+        : (bookInfoAsync.valueOrNull?.authors ?? const <String>[]);
+    final authorsPending = book.authors.isEmpty && bookInfoAsync.isLoading;
     // Shelf names live in the *owner's* library, so a friend's book has to be
     // resolved against their shelves rather than the signed-in user's.
     final shelvesAsync = isSelf
         ? ref.watch(libraryProvider)
         : ref.watch(userLibraryProvider(book.userId));
-    final shelfName = _shelfNameFor(book, shelvesAsync.valueOrNull ?? const []);
+    final shelf = _shelfFor(book, shelvesAsync.valueOrNull ?? const []);
+    final shelfName = shelf?.name ?? '';
+    // Whether the shelf under the cover — the plank and the name tab on it — flies
+    // in from the library with the book, or is simply here on arrival.
+    //
+    // It flies for a book that is actually *on* a shelf over there. A finished book
+    // is kept off the shelves by `withoutFinishedBooks` and shown in the read pile
+    // instead, so its shelf row is still on the library route under these tags but
+    // is not where the reader tapped — flying to it would send a bare shelf across
+    // the screen from somewhere the cover was never standing.
+    //
+    // **The book itself is a separate question, and the answer to it has changed.**
+    // This used to read "the pile and the month grid fly no book either, for the
+    // same reason", and the reason was sound while the pile drew thirteen identical
+    // green spines: there was no cover there to fly, and thirteen candidates for one
+    // tag if there had been. The pile now turns a book out to its cover, one at a
+    // time, and **only that book carries the tag** — so there is exactly one source
+    // for it on the route, and what flies is the very cover the reader tapped. The
+    // month grid flies its covers too: it is never on screen at the same time as the
+    // pile, and it withholds the tag from any ISBN it holds twice — or holds none of
+    // — so the same "exactly one source" property holds there. See
+    // `ReadMonthGrid._flyableIsbns`.
+    //
+    // The *plank* is still not flown from the pile, and that is not an oversight:
+    // the pile's shelf is shared by every book standing on it rather than being any
+    // particular shelf's, so there is nothing for a named shelf tab to fly from.
+    // Hence this stays keyed on status and not on where the tap came from.
+    final flyShelfFromLibrary = book.status != bookStatusFinished;
 
     return Scaffold(
       backgroundColor: context.colors.surface,
@@ -195,7 +240,16 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                     imageUrl: book.thumbnail,
                                     isbn: book.isbn,
                                     title: book.title,
+                                    pageCount: book.pageCount,
                                     heroTag: 'book_${book.isbn}',
+                                    // The largest cover in the app, so it is the
+                                    // one most likely to have decoded. Guarded
+                                    // inside the action, which matters here more
+                                    // than anywhere: this page renders a friend's
+                                    // book as readily as your own.
+                                    onCoverSampled: (color) => ref
+                                        .read(libraryActionsProvider)
+                                        .recordCoverColor(book, color),
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(
@@ -203,21 +257,33 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                       crossAxisAlignment:
                                           CrossAxisAlignment.end,
                                       children: [
-                                        if (!isSelf)
-                                          _ComplimentButton(book: book),
-                                        // A friend's badge is drawn above the
-                                        // shelf label instead (see below), since
-                                        // the praise button already owns this
-                                        // corner.
-                                        if (isSelf)
-                                          BookStatusBadge(status: book.status),
-                                        // Praise is shown to the owner too: only
-                                        // the button adding it is theirs to be
-                                        // denied.
+                                        // Hidden the moment you hold a reaction:
+                                        // you may only hold one, so a button
+                                        // still offering to add would be
+                                        // promising something it cannot do —
+                                        // what it actually does is replace or
+                                        // withdraw, and both of those belong to
+                                        // the reaction you already have. The
+                                        // capsule below owns them.
+                                        if (!isSelf) _ReactButton(book: book),
+                                        // Shown to the owner too: only the
+                                        // button adding a reaction is theirs to
+                                        // be denied. This is the recipient's
+                                        // only sight of what they were given —
+                                        // there is no notification and no
+                                        // history anywhere in the app.
                                         complimentsAsync.when(
                                           data: (compliments) =>
-                                              ComplimentBlock(
+                                              ReactionCapsule(
                                                 compliments: compliments,
+                                                currentUserId: ref.watch(
+                                                  currentUserIdProvider,
+                                                ),
+                                                onTap: () =>
+                                                    _onReactionsPressed(
+                                                      book,
+                                                      compliments,
+                                                    ),
                                               ),
                                           loading: () =>
                                               const SizedBox.shrink(),
@@ -230,32 +296,51 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                 ],
                               ),
                             ),
-                            // Shelf label positioned at bottom-right, just above
-                            // the shelf. On a friend's book the status badge
-                            // stacks on top of the label rather than sharing the
-                            // spot, which used to hide it behind the label.
+                            // The shelf label, alone. The status badge used to
+                            // stack above it here and to be hoisted to the top
+                            // of the right-hand column on your own book — two
+                            // places for one thing, because this corner belonged
+                            // to a button the owner is never shown. It lives in
+                            // the reading-period card now, which has one rule
+                            // for both viewers.
                             Positioned(
                               bottom: 0,
                               right: 0,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (!isSelf)
-                                    Padding(
-                                      padding: EdgeInsets.only(
-                                        bottom: shelfName.isEmpty ? 0 : 6,
-                                      ),
-                                      child: BookStatusBadge(
-                                        status: book.status,
-                                      ),
-                                    ),
-                                  ShelfLabel(label: shelfName),
-                                ],
+                              child: ShelfLabel(
+                                label: shelfName,
+                                // **The count is part of the hero contract, not
+                                // decoration.** The tab shrink-wraps its
+                                // contents, so a library tab reading `IT 12`
+                                // flying to a details tab reading `IT` would
+                                // change size in the air — which is the one
+                                // thing `ShelfLabel`'s doc says must not happen,
+                                // because the box is squeezed onto its text and
+                                // a fraction of a point off ellipsizes the name
+                                // mid-flight. Both ends therefore derive it from
+                                // `shelvedBookCount` of the same shelf.
+                                //
+                                // Null when the shelf could not be resolved: the
+                                // name is empty then too, so the tab paints
+                                // nothing and there is no hero at either end.
+                                count: shelf == null
+                                    ? null
+                                    : shelvedBookCount(shelf),
+                                heroTag: flyShelfFromLibrary
+                                    ? shelfLabelHeroTag(book.shelfId)
+                                    : null,
                               ),
                             ),
                           ],
                         ),
-                        const ShelfWidget(),
+                        // The other half of the book's flight: the shelf comes in
+                        // from the library carrying the book that was standing on
+                        // it, rather than vanishing at one end while a different
+                        // one appears at this one.
+                        ShelfWidget(
+                          heroTag: flyShelfFromLibrary
+                              ? shelfHeroTag(book.shelfId)
+                              : null,
+                        ),
                       ],
                     ),
                   ),
@@ -281,39 +366,42 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                             physics: const ClampingScrollPhysics(),
                             child: Text(
                               book.title,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                height: 1,
-                              ),
+                              style: AppTextStyles.subtitle,
                             ),
                           ),
                         ),
                         const SizedBox(height: 10),
-                        bookInfoAsync.when(
-                          data: (info) =>
-                              info != null && info.authors.isNotEmpty
-                              ? SizedBox(
-                                  height: 20,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Text(
-                                      info.authors.join(', '),
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                          loading: () => const SizedBox(height: 20),
-                          error: (_, __) => const SizedBox.shrink(),
+                        if (authors.isNotEmpty)
+                          SizedBox(
+                            height: 20,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Text(
+                                authors.join(', '),
+                                style: AppTextStyles.label,
+                              ),
+                            ),
+                          )
+                        // Holds the row's height while the fallback lookup is in
+                        // flight, so the hero does not resize under the reader —
+                        // which is also what the collapse threshold is measured
+                        // against.
+                        else if (authorsPending)
+                          const SizedBox(height: 20),
+                        // Always rendered now, because it carries the status
+                        // badge as well as the dates. The old guard
+                        // (`status >= 1 && startDate != null`) would have taken
+                        // the badge off screen entirely on an Interested book,
+                        // which is 133 of 472 books in production.
+                        // `ReadingPeriodRow` drops to a bare badge when there are
+                        // no dates rather than wrapping one chip in a full-width
+                        // card.
+                        const SizedBox(height: 12),
+                        ReadingPeriodRow(
+                          status: book.status,
+                          startDate: book.startDate,
+                          finishDate: book.finishDate,
                         ),
-                        if (book.status >= 1 && book.startDate != null) ...[
-                          const SizedBox(height: 12),
-                          ReadingPeriodRow(
-                            startDate: book.startDate!,
-                            finishDate: book.finishDate,
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -330,12 +418,14 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                   indicatorColor: context.colors.primaryText,
                   indicatorSize: TabBarIndicatorSize.label,
                   labelColor: context.colors.primaryText,
-                  unselectedLabelColor: context.colors.primaryText,
-                  labelStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  unselectedLabelStyle: const TextStyle(fontSize: 14),
+                  // Selection used to be carried by weight as well as by the
+                  // underline; both label styles are one token now, so colour has
+                  // to do that half of the work. Without this the two tabs were
+                  // typographically identical and the 2pt indicator was the only
+                  // difference between them.
+                  unselectedLabelColor: context.colors.secondaryText,
+                  labelStyle: AppTextStyles.label,
+                  unselectedLabelStyle: AppTextStyles.label,
                   dividerColor: Colors.transparent,
                   tabs: [
                     Tab(text: l10n.bookInfoTab),
@@ -378,11 +468,89 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     );
   }
 
-  String _shelfNameFor(Book book, List<Shelf> shelves) {
+  /// The shelf [book] sits on, or null if it cannot be resolved.
+  ///
+  /// Returns the shelf rather than just its name because the tab now needs its
+  /// book count as well, and resolving it twice would be two chances to disagree
+  /// with the library about what this shelf is.
+  Shelf? _shelfFor(Book book, List<Shelf> shelves) {
     for (final shelf in shelves) {
-      if (shelf.id == book.shelfId) return shelf.name;
+      if (shelf.id == book.shelfId) return shelf;
     }
-    return '';
+    return null;
+  }
+
+  /// Opens the who-reacted sheet from the capsule, and owns the round trip out to
+  /// the picker and back.
+  ///
+  /// The capsule is the only route to your own reaction now that the button
+  /// hides as soon as you have one — and, because the capsule belongs to the
+  /// record rather than to the button, the only route that still works on a book
+  /// which has gone back to *Reading* or *Interested*. That state used to strand
+  /// a reaction on screen with no way to reach it.
+  ///
+  /// The sheet pops itself before handing over, so the picker replaces it rather
+  /// than stacking on it. On its own that left backing out of the picker on the
+  /// bare book — two steps from where you started, with nothing to show you had
+  /// been anywhere. So the reactions sheet is a **hub** here rather than one leg
+  /// of a chain: dismissing the picker without choosing loops round and puts it
+  /// back.
+  ///
+  /// Choosing deliberately does not loop. A pick is the task completing, and
+  /// completing closes the flow where cancelling returns you to where you were.
+  /// That also sidesteps the one case a loop would get wrong: withdraw your only
+  /// reaction and there is no record left for the sheet to show.
+  ///
+  /// [compliments] is not re-read between passes, because no path that loops can
+  /// have changed it — the loop only runs again after a dismissal, which by
+  /// definition changed nothing.
+  Future<void> _onReactionsPressed(
+    Book book,
+    List<BookCompliment> compliments,
+  ) async {
+    final userId = ref.read(currentUserIdProvider);
+
+    while (true) {
+      // Re-checked per pass rather than in the `while` condition: the analyzer
+      // only accepts a dedicated `mounted` guard as cover for the `context` uses
+      // that follow an await.
+      if (!mounted) return;
+
+      var editMine = false;
+      await showReactionsSheet(
+        context,
+        compliments: compliments,
+        currentUserId: userId,
+        onEditMine: () => editMine = true,
+      );
+      // Dismissed the hub itself rather than drilling in, so the flow is over.
+      if (!editMine) return;
+      if (!mounted) return;
+
+      String? chosen;
+      await showEmojiBottomSheet(
+        context,
+        // Marks your own cell in the grid, which is the whole of the toggle's
+        // legibility once the sheet is open: tapping the marked emoji withdraws
+        // it, tapping any other replaces it. `praiseTapFor` makes both the same
+        // call.
+        selected: praiseBy(compliments, userId),
+        // Records the choice and closes. The write waits until below, where it
+        // can be awaited without the picker still sitting on screen.
+        onEmojiPressed: (emoji) {
+          chosen = emoji;
+          Navigator.pop(context);
+        },
+      );
+
+      // Dismissed without choosing. `chosen` is captured by the callback above,
+      // so it cannot be promoted here and the `!` below is load-bearing.
+      if (chosen == null) continue;
+      if (!mounted) return;
+
+      await ref.read(bookDetailsActionsProvider).togglePraise(book.id, chosen!);
+      return;
+    }
   }
 
   void _onDeleteBookPressed(Book book) {
@@ -474,16 +642,26 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _TabBarDelegate oldDelegate) => false;
 }
 
-/// The praise control on a friend's finished book.
+/// The control for adding a reaction to a friend's finished book.
 ///
-/// Carries the viewer's own praise on its face. You may hold only one praise per
-/// book, and the chips beside the cover do not say who gave what, so without
-/// this the button could not tell you whether you had already praised — and
-/// tapping the same emoji again would look like it added nothing rather than
-/// taking your praise back.
-class _ComplimentButton extends ConsumerWidget {
+/// Shown only while there is something to add: hidden on your own book, hidden
+/// below status 2, and **hidden once you already hold a reaction**. That last
+/// one is the change worth explaining. You may hold only one reaction per book,
+/// so a button still saying *React* would be offering an action it cannot
+/// perform — what a tap actually does at that point is replace or withdraw, and
+/// both of those belong to the reaction you already have rather than to a fresh
+/// one. [ReactionCapsule] owns them, and says they are yours by taking the
+/// picker's marked-cell tint.
+///
+/// Earlier drafts tried to make the button's *state* honest instead: carrying
+/// your emoji on its face (which duplicated the record beside it), then going
+/// outlined and saying "Reacted" (which restated what the record already said,
+/// and needed a second string in every locale). Removing it outright is simpler
+/// than either, needs no new string at all, and works in the states where the
+/// button is absent anyway.
+class _ReactButton extends ConsumerWidget {
   final Book book;
-  const _ComplimentButton({required this.book});
+  const _ReactButton({required this.book});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -494,44 +672,26 @@ class _ComplimentButton extends ConsumerWidget {
       ref.watch(bookComplimentsProvider(book.id)).valueOrNull ?? const [],
       ref.watch(currentUserIdProvider),
     );
+    if (mine != null) return const SizedBox.shrink();
 
     return ElevatedButton.icon(
-      onPressed: () {
-        showEmojiBottomSheet(
-          context,
-          selected: mine,
-          onEmojiPressed: (emoji) async {
-            Navigator.pop(context);
-            await ref
-                .read(bookDetailsActionsProvider)
-                .togglePraise(book.id, emoji);
-          },
-          // Withdrawing is the same call as praising with what you already hold:
-          // `praiseTapFor` reads that as removal, so the strip is an affordance
-          // over the existing toggle rather than a second path to keep in step.
-          onRemove: mine == null
-              ? null
-              : () async {
-                  Navigator.pop(context);
-                  await ref
-                      .read(bookDetailsActionsProvider)
-                      .togglePraise(book.id, mine);
-                },
-        );
-      },
+      onPressed: () => showEmojiBottomSheet(
+        context,
+        onEmojiPressed: (emoji) async {
+          Navigator.pop(context);
+          await ref
+              .read(bookDetailsActionsProvider)
+              .togglePraise(book.id, emoji);
+        },
+      ),
       style: ElevatedButton.styleFrom(
         backgroundColor: context.colors.brandFill,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
-      icon: mine == null
-          ? const Icon(Icons.celebration, size: 18)
-          : Text(mine, style: const TextStyle(fontSize: 15)),
-      label: Text(
-        l10n.praise,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-      ),
+      icon: const Icon(Icons.celebration, size: 18),
+      label: Text(l10n.praise, style: AppTextStyles.label),
     );
   }
 }
@@ -553,38 +713,20 @@ class _BookInfoTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (info?.contents != null && info!.contents!.isNotEmpty) ...[
-                Text(
-                  l10n.bookDescription,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(l10n.bookDescription, style: AppTextStyles.subtitle),
                 const SizedBox(height: 8),
-                Text(
-                  info.contents!,
-                  style: const TextStyle(fontSize: 14, height: 1.6),
-                ),
+                Text(info.contents!, style: AppTextStyles.body),
                 const SizedBox(height: 24),
               ],
               if (info?.publisher != null) ...[
-                Text(
-                  l10n.publisher,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(l10n.publisher, style: AppTextStyles.subtitle),
                 const SizedBox(height: 8),
-                Text(info!.publisher!, style: const TextStyle(fontSize: 14)),
+                Text(info!.publisher!, style: AppTextStyles.body),
                 const SizedBox(height: 24),
               ],
-              const Text(
-                'ISBN',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              const Text('ISBN', style: AppTextStyles.subtitle),
               const SizedBox(height: 8),
-              Text(book.isbn, style: const TextStyle(fontSize: 14)),
+              Text(book.isbn, style: AppTextStyles.body),
             ],
           ),
         ),
@@ -599,12 +741,9 @@ class _BookInfoTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'ISBN',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              const Text('ISBN', style: AppTextStyles.subtitle),
               const SizedBox(height: 8),
-              Text(book.isbn, style: const TextStyle(fontSize: 14)),
+              Text(book.isbn, style: AppTextStyles.body),
             ],
           ),
         ),
@@ -668,9 +807,8 @@ class _BookMemoTab extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     isSelf ? l10n.writeAMemo : l10n.noMemos,
-                    style: TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       color: context.colors.secondaryText,
-                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -688,15 +826,17 @@ class _BookMemoTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(memo.content, style: const TextStyle(fontSize: 14)),
+                    Text(memo.content, style: AppTextStyles.body),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           '${memo.createdAt.year}.${memo.createdAt.month.toString().padLeft(2, '0')}.${memo.createdAt.day.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            fontSize: 11,
+                          // `label` rather than `caption`: caption exists for the
+                          // tracked uppercase stat labels, and its letterspacing
+                          // would pull a run of digits apart.
+                          style: AppTextStyles.label.copyWith(
                             color: context.colors.secondaryText,
                           ),
                         ),

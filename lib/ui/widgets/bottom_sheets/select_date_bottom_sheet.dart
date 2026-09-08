@@ -1,4 +1,5 @@
 import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:flutter/cupertino.dart';
@@ -35,9 +36,6 @@ Future<void> showSelectDateBottomSheet(
   DateTime selected = initial;
   return CNBottomSheet.show(
     context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (_) => SizedBox(
       height: 320,
       child: Column(
@@ -47,13 +45,7 @@ Future<void> showSelectDateBottomSheet(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  resolvedTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(resolvedTitle, style: AppTextStyles.subtitle),
                 ElevatedActionButton(
                   // Wide enough for the label plus the glass button's own
                   // internal padding; 60 clipped it to "Co…".

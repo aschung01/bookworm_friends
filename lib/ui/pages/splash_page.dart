@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
+import 'package:bookworm_friends/providers/invite_link_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
+import 'package:bookworm_friends/ui/pages/invite_consent_page.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -38,9 +40,42 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, AppRoutes.home);
       }
+      // **After landing, not instead of it.** Consent is pushed *onto* the
+      // destination so that dismissing it leaves the reader somewhere real. An
+      // earlier shape replaced the route, which meant `✕` on the consent screen
+      // popped to an empty navigator.
+      _pushConsentIfPending();
+      // **`InviteCodePage` is deliberately not offered here**, only from the auth
+      // page. This branch is a reader who *already had a session* — they are
+      // relaunching, not signing up — and the code screen opens with "One last
+      // thing", which is signup language. Offering it here would ambush every
+      // existing user with a signup step on their first launch after this ships.
+      // See [inviteCodePromptProvider].
     } else {
+      // Signed out. The token stays in the provider across the whole OAuth round
+      // trip and is spent by whatever lands after sign-in -- see
+      // [pendingInviteTokenProvider]. Redeeming here would return
+      // `not_signed_in` and burn the link for nothing.
       Navigator.pushReplacementNamed(context, AppRoutes.auth);
     }
+  }
+
+  /// Hands a link-borne token to the consent screen.
+  ///
+  /// The inviter is null: the token carries no name, and this app cannot read
+  /// `friend_invites` to resolve one -- the table is owner-scoped by design. The
+  /// consent copy already falls back to "Someone", which is what the typed-code
+  /// path has always shown.
+  void _pushConsentIfPending() {
+    final token = ref.read(pendingInviteTokenProvider);
+    if (token == null || !mounted) return;
+    // Cleared before the push, so a rebuild cannot present it twice.
+    ref.read(pendingInviteTokenProvider.notifier).state = null;
+    Navigator.pushNamed(
+      context,
+      AppRoutes.inviteConsent,
+      arguments: InviteConsentArgs(token: token),
+    );
   }
 
   @override

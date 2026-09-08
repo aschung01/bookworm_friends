@@ -1,4 +1,5 @@
 import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
@@ -13,9 +14,6 @@ Future<void> showWriteMemoBottomSheet(
   return CNBottomSheet.show(
     context: context,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (context) => Padding(
       padding: EdgeInsets.only(
         left: 30,
@@ -26,10 +24,7 @@ Future<void> showWriteMemoBottomSheet(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            l10n.writeMemoTitle,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text(l10n.writeMemoTitle, style: AppTextStyles.subtitle),
           const SizedBox(height: 20),
           TextField(
             controller: controller,

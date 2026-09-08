@@ -48,8 +48,8 @@ class NoBookInfo implements BookSearchProvider {
   Future<BookSearchResult?> getByIsbn(String isbn) async => null;
 }
 
-/// A finished book — status 2 is what puts the praise button on screen for a
-/// friend, and the only status that can be praised at all.
+/// A finished book — status 2 is what puts the react button on screen for a
+/// friend, and the only status a reaction can be *added* to.
 Book finishedBook({required String ownerId}) => Book(
   id: 'b1',
   userId: ownerId,
@@ -64,7 +64,7 @@ Book finishedBook({required String ownerId}) => Book(
   createdAt: DateTime(2023, 12, 9),
 );
 
-/// A book still in progress: status 1 withholds the praise button.
+/// A book still in progress: status 1 withholds the react button.
 Book readingBook({required String ownerId}) => Book(
   id: 'b1',
   userId: ownerId,
@@ -75,6 +75,21 @@ Book readingBook({required String ownerId}) => Book(
   status: 1,
   position: 0,
   startDate: DateTime(2023, 12, 9),
+  createdAt: DateTime(2023, 12, 9),
+);
+
+/// Status 0, and the case that decides where the status badge can live: no
+/// dates, so no reading-period card for it to sit inside. 133 of 472 books in
+/// production are here.
+Book interestedBook({required String ownerId}) => Book(
+  id: 'b1',
+  userId: ownerId,
+  shelfId: shelfId,
+  isbn: '440238498',
+  title: 'Eldest',
+  thumbnail: '',
+  status: 0,
+  position: 0,
   createdAt: DateTime(2023, 12, 9),
 );
 
@@ -89,16 +104,28 @@ List<Shelf> shelvesFor(String ownerId) => [
   ),
 ];
 
+/// One reaction.
+///
+/// [name] defaults to a readable stand-in rather than to null, because null has
+/// a specific meaning here — a profile the `profiles` policy would not let this
+/// viewer read — and a test that wanted the ordinary case should not accidentally
+/// exercise the fallback. Pass `name: null` deliberately for that.
 BookCompliment compliment(
   String emoji, {
   String id = 'c1',
   String from = meId,
+  String? name = 'Jihyun',
+  String? reactorEmoji,
+  String? avatarPath,
 }) => BookCompliment(
   id: id,
   bookId: 'b1',
   fromUserId: from,
   compliment: emoji,
   createdAt: DateTime(2024),
+  reactorName: name,
+  reactorEmoji: reactorEmoji,
+  reactorAvatarPath: avatarPath,
 );
 
 Future<void> pumpBookDetails(

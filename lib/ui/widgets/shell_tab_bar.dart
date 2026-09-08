@@ -3,18 +3,147 @@ import 'dart:ui';
 import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 
+/// Every number that decides where the bar sits, as a pure function of the only
+/// two things it depends on: which path is drawing (a native `UITabBar` or our own
+/// pill), and the home-indicator inset.
+///
+/// Pulled out of [ShellTabBar] so that **both** paths' numbers are reachable from
+/// a test. `flutter test` reports Android, so the native geometry is otherwise
+/// only ever checked by eye on a simulator — which is how the bar came to float
+/// ~21pt above, and sit 14pt per side narrower than, every system tab bar, and
+/// survive a round of device verification that was looking at something else.
+@immutable
+class ShellTabBarGeometry {
+  /// Whether the native `CNTabBar` is drawing, i.e. [useNativeGlass].
+  final bool native;
+
+  /// `MediaQuery.viewPaddingOf(context).bottom` — the home-indicator strip.
+  final double bottomViewPadding;
+
+  const ShellTabBarGeometry({
+    required this.native,
+    required this.bottomViewPadding,
+  });
+
+  /// Clearance the visible glass keeps from what it must not touch: the sheet
+  /// above it, and — on the fallback path only — the bottom of the screen. On the
+  /// native path the bar's own frame provides the bottom clearance; see
+  /// [glassTop].
+  static const double gap = 8;
+
+  /// Height of the box handed to the bar.
+  ///
+  /// Passed to `CNTabBar` explicitly rather than letting it measure itself: the
+  /// package measures its intrinsic height asynchronously from native and keeps
+  /// it private — no constant, no callback — so a caller that must reserve space
+  /// beneath the bar cannot learn the number.
+  ///
+  /// 83 is not a guess. It is `UITabBar.sizeThatFits` for an iOS 26 bar with three
+  /// labelled items and a search item, read off the rendered view on an iPhone 17
+  /// Pro / iOS 26.4 simulator. At 50 the native bar drew its labels on top of its
+  /// icons — a squashed `UITabBar` is what too small looks like. It is also
+  /// exactly `49 + 34`: a tab bar plus a home-indicator inset, which is the clue
+  /// [glassTop] turns on.
+  double get boxHeight => native ? 83 : 50;
+
+  /// Height of what you can actually see, which on the native path is *not*
+  /// [boxHeight].
+  ///
+  /// iOS lays the visible glass out as a 62pt platter anchored to the **top** of
+  /// the 83pt frame, keeping 21pt of padding at the bottom of its own box. Both
+  /// the platter and the search orb measure 62.
+  ///
+  /// On the native path this is **descriptive only** — no position is derived from
+  /// it. That is deliberate and it is the point of [glassTop]: the 21pt inset is a
+  /// native subview's offset that Flutter cannot see, so a layout that depends on
+  /// it can never be verified from Dart. Anchoring to the frame's top edge instead
+  /// removes it from every formula here.
+  double get visualHeight => native ? 62 : 50;
+
+  /// Inset from the screen's side edges.
+  ///
+  /// **Zero on the native path, and that is not an omission.** The plugin pins the
+  /// `UITabBar` to all four edges of the platform view it is handed
+  /// (`CupertinoTabBarSearchView.setupUI`), so our box *is* the bar's frame — and
+  /// iOS 26 draws its glass as a platter inset *within* that frame. Anything added
+  /// here lands on top of the margin iOS already applies, and the bar comes out
+  /// narrower than the system's. A system tab bar is handed the full width;
+  /// matching one means handing it the full width.
+  ///
+  /// Measured on an iPhone 17 Pro / iOS 26.4 simulator (402pt wide) by building it
+  /// both ways: the glass sits **14.0pt further in from each edge at `14` than at
+  /// `0`**, so the inset was purely additive with iOS's own. That delta is the
+  /// claim; it is read the same way in both builds, so it does not depend on where
+  /// exactly a soft glass edge is judged to end.
+  ///
+  /// For the absolute, iOS's own layout is the authority: with this at `0` the
+  /// `UITabBar`'s accessibility tree reports the search orb at x `319.2..381.1` —
+  /// 62pt wide, **20.9pt in from the right edge**. That margin is the system's, and
+  /// it is the whole of what a system tab bar shows.
+  ///
+  /// 14 is right for the fallback, which fills its box with a pill it draws
+  /// itself.
+  double get sideInset => native ? 0 : 14;
+
+  /// Distance from the bottom of the screen to the **top edge of the visible
+  /// glass** — the one number both the bar's position and the sheet's reservation
+  /// are derived from, so the two cannot drift apart.
+  ///
+  /// The top edge is the honest anchor because on both paths the glass's top edge
+  /// *is* the box's top edge: iOS anchors its platter to the top of the frame, and
+  /// the fallback's pill fills its box. Every other edge involves an inset only
+  /// native code can see.
+  ///
+  /// **Native: the frame sits flush with the bottom of the screen**, exactly where
+  /// a `UITabBar` puts itself. Its 83pt is `49 + 34` — bar plus home-indicator
+  /// inset — and the 21pt it keeps below the platter *is* that allowance, with the
+  /// indicator sitting in the band beneath the glass. Adding `bottomViewPadding`
+  /// on top counted the same clearance twice and floated the bar ~21pt above every
+  /// system tab bar.
+  ///
+  /// **Fallback: nothing reserves the indicator strip for us**, so we do, plus
+  /// [gap].
+  ///
+  /// Confirmed by iOS itself on an iPhone 17 Pro / iOS 26.4 simulator. The
+  /// accessibility tree reports the bar's frame as `(0, 791)–(402, 874)` — full
+  /// width, flush with the screen bottom — and the search orb inside it at
+  /// **`bottom-up 21.0..83.0`**, i.e. the platter band is 21pt to 83pt above the
+  /// screen bottom and 62pt tall, exactly as [visualHeight] says. Before this the
+  /// same band sat at 42..104.
+  double get glassTop =>
+      native ? boxHeight : bottomViewPadding + gap + visualHeight;
+
+  /// Where to pin the bar's box, measured from the bottom of the screen.
+  ///
+  /// The box's top edge is the glass's top edge, so this is [glassTop] less the
+  /// box. Zero on the native path, by the reasoning at [glassTop].
+  double get bottomOffset => glassTop - boxHeight;
+
+  /// Vertical room a sheet must leave free at its bottom so the floating bar does
+  /// not cover its contents: up to the top of the glass, plus a [gap].
+  ///
+  /// Measured from the top of the home-indicator inset rather than from the screen
+  /// edge, because `LibrarySheet` always reserves that inset itself and adds this
+  /// on top.
+  double get reserve {
+    final remaining = glassTop + gap - bottomViewPadding;
+    return remaining < 0 ? 0 : remaining;
+  }
+}
+
 /// The shell's floating tab bar: a pill of Library / Friends / Card, plus a
 /// detached circular button that opens Add Book.
 ///
 /// It floats *over* the sheet rather than sitting under it, which is why the
-/// sheet has to leave [reserve] pixels of room at its bottom. Nothing here
-/// measures that: both sides read the same constants, so the gap above and below
-/// the bar is fixed by construction. See [reserve].
+/// sheet has to leave [ShellTabBarGeometry.reserve] pixels of room at its bottom.
+/// Nothing here measures that: both sides are derived from
+/// [ShellTabBarGeometry.glassTop], so the clearance is fixed by construction.
 ///
 /// Hidden during a visit — a tab bar that is visible but cannot say where you
 /// are is the thing four rejected design rounds kept working around. That is the
@@ -38,53 +167,14 @@ class ShellTabBar extends StatefulWidget {
     required this.onAddBook,
   });
 
-  /// Height of the box handed to the bar.
-  ///
-  /// Passed to `CNTabBar` explicitly rather than letting it measure itself: the
-  /// package measures its intrinsic height asynchronously from native and keeps
-  /// it private — no constant, no callback — so a caller that must reserve space
-  /// beneath the bar cannot learn the number.
-  ///
-  /// 83 is not a guess. It is `UITabBar.sizeThatFits` for an iOS 26 bar with three
-  /// labelled items and a search item, read off the rendered view on an iPhone 17
-  /// Pro / iOS 26.4 simulator. At 50 the native bar drew its labels on top of its
-  /// icons — a squashed `UITabBar` is what too small looks like.
-  static double get _boxHeight => useNativeGlass ? 83 : 50;
-
-  /// Height of what you can actually see, which on the native path is *not*
-  /// [_boxHeight].
-  ///
-  /// iOS lays the visible glass out as a 62pt platter anchored to the **top** of
-  /// the 83pt frame, keeping 21pt of padding at the bottom of its own box — a
-  /// `UITabBar` expects to sit flush with the screen edge and to own the
-  /// home-indicator strip itself. Both the platter and the search orb measure 62.
-  static double get visualHeight => useNativeGlass ? 62 : 50;
-
-  /// Empty space the bar keeps below its own glass, which the caller has to
-  /// subtract from the offset or the bar floats that much too high.
-  static double get _bottomInset => _boxHeight - visualHeight;
-
-  /// Gap above and below the visible bar, and the inset from the screen's side
-  /// edges.
-  static const double gap = 8;
-  static const double sideInset = 14;
-
-  /// Where to pin the bar's box so its *glass* clears the home indicator by
-  /// [gap]. Compensates for [_bottomInset]; without it the visible bar sits that
-  /// much higher than intended, which reads as a tab bar floating oddly far up
-  /// the screen.
-  static double bottomOffset(BuildContext context) {
-    final offset =
-        MediaQuery.viewPaddingOf(context).bottom + gap - _bottomInset;
-    return offset < 0 ? 0 : offset;
-  }
-
-  /// Vertical room a sheet must leave free at its bottom so the floating bar does
-  /// not cover its contents: a gap, the visible bar, and a gap again.
-  ///
-  /// Excludes the home-indicator inset, which the sheet reserves separately — the
-  /// bar is offset by the same inset, so the two stay in step.
-  static double get reserve => gap + visualHeight + gap;
+  /// The bar's geometry for this screen. Callers use it to position the bar and to
+  /// work out what a sheet underneath must leave free — both from the same object,
+  /// which is what keeps them in step.
+  static ShellTabBarGeometry geometryOf(BuildContext context) =>
+      ShellTabBarGeometry(
+        native: useNativeGlass,
+        bottomViewPadding: MediaQuery.viewPaddingOf(context).bottom,
+      );
 
   @override
   State<ShellTabBar> createState() => _ShellTabBarState();
@@ -140,7 +230,23 @@ class _ShellTabBarState extends State<ShellTabBar> {
   Widget _buildNative(BuildContext context) {
     final labels = _labels(context);
     return CNTabBar(
-      height: ShellTabBar._boxHeight,
+      height: ShellTabBar.geometryOf(context).boxHeight,
+      // `ShellChrome` hosts this bar above the `Navigator`, so a modal route is
+      // painted *before* it and it floats in front — which is the point. Left at
+      // the default `true`, the bar would delete itself the moment any sheet
+      // opened.
+      //
+      // The package's reason for hiding is worth knowing, because it does not
+      // apply here: the search variant uses an unclipped native container so the
+      // orb can overhang the bar's top edge, and that lets the bar's shadow bleed
+      // through a sheet drawn over it (`tab_bar.dart:341-355`). Bleeding *through*
+      // a sheet is only wrong when the bar is meant to be behind it. It is not.
+      //
+      // Turning this off does not give up halo containment for anything else:
+      // `ShellRouteObserver` still drives `anyModalDepth`, so `CNButton` and the
+      // native segmented controls on the page below still clip while a sheet is
+      // up. Only the bar opts out of reacting.
+      autoHideOnModal: false,
       currentIndex: _tabs.indexOf(widget.current),
       onTap: (index) => widget.onChanged(_tabs[index]),
       tint: context.colors.brandText,
@@ -169,44 +275,76 @@ class _ShellTabBarState extends State<ShellTabBar> {
   /// from the modal this design specifies, and it would only appear off iOS 26.
   Widget _buildFallback(BuildContext context) {
     final labels = _labels(context);
-    return Row(
-      children: [
-        Expanded(
-          child: _Glass(
-            borderRadius: BorderRadius.circular(ShellTabBar.visualHeight / 2),
-            child: SizedBox(
-              height: ShellTabBar.visualHeight,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    for (var i = 0; i < _tabs.length; i++)
-                      Expanded(
-                        child: _TabSegment(
-                          label: labels[i],
-                          selected: _tabs[i] == widget.current,
-                          onTap: () => widget.onChanged(_tabs[i]),
+    // The fallback's box *is* its glass, so one height serves as both.
+    final height = ShellTabBar.geometryOf(context).visualHeight;
+    // **Clamped, because this bar's height is geometry and not type.**
+    // [ShellTabBarGeometry] derives `visualHeight` from the home-indicator strip
+    // and the design's own numbers, so the box does not grow with the text
+    // inside it. Now that the labels are a real token with a real line-height
+    // (13 × 1.2), the largest accessibility step drove them straight past the
+    // pill's edge, and a three-tab row with nowhere to go ellipsizes every
+    // label to one letter — which is worse for the reader who turned the setting
+    // on than a slightly small label is.
+    //
+    // 1.3 rather than 1.0: refusing scaling outright is the thing to avoid, and
+    // 13 → 16.9 still fits. The native `CNTabBar` path is untouched; UIKit sizes
+    // its own bar.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.3,
+      child: Row(
+        children: [
+          Expanded(
+            child: _Glass(
+              borderRadius: BorderRadius.circular(height / 2),
+              child: SizedBox(
+                height: height,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < _tabs.length; i++)
+                        Expanded(
+                          child: _TabSegment(
+                            label: labels[i],
+                            height: height,
+                            selected: _tabs[i] == widget.current,
+                            onTap: () => widget.onChanged(_tabs[i]),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        _Glass(
-          borderRadius: BorderRadius.circular(ShellTabBar.visualHeight / 2),
-          child: SizedBox.square(
-            dimension: ShellTabBar.visualHeight,
-            child: IconButton(
-              onPressed: _onAddBookTapped,
-              tooltip: AppLocalizations.of(context).addBook,
-              icon: Icon(Icons.search, color: context.colors.secondaryText),
+          const SizedBox(width: 12),
+          _Glass(
+            borderRadius: BorderRadius.circular(height / 2),
+            child: SizedBox.square(
+              dimension: height,
+              child: Semantics(
+                button: true,
+                label: AppLocalizations.of(context).addBook,
+                // A `GestureDetector` rather than an `IconButton`, matching
+                // [_TabSegment]. `ShellChrome` hosts this bar above the
+                // `Navigator`, where there is no `Material` and no `Overlay` -- so
+                // ink and tooltips have no ancestor to find and throw. The label
+                // moves to `Semantics`, which needs neither.
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _onAddBookTapped,
+                  child: Center(
+                    child: Icon(
+                      Icons.search,
+                      color: context.colors.secondaryText,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -249,18 +387,20 @@ class _Glass extends StatelessWidget {
 
 class _TabSegment extends StatelessWidget {
   final String label;
+  final double height;
   final bool selected;
   final VoidCallback onTap;
 
   const _TabSegment({
     required this.label,
+    required this.height,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular((ShellTabBar.visualHeight - 8) / 2);
+    final radius = BorderRadius.circular((height - 8) / 2);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -274,9 +414,14 @@ class _TabSegment extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+            // **One weight in both states, deliberately.** This used to go w500 →
+            // bold on selection, and because the label is centred, a heavier face
+            // is a wider string, so the text grew outward from its own middle
+            // every time you switched tabs — the segment's two edges twitching in
+            // opposite directions under a pill that had not moved. Selection is
+            // already carried twice over, by [AppColors.brandText] and by the
+            // filled capsule behind it; it did not also need to reflow the label.
+            style: AppTextStyles.label.copyWith(
               color: selected
                   ? context.colors.brandText
                   : context.colors.secondaryText,

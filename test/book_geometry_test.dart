@@ -56,18 +56,38 @@ void main() {
     test('is pinned to known values', () {
       // Given the same ISBNs, When jitter is derived, Then a book keeps its
       // exact proportions across releases.
-      void expectJitter(String isbn, double height, double thickness) {
+      //
+      // Pinned as each book's *normalised position* within the range rather than
+      // as the resolved factor. What must never drift is the hash: if
+      // `String.hashCode` or this FNV implementation changed, every book on every
+      // shelf would silently resize, which is the regression worth a golden test.
+      // The ranges themselves are design values that get tuned by eye — thickness
+      // has moved three times — and asserting resolved factors made every one of
+      // those tweaks look like a hash regression and cost a golden rewrite. This
+      // form is invariant to retuning min/max and still fails loudly if the hash
+      // moves.
+      void expectJitter(String isbn, double heightAt, double thicknessAt) {
         final jitter = BookJitter.fromIsbn(isbn);
-        expect(jitter.heightFactor, closeTo(height, 1e-9));
-        expect(jitter.thicknessFactor, closeTo(thickness, 1e-9));
+        expect(
+          (jitter.heightFactor - BookJitter.minHeightFactor) /
+              (BookJitter.maxHeightFactor - BookJitter.minHeightFactor),
+          closeTo(heightAt, 1e-9),
+          reason: '$isbn moved within the height range',
+        );
+        expect(
+          (jitter.thicknessFactor - BookJitter.minThicknessFactor) /
+              (BookJitter.maxThicknessFactor - BookJitter.minThicknessFactor),
+          closeTo(thicknessAt, 1e-9),
+          reason: '$isbn moved within the thickness range',
+        );
       }
 
-      expectJitter('9788936434120', 0.9692039368, 0.2436978714);
-      expectJitter('9780451524935', 1.0414218357, 0.2487956054);
-      expectJitter('9780141439518', 0.9463447013, 0.3177871366);
-      expectJitter('9791188331796', 0.9740709545, 0.2534373999);
-      expectJitter('9788954682152', 0.9942384985, 0.2410464637);
-      expectJitter('OL12345W', 1.0126390478, 0.3216415656);
+      expectJitter('9788936434120', 0.243366140230, 0.197482261387);
+      expectJitter('9780451524935', 0.845181963836, 0.239963378347);
+      expectJitter('9780141439518', 0.052872510872, 0.814892805371);
+      expectJitter('9791188331796', 0.283924620432, 0.278644998856);
+      expectJitter('9788954682152', 0.451987487602, 0.175387197681);
+      expectJitter('OL12345W', 0.605325398642, 0.847013046464);
     });
 
     test('stays within the declared ranges', () {
@@ -107,10 +127,135 @@ void main() {
       expect(BookJitter.neutral.heightFactor, 1.0);
     });
 
+    group('thickness from page count', () {
+      // Page count decides where a book sits in the thickness range, replacing the
+      // hash. Coverage is low — Kakao reports none at all — but a reader cannot
+      // distinguish a hashed thickness from a measured one, so partial data makes
+      // part of the shelf correct and worsens nothing.
+
+      double thickness(int? pages) => BookJitter.fromIsbn(
+        '9788936434120',
+        pageCount: pages,
+      ).thicknessFactor;
+
+      test('maps 300 pages to the middle of the range', () {
+        // The archetypal trade book lands mid-range by construction: the curve is
+        // logarithmic between 100 and 900, and 300 is their geometric mean.
+        expect(bookThicknessPositionFromPages(300), closeTo(0.5, 1e-9));
+      });
+
+      test('anchors the ends of the range', () {
+        expect(
+          bookThicknessPositionFromPages(kBookMinPageCount),
+          closeTo(0, 1e-9),
+        );
+        expect(
+          bookThicknessPositionFromPages(kBookMaxPageCount),
+          closeTo(1, 1e-9),
+        );
+      });
+
+      test('compresses the long tail instead of letting it dominate', () {
+        // A 1,500-page reference book must not be able to pin the top of the range
+        // and squash every novel toward the bottom.
+        expect(bookThicknessPositionFromPages(1500), 1.0);
+        expect(bookThicknessPositionFromPages(3000), 1.0);
+        // And a short book clamps rather than going negative.
+        expect(bookThicknessPositionFromPages(40), 0.0);
+      });
+
+      test('thickness rises monotonically with page count', () {
+        var previous = thickness(kBookMinCrediblePageCount);
+        for (final pages in [50, 120, 200, 300, 450, 700, 900]) {
+          final next = thickness(pages);
+          expect(
+            next,
+            greaterThanOrEqualTo(previous),
+            reason: 'at $pages pages',
+          );
+          previous = next;
+        }
+      });
+
+      test('stays inside the design range at every page count', () {
+        for (final pages in [20, 100, 300, 900, 5000]) {
+          expect(
+            thickness(pages),
+            inInclusiveRange(
+              BookJitter.minThicknessFactor,
+              BookJitter.maxThicknessFactor,
+            ),
+            reason: 'at $pages pages',
+          );
+        }
+      });
+
+      test('treats a zero page count as absent, not as a thin book', () {
+        // Google Books returns `pageCount: 0` rather than omitting the key. Trusting
+        // it would draw the thinnest book on the shelf and call it data.
+        expect(bookThicknessPositionFromPages(0), isNull);
+        expect(bookThicknessPositionFromPages(null), isNull);
+        expect(thickness(0), thickness(null));
+      });
+
+      test(
+        'leaves height alone, so gaining a page count only changes thickness',
+        () {
+          // A book that is backfilled later must not jump height on the shelf.
+          const isbn = '9780141439518';
+          expect(
+            BookJitter.fromIsbn(isbn, pageCount: 640).heightFactor,
+            BookJitter.fromIsbn(isbn).heightFactor,
+          );
+        },
+      );
+
+      test('uses a page count even when there is no ISBN to hash', () {
+        // `bookHash('')` is just the FNV offset basis, identical for every such
+        // book, so height stays neutral — but the page count is still real.
+        final j = BookJitter.fromIsbn('', pageCount: 900);
+        expect(j.heightFactor, BookJitter.neutral.heightFactor);
+        expect(j.thicknessFactor, closeTo(BookJitter.maxThicknessFactor, 1e-9));
+      });
+    });
+
     test('is stable across repeated calls', () {
       final first = BookJitter.fromIsbn('9788936434120');
       final second = BookJitter.fromIsbn('9788936434120');
       expect(first, second);
+    });
+
+    group('atNeutralHeight', () {
+      // Half the variation, for a caller — the read view's month grid — whose cells
+      // are uniform but whose books still turn far enough to show a fore-edge.
+
+      test('keeps the thickness and flattens the height', () {
+        final full = BookJitter.fromIsbn('9780141439518');
+        expect(full.heightFactor, isNot(BookJitter.neutral.heightFactor));
+
+        final flat = full.atNeutralHeight;
+        expect(flat.thicknessFactor, full.thicknessFactor);
+        expect(flat.heightFactor, BookJitter.neutral.heightFactor);
+      });
+
+      test('keeps a thickness that came from a page count', () {
+        // The point of the whole thing: a long book stays a thick one.
+        final short = BookJitter.fromIsbn(
+          '9788936434120',
+          pageCount: 120,
+        ).atNeutralHeight;
+        final long = BookJitter.fromIsbn(
+          '9788936434120',
+          pageCount: 850,
+        ).atNeutralHeight;
+
+        expect(long.thicknessFactor, greaterThan(short.thicknessFactor));
+        expect(long.heightFactor, short.heightFactor);
+      });
+
+      test('is a no-op on neutral', () {
+        expect(BookJitter.neutral.atNeutralHeight, BookJitter.neutral);
+      });
     });
 
     test('decorrelates height from thickness', () {
@@ -154,7 +299,7 @@ void main() {
       final m = BookMetrics.from(
         baseHeight: 130,
         coverAspect: 0.66,
-        jitter: const BookJitter(1.06, 0.28),
+        jitter: const BookJitter(1.06, 0.36),
       );
       expect(m.height, closeTo(137.8, 1e-9));
       expect(m.width / m.height, closeTo(0.66, 1e-9));

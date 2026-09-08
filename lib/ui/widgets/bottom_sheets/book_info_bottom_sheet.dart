@@ -1,4 +1,5 @@
 import 'package:cupertino_native_better/cupertino_native_better.dart';
+import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/services/book_search_service.dart';
@@ -30,9 +31,6 @@ Future<void> showBookInfoBottomSheet(
   return CNBottomSheet.show(
     context: context,
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (_) => StatefulBuilder(
       builder: (context, setState) {
         final l10n = AppLocalizations.of(context);
@@ -68,10 +66,7 @@ Future<void> showBookInfoBottomSheet(
                         children: [
                           Text(
                             book.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: AppTextStyles.subtitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -80,8 +75,7 @@ Future<void> showBookInfoBottomSheet(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
                                 book.authors.join(', '),
-                                style: TextStyle(
-                                  fontSize: 13,
+                                style: AppTextStyles.label.copyWith(
                                   color: context.colors.secondaryText,
                                 ),
                               ),
@@ -91,8 +85,7 @@ Future<void> showBookInfoBottomSheet(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
                                 book.publisher!,
-                                style: TextStyle(
-                                  fontSize: 12,
+                                style: AppTextStyles.label.copyWith(
                                   color: context.colors.secondaryText,
                                 ),
                               ),

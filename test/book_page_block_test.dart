@@ -184,4 +184,70 @@ void main() {
       expect(light.pageBase.computeLuminance(), greaterThan(0.9));
     });
   });
+
+  group('the board colour follows the cover', () {
+    // A fixed grey board on a saturated cover reads as two objects rather than
+    // one book, which is what `bookBoardColorFor` exists to fix. But it cannot
+    // simply match the cover: the board sits directly behind a near-white page
+    // block, and if the two converge the fore-edge band disappears — which is
+    // the whole thing the fore-edge square was added to make visible.
+
+    test("keeps the cover's hue", () {
+      for (final cover in const [
+        Color(0xFF9D2127), // the reference demo's red
+        Color(0xFF09BC8A), // brand green
+        Color(0xFF2F6690), // slate blue
+      ]) {
+        expect(
+          HSLColor.fromColor(bookBoardColorFor(cover)).hue,
+          closeTo(HSLColor.fromColor(cover).hue, 1.0),
+          reason: "the board drifted off the cover's hue",
+        );
+      }
+    });
+
+    test('is always darker than the cover', () {
+      for (final cover in const [
+        Color(0xFF000000),
+        Color(0xFF9D2127),
+        Color(0xFFF2B544),
+        Color(0xFFFFFFFF),
+      ]) {
+        expect(
+          bookBoardColorFor(cover).computeLuminance(),
+          lessThan(cover.computeLuminance() + 1e-9),
+          reason: 'the board is lighter than its own cover',
+        );
+      }
+    });
+
+    test('stays separable from the page block even on a pale cover', () {
+      // The hard case, and why the darkening scales with lightness instead of
+      // being a fixed fraction: a cream jacket darkened by a flat 18% would
+      // still sit on top of `pageBase` and the band would vanish.
+      const pageBase = Color(0xFFFFFFFF);
+      for (final cover in const [
+        Color(0xFFFFFFFF),
+        Color(0xFFFAF3E0), // cream, like the Clean Code jacket
+        Color(0xFFF2B544),
+      ]) {
+        expect(
+          pageBase.computeLuminance() -
+              bookBoardColorFor(cover).computeLuminance(),
+          greaterThan(0.15),
+          reason: 'the board is too close to the page block on $cover',
+        );
+      }
+    });
+
+    test('does not crush a dark cover to pure black', () {
+      // A near-black jacket already separates from paper, so it should keep some
+      // of its own tone rather than being flattened into the shadow.
+      const cover = Color(0xFF1A1A22);
+      expect(
+        bookBoardColorFor(cover).computeLuminance(),
+        greaterThan(cover.computeLuminance() * 0.4),
+      );
+    });
+  });
 }

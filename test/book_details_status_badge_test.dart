@@ -1,18 +1,20 @@
-// Regression tests for the status badge in the book-details hero corner.
+// Regression tests for where the status badge lives in the book-details hero.
 //
-// On a *friend's* book the right-hand column carries the praise button and the
-// compliment chips, so the badge ended up laid out at the bottom-right — the
-// exact spot where the `Positioned` shelf label is painted over it, leaving the
-// badge invisible. The badge now stacks directly above the label, so the check
-// that matters is geometric: the two rects must not intersect.
+// It has been in three places. Originally the right-hand column, where it was
+// laid out at the bottom-right and painted over by the `Positioned` shelf label,
+// leaving it invisible. Then stacked directly above that label on a friend's
+// book, but still hoisted to the top of the column on your own — two places for
+// one thing, because the corner belonged to a button the owner is never shown.
 //
-// The owner's own book keeps the badge in the right-hand column (top-right,
-// where the praise button would otherwise sit), so it is asserted separately to
-// make sure the fix didn't move or duplicate it.
+// It is now in the reading-period card, standing in for that card's old
+// "Reading period" label, with one rule for both viewers. So the checks that
+// matter are: exactly one badge, below the shelf (in the band rather than the
+// hero), and still present on a book that has no dates for the card to hold.
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
+import 'package:bookworm_friends/ui/widgets/reading_period_row.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
 
 import 'support/book_details_harness.dart';
@@ -20,19 +22,19 @@ import 'support/book_details_harness.dart';
 void main() {
   group('BookDetailsTabView status badge', () {
     testWidgets(
-      "Given a friend's finished book, When the details page is shown, Then the status badge is not hidden behind the shelf label",
+      "Given a friend's finished book, When the details page is shown, Then one "
+      'badge sits in the reading-period card below the shelf label',
       (tester) async {
         await pumpBookDetails(
           tester,
           book: finishedBook(ownerId: friendId),
           signedInAs: meId,
-          // Praise from a third party: the chips' geometry is the subject here,
-          // and praise of your own would also land on the button's face.
+          // From a third party, so the react button is on screen too: the point
+          // is that a busy right-hand column no longer competes with the badge.
           compliments: [compliment('👏', from: otherId)],
         );
 
-        // The layout that broke: praise button and chips own the top-right.
-        expect(find.text('Praise'), findsOneWidget);
+        expect(find.text('React'), findsOneWidget);
         expect(find.text('👏'), findsOneWidget);
 
         expect(find.byType(BookStatusBadge), findsOneWidget);
@@ -49,14 +51,24 @@ void main() {
           isFalse,
           reason: 'badge $badge must not sit under the shelf label $label',
         );
-        // Specifically: stacked above the label, sharing its right edge.
-        expect(badge.bottom, lessThanOrEqualTo(label.top));
-        expect(badge.right, closeTo(label.right, 0.5));
+        // The badge is now *below* the shelf, not above it: it left the hero for
+        // the band. This is the assertion that would fail if it drifted back.
+        expect(
+          badge.top,
+          greaterThan(label.bottom),
+          reason: 'the badge belongs to the band, under the shelf',
+        );
+        // And it is inside the card rather than floating in the band.
+        expect(
+          tester.getRect(find.byType(ReadingPeriodRow)).contains(badge.center),
+          isTrue,
+        );
       },
     );
 
     testWidgets(
-      "Given the owner's own finished book, When the details page is shown, Then a single badge stays clear of the shelf label",
+      "Given the owner's own finished book, When the details page is shown, "
+      'Then the badge is in the same place as on a friend\'s',
       (tester) async {
         await pumpBookDetails(
           tester,
@@ -64,16 +76,41 @@ void main() {
           signedInAs: meId,
         );
 
-        // No praise button on your own book, so the column's top-right is free.
-        expect(find.text('Praise'), findsNothing);
-        // Rendered by the column, not duplicated into the label stack.
+        expect(find.text('React'), findsNothing);
+        // One badge, and not hoisted into the column the way it used to be.
         expect(find.byType(BookStatusBadge), findsOneWidget);
 
         final badge = tester.getRect(find.byType(BookStatusBadge));
         final label = tester.getRect(find.byType(ShelfLabel));
 
         expect(badge.overlaps(label), isFalse);
-        expect(badge.bottom, lessThanOrEqualTo(label.top));
+        expect(badge.top, greaterThan(label.bottom));
+      },
+    );
+
+    testWidgets(
+      'Given a book with no dates, When the details page is shown, Then the '
+      'badge survives the card it normally sits in',
+      (tester) async {
+        await pumpBookDetails(
+          tester,
+          book: interestedBook(ownerId: friendId),
+          signedInAs: meId,
+        );
+
+        // `ReadingPeriodRow` collapses to a bare badge rather than wrapping one
+        // chip in a full-width card. What must not happen is the badge going
+        // missing along with the dates — the guard on the call site used to be
+        // `status >= 1 && startDate != null`, which would have done exactly that
+        // on 133 of 472 books.
+        expect(find.byType(BookStatusBadge), findsOneWidget);
+        expect(find.text('Interested'), findsOneWidget);
+
+        final badge = tester.getRect(find.byType(BookStatusBadge));
+        expect(
+          badge.top,
+          greaterThan(tester.getRect(find.byType(ShelfLabel)).bottom),
+        );
       },
     );
   });

@@ -1,9 +1,8 @@
 {
   "@@locale": "en",
-  "appTitle": "Bookworm Friends",
+  "appTitle": "Libstack",
   "continueWithApple": "Continue with Apple",
   "continueWithGoogle": "Continue with Google",
-
   "save": "Save",
   "cancel": "Cancel",
   "delete": "Delete",
@@ -14,52 +13,63 @@
   "select": "Select",
   "no": "No",
   "library": "Library",
-  "followers": "Followers",
-  "following": "Following",
   "follow": "Follow",
-  "unfollow": "Unfollow",
   "poke": "Poke",
   "manageShelves": "Manage shelves",
-  "searchFriends": "Search friends",
   "settings": "Settings",
   "dragToReorder": "Drag to reorder",
   "errorOccurred": "Something went wrong",
   "emptyList": "The list is empty",
-
   "errorWithMessage": "Error: {message}",
   "@errorWithMessage": {
-    "placeholders": { "message": { "type": "String" } }
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
   },
   "searchErrorWithMessage": "Search error: {message}",
   "@searchErrorWithMessage": {
-    "placeholders": { "message": { "type": "String" } }
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
   },
-
   "statusInterested": "Interested",
   "statusReading": "Reading",
   "statusFinished": "Read",
   "statusOther": "Other",
-
   "bookDetailsTitle": "Book details",
   "bookInfoUnavailable": "Couldn't load book info",
   "readingPeriod": "Reading period",
   "daysCount": "{days, plural, =1{1 day} other{{days} days}}",
   "@daysCount": {
-    "placeholders": { "days": { "type": "int" } }
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "bookInfoTab": "Book info",
   "memoTab": "Notes",
-  "praise": "Praise",
+  "praise": "React",
+  "reactionsTitle": "Reactions",
+  "reactionYours": "You",
+  "reactorUnknown": "Someone you don't follow",
   "bookDescription": "About this book",
   "publisher": "Publisher",
   "writeAMemo": "Write a note",
   "noMemos": "No notes yet",
-
   "librarySuffixSelf": "'s Library",
   "librarySuffixOther": "'s Library",
   "userLibraryTitle": "{name}'s Library",
   "@userLibraryTitle": {
-    "placeholders": { "name": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "libraryEmptySelf": "Your library is empty...",
   "libraryEmptyOther": "This library is empty",
@@ -67,48 +77,216 @@
   "addShelf": "Add shelf",
   "finishedBooksTitle": "Books read",
   "noFinishedBooks": "No books read yet 🥲",
+  "noFinishedBooksInYear": "No books recorded for {year}",
+  "@noFinishedBooksInYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
   "yearLabel": "{year}",
   "@yearLabel": {
-    "placeholders": { "year": { "type": "int" } }
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
   },
   "monthYearLabel": "{month, select, 1{January} 2{February} 3{March} 4{April} 5{May} 6{June} 7{July} 8{August} 9{September} 10{October} 11{November} 12{December} other{{month}}} {year}",
   "@monthYearLabel": {
-    "placeholders": { "year": { "type": "int" }, "month": { "type": "String" } }
+    "placeholders": {
+      "year": {
+        "type": "int"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "monthLabel": "{month, select, 1{January} 2{February} 3{March} 4{April} 5{May} 6{June} 7{July} 8{August} 9{September} 10{October} 11{November} 12{December} other{{month}}}",
+  "@monthLabel": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
   },
   "readNoDate": "No finish date",
   "allTime": "All time",
   "bookCountLabel": "{count}",
   "@bookCountLabel": {
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
-  "unfollowConfirmTitle": "Unfollow",
-  "unfollowConfirmMessage": "Are you sure you want to unfollow?",
   "deleteBookTitle": "Delete book",
   "deleteBookConfirmMessage": "Are you sure you want to delete this book?",
   "deleteBookNamed": "Delete {title}",
   "@deleteBookNamed": {
-    "placeholders": { "title": { "type": "String" } }
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   },
-
   "myLibrary": "My Library",
   "friends": "Friends",
   "tabCard": "Card",
   "libraryCard": "Library Card",
   "libraryCardEmpty": "Your reading stats will live here",
+  "libraryCardHeroAllTime": "All-time library card",
+  "libraryCardHeroYear": "{year} library card",
+  "@libraryCardHeroYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardBooksUnit": "{count, plural, =1{book} other{books}}",
+  "@libraryCardBooksUnit": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardDaysReading": "{count, plural, =1{1 day reading} other{{count} days reading}}",
+  "@libraryCardDaysReading": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardPace": "Pace",
+  "libraryCardPaceValue": "{days}d",
+  "@libraryCardPaceValue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardPaceSub": "{count, plural, =1{per book, of 1 dated} other{per book, of {count} dated}}",
+  "@libraryCardPaceSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardTopAuthor": "Most-read author",
+  "libraryCardAuthorBooks": "{count, plural, =1{1 book} other{{count} books}}",
+  "@libraryCardAuthorBooks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardShare": "Share your card",
+  "libraryCardShareFailed": "Couldn't share your card",
+  "libraryCardShareSubject": "My Library Card",
+  "shareCardTitleAllTime": "Your all-time Library Card",
+  "shareCardTitleYear": "Your {year} Library Card",
+  "@shareCardTitleYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "shareCardSubtitle": "View and share",
+  "shareCardClose": "Close",
+  "shareCardAssembling": "Preparing your card",
+  "shareCardFraming": "Framing",
+  "shareCardFramingFill": "Fill",
+  "shareCardFramingFloat": "Float",
+  "shareCardCandlelight": "Candlelight",
+  "shareCardDestinationMore": "More",
+  "shareCardDestinationStories": "Stories",
+  "shareCardDestinationPhotos": "Photos",
+  "shareCardSavedToPhotos": "Saved to Photos",
+  "shareCardSaveFailed": "Couldn't save to Photos",
+  "shareCardStoriesFailed": "Couldn't open Instagram",
   "addBook": "Add book",
   "noFriendsYet": "No friends yet",
+  "noFriendsYetBody": "Send someone an invite link and you'll both see what the other is reading.",
+  "friendReading": "Reading {titles}",
+  "@friendReading": {
+    "placeholders": {
+      "titles": {
+        "type": "String"
+      }
+    }
+  },
+  "friendNothingInProgress": "Nothing in progress",
+  "retry": "Try again",
   "profile": "Profile",
   "endVisit": "Back to my library",
-
+  "loadingUserLibrary": "loading {username}…",
+  "@loadingUserLibrary": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
   "searchBookHint": "Search by book title,\nauthor, or publisher ☺️",
   "searchBookPlaceholder": "Title, author, publisher…",
-  "searchUserPrompt": "Search friends by nickname",
-  "searchUserHint": "Explore friends' libraries and\ninspire each other to read 🙌",
-
+  "clearSearch": "Clear search",
+  "scanBook": "Scan a book",
+  "scanBookLabel": "Scan a book's barcode",
+  "scanHint": "Point at the barcode on the back of the book",
+  "scanLookingUp": "Looking it up…",
+  "scanTorch": "Torch",
+  "scanRetry": "Try again",
+  "scanNudge": "No barcode? Read the cover instead.",
+  "scanReadCover": "Read the cover",
+  "scanReadingCover": "Reading the cover…",
+  "scanTypeInstead": "Type it instead",
+  "scanAnother": "Scan another",
+  "scanOpenSettings": "Open Settings",
+  "scanDeniedTitle": "Camera access is off",
+  "scanDeniedBody": "Libstack needs the camera to scan a barcode. You can turn it on in Settings — or just type the title.",
+  "scanFailedTitle": "The camera didn't start",
+  "scanFailedBody": "Something stopped the camera from opening. Typing the title works just as well.",
+  "scanLookupFailedTitle": "Couldn't reach the catalogue",
+  "scanLookupFailedBody": "The barcode read fine, but the lookup didn't get through. Check your connection and try again.",
+  "scanRetake": "Retake",
+  "scanCoverFailedTitle": "Couldn't read that cover",
+  "scanCoverFailedBody": "Try filling the frame with just the front cover, in even light. Or look for the barcode on the back.",
+  "scanCoverLimitTitle": "That's enough cover reads for now",
+  "scanCoverLimitBody": "Cover reading is limited to keep it free. Barcodes still work as often as you like, and you can always type the title.",
+  "searchFromCover": "from cover",
+  "scanNoMatchTitle": "No catalogue has this one",
+  "scanNoMatchBody": "{isbn} scanned cleanly, but none of our sources know it. Small-press books are often missing. Try searching the title.",
+  "@scanNoMatchBody": {
+    "placeholders": {
+      "isbn": {
+        "type": "String"
+      }
+    }
+  },
   "editProfile": "Edit profile",
   "changeEmoji": "Change emoji",
-  "changeNickname": "Change nickname",
-  "newNickname": "New nickname",
+  "changePhoto": "Change photo",
+  "setPhoto": "Set photo",
+  "removePhoto": "Remove photo",
+  "changeUsername": "Change username",
+  "changeHandle": "Change handle",
+  "newHandle": "New handle",
+  "handleHint": "paper_fox_412",
+  "handleExplainer": "Printed on your shared Library Card. Lowercase letters, numbers and underscores.",
+  "handleChanged": "Handle updated",
+  "handleChangeFailed": "Failed to update handle",
+  "handleTaken": "That handle is taken",
+  "handleInvalid": "3–20 characters: a–z, 0–9 and _",
+  "newUsername": "New username",
   "deleteAccount": "Delete account",
   "deleteAccountConfirmMessage": "Are you sure you want to leave?\nAll your data will be deleted and cannot be recovered.",
   "deleteAccountDone": "Account deleted",
@@ -125,7 +303,6 @@
   "login": "Log in",
   "accountSection": "Account",
   "email": "Email",
-  "allowProfileSearch": "Allow profile search",
   "preferencesSection": "Preferences",
   "contactDevSection": "Talk to the developer",
   "aboutDev": "About the developer",
@@ -139,17 +316,13 @@
   "privacyPolicy": "Privacy policy",
   "appVersion": "App version",
   "logout": "Log out",
-
   "selectShelf": "Select shelf",
   "startDate": "Start date",
   "selectStartDate": "Select start date",
   "finishDate": "Finish date",
   "selectFinishDate": "Select finish date",
   "changeReadingStatus": "Change reading status",
-  "selectComplimentEmoji": "Choose a praise emoji",
-
-  "yourPraise": "Your praise",
-  "removePraise": "Remove",
+  "selectComplimentEmoji": "Choose a reaction emoji",
   "emojiSearchHint": "Search",
   "emojiSearchResults": "Search results",
   "emojiSkinTone": "Skin tone",
@@ -162,7 +335,6 @@
   "emojiCategoryObjects": "Objects",
   "emojiCategorySymbols": "Symbols",
   "emojiCategoryFlags": "Flags",
-
   "acknowledgements": "Acknowledgements",
   "openSourceLicenses": "Open source licenses",
   "emojiPickerCredit": "Emoji picker by Sébastien Gruhier (development) and Inès Gruhier (design)",
@@ -179,7 +351,6 @@
   "shelfNameHint": "Enter a shelf name",
   "writeMemoTitle": "Write a note",
   "memoHint": "Enter a note",
-
   "shelfAdded": "Shelf added",
   "shelfAddFailed": "Failed to add shelf",
   "renamed": "Renamed",
@@ -196,12 +367,120 @@
   "memoAddFailed": "Failed to add note",
   "memoEditFailed": "Failed to edit note",
   "memoDeleteFailed": "Failed to delete note",
-  "nicknameChanged": "Nickname updated",
-  "nicknameChangeFailed": "Failed to update nickname",
+  "usernameChanged": "Username updated",
+  "usernameChangeFailed": "Failed to update username",
   "emojiChangeFailed": "Failed to update emoji",
+  "photoChanged": "Photo updated",
+  "photoChangeFailed": "Failed to update photo",
   "settingChangeFailed": "Failed to update setting",
-  "followFailed": "Failed to follow",
-  "unfollowFailed": "Failed to unfollow",
   "pokeSent": "Poke sent!",
-  "pokeFailed": "Failed to poke"
+  "pokeFailed": "Failed to poke",
+
+  "inviteFriends": "Invite a friend",
+  "inviteTitle": "Libstack friends",
+  "inviteBody": "Send a link to anyone. You'll both see what the other is reading now, can browse each other's finished shelves, and can leave a reaction on any book.",
+  "inviteBodyEmotional": "It's free, and it saves you from screenshotting your shelf every time someone asks what you've been reading.",
+  "inviteFinePrint": "Links last 48 hours and can be used up to 10 times. You can remove a friend at any time.",
+  "inviteShareText": "Come see what I'm reading on Libstack.",
+  "inviteStatusReading": "Reading",
+  "inviteStatusRead": "{count} read",
+  "@inviteStatusRead": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "inviteStatusJoined": "Just joined",
+  "shareInvite": "Continue",
+  "inviteCreateFailed": "Couldn't create an invite link",
+  "inviteShareFailed": "Couldn't open the share sheet",
+  "inviteConsentTitle": "{name} wants to share books with you",
+  "@inviteConsentTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "inviteConsentBody": "You'll both see what the other is reading and what you've finished, and you can react to each other's books.",
+  "inviteConsentFinePrint": "You're in control. You can remove this friend at any time.",
+  "becomeFriends": "Become friends",
+  "becomingFriends": "Becoming friends…",
+  "nowFriendsTitle": "You're now friends",
+  "nowFriendsBody": "You and {name} can see each other's shelves, what you're reading now, and what you've finished.",
+  "@nowFriendsBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifyAbout": "Notify me about {name}",
+  "@notifyAbout": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "oneLastThing": "One last thing",
+  "haveInviteCode": "Have an invite code?",
+  "inviteCodeOptional": "Optional — you can invite friends later.",
+  "continueLabel": "Continue",
+  "inviteExpiredTitle": "This link has expired",
+  "inviteExpiredBody": "Invite links last 48 hours. Ask {name} to send you a new one.",
+  "@inviteExpiredBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "inviteRevokedTitle": "This link was turned off",
+  "inviteRevokedBody": "{name} turned this invite off. Ask them for a new one.",
+  "@inviteRevokedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "inviteExhaustedTitle": "This link is used up",
+  "inviteExhaustedBody": "This invite reached its limit. Ask {name} for a new one.",
+  "@inviteExhaustedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "inviteNotFoundTitle": "We couldn't find that code",
+  "inviteNotFoundBody": "Check the code and try again — it's 8 characters.",
+  "inviteSelfTitle": "That's your own link",
+  "inviteSelfBody": "Send it to someone else and they'll appear in your friends list.",
+  "inviteNotSignedInTitle": "Sign in first",
+  "inviteNotSignedInBody": "Invite links need an account. Sign in and open the link again.",
+  "someone": "Someone",
+  "you": "You",
+  "alreadyFriendsTitle": "You're already friends",
+  "continueToLibrary": "Continue to my library",
+  "manageFriend": "Manage friend",
+  "friendsSince": "Friends since",
+  "notificationsSection": "Notifications",
+  "notifyOnFinish": "When they finish a book",
+  "notifyOnStart": "When they start a book",
+  "removeFriend": "Remove friend",
+  "removeFriendNoAlert": "They will not get an alert.",
+  "removeFriendConfirmTitle": "Remove {name}?",
+  "@removeFriendConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeFriendConfirmMessage": "Access to each other's libraries will be revoked for both of you. They will not get an alert.",
+  "remove": "Remove",
+  "removeFriendFailed": "Couldn't remove this friend"
 }

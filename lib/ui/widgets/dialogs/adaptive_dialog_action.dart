@@ -1,3 +1,5 @@
+import 'package:bookworm_friends/constants/app_text_styles.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +17,12 @@ class AdaptiveDialogAction extends StatelessWidget {
   /// Renders the label in the platform's destructive style (red).
   final bool isDestructive;
 
-  /// Emphasises this action as the default choice (bold on Apple platforms).
+  /// Emphasises this action as the default choice.
+  ///
+  /// Bold on Apple platforms, where [CupertinoDialogAction] owns the treatment.
+  /// On Material it is the brand colour instead of a heavier weight: the token
+  /// set has one weight per size, and the honest alternative to bolding was not
+  /// "do nothing" — that would have left this flag silently inert on Android.
   final bool isDefaultAction;
 
   /// Optional label color used on non-Apple platforms only.
@@ -49,9 +56,11 @@ class AdaptiveDialogAction extends StatelessWidget {
           onPressed: onPressed,
           child: Text(
             label,
-            style: TextStyle(
-              color: isDestructive ? cancelRedColor : textColor,
-              fontWeight: isDefaultAction ? FontWeight.bold : null,
+            style: AppTextStyles.label.copyWith(
+              color: isDestructive
+                  ? cancelRedColor
+                  : textColor ??
+                        (isDefaultAction ? context.colors.brandText : null),
             ),
           ),
         );

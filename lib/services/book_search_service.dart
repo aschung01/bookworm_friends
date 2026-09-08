@@ -17,6 +17,18 @@ class BookSearchResult {
   final DateTime? datetime;
   final String? contents;
 
+  /// Pages, when the provider reports a credible count.
+  ///
+  /// Null for Kakao, which has no page field at all — its book document carries
+  /// eleven keys and none of them is a page count. Google Books has one but
+  /// returns `pageCount: 0` for volumes it does not know, which is normalised to
+  /// null here so a zero cannot be mistaken for a very thin book. Open Library
+  /// reports a median across editions.
+  ///
+  /// Only consumer today is the book's rendered thickness, which falls back to a
+  /// hash of the ISBN when this is null.
+  final int? pageCount;
+
   const BookSearchResult({
     required this.title,
     required this.isbn,
@@ -26,6 +38,7 @@ class BookSearchResult {
     this.publisher,
     this.datetime,
     this.contents,
+    this.pageCount,
   });
 
   factory BookSearchResult.fromJson(Map<String, dynamic> json) {
@@ -175,6 +188,13 @@ class GoogleBooksSearchProvider implements BookSearchProvider {
     }
     final isbn = isbn13 ?? isbn10 ?? (item['id'] as String? ?? '');
 
+    // Google returns `pageCount: 0` for volumes it has no count for rather than
+    // omitting the key, so a zero is absence and not a thin book. Normalised here
+    // because it is a quirk of this provider; the threshold for what counts as a
+    // *plausible* page count is a display concern and lives with the geometry.
+    final rawPages = volume['pageCount'];
+    final pageCount = rawPages is int && rawPages > 0 ? rawPages : null;
+
     // Force https so iOS App Transport Security doesn't block cover images.
     final imageLinks = volume['imageLinks'] as Map<String, dynamic>?;
     var thumbnail =
@@ -187,6 +207,7 @@ class GoogleBooksSearchProvider implements BookSearchProvider {
     return BookSearchResult(
       title: volume['title'] as String? ?? '',
       isbn: isbn,
+      pageCount: pageCount,
       thumbnail: thumbnail,
       url:
           volume['infoLink'] as String? ??
@@ -233,7 +254,8 @@ class OpenLibrarySearchProvider implements BookSearchProvider {
         'page': page.toString(),
         'limit': size.toString(),
         'fields':
-            'title,author_name,isbn,cover_i,first_publish_year,publisher,key',
+            'title,author_name,isbn,cover_i,first_publish_year,publisher,key,'
+            'number_of_pages_median',
       },
     );
 
@@ -272,9 +294,16 @@ class OpenLibrarySearchProvider implements BookSearchProvider {
     final year = doc['first_publish_year'] as int?;
     final key = doc['key'] as String?;
 
+    // A median across every edition of the work rather than this edition's count.
+    // Approximate by construction, which is fine for the one thing it feeds: a
+    // book's drawn thickness.
+    final rawPages = doc['number_of_pages_median'];
+    final pageCount = rawPages is int && rawPages > 0 ? rawPages : null;
+
     return BookSearchResult(
       title: doc['title'] as String? ?? '',
       isbn: isbn,
+      pageCount: pageCount,
       thumbnail: thumbnail,
       url: key != null ? '$_baseUrl$key' : null,
       authors:

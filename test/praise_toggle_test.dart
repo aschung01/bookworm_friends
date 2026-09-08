@@ -17,8 +17,13 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/providers/book_details_provider.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/compliment_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/headers/search_header.dart'
+    show kSearchPillRadius;
 
 import 'support/book_details_harness.dart' show compliment, meId, otherId;
+
+/// Named so the search-field test can pass a `const` picker.
+void _ignore(String _) {}
 
 /// The picker and the seeding both reach for `SharedPreferences`, which has no
 /// platform implementation in a widget test.
@@ -81,34 +86,102 @@ void main() {
     });
   });
 
-  group('CurrentPraiseStrip', () {
-    testWidgets(
-      'Given praise you hold, Then it is shown with a way to withdraw it',
-      (tester) async {
-        var removed = 0;
-        await pumpInApp(
-          tester,
-          CurrentPraiseStrip(emoji: '🦄', onRemove: () => removed++),
+  group('emojiGridHeight', () {
+    // 800pt of screen -> 440 of grid before any keyboard.
+    test(
+      'Given no keyboard, When the grid is sized, Then it takes its share of the '
+      'screen',
+      () {
+        expect(
+          emojiGridHeight(screenHeight: 800, keyboardInset: 0),
+          closeTo(440, 0.01),
         );
-
-        expect(find.text('Your praise'), findsOneWidget);
-        // A legacy emoji the grid would bury: the strip shows it regardless.
-        expect(find.text('🦄'), findsOneWidget);
-
-        await tester.tap(find.text('Remove'));
-        expect(removed, 1);
       },
     );
 
-    testWidgets('Given no way to withdraw, Then no withdrawal is offered', (
-      tester,
-    ) async {
-      // The profile-emoji picker reuses this sheet and has no "remove".
-      await pumpInApp(tester, const CurrentPraiseStrip(emoji: '🔥'));
-
-      expect(find.text('🔥'), findsOneWidget);
-      expect(find.text('Remove'), findsNothing);
+    test('Given the keyboard is up, When the grid is sized, Then it shrinks by the '
+        'inset rather than being covered by it', () {
+      // The bug this replaces: the grid kept its full height and the keyboard
+      // drew over it, leaving about two visible rows.
+      //
+      // 120 deliberately, not a full-height keyboard: the inset has to be small
+      // enough that the result lands between the floor and the ceiling, or this
+      // would be testing the clamp and only looking like it tested the shrink.
+      const unobstructed = 800 * 0.55; // 440
+      expect(
+        emojiGridHeight(screenHeight: 800, keyboardInset: 120),
+        closeTo(unobstructed - 120, 0.01),
+      );
+      expect(
+        emojiGridHeight(screenHeight: 800, keyboardInset: 120),
+        lessThan(emojiGridHeight(screenHeight: 800, keyboardInset: 0)),
+      );
     });
+
+    test(
+      'Given a keyboard tall enough to squeeze the grid flat, When it is sized, '
+      'Then it stops at the floor',
+      () {
+        // Small phone, tall keyboard: 352 of share less 340 of keyboard is 12,
+        // which is not a grid. Better to overflow into the sheet's own scroll
+        // than to collapse to a sliver.
+        expect(emojiGridHeight(screenHeight: 640, keyboardInset: 340), 240);
+      },
+    );
+
+    test(
+      'Given a very tall screen, When the grid is sized, Then it stops at the '
+      'ceiling',
+      () {
+        expect(emojiGridHeight(screenHeight: 1200, keyboardInset: 0), 460);
+      },
+    );
+  });
+
+  group('the search field', () {
+    testWidgets(
+      'Given the picker is open, When the search field is themed, Then it is a '
+      'borderless filled pill in every state',
+      (tester) async {
+        useFakePrefs();
+        await pumpInApp(
+          tester,
+          const SizedBox(
+            height: 400,
+            child: PraiseEmojiPicker(onEmojiSelected: _ignore),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // The package's field sets no border, no fill and no hint style, so what
+        // it renders is whatever the ambient theme says. Before this it was
+        // Material's default underline -- which turned brand-green on focus, the
+        // one search field in the app that did not match the other two.
+        final decoration = Theme.of(
+          tester.element(find.byType(TextField)),
+        ).inputDecorationTheme;
+
+        final colors = AppTheme.light.extension<AppColors>()!;
+        expect(decoration.filled, isTrue);
+        expect(decoration.fillColor, colors.surfaceVariant);
+
+        for (final border in [
+          decoration.border,
+          decoration.enabledBorder,
+          // The focused one is the whole point: it is where the green underline
+          // came from.
+          decoration.focusedBorder,
+        ]) {
+          expect(border, isA<OutlineInputBorder>());
+          expect((border as OutlineInputBorder).borderSide, BorderSide.none);
+          expect(
+            border.borderRadius,
+            BorderRadius.circular(kSearchPillRadius),
+            reason: 'has to be the same shape as SearchFieldPill',
+          );
+        }
+      },
+    );
   });
 
   group('PraiseEmojiPicker', () {
@@ -116,6 +189,10 @@ void main() {
       'Given praise you hold, When the picker opens, Then your cell is marked '
       'and others are not',
       (tester) async {
+        // This is now the *whole* of the toggle's legibility. A strip above the
+        // grid used to repeat your praise with an explicit "Remove" button; it
+        // was deleted as duplication, so the marked cell carries the meaning
+        // alone and this test is the guard on it.
         useFakePrefs();
         // Seeding puts the old palette in Recents, so 🔥 is on screen without
         // scrolling three thousand emoji.
