@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import 'package:bookworm_friends/models/book.dart';
+
 /// Ratio between a book's rendered width and its CSS-equivalent perspective
 /// depth.
 ///
@@ -149,6 +151,46 @@ double? bookThicknessPositionFromPages(int? pageCount) {
   final lo = math.log(kBookMinPageCount);
   final hi = math.log(kBookMaxPageCount);
   return ((math.log(pageCount) - lo) / (hi - lo)).clamp(0.0, 1.0);
+}
+
+/// The size of one book seen along its spine, at [baseHeight].
+///
+/// **One** function, used by the read pile's flat spine, by the chassis that
+/// replaces it at a turn, by the row that lays both out, and by a shelf drawing at
+/// `ShelfDensity.spines`. Two call sites computing this is how the spine and the
+/// cover come to disagree about thickness, and the disagreement is visible
+/// precisely at the moment of the swap.
+///
+/// [baseHeight] is a parameter because the pile and a shelf draw books at different
+/// sizes — `ReadPile.spineBase` (~117) against the shelf's `screenHeight * 0.15`
+/// (~127). It was hardcoded to the pile's constant while the pile was the only
+/// caller; `readSpineMetrics` is the same function with that value bound.
+///
+/// Resolved at [kDefaultCoverAspect] rather than at the cover's true ratio, which
+/// no caller could know without decoding every cover — the thing the flat spine
+/// exists to avoid. The consequence is worth stating: once an opened book's jacket
+/// decodes, its own [BookMetrics] picks up the real ratio and its thickness moves
+/// with it, a few percent either way. That lands *after* the turn, on a book whose
+/// spine is by then edge-on and whose cover is the thing being looked at, which is
+/// where a change of shape belongs.
+///
+/// **The thickness this returns is 0.36–0.52 of the cover's width** — about 29–47pt
+/// at a shelf's base height. `BookVertical.width` defaults to 26, which is a value
+/// no real spine ever takes; reading that default instead of this function is a
+/// mistake the design record made twice.
+({BookJitter jitter, BookMetrics metrics}) spineMetricsFor(
+  Book book, {
+  required double baseHeight,
+}) {
+  final jitter = BookJitter.fromIsbn(book.isbn, pageCount: book.pageCount);
+  return (
+    jitter: jitter,
+    metrics: BookMetrics.from(
+      baseHeight: baseHeight,
+      coverAspect: kDefaultCoverAspect,
+      jitter: jitter,
+    ),
+  );
 }
 
 /// Per-book size variation.

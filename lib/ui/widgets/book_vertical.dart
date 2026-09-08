@@ -142,16 +142,27 @@ class BookVertical extends StatelessWidget {
 
   /// The colour behind this spine, for deciding whether it needs an outline.
   ///
-  /// Defaults to `surface`, which is what this widget used unconditionally and is
-  /// right on a shelf. **It is wrong in the read pile**, which is the
-  /// `collapsedBody` of a sheet and therefore sits on `sheetBackground` — `#EFF5EF`,
-  /// not `#FFFFFF`.
+  /// Defaults to `surface`, which is what this widget used unconditionally.
+  /// **Every caller so far has had to override it, and the default is right
+  /// nowhere in this app** — an earlier version of this doc claimed it was "right on
+  /// a shelf", which was wrong on both counts:
   ///
-  /// That mattered less than it looks (both are very light, so a white spine failed
-  /// the test either way) but it failed in the unsafe direction: `#EFF5EF` is
-  /// *darker* than `surface`, so a fill measured against white can clear the
-  /// threshold while genuinely having no edge against the sheet. A `#E0E0E0` spine
-  /// scores 1.27 on white and 1.15 on the sheet.
+  /// - The **read pile** is the `collapsedBody` of a sheet, so it sits on
+  ///   `sheetBackground` — `#EFF5EF`, not `#FFFFFF`.
+  /// - A **shelf** sits on `surfaceVariant` — `#E9ECEF` — because that is what
+  ///   `LibraryPane` paints the library. The plank underneath a spine is `surface`,
+  ///   which is presumably where the claim came from, but a spine stands *on* the
+  ///   plank rather than in front of it: what is behind it is the library.
+  ///
+  /// It matters less than it looks (all three are very light, so a white spine fails
+  /// the test either way) but it fails in the unsafe direction, and both real grounds
+  /// are darker than the default. A fill measured against white can clear the
+  /// threshold while genuinely having no edge against the surface it is on. A
+  /// `#E0E0E0` spine scores 1.27 on white, 1.15 on the sheet, and 1.16 on
+  /// `surfaceVariant`.
+  ///
+  /// Left defaulting to `surface` rather than made required, because a caller with no
+  /// opinion should still get a spine; but if you are adding one, pass the ground.
   final Color? background;
 
   const BookVertical({

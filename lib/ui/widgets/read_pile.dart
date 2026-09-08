@@ -33,29 +33,23 @@ const double kReadSpinePose = -math.pi / 2;
 
 /// The size of one book in the read pile.
 ///
-/// **One** function, used by the flat spine, by the chassis that replaces it, and
-/// by the row that lays both out. Two call sites computing this is how the spine
-/// and the cover come to disagree about thickness, and the disagreement is visible
-/// precisely at the moment of the swap.
+/// [spineMetricsFor] with the pile's own base height bound. The body moved to
+/// `book_geometry.dart` when a shelf became the third thing that draws a spine —
+/// see there for why one function has to serve all of them, and why the aspect is
+/// resolved at [kDefaultCoverAspect].
+({BookJitter jitter, BookMetrics metrics}) readSpineMetrics(Book book) =>
+    spineMetricsFor(book, baseHeight: ReadPile.spineBase);
+
+/// The fill and the title colour for [book]'s spine.
 ///
-/// Resolved at [kDefaultCoverAspect] rather than at the cover's true ratio, which
-/// the pile could not know without decoding every cover — the thing it exists to
-/// avoid. The consequence is worth stating: once the open book's jacket decodes,
-/// its own `BookMetrics` picks up the real ratio and its thickness moves with it,
-/// a few percent either way. That lands *after* the turn, on a book whose spine is
-/// by then edge-on and whose cover is the thing being looked at, which is where a
-/// change of shape belongs.
-({BookJitter jitter, BookMetrics metrics}) readSpineMetrics(Book book) {
-  final jitter = BookJitter.fromIsbn(book.isbn, pageCount: book.pageCount);
-  return (
-    jitter: jitter,
-    metrics: BookMetrics.from(
-      baseHeight: ReadPile.spineBase,
-      coverAspect: kDefaultCoverAspect,
-      jitter: jitter,
-    ),
-  );
-}
+/// **Top-level, so a spine on a shelf and a spine in the pile cannot come out
+/// different colours for the same book.** It was private to `_ReadPileState` while
+/// the pile was the only thing that drew a spine.
+///
+/// No theme is involved, deliberately — a spine's fill is opaque, so the same book
+/// gets the same spine in light and dark mode. See [kSpineInkDark].
+({Color fill, Color title}) spineToneOf(Book book) =>
+    spineToneFor(book.coverColor ?? generatedCoverColor(book.isbn));
 
 /// The read pile: spines standing on a shelf, scrolling sideways.
 ///
@@ -258,6 +252,10 @@ class _ReadPileState extends ConsumerState<ReadPile>
 
   /// The fill and title ink for [book]'s spine.
   ///
+  /// [spineToneOf], which is top-level so a shelf spine and a pile spine of the same
+  /// book cannot disagree. Kept as a one-line alias because this class names it a
+  /// dozen times and the reasoning below belongs with the pile.
+  ///
   /// Both come out of one call, so a spine cannot end up with a fill chosen for one
   /// ink and a title drawn in the other.
   ///
@@ -268,8 +266,7 @@ class _ReadPileState extends ConsumerState<ReadPile>
   ///
   /// No theme is involved, deliberately — a spine's fill is opaque, so the same book
   /// gets the same spine in light and dark mode. See [kSpineInkDark].
-  ({Color fill, Color title}) _spineTone(Book book) =>
-      spineToneFor(book.coverColor ?? generatedCoverColor(book.isbn));
+  ({Color fill, Color title}) _spineTone(Book book) => spineToneOf(book);
 
   /// The one book that is a real [BookWidget]: turned out, or on its way.
   Widget _turnedBook(Book book, Animation<double> progress) {
