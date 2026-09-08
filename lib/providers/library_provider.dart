@@ -118,6 +118,31 @@ List<Shelf> withReadingFirst(List<Shelf> shelves) => [
 int readingHeadCount(Shelf shelf) =>
     shelf.books.takeWhile((book) => book.status == bookStatusReading).length;
 
+/// [index] confined to the region of a row that a book is allowed to land in.
+///
+/// A shelf is drawn as two regions — the books in progress, then everything else —
+/// and a drag cannot cross between them: a book being read cannot be filed behind
+/// one that is not, and a book that is not cannot jump the queue.
+///
+/// [headCount] and [rowLength] are measured on the row **with the dragged book taken
+/// out**, because that is the row an insertion index refers to. [reading] is the
+/// status of the book in flight, which for a book arriving from another shelf comes
+/// over in its `ShelfBookDrag` — the receiving shelf has no other way to know.
+///
+/// **Clamped rather than corrected on release.** The index drives the gap the row
+/// opens to preview a drop, so clamping here is what makes the preview the truth. A
+/// gap that opens where the book cannot land is a promise the drop then breaks, and
+/// the book visibly springs somewhere else.
+///
+/// A reading book may land at [headCount] itself, which puts it last among the books
+/// in progress; a book that is not may land there at the earliest.
+int clampDropIndex(
+  int index, {
+  required int headCount,
+  required int rowLength,
+  required bool reading,
+}) => reading ? index.clamp(0, headCount) : index.clamp(headCount, rowLength);
+
 /// A book taken out of local state but not yet deleted from the database, held
 /// so the library's undo can put it back at the exact shelf and position.
 class PendingBookRemoval {

@@ -36,6 +36,7 @@ class ShelfBookDrag {
     required this.bookId,
     required this.shelfId,
     required this.slotExtent,
+    required this.reading,
   });
 
   final String bookId;
@@ -43,6 +44,15 @@ class ShelfBookDrag {
 
   /// How much room the book took along its own row, its margins included.
   final double slotExtent;
+
+  /// Whether the book in flight is one the reader is part-way through.
+  ///
+  /// Travels for the same reason [slotExtent] does: a receiving shelf cannot know
+  /// it. Every shelf draws its in-progress books at the head of the row, so a book
+  /// arriving from elsewhere has to say which side of that boundary it belongs on —
+  /// otherwise the gap could open in a place the book cannot land, and the preview
+  /// would be a promise the drop then breaks.
+  final bool reading;
 }
 
 /// How long a cover has to be held in edit mode before it lifts.
@@ -178,6 +188,13 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// The width of the hole the book in flight left on its own shelf, from its
   /// payload. Both the gap this row opens and how far its covers slide.
   double _slotExtent = 0;
+
+  /// Whether the book in flight is one being read, from its payload.
+  ///
+  /// Held rather than read from the drag each time, because [_stepAutoScroll]
+  /// recomputes where the book would land while the row scrolls under a finger that
+  /// is holding still — and it has no `DragTargetDetails` to consult.
+  bool _draggedReading = false;
 
   /// Parts the row without animating, for the one frame a committed drop lands on.
   ///
@@ -512,7 +529,19 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// stepped over once the finger is more than halfway past it. That is the rule
   /// `ReorderableListView` used to apply within a shelf, and it is what keeps the
   /// gap still while a finger rests on a boundary.
-  int _dropIndexFor(double pointerX) {
+  ///
+  /// **Then clamped to the zone the book belongs to.** Every shelf draws its
+  /// in-progress books first, so a row is two regions and neither can be entered
+  /// from the other: a book being read cannot be filed behind one that is not, and a
+  /// book that is not cannot jump the queue. [reading] says which region the book in
+  /// flight came from — for a book arriving from another shelf, this row has no other
+  /// way to know.
+  ///
+  /// Clamped here rather than at each call site, so a third caller cannot forget.
+  /// The point of clamping at all is that **the gap never opens where the book
+  /// cannot land**: a preview that has to be corrected on release is a preview that
+  /// lied.
+  int _dropIndexFor(double pointerX, {required bool reading}) {
     var index = 0;
     var measuredOne = false;
     for (final book in widget.shelf.books) {
@@ -531,7 +560,21 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
       if (centre >= pointerX) break;
       index++;
     }
-    return index;
+
+    // Measured on the row *without* the lifted book, which is the row these indices
+    // are into.
+    final rest = [
+      for (final book in widget.shelf.books)
+        if (book.id != _liftedBookId) book,
+    ];
+    return clampDropIndex(
+      index,
+      headCount: rest
+          .takeWhile((book) => book.status == bookStatusReading)
+          .length,
+      rowLength: rest.length,
+      reading: reading,
+    );
   }
 
   /// How far the cover at [index] slides to preview the drop, in logical pixels.
@@ -714,6 +757,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
                 bookId: book.id,
                 shelfId: widget.shelf.id,
                 slotExtent: slotExtent,
+                reading: book.status == bookStatusReading,
               ),
               onDragStarted: () =>
                   _onLift(index, book.id, slotExtent, isEditMode),
@@ -819,7 +863,8 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
 
   void _onDragOver(DragTargetDetails<ShelfBookDrag> details) {
     _pointer = details.offset;
-    final index = _dropIndexFor(_pointer.dx);
+    _draggedReading = details.data.reading;
+    final index = _dropIndexFor(_pointer.dx, reading: details.data.reading);
     if (index != _dropIndex || details.data.slotExtent != _slotExtent) {
       setState(() {
         _dropIndex = index;
@@ -979,7 +1024,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     // with it. Worked out again here rather than waiting for a pointer event that,
     // for a finger parked at the end of a row, may never come.
     if (_dropIndex == null) return;
-    final index = _dropIndexFor(_pointer.dx);
+    final index = _dropIndexFor(_pointer.dx, reading: _draggedReading);
     if (index != _dropIndex) setState(() => _dropIndex = index);
   }
 
