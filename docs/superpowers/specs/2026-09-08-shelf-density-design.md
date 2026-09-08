@@ -447,9 +447,9 @@ closest candidates. They need eyeballing at 22pt before being committed to.
 
 ## Decomposition
 
-`shelf_row.dart` is 1021 lines and most of it is the drag machine. Three layouts
-added inline would put it past 1300, so the resting row moves out. The file
-stays where it is — it is imported widely — and gets _smaller_.
+`shelf_row.dart` is over 1,200 lines and most of it is the drag machine. Three layouts added
+inline would push it further, so the resting row moves out. The file stays where it is — it is
+imported widely — and gets _smaller_.
 
 ```
 lib/providers/shelf_density_provider.dart     enum + persisted Notifier
