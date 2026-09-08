@@ -14,6 +14,7 @@ import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shelf/shelf_book_tile.dart';
+import 'package:bookworm_friends/ui/widgets/shelf/shelf_spine_tile.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 
@@ -371,42 +372,73 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     bool isEditMode, {
     bool withHero = true,
   }) {
-    final l10n = AppLocalizations.of(context);
     // The book being set down carries the tail of the lift: the turn unwinds through
     // [BookWidget.turnDrive] below, and the growing has to come off out here, since
     // scaling a cover is not something the book itself does.
     final landing = book.id == _landingBookId;
     final content = switch (_effectiveDensity) {
-      ShelfDensity.covers ||
-      ShelfDensity.leaning ||
-      ShelfDensity.spines => ShelfBookTile(
-        book: book,
-        height: bookHeight,
-        isEditMode: isEditMode,
-        withHero: withHero,
-        // Only for the one book on its way down: every other cover keeps its
-        // own hold, which this would otherwise replace. See [_landingBookId].
-        turnDrive: landing ? _liftTurn : null,
-        onCoverSampled: (color) =>
-            ref.read(libraryActionsProvider).recordCoverColor(book, color),
-        // In edit mode the badge is the sole delete target. The no-op tap
-        // handler keeps cover taps from bubbling to the page-level handler
-        // and unintentionally leaving edit mode.
-        onTap: isEditMode
-            ? () {}
-            : () => Navigator.pushNamed(
-                context,
-                AppRoutes.details,
-                arguments: book,
-              ),
-        deleteBadge: _DeleteBookButton(
-          key: ValueKey('delete_book_${book.id}'),
-          label: l10n.deleteBookNamed(book.title),
-          onPressed: () => widget.onDeleteBook?.call(book.id),
-        ),
+      // Face-out in `covers`, and face-out in the other two for any book that is in
+      // progress — keyed off the status rather than off the index, so it cannot
+      // disagree with the promotion that put those books at the head.
+      ShelfDensity.covers => _coverTile(book, bookHeight, isEditMode, withHero),
+      ShelfDensity.leaning => _coverTile(
+        book,
+        bookHeight,
+        isEditMode,
+        withHero,
       ),
+      ShelfDensity.spines =>
+        book.status == bookStatusReading
+            ? _coverTile(book, bookHeight, isEditMode, withHero)
+            : ShelfSpineTile(
+                book: book,
+                baseHeight: bookHeight,
+                onTap: isEditMode
+                    ? () {}
+                    : () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.details,
+                        arguments: book,
+                      ),
+              ),
     };
     return landing ? _liftScaled(content) : content;
+  }
+
+  /// A book drawn face-out, which is what every density does for some of its books.
+  Widget _coverTile(
+    Book book,
+    double bookHeight,
+    bool isEditMode,
+    bool withHero,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    return ShelfBookTile(
+      book: book,
+      height: bookHeight,
+      isEditMode: isEditMode,
+      withHero: withHero,
+      // Only for the one book on its way down: every other cover keeps its own
+      // hold, which this would otherwise replace. See [_landingBookId].
+      turnDrive: book.id == _landingBookId ? _liftTurn : null,
+      onCoverSampled: (color) =>
+          ref.read(libraryActionsProvider).recordCoverColor(book, color),
+      // In edit mode the badge is the sole delete target. The no-op tap handler
+      // keeps cover taps from bubbling to the page-level handler and
+      // unintentionally leaving edit mode.
+      onTap: isEditMode
+          ? () {}
+          : () => Navigator.pushNamed(
+              context,
+              AppRoutes.details,
+              arguments: book,
+            ),
+      deleteBadge: _DeleteBookButton(
+        key: ValueKey('delete_book_${book.id}'),
+        label: l10n.deleteBookNamed(book.title),
+        onPressed: () => widget.onDeleteBook?.call(book.id),
+      ),
+    );
   }
 
   int get _liftedIndex {
@@ -444,12 +476,28 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   }
 
   /// How much room [bookId] takes along the row, its margins included.
-  double _slotExtentOf(String bookId, double bookHeight) =>
-      _slotBoxOf(bookId)?.size.width ??
-      // Nothing to measure before the first layout. The default ratio is what
-      // `BookWidget` itself draws until a cover decodes, and no cover can be
-      // lifted inside the first [kShelfLiftDelay] anyway.
-      bookHeight * kDefaultCoverAspect + 2 * _kSlotMargin;
+  ///
+  /// **Measured, and the fallback only covers the frame before there is anything to
+  /// measure.** The number travels to whichever shelf a book is dropped on as the
+  /// width of the gap that shelf has to open, so a wrong answer here is a drop
+  /// preview that lies rather than a drawing that looks off.
+  double _slotExtentOf(String bookId, double bookHeight) {
+    final measured = _slotBoxOf(bookId)?.size.width;
+    if (measured != null) return measured;
+    // Nothing laid out yet. A cover's default ratio is what `BookWidget` itself
+    // draws until one decodes, and no book can be lifted inside the first
+    // [kShelfLiftDelay] anyway — but a spine is a third of that width, so guessing a
+    // cover for one would open a gap three times too wide.
+    final book = widget.shelf.books.firstWhere(
+      (b) => b.id == bookId,
+      orElse: () => widget.shelf.books.first,
+    );
+    if (_effectiveDensity == ShelfDensity.spines &&
+        book.status != bookStatusReading) {
+      return shelfSpineWidth(book, bookHeight);
+    }
+    return bookHeight * kDefaultCoverAspect + 2 * _kSlotMargin;
+  }
 
   double? _slotCentreOf(String bookId) {
     final box = _slotBoxOf(bookId);
@@ -602,6 +650,25 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     );
   }
 
+  /// The air either side of [book]'s slot.
+  ///
+  /// [_kSlotMargin] each side ordinarily, which is what puts 15pt between two
+  /// covers.
+  ///
+  /// **Spines touch**, the way books on a plank actually do, so a spine takes no
+  /// margin at all — except on the leading edge of the *first* one, which keeps its
+  /// half so that there is a full 15pt between the reading books standing face-out
+  /// and the spines beginning. Without that the first spine leans against the last
+  /// cover and the two groups read as one run.
+  EdgeInsets _slotMarginFor(int index, Book book) {
+    if (_effectiveDensity != ShelfDensity.spines ||
+        book.status == bookStatusReading) {
+      return const EdgeInsets.symmetric(horizontal: _kSlotMargin);
+    }
+    final firstSpine = index == readingHeadCount(widget.shelf);
+    return EdgeInsets.only(left: firstSpine ? _kSlotMargin : 0);
+  }
+
   Widget _buildBook(
     int index,
     Book book,
@@ -627,7 +694,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
         child: Align(
           alignment: Alignment.bottomCenter,
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: _kSlotMargin),
+            margin: _slotMarginFor(index, book),
             child: LongPressDraggable<ShelfBookDrag>(
               // Keyed in view mode so the element — and with it the drag — survives
               // the rebuild into edit mode; keyed in edit mode only for the book
