@@ -21,6 +21,42 @@ answers. Task 12 annotates it. Do not treat its `capped-wrap` recommendation as 
 from one button in the library bar and persisted per reader; plus reading books first on every
 shelf in every state.
 
+## Progress
+
+| task                                              | state                     | commit    |
+| ------------------------------------------------- | ------------------------- | --------- |
+| 0 Housekeeping                                    | done                      | `7d041aa` |
+| 1 Reading first                                   | **done**                  | `1a057c7` |
+| 2 `ShelfDensity` + provider                       | **done**                  | `1a057c7` |
+| 3 Thread density in, extract the drawing          | **done**                  | `9384720` |
+| 4 Spine plumbing + the inherited bug              | **done**                  | `12451ce` |
+| 5 The `spines` state                              | **done**                  | `cf85ca5` |
+| 6 `TurningBook`, two-step tap, spine delete badge | not started               |           |
+| 7 GATE — measure `leaning`, settle the step       | **blocked on a decision** |           |
+| 8 The `leaning` state                             | not started               |           |
+| 9 Drop-index clamp                                | **done**                  | `4832d63` |
+| 10 The control                                    | not started               |           |
+| 11 Transitions + label reserve                    | not started               |           |
+| 12 Close the loop                                 | not started               |           |
+
+Baseline was 1072 passing / 3 failing and 14 analyzer issues. At Task 9: **1121 passing / 3
+failing** — the same three pre-existing `library_read_books_test.dart` failures, which are about
+`BookVertical` not rendering in the read _pile_ under test and are unrelated — and **15 analyzer
+issues**, the extra one being an `info` in `test/_left_band_probe.dart`, a file this work never
+touched.
+
+**`spines` is not reachable from the UI yet.** Task 10 builds the button. Until then, use
+`test/shelf_spines_row_test.dart` or seed `shelf_density` in `SharedPreferences`.
+
+**Two notes for whoever continues.**
+
+1. `lib/l10n/app_localizations*.dart` is **gitignored** (`.gitignore:79`) and goes stale. When a
+   test fails to load with "getter isn't defined for the type 'AppLocalizations'", run
+   `flutter gen-l10n`. Do not run it _during_ a suite run — doing so raced the compile and produced
+   two spurious load failures.
+2. Stage precisely. `git add -A lib test` in this repo sweeps up a very large pre-existing
+   uncommitted working tree; commit `9384720` did exactly that and carries 200 files it should not.
+
 **What is genuinely new:** one persisted enum, one shingled `Stack` layout, and a drop-index clamp.
 Everything else is either a pure display transform of data the app already has, or an extraction
 that gives an existing read-pile mechanism a second caller.
