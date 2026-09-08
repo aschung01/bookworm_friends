@@ -1,0 +1,2 @@
+# `build_serifs.py` imports `render.py` for its corpus, which leaves bytecode here.
+__pycache__/

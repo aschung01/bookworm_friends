@@ -1,0 +1,16 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- a leaned pile: the slight rotations are what stop it reading as a UI list -->
+  <g transform="rotate(-3 512 320)">
+    <rect x="192" y="245" width="640" height="150" rx="38" fill="#ffffff"/>
+    <rect x="252" y="354" width="520" height="16" rx="8" fill="#09BC8A"/>
+  </g>
+  <g transform="rotate(2 512 512)">
+    <rect x="132" y="437" width="760" height="150" rx="38" fill="#ffffff"/>
+    <rect x="192" y="546" width="640" height="16" rx="8" fill="#09BC8A"/>
+  </g>
+  <g transform="rotate(-1 512 704)">
+    <rect x="162" y="629" width="700" height="150" rx="38" fill="#ffffff"/>
+    <rect x="222" y="738" width="580" height="16" rx="8" fill="#09BC8A"/>
+  </g>
+</svg>

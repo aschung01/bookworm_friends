@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    One book, open. Two page panels splayed 3 degrees off a 52-wide gutter.
+
+    Included because o6 showed a single chevron reads as a swoosh — it had no
+    gutter and no page edges to say "book". This keeps the open-book idea but
+    gives it the one interior cut it needs, at two shapes instead of one.
+
+    Each panel is rotated about a point on its own inner edge, so the gutter
+    stays 52 at mid-height and opens toward the top and bottom rather than
+    pinching shut.
+  -->
+  <g transform="rotate(-3 486 512)">
+    <rect x="180" y="272" width="306" height="480" rx="36" fill="#ffffff"/>
+  </g>
+  <g transform="rotate(3 538 512)">
+    <rect x="538" y="272" width="306" height="480" rx="36" fill="#ffffff"/>
+  </g>
+</svg>

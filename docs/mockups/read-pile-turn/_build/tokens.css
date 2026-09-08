@@ -1,0 +1,32 @@
+/* ---- SECTION 1a: product tokens.
+                   Copied verbatim from AppColors.light in
+                   lib/constants/app_theme.dart. Light only: the read pile is
+                   drawn on the Library tab's white card, and nothing in this
+                   set is a camera preview or a hero, so the dark map would go
+                   unused. ---- */
+--page: #f8f9fa; /* pageBackground — the library behind the card */
+--surface: #ffffff; /* surface — the sheet card and the plank   */
+--variant: #e9ecef; /* surfaceVariant                          */
+--text: #212529; /* primaryText                                */
+--text2: #adb5bd; /* secondaryText — the grab handle           */
+--divider: #e9ecef; /* divider                                 */
+
+/* The spine colour, and the whole reason the pile reads as one
+                   material. `brand` is decoration-only by contract (2.45:1 on
+                   white), which is exactly what a book spine is — until you put
+                   a title on it, which is why a 0.4-opacity spine draws its
+                   title in `primaryText` and a 1.0 one in white. See
+                   book_vertical.dart. */
+--brand: #09bc8a;
+--brandText: #067657; /* brandText == brandFill in light        */
+--sheet: #eff5ef; /* sheetBackground, unused here: LibrarySheet's
+                                     card is `surface`, not the modal tint      */
+
+/* BookChassisColors.of(context) for light, from
+                   lib/ui/widgets/book/book_chassis.dart. These are what make a
+                   turned book read as a bound object rather than a rectangle. */
+--pageEdge: #eaeaea; /* shading where the block meets the cover */
+--pageBase: #ffffff; /* page block, top of the gradient         */
+--pageBaseLow: #fafafa; /* and its low end                      */
+--board: #e3e3e3; /* backBoard, when no cover colour is sampled  */
+--hair: rgba(0, 0, 0, 0.07); /* the cover's hairline border      */

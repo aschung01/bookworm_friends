@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    Two shapes, but arranged as an L rather than a ladder: one book standing,
+    one lying flat under it.
+
+    The point is the silhouette. Every other candidate in this round is made of
+    horizontal bars, so they all share a family resemblance and all risk the
+    same stripe read at 48px. An upright against a flat gives an outline no
+    other mark here has, at the same shape count as O1.
+
+    The 10-degree lean is rotated about the upright's foot, so it stays planted
+    on the flat book rather than floating above it.
+  -->
+  <rect x="176" y="648" width="672" height="144" rx="30" fill="#ffffff"/>
+  <g transform="rotate(-10 650 648)">
+    <rect x="560" y="240" width="180" height="408" rx="36" fill="#ffffff"/>
+  </g>
+</svg>

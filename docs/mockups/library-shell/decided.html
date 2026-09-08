@@ -1030,7 +1030,6 @@
             .caps s.on {
                 background: #fff;
                 color: var(--text);
-                font-weight: 800;
                 border: 0.5px solid var(--variant);
                 box-shadow: 0 1px 2.5px rgba(0, 0, 0, 0.14);
             }
@@ -2059,10 +2058,31 @@
                     .join("");
             }
             function stats(compact) {
-                let h = `<div class="st h"><div class="l">All-time library card</div><div class="b">12</div><div class="s">books &middot; 4,180 pages &middot; 86 days</div></div>
-  <div class="r2"><div class="st wm"><div class="l">Pace</div><div class="b">9d</div><div class="s">per book</div></div><div class="st cl"><div class="l">Rating</div><div class="b">4.2</div><div class="s">of 12</div></div></div>`;
-                if (!compact)
-                    h += `<div class="st gr"><div class="l">Most-read author</div><div class="b" style="font-size:10px">Han Kang</div><div class="s">3 books</div></div>`;
+                // Built differently, and the drawing was wrong twice over. Two of the
+                // five stats drawn here cannot exist, and it took measuring the
+                // catalogues and counting the rows to find out:
+                //
+                //  * "4,180 pages" — no provider can answer. Kakao, which is the
+                //    provider for Korean titles, has no page field at all (eleven
+                //    keys, none of them a count). Google Books has one and covered
+                //    14 of 40 sampled books from the real library. A hero figure
+                //    summed from a third of a shelf understates a reader threefold,
+                //    silently, in the one number they could check by hand.
+                //  * "Rating 4.2 of 12" — all 624 migrated rows are `rating: null`,
+                //    and `BookRating` is defined but never instantiated anywhere, so
+                //    there is no control that could set one.
+                //
+                // Both are cut. What replaces them is nothing: the card shows what
+                // is true and omits the rest, which is also why "of 6 dated" now
+                // appears under Pace — 57% of finished books were logged same-day and
+                // have no reading span, so the tile says what it averaged over.
+                let h = `<div class="st h"><div class="l">All-time library card</div><div class="b">12</div><div class="s">books &middot; 86 days reading</div></div>
+  <div class="r2"><div class="st wm"><div class="l">Pace</div><div class="b">9d</div><div class="s">per book, of 6 dated</div></div><div class="st cl"><div class="l">Most-read author</div><div class="b" style="font-size:10px">Han Kang</div><div class="s">3 books</div></div></div>`;
+                // The third tile is gone with Rating: the two that survive share the
+                // row, and when only one of them has data it takes the full width
+                // rather than leaving a hole. That is the common case — 40 of the 53
+                // readers with author data have a "top author" who wrote one book, so
+                // the tile is absent for them.
                 return h;
             }
             function bodyOf(b) {
@@ -2438,7 +2458,7 @@
                         [
                             "card-open",
                             "Library Card",
-                            "Sheet carries its own share, since the card is the shareable artifact. Years are capsules, matching Flighty&rsquo;s Passport. <b>Stats only &mdash; no read-books list</b>: read books stay on the Library tab, which already groups them by month, so a sortable list here would be a second home for the same data.",
+                            "Sheet carries its own share, since the card is the shareable artifact. Years are capsules, matching Flighty&rsquo;s Passport. <b>Stats only &mdash; no read-books list</b>: read books stay on the Library tab, which already groups them by month, so a sortable list here would be a second home for the same data. <b>Built differently, and the drawing was wrong:</b> two of the five stats above are gone — pages, because no catalogue can answer for these books, and rating, because all 624 rows are null with no UI to set one; see the note in <code>stats()</code>. The share renders the card <i>off-screen as a separate pure-Flutter tree</i> rather than screenshotting this sheet, for two reasons either of which would do: the sheet is not the artifact &mdash; handle, share button, capsules, scroll offset, phone width &mdash; and <code>toImage</code> cannot capture platform views, which the year capsules are (native <code>CNButton</code>s on iOS&nbsp;26), so a screenshot would come out with a hole in it. The capsules also relabel the hero: it reads &ldquo;2025 library card&rdquo; when 2025 is selected, since &ldquo;all-time&rdquo; over one year&rsquo;s figures is the one thing here that could lie.",
                             {
                                 tab: "card",
                                 well: SHELVES3,
@@ -3584,7 +3604,7 @@
                         [
                             "el-caps",
                             "Capsule tabs",
-                            "Selected is a raised white pill with a hairline and shadow; the rest is plain text. Used for Everyone/Activity, Card years and the expanded read filter.",
+                            "Selected is a raised white pill with a hairline and shadow; the rest is plain text. <b>One weight throughout</b> &mdash; this drew the selected label at 800 against 700, which reads as two type sizes in one row; Flighty&rsquo;s tab pills are a single weight and the pill plus the label colour carry the selection between them. Corrected here. Pressing an unselected capsule <i>shrinks</i> it; the selected one is real Liquid Glass on iOS&nbsp;26 and answers a press itself. Used for Everyone/Activity, Card years and the expanded read filter.",
                             `<div style="background:#fff;padding:8px 10px;border-radius:8px;width:100%">${caps(["Everyone", "Activity"], "Everyone", true)}</div>`,
                         ],
                         [

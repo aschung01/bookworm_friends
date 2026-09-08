@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    The floor of the round: two shapes, no detail at all. N2 minus the bookmark.
+
+    Included to establish where reduction stops paying. Aligned rather than
+    offset, so nothing distracts from the question — and the honest risk is
+    right there in the silhouette: with no taper, no offset and no landmark,
+    two equal bars read as an equals sign before they read as books.
+  -->
+  <rect x="176" y="264" width="672" height="200" rx="40" fill="#ffffff"/>
+  <rect x="176" y="560" width="672" height="200" rx="40" fill="#ffffff"/>
+</svg>

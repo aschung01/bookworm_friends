@@ -1,0 +1,4564 @@
+<!doctype html>
+<!--
+  Libstack — friends & invites. Self-contained: no build, no server,
+  no network. Open it straight from disk.
+
+  The design record for moving from a one-directional `follows` row to mutual
+  friendship. Invite links are the only path in — there is no handle search, so
+  there is no request queue and no badge, because the queue was created by search
+  rather than by mutuality. Modelled on Flighty, checked against its real flows.
+
+  Screens are declared as DATA (SECTION 3) and drawn by one `frame()`
+  (SECTION 2), so a changed decision cannot leave half the set stale. Colours in
+  SECTION 1 are copied from `lib/constants/app_theme.dart`, not approximated.
+
+  Two versions (SECTION 4): `friends-only` gates all visibility on friendship;
+  `public-profiles` keeps public-by-default, and is the only version in which
+  `UserLibraryPage` still has a reason to exist. Press v to switch, ⇧Enter on a
+  version to compare.
+
+  Verified from the terminal: `node --check` on the extracted script, a DOM stub
+  run to catch load-time errors, and 52 assertions over frame rendering, version
+  inheritance, diff symmetry and search. Hover, keyboard and scroll-spy were
+  checked by eye.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Libstack &mdash; friends &amp; invites</title>
+    <style>
+      :root {
+        /* ---- SECTION 1a: product tokens ----
+                   Copied verbatim from `lib/constants/app_theme.dart` (light
+                   AppColors, L99-111) and `lib/constants/constants.dart`.
+                   Not approximated: getting brand green wrong was a listed
+                   pitfall on earlier rounds. */
+        --page: #f8f9fa; /* pageBackground */
+        --surface: #ffffff; /* surface        */
+        --variant: #e9ecef; /* surfaceVariant */
+        --text: #212529; /* primaryText    */
+        --text2: #626a72; /* secondaryText  */
+        --divider: #e9ecef; /* divider        */
+        --brand: #09bc8a; /* brand (decoration only) */
+        --brandText: #067657; /* brandText / brandFill   */
+        --sheetbg: #eff5ef; /* sheetBackground */
+        --danger: #d9433a; /* softRedColor    */
+        --brandwash: #d7efe5; /* brand at ~12%, for fills behind text */
+
+        /* ---- SECTION 1c: type scale ----
+                   The eight real tokens from `lib/constants/app_text_styles.dart`,
+                   scaled by 0.615 — the frame is 240px standing in for a 390pt
+                   phone. Sizes, weights, line-heights AND letter-spacing all
+                   come across, so the drawings are metrically faithful rather
+                   than merely tidy.
+
+                   0.615 rather than the 0.436 this started at: at 170px the real
+                   type came out at 6px, which is faithful and illegible at once.
+                   A drawing that cannot be read in review is not doing its job,
+                   so the frame grew until the tokens landed above 8px. `.fr.sm`
+                   carries its own smaller scale for the flow strips. */
+        --f-display: 28.3px; /* 46 / w800 / -0.92 */
+        --f-figure: 18.5px; /* 30 / w700 / -0.6  */
+        --f-title: 13.5px; /* 22 / w700 / -0.4  serif */
+        --f-subtitle: 10.5px; /* 17 / w600 / -0.2  */
+        --f-body: 9.2px; /* 15 / w400 /  0    */
+        --f-label: 8px; /* 13 / w600 /  0    */
+        --f-caption: 6.8px; /* 11 / w700 / +0.9  */
+        --ls-display: -0.57px;
+        --ls-figure: -0.37px;
+        --ls-title: -0.25px;
+        --ls-subtitle: -0.12px;
+        --ls-caption: 0.55px;
+        /* Cover stock. The app draws generated covers, not grey
+           rectangles — see `docs/mockups/generated-cover/`. Warm paper
+           tones so a fan of them reads as books rather than as UI. */
+        --paper1: #e8e2d6;
+        --paper2: #ded6c6;
+        --paper3: #efeae0;
+
+        /* ---- page chrome (safe to leave) ---- */
+        --ink: #1c1c1e;
+        --muted: #8a8a8f;
+        --line: #e6e4e0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      /* The app's real faces, loaded straight off disk from `assets/fonts/`.
+               Pretendard sets everything; GowunBatang sets one token. Subset
+               builds, so a glyph GowunBatang lacks falls through to Pretendard —
+               which is exactly the `fontFamilyFallback` contract in
+               `app_text_styles.dart` and why it must never be used alone. */
+      @font-face {
+        font-family: "Pretendard";
+        src: url("../../../assets/fonts/Pretendard-Regular.otf")
+          format("opentype");
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Pretendard";
+        src: url("../../../assets/fonts/Pretendard-SemiBold.otf")
+          format("opentype");
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Pretendard";
+        src: url("../../../assets/fonts/Pretendard-Bold.otf") format("opentype");
+        font-weight: 700;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Pretendard";
+        src: url("../../../assets/fonts/Pretendard-ExtraBold.otf")
+          format("opentype");
+        font-weight: 800;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "GowunBatang";
+        src: url("../../../assets/fonts/GowunBatang-Bold.ttf")
+          format("truetype");
+        font-weight: 700;
+        font-display: swap;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        font-family:
+          "Pretendard",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background: #fff;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+      }
+      /* The page wears the product's voice too, not just the frames inside
+               it: GowunBatang on headings, Pretendard everywhere else, brand green
+               for the accent. Same rule as the app — the serif is reserved for one
+               role and always falls back to the sans. */
+      .wrap h1 {
+        font-family: "GowunBatang", "Pretendard", serif;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      .brand {
+        font-family: "GowunBatang", "Pretendard", serif;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.86em;
+        background: #f2f1ee;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      mark.hl {
+        background: rgba(79, 125, 243, 0.28);
+        color: inherit;
+        border-radius: 3px;
+        padding: 0 1px;
+      }
+      .gone {
+        display: none;
+      }
+
+      /* ---------- top chrome ---------- */
+      .top {
+        position: sticky;
+        top: 0;
+        z-index: 300;
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--line);
+      }
+      .top-in {
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 11px 22px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .brand {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: -0.2px;
+        white-space: nowrap;
+      }
+      .brand span {
+        color: var(--brandText);
+      }
+      .vtabs {
+        display: flex;
+        gap: 2px;
+      }
+      .vtabs button {
+        position: relative;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        padding: 6px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+      }
+      .vtabs button:hover {
+        color: var(--ink);
+      }
+      .vtabs button.on {
+        color: var(--ink);
+        font-weight: 800;
+        background: #fff;
+        border: 0.5px solid var(--line);
+        box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.1);
+      }
+      .vtabs button::after,
+      .hk::after {
+        content: attr(data-key);
+        position: absolute;
+        top: calc(100% + 7px);
+        left: 50%;
+        transform: translateX(-50%) translateY(3px);
+        background: #26262b;
+        color: #fff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2.5px 6px;
+        border-radius: 5px;
+        box-shadow: 0 3px 9px rgba(0, 0, 0, 0.28);
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.12s,
+          transform 0.12s;
+        z-index: 50;
+      }
+      .vtabs button:hover::after,
+      .hk:hover::after {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+        transition-delay: 0.3s;
+      }
+      .sep {
+        width: 1px;
+        height: 20px;
+        background: var(--line);
+      }
+      .count {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--text2);
+        text-align: right;
+        line-height: 1.4;
+        white-space: nowrap;
+      }
+      .kbd {
+        display: inline-block;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--muted);
+        background: #f4f2ef;
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 0 4px;
+        line-height: 15px;
+        min-width: 15px;
+        text-align: center;
+      }
+
+      /* ---------- comboboxes (version + filter share the panel styling) ---------- */
+      .cbox {
+        position: relative;
+      }
+      .cbox.hide {
+        display: none;
+      }
+      .cbtn {
+        position: relative;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ink);
+        background: #f4f2ef;
+        border: 0.5px solid var(--line);
+        padding: 6px 13px;
+        border-radius: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .cbtn:hover {
+        background: #eeece7;
+      }
+      .cbtn .chev {
+        font-size: 9px;
+        color: var(--muted);
+        transition: transform 0.15s;
+      }
+      .cbox.open .cbtn .chev {
+        transform: rotate(180deg);
+      }
+      .cbtn .badge {
+        font-size: 11px;
+        font-weight: 800;
+        color: #fff;
+        background: var(--brandText);
+        border-radius: 20px;
+        padding: 0 6px;
+        line-height: 16px;
+      }
+      .cbtn .branch {
+        font-size: 12px;
+        opacity: 0.5;
+      }
+      .cbtn.vbtn {
+        background: #eef2fd;
+        border-color: #cddafb;
+        color: #22407f;
+      }
+      .cbtn.vbtn:hover {
+        background: #e3ebfc;
+      }
+      .cpanel {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        width: 340px;
+        max-height: min(70vh, 520px);
+        display: none;
+        flex-direction: column;
+        background: rgba(38, 38, 41, 0.97);
+        backdrop-filter: blur(20px);
+        border-radius: 15px;
+        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+        z-index: 400;
+      }
+      .cbox.open .cpanel {
+        display: flex;
+      }
+      .csearch {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 13px 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        flex: 0 0 auto;
+      }
+      .csearch svg {
+        flex: 0 0 auto;
+        opacity: 0.5;
+      }
+      .csearch input {
+        flex: 1;
+        font: inherit;
+        font-size: 14.5px;
+        color: #fff;
+        background: none;
+        border: 0;
+        outline: none;
+      }
+      .csearch input::placeholder {
+        color: rgba(255, 255, 255, 0.42);
+      }
+      .clist {
+        overflow-y: auto;
+        padding: 7px 7px 9px;
+        flex: 1 1 auto;
+      }
+      .clist::-webkit-scrollbar {
+        width: 9px;
+      }
+      .clist::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.22);
+        border-radius: 9px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+      }
+      .cgrp {
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.45);
+        padding: 9px 11px 4px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .cgrp:hover {
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .copt {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 8px 11px;
+        border-radius: 9px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .copt:hover,
+      .copt.kb {
+        background: rgba(255, 255, 255, 0.11);
+      }
+      .copt .box {
+        width: 17px;
+        height: 17px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.16);
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: #fff;
+      }
+      .copt.sel .box {
+        background: var(--brand);
+        color: #fff;
+        font-weight: 900;
+      }
+      .copt.radio .box {
+        border-radius: 50%;
+      }
+      .copt .lb {
+        font-size: 14.5px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .copt .lb mark.hl {
+        background: rgba(79, 125, 243, 0.5);
+        color: #fff;
+      }
+      .copt .sub {
+        font-size: 11.5px;
+        color: rgba(255, 255, 255, 0.42);
+        margin-top: 2px;
+        line-height: 1.45;
+      }
+      .copt .col {
+        flex: 1;
+        min-width: 0;
+      }
+      .copt .tagn {
+        font-size: 9.5px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1px 6px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.14);
+        color: rgba(255, 255, 255, 0.75);
+        white-space: nowrap;
+      }
+      .cfoot {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        flex: 0 0 auto;
+      }
+      .cfoot .n {
+        flex: 1;
+        font-size: 11.5px;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      .cfoot button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.13);
+        border: 0;
+        border-radius: 7px;
+        padding: 4px 10px;
+        cursor: pointer;
+      }
+      .cfoot button:hover {
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .cempty {
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 13px;
+        padding: 16px 11px;
+      }
+
+      /* ---------- version bar ---------- */
+      .vinfo {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        padding: 2px 0 0;
+      }
+      .vinfo .lbl {
+        font-weight: 800;
+        color: var(--brandText);
+        white-space: nowrap;
+      }
+      .vinfo .note {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .vinfo .diffs {
+        white-space: nowrap;
+        font-weight: 700;
+      }
+      .vinfo button {
+        font: inherit;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: var(--brandText);
+        background: #eef2fd;
+        border: 0.5px solid #cddafb;
+        border-radius: 7px;
+        padding: 2px 9px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .vinfo button:hover {
+        background: #e3ebfc;
+      }
+      .vinfo button.off {
+        color: var(--muted);
+        background: #f4f2ef;
+        border-color: var(--line);
+      }
+
+      /* ---------- layout ---------- */
+      .wrap {
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 22px 22px 90px;
+      }
+      .view {
+        display: none;
+      }
+      .view.on {
+        display: block;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.4px;
+        margin: 6px 0 4px;
+      }
+      .lead {
+        color: var(--muted);
+        font-size: 14px;
+        max-width: 800px;
+        margin: 0 0 22px;
+      }
+      h2.grp {
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #a09c95;
+        margin: 30px 0 12px;
+        padding-bottom: 7px;
+        border-bottom: 1px solid var(--line);
+        scroll-margin-top: 80px;
+      }
+      /* Column width follows the frame: 240px + 3px border each side. It was
+         210px, sized for the old 170px frame, so the phones overlapped and
+         overflowed their cards. */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+        gap: 24px 18px;
+      }
+      .grid.cmp {
+        grid-template-columns: repeat(auto-fill, minmax(524px, 1fr));
+      }
+      .item .cap {
+        margin-top: 9px;
+      }
+      .item .nm {
+        font-size: 12.5px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .item .ds {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.5;
+        margin-top: 2px;
+      }
+      .shot {
+        background: #e6e3dd;
+        border-radius: 10px;
+        padding: 14px 0;
+        display: flex;
+        justify-content: center;
+      }
+      .pair {
+        display: flex;
+        gap: 8px;
+      }
+      .pair > div {
+        flex: 1;
+        min-width: 0;
+      }
+      .pair .vl {
+        font-size: 9.5px;
+        font-weight: 800;
+        color: var(--muted);
+        text-align: center;
+        margin-bottom: 5px;
+        letter-spacing: 0.03em;
+      }
+      .pair .vl.b {
+        color: var(--brandText);
+      }
+      .noneleft {
+        color: var(--muted);
+        font-size: 13.5px;
+        padding: 26px 0;
+      }
+      .pend {
+        background: #fdf3f0;
+        border-left: 3px solid #c05746;
+        padding: 9px 13px;
+        border-radius: 0 6px 6px 0;
+        font-size: 12px;
+        line-height: 1.55;
+        margin: 0 0 13px;
+        max-width: 840px;
+      }
+      .tag {
+        font-size: 9.5px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1.5px 7px;
+        border-radius: 20px;
+        white-space: nowrap;
+      }
+      .tag.changed {
+        background: #fff4e0;
+        color: #8a5a10;
+      }
+      .tag.onlyHere {
+        background: #e6f4ee;
+        color: #0b6b4f;
+      }
+      .tag.onlyThere {
+        background: #fdecea;
+        color: #a3302a;
+      }
+      .tag.ver {
+        background: #eef2fd;
+        color: #2f55b8;
+      }
+
+      /* ---------- flows ---------- */
+      /* ghosts: present in the compared version, absent here */
+      .item.ghost .shot,
+      .el.ghost .demo {
+        opacity: 0.5;
+        outline: 1px dashed #c7a9a4;
+        outline-offset: -1px;
+      }
+      .item.ghost .nm,
+      .el.ghost .nm,
+      .flow.ghost .fh {
+        text-decoration: line-through;
+        text-decoration-color: #c7a9a4;
+      }
+      .flowlayout {
+        display: grid;
+        grid-template-columns: 216px 1fr;
+        gap: 26px;
+        align-items: start;
+      }
+      .side {
+        position: sticky;
+        top: 80px;
+      }
+      .sbox {
+        position: relative;
+        margin-bottom: 14px;
+      }
+      .search {
+        width: 100%;
+        font: inherit;
+        font-size: 13px;
+        padding: 9px 40px 9px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #faf9f7;
+        outline: none;
+      }
+      .search:focus {
+        border-color: var(--brandText);
+        background: #fff;
+      }
+      .sbox .hint {
+        position: absolute;
+        display: none;
+        right: 9px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+      .sbox .hint-slash {
+        display: block;
+      }
+      .sbox.focused .hint-slash,
+      .sbox.dirty .hint-slash {
+        display: none;
+      }
+      .sbox.dirty .hint-esc {
+        display: block;
+      }
+      .side a {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        text-decoration: none;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border-left: 2px solid transparent;
+      }
+      .side a:hover {
+        background: #f5f4f1;
+        color: var(--ink);
+      }
+      .side a.cur {
+        color: var(--brandText);
+        background: #eef2fd;
+        font-weight: 800;
+        border-left-color: var(--brandText);
+      }
+      .side .sh {
+        font-size: 10.5px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: #b9b6b0;
+        margin: 16px 0 5px;
+        padding-left: 10px;
+      }
+      .flow {
+        margin-bottom: 38px;
+        scroll-margin-top: 88px;
+      }
+      .flow .fh {
+        font-size: 15.5px;
+        font-weight: 800;
+        margin: 0 0 3px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: wrap;
+      }
+      .flow .fd {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin: 0 0 13px;
+        max-width: 780px;
+      }
+      .flow .vrow {
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--muted);
+        margin: 0 0 5px;
+        letter-spacing: 0.03em;
+      }
+      .flow .vrow.b {
+        color: var(--brandText);
+      }
+      .steps {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+      .step {
+        flex: 0 0 auto;
+        width: 206px;
+      }
+      .step .shot {
+        border-radius: 9px;
+        padding: 11px 0;
+      }
+      .step .sn {
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--brandText);
+        margin-bottom: 5px;
+      }
+      .step .sc {
+        font-size: 10.5px;
+        color: var(--muted);
+        line-height: 1.45;
+        margin-top: 7px;
+        padding-right: 8px;
+      }
+      .arrow {
+        flex: 0 0 auto;
+        width: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #c9c5be;
+        font-size: 17px;
+        padding-bottom: 40px;
+      }
+
+      /* ---------- elements ---------- */
+      .egrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 16px;
+      }
+      .el {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .el .demo {
+        background: #f2f0ec;
+        padding: 20px 18px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 96px;
+      }
+      .el .body {
+        padding: 12px 15px 14px;
+      }
+      .el .nm {
+        font-size: 13px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .el .ds {
+        font-size: 11.5px;
+        color: var(--muted);
+        line-height: 1.55;
+        margin-top: 3px;
+      }
+      .el .ds b {
+        color: #c05746;
+      }
+
+      /* ================================================================
+   SECTION 1b: DEVICE / FRAME STYLES — replace for your product.
+   Default is a phone. For web, widen .fr and swap the tab bar for a
+   browser chrome bar.
+   ================================================================ */
+      .fr {
+        width: 240px;
+        height: 520px;
+        /* Shelf geometry, in this frame's pixels. Derived once here so the
+           small flow frames can rescale it in one place, exactly as the type
+           tokens are. 0.615 = 240px / 390pt. */
+        --bk-w: 48.6px;
+        --bk-h: 77.9px;
+        --bk-gap: 9.2px;
+        --bk-pad: 9.2px;
+        --bk-plank: 4.9px;
+        /* The illustration's book. 32px is `kGeneratedCoverMinWidth`
+           (7 / 0.135 = 51.85pt) at 0.615 — the exact width above which a
+           generated cover carries a title, so these earn theirs. */
+        --bk-wi: 32px;
+        --bk-hi: 52px;
+        background: var(--page);
+        border: 3px solid #2a2a2e;
+        border-radius: 30px;
+        position: relative;
+        overflow: hidden;
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+      }
+      /* The flow strips, at their own derived scale (0.513 of a 390pt phone).
+               Six steps of a 240px frame do not fit on a row. */
+      .fr.sm {
+        width: 200px;
+        height: 434px;
+        border-radius: 26px;
+        --bk-w: 40.6px;
+        --bk-h: 65px;
+        --bk-gap: 7.7px;
+        --bk-pad: 7.7px;
+        --bk-plank: 4.1px;
+        --bk-wi: 26.7px;
+        --bk-hi: 43.4px;
+        --f-display: 23.6px;
+        --f-figure: 15.4px;
+        --f-title: 11.3px;
+        --f-subtitle: 8.7px;
+        /* Review-scale exception. The exact 0.513 scale put body at 7.7px and
+           caption at 5.6px: present in the DOM, but visually absent in the
+           flow screenshot. The full frames remain metrically exact; the strip
+           has to communicate the copy it is reviewing, so body clears the same
+           8px floor that caused the root frame to grow in the first place. */
+        --f-body: 8.8px;
+        --f-label: 7.4px;
+        --f-caption: 6.4px;
+        --ls-display: -0.47px;
+        --ls-figure: -0.31px;
+        --ls-title: -0.21px;
+        --ls-subtitle: -0.1px;
+        --ls-caption: 0.46px;
+      }
+      .fr .status {
+        height: 15px;
+        flex: 0 0 auto;
+      }
+      .fr .bar {
+        background: var(--surface);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 10px 12px;
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.12);
+        position: relative;
+        z-index: 3;
+        flex: 0 0 auto;
+      }
+      .fr .bar .t {
+        flex: 1;
+        font-size: 9.5px;
+        font-weight: 800;
+        color: var(--text);
+        letter-spacing: -0.2px;
+      }
+      .fr .ic {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--variant);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: var(--text);
+        flex: 0 0 auto;
+      }
+      /* A flex column, so `push` can pin the call to action to the bottom the
+               way every full-screen sheet in the reference does. Flighty's invite and
+               accept sheets put the illustration at the top, the copy in the middle
+               and the button on the floor; stacking everything from the top and
+               leaving half the screen white was the single biggest thing wrong with
+               the first pass. */
+      .fr .body {
+        padding: 13px;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .fr .push {
+        flex: 1 1 auto;
+      }
+      .fr .txt {
+        font-size: 6px;
+        color: var(--text);
+        line-height: 1.5;
+        margin-bottom: 6px;
+      }
+      .fr .txt.dim {
+        color: var(--text2);
+      }
+      /* ---- the app's confirm ------------------------------------------
+         `AlertDialog.adaptive`, which on iOS is a centred 270pt card with the
+         actions as text rows under a hairline — not a full-screen page with a
+         button on the floor, which is what this was drawn as. */
+      .fr .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.32);
+        z-index: 8;
+      }
+      .fr .alert {
+        position: absolute;
+        z-index: 9;
+        left: 50%;
+        top: 46%;
+        transform: translate(-50%, -50%);
+        /* 270pt of a 390pt phone, at this frame's 0.615. */
+        width: 166px;
+        background: #f4f4f5;
+        border-radius: 9px;
+        overflow: hidden;
+        box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22);
+        text-align: center;
+      }
+      .fr .alert .at {
+        font-size: var(--f-label);
+        font-weight: 700;
+        color: var(--text);
+        padding: 12px 14px 0;
+      }
+      .fr .alert .am {
+        font-size: var(--f-body);
+        color: var(--text);
+        line-height: 1.45;
+        padding: 4px 14px 12px;
+      }
+      .fr .alert .aa {
+        display: flex;
+        border-top: 0.5px solid rgba(0, 0, 0, 0.18);
+      }
+      .fr .alert .aa s {
+        flex: 1;
+        text-decoration: none;
+        padding: 8px 4px;
+        font-size: var(--f-label);
+        font-weight: 400;
+        color: #0a84ff;
+      }
+      .fr .alert .aa s + s {
+        border-left: 0.5px solid rgba(0, 0, 0, 0.18);
+      }
+      /* `isDestructive: true` — iOS draws it red, and never bold unless it is
+         also the preferred action. Removal here is not preferred.
+
+         The variable is `--danger`. This said `--softRed`, after the *Dart*
+         name (`softRedColor`) rather than the name this file gives it, and an
+         undefined custom property does not fail loudly — it just inherits, so
+         the destructive action rendered in the same near-black as Cancel and
+         the one signal that it is destructive was silently absent. */
+      .fr .alert .aa s.dgr {
+        color: var(--danger);
+      }
+      /* ---- surfaces this app does not own -----------------------------
+         A chat, a web page and a store page were each drawn as a name over a
+         white field with a button on the floor. That is not a modest drawing of
+         those surfaces, it is a drawing of no surface at all — and for the chat
+         it hid the actual question, which is whether a link in a Korean group
+         chat looks worth tapping. Nothing here is ground truth about Libstack;
+         it is ground truth about where a Libstack link lands. */
+      .fr .chat {
+        margin: -13px;
+        padding: 11px 9px;
+        /* `.body` is a flex column, so the chat has to claim the remaining
+           height rather than ask for `100%` of it — otherwise Kakao's ground
+           stops where the messages do and the rest of the frame is white. */
+        flex: 1 1 auto;
+        /* KakaoTalk's chat ground. Named rather than a bare hex so it is
+           obvious this is somebody else's brand colour, not ours. */
+        background: #b2c7da;
+      }
+      .fr .chat .who {
+        font-size: var(--f-caption);
+        font-weight: 700;
+        letter-spacing: 0;
+        color: #33475b;
+        margin: 0 0 3px 26px;
+      }
+      .fr .chat .msg {
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+        margin-bottom: 7px;
+      }
+      .fr .chat .msg .av {
+        width: 21px;
+        height: 21px;
+        border-radius: 7px;
+        background: var(--surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        flex: 0 0 auto;
+      }
+      /* Kakao omits the avatar on a run of messages from the same sender — it
+         does not draw an empty tile, which is what this was doing. The box still
+         holds the indent. */
+      .fr .chat .msg .av:empty {
+        background: transparent;
+      }
+      .fr .chat .bub {
+        background: var(--surface);
+        border-radius: 3px 11px 11px 11px;
+        padding: 5px 7px;
+        font-size: var(--f-body);
+        color: #191919;
+        line-height: 1.45;
+        max-width: 78%;
+      }
+      /* The link preview, which is the whole point of the step: an unbranded
+         URL in a chat does not get tapped, so the card has to carry the
+         inviter's name and the app's. Kakao renders the image above the text
+         and the host last, in grey. */
+      .fr .chat .og {
+        margin-left: 26px;
+        width: 78%;
+        background: var(--surface);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+      }
+      .fr .chat .og .im {
+        height: 46px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 3px;
+        padding-bottom: 6px;
+        background:
+          radial-gradient(
+            120% 100% at 50% 0%,
+            var(--brandwash) 0%,
+            rgba(255, 255, 255, 0) 80%
+          ),
+          var(--variant);
+      }
+      .fr .chat .og .im u {
+        display: block;
+        width: calc(var(--bk-w) * 0.34);
+        height: calc(var(--bk-h) * 0.4);
+        border-radius: 1.5px 1px 1px 1.5px;
+        background: var(--paper2);
+        box-shadow: 0.5px 1px 2px rgba(0, 0, 0, 0.22);
+      }
+      .fr .chat .og .im u:nth-child(2) {
+        background: var(--brandText);
+      }
+      .fr .chat .og .im u:nth-child(3) {
+        background: var(--paper1);
+      }
+      .fr .chat .og .tx {
+        padding: 5px 7px 6px;
+      }
+      .fr .chat .og .ot {
+        font-size: var(--f-body);
+        font-weight: 700;
+        color: #191919;
+        line-height: 1.35;
+      }
+      .fr .chat .og .od {
+        font-size: var(--f-caption);
+        letter-spacing: 0;
+        color: #767676;
+        margin-top: 2px;
+        line-height: 1.4;
+      }
+      .fr .chat .og .oh {
+        font-size: var(--f-caption);
+        letter-spacing: 0;
+        color: #a0a0a0;
+        margin-top: 3px;
+      }
+
+      /* An App Store product page: icon, name, subtitle, GET, then the
+         screenshot strip. The strip matters — it is the only place a store
+         listing shows what the app looks like, and it is why the shelf is the
+         thing to put there. */
+      .fr .store .top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 11px;
+      }
+      .fr .store .ico {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        background: var(--brandwash);
+        border: 1px solid var(--divider);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 21px;
+        flex: 0 0 auto;
+      }
+      .fr .store .meta {
+        display: block;
+        flex: 1;
+        min-width: 0;
+      }
+      .fr .store .nm3 {
+        display: block;
+        font-size: var(--f-subtitle);
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: var(--ls-subtitle);
+      }
+      .fr .store .sub3 {
+        display: block;
+        font-size: var(--f-caption);
+        letter-spacing: 0;
+        color: var(--text2);
+        margin-top: 1px;
+        line-height: 1.4;
+      }
+      .fr .store .get {
+        background: #0a84ff;
+        color: #fff;
+        font-size: var(--f-label);
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 3px 12px;
+        flex: 0 0 auto;
+      }
+      /* Two clipped panels, because a store strip is always cut off at the
+         right — that clip is what says "swipe for more". */
+      .fr .store .shots {
+        display: flex;
+        gap: 6px;
+        overflow: hidden;
+      }
+      .fr .store .shot {
+        flex: 0 0 auto;
+        width: 66px;
+        border-radius: 7px;
+        border: 1px solid var(--divider);
+        background: var(--page);
+        padding: 6px 0 0 6px;
+        overflow: hidden;
+      }
+      .fr .store .shot .r {
+        display: flex;
+        gap: 3px;
+        margin-bottom: 5px;
+      }
+      .fr .store .shot .r u {
+        display: block;
+        width: 15px;
+        height: 23px;
+        border-radius: 1.5px 1px 1px 1.5px;
+        background: var(--c, var(--paper1));
+        box-shadow: 0.5px 1px 1.5px rgba(0, 0, 0, 0.16);
+      }
+      /* ---- the shelf -------------------------------------------------
+         Drawn at true scale, which `docs/mockups/library-shell/decided.html`
+         does not: that file draws a 17-21px book at its own 0.436 scale where
+         a real one is 34.5 x 55px, and this page inherited the same halving.
+         It was the single biggest reason a library frame looked like a row of
+         loading skeletons with 400px of white under it.
+
+         Three things are corrected against the code rather than copied from
+         that file, because it contradicts `book_geometry.dart`:
+           - only the height jitters; the face width is constant
+           - the spine side is the rounder side, not the fore-edge
+           - the shelf's name is a tab on the plank, not a caption above it  */
+      .fr .shelf {
+        position: relative;
+        margin-bottom: 16px;
+      }
+      .fr .shelf .bks {
+        display: flex;
+        /* Books stand on the plank — `Alignment.bottomCenter`,
+           shelf_row.dart:238-239. */
+        align-items: flex-end;
+        gap: var(--bk-gap);
+        padding: 0 var(--bk-pad);
+        /* `bookRowExtent` reserves the 6% a hashed book may add, or a tall one
+           clips along its top (shelf_row.dart:209-211). */
+        height: calc(var(--bk-h) * 1.06);
+        /* The row is a horizontal ListView, so the last book is clipped by the
+           frame edge. That clip is the only affordance saying it scrolls. */
+        overflow: hidden;
+      }
+      .fr .bk {
+        flex: 0 0 auto;
+        width: var(--bk-w);
+        height: calc(var(--bk-h) * var(--hf, 1));
+        position: relative;
+        overflow: hidden;
+        background: var(--surface);
+        display: flex;
+        flex-direction: column;
+        font-style: normal;
+        /* Spine-side corners are rounder than the fore-edge: a spine is a
+           fold, a page edge is cut (book_geometry.dart:321-324). */
+        border-radius: 2.5px 1.5px 1.5px 2.5px;
+        box-shadow: 1px 1.5px 2.5px rgba(0, 0, 0, 0.22);
+      }
+      /* The binding band, 8.2% of the cover's width
+         (book_geometry.dart:340). Gradient rather than a flat strip so it
+         reads as a fold catching light instead of a drawn line. */
+      .fr .bk::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 8.2%;
+        background: linear-gradient(
+          90deg,
+          rgba(0, 0, 0, 0.24),
+          rgba(0, 0, 0, 0.03)
+        );
+        z-index: 2;
+      }
+      /* A generated cover is a colour block over a title on `surface`, each
+         half the height (generated_cover.dart:82-125) — not a solid swatch.
+         It earns the title half here: at 79pt the cover is above
+         `kGeneratedCoverMinWidth` (7 / 0.135 = ~52pt), which is the width
+         below which the app draws the colour block alone. */
+      .fr .bk b {
+        flex: 1;
+        background: var(--c);
+      }
+      .fr .bk em {
+        flex: 1;
+        font-style: normal;
+        /* Left inset is the wider one, so the title clears the binding band. */
+        padding: 6.1% 6.1% 0 14.3%;
+        /* `_kTitleSizeRatio` — 13.5% of the cover's width. */
+        font-size: calc(var(--bk-w) * 0.135);
+        line-height: 1.25;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+        color: var(--text);
+        overflow: hidden;
+      }
+      .fr .shelf .plank {
+        height: var(--bk-plank);
+        width: 95%;
+        margin: 0 auto;
+        background: var(--surface);
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+      }
+      .fr .shelf .stab {
+        position: absolute;
+        right: 2.5%;
+        bottom: var(--bk-plank);
+        z-index: 3;
+        background: var(--surface);
+        border-radius: 3px 3px 0 0;
+        padding: 2.5px 5.5px;
+        font-size: var(--f-label);
+        font-weight: 600;
+        color: var(--text);
+      }
+      .fr .row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--divider);
+      }
+      .fr .row .rt {
+        flex: 1;
+        font-size: 5.6px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .fr .row .rs {
+        font-size: 4.6px;
+        color: var(--text2);
+        font-weight: 600;
+        margin-top: 1px;
+      }
+      .fr .row .rv {
+        font-size: 5px;
+        color: var(--text2);
+        font-weight: 700;
+      }
+      .fr .thumb {
+        width: 11px;
+        height: 16px;
+        border-radius: 2px;
+        background: var(--c, #c9ccd6);
+        flex: 0 0 auto;
+      }
+      .fr .stat {
+        border-radius: 7px;
+        padding: 5px 7px 6px;
+        color: #fff;
+        margin-bottom: 4px;
+        background: linear-gradient(155deg, #2b3f74, #4f7df3);
+      }
+      .fr .stat .l {
+        font-size: 4.2px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        opacity: 0.75;
+      }
+      .fr .stat .b {
+        font-size: 15px;
+        font-weight: 800;
+        line-height: 1.05;
+      }
+      .fr .stat .s {
+        font-size: 4.6px;
+        opacity: 0.72;
+      }
+      .fr .caps {
+        display: flex;
+        align-items: center;
+        gap: 1px;
+        margin-bottom: 5px;
+      }
+      .fr .caps s {
+        text-decoration: none;
+        font-size: 5.8px;
+        font-weight: 700;
+        color: #8e9196;
+        padding: 3px 6.5px;
+        border-radius: 20px;
+        line-height: 1;
+      }
+      .fr .caps s.on {
+        background: #fff;
+        color: var(--text);
+        font-weight: 800;
+        border: 0.5px solid var(--variant);
+        box-shadow: 0 1px 2.5px rgba(0, 0, 0, 0.14);
+      }
+      .fr .sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--surface);
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.15);
+        padding: 5px 9px 32px;
+        z-index: 5;
+      }
+      .fr .hdl {
+        width: 26px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--text2);
+        margin: 0 auto 6px;
+      }
+      .fr .sh {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 5px;
+      }
+      .fr .sh .lt {
+        flex: 1;
+        font-size: 9px;
+        font-weight: 800;
+        color: var(--text);
+      }
+      .fr .sh .lt i {
+        font-style: normal;
+        color: var(--brandText);
+        margin-left: 5px;
+      }
+      .fr .tb {
+        position: absolute;
+        bottom: 8px;
+        left: 6px;
+        right: 6px;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        z-index: 9;
+      }
+      .fr .tp {
+        flex: 1;
+        display: flex;
+        gap: 1px;
+        background: rgba(255, 255, 255, 0.86);
+        border-radius: 14px;
+        padding: 3px 2px;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+      }
+      .fr .tp s {
+        text-decoration: none;
+        flex: 1;
+        text-align: center;
+        font-size: 5px;
+        color: #6c757d;
+        padding: 4px 0;
+        border-radius: 11px;
+        line-height: 1.5;
+      }
+      .fr .tp s.on {
+        background: var(--variant);
+        color: var(--brandText);
+        font-weight: 800;
+      }
+      .fr .dim {
+        opacity: 0.4;
+      }
+      /* ---- friend-request primitives (added for this topic) ---- */
+      .fr .hdr {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        padding: 2px 0 8px;
+      }
+      .fr .av {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--variant);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        flex: 0 0 auto;
+      }
+      .fr .av.sm {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+      }
+      .fr .hdr .who {
+        flex: 1;
+        min-width: 0;
+      }
+      .fr .hdr .nmx {
+        font-size: 7.5px;
+        font-weight: 800;
+        color: var(--text);
+      }
+      .fr .hdr .hd {
+        font-size: 6px;
+        color: var(--text2);
+        margin-top: 1px;
+      }
+      .fr .hdr .st {
+        font-size: 6px;
+        font-weight: 800;
+        color: var(--text);
+        margin-top: 3px;
+      }
+      .fr .hdr .st i {
+        font-style: normal;
+        font-size: 8px;
+        font-weight: 500;
+        margin-left: 4px;
+      }
+      .fr .hdr .st.two i {
+        margin-right: 7px;
+      }
+      /* Pills. `.brand` = brandFill + white; `.vary` = surfaceVariant;
+               `.ghost` = plain text, no fill; `.dgr` = destructive. */
+      .fr .pl {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 20px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 5.8px;
+        font-weight: 800;
+        white-space: nowrap;
+        flex: 0 0 auto;
+      }
+      .fr .pl.brand {
+        background: var(--brandText);
+        color: #fff;
+      }
+      .fr .pl.vary {
+        background: var(--variant);
+        color: var(--text);
+      }
+      .fr .pl.ghost {
+        color: var(--text2);
+        padding: 0 3px;
+      }
+      .fr .pl.dgr {
+        color: var(--danger);
+        padding: 0 3px;
+      }
+      /* The floor button. iOS-sized: a tall full-width pill, not a chip. */
+      .fr .pl.wide {
+        width: 100%;
+        height: 31px;
+        font-size: var(--f-subtitle);
+        font-weight: 700;
+        letter-spacing: var(--ls-subtitle);
+      }
+      .fr .plrow {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        flex: 0 0 auto;
+      }
+      /* Badge on a bar icon or a sheet-header icon. */
+      .fr .ic {
+        position: relative;
+      }
+      .fr .bd {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        min-width: 8px;
+        height: 8px;
+        border-radius: 5px;
+        background: var(--danger);
+        color: #fff;
+        font-size: 5px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 1.5px;
+        border: 1px solid var(--surface);
+      }
+      .fr .sect {
+        font-size: 5.4px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: var(--text2);
+        margin: 7px 0 3px;
+      }
+      .fr .hint2 {
+        font-size: 5.4px;
+        color: var(--text2);
+        line-height: 1.5;
+        margin: 3px 0 5px;
+      }
+      .fr .fld {
+        background: var(--variant);
+        border-radius: 5px;
+        padding: 4px 5px;
+        font-size: 6px;
+        color: var(--text2);
+        margin-bottom: 5px;
+      }
+      .fr .fld b {
+        color: var(--text);
+        font-weight: 800;
+        letter-spacing: 1px;
+      }
+      /* A person row that carries actions rather than a value. */
+      .fr .prow {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--divider);
+      }
+      .fr .prow:last-child {
+        border-bottom: 0;
+      }
+      .fr .prow .pt {
+        flex: 1;
+        min-width: 0;
+      }
+      .fr .prow .pn {
+        font-size: 5.8px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .fr .prow .ph {
+        font-size: 5.2px;
+        color: var(--text2);
+      }
+      .fr .link {
+        font-size: 5.6px;
+        color: var(--brandText);
+        font-weight: 800;
+        margin-top: 4px;
+      }
+      /* Full-screen consent: the signature stack pair, headline, body, fine
+               print. See SECTION 1e for the mark itself. */
+      .fr .h2b {
+        font-size: 8.5px;
+        font-weight: 800;
+        line-height: 1.3;
+        letter-spacing: -0.2px;
+        margin: 2px 0 4px;
+        color: var(--text);
+      }
+      .fr .fine {
+        font-size: 4.7px;
+        color: var(--text2);
+        line-height: 1.55;
+        margin-top: 6px;
+      }
+      .fr .pl.dgrfill {
+        background: #fdeeea;
+        color: var(--danger);
+      }
+      .fr .tog {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--divider);
+        font-size: 5.8px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .fr .tog u {
+        margin-left: auto;
+        text-decoration: none;
+        width: 14px;
+        height: 8px;
+        border-radius: 5px;
+        background: var(--variant);
+        position: relative;
+        flex: 0 0 auto;
+      }
+      .fr .tog.on u {
+        background: var(--brandText);
+      }
+      .fr .tog u::after {
+        content: "";
+        position: absolute;
+        top: 1px;
+        left: 1px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .fr .tog.on u::after {
+        left: auto;
+        right: 1px;
+      }
+
+      /* ================================================================
+   SECTION 1d: the type scale, applied.
+
+   Every size in the frames above is superseded here by the real token it
+   stands for, so no drawing carries an invented number. Pretendard
+   throughout; GowunBatang on `.h2b` alone, which is the mockup's stand-in
+   for `AppTextStyles.title`.
+   ================================================================ */
+      .fr,
+      .fr * {
+        font-family: "Pretendard", system-ui, sans-serif;
+        font-feature-settings: "tnum" 0;
+      }
+      .fr .bar .t {
+        font-size: var(--f-label);
+        font-weight: 700;
+        letter-spacing: var(--ls-subtitle);
+      }
+      .fr .txt {
+        font-size: var(--f-body);
+        font-weight: 400;
+        line-height: 1.4;
+        letter-spacing: 0;
+      }
+      .fr .sect {
+        font-size: var(--f-caption);
+        font-weight: 700;
+        letter-spacing: var(--ls-caption);
+      }
+      .fr .hdr .nmx {
+        font-size: var(--f-title);
+        font-weight: 600; /* titleUser: user-supplied text stays sans */
+        letter-spacing: var(--ls-title);
+      }
+      .fr .hdr .hd,
+      .fr .prow .ph {
+        font-size: var(--f-label);
+        font-weight: 400;
+      }
+      .fr .hdr .st {
+        font-size: var(--f-label);
+        font-weight: 600;
+      }
+      .fr .hdr .st i {
+        font-size: var(--f-subtitle);
+        font-weight: 700;
+        letter-spacing: var(--ls-subtitle);
+      }
+      .fr .prow .pn,
+      .fr .row .rt,
+      .fr .tog {
+        font-size: var(--f-label);
+        font-weight: 600;
+      }
+      .fr .row .rs,
+      .fr .hint2,
+      .fr .fld {
+        font-size: var(--f-label);
+        font-weight: 400;
+      }
+      .fr .pl {
+        font-size: var(--f-label);
+        font-weight: 700;
+      }
+      .fr .link {
+        font-size: var(--f-label);
+        font-weight: 700;
+      }
+      .fr .fine {
+        font-size: var(--f-caption);
+        font-weight: 400;
+        letter-spacing: 0;
+        line-height: 1.5;
+      }
+      /* The one serif, and the one place the app's voice shows. */
+      .fr .h2b {
+        font-family: "GowunBatang", "Pretendard", serif;
+        font-size: var(--f-title);
+        font-weight: 700;
+        line-height: 1.15;
+        letter-spacing: var(--ls-title);
+      }
+      /* Hero headline, for the five full-screen sheets.
+
+               **This is a token the app does not have.** `title` (22pt) is a row and
+               sheet heading; against a 520pt screen with an illustration above it, it
+               reads as body text with a serif, which is exactly what the first pass
+               looked like — no hierarchy between the headline and the paragraph under
+               it. Flighty's accept headline is roughly 30pt and is unmistakably the
+               focal point.
+
+               So this borrows `figure`'s 30pt metrics and sets them in the serif. It
+               is the one size on this page not lifted whole from
+               `app_text_styles.dart`, and the spec should add it — provisionally
+               `AppTextStyles.hero` — rather than let five screens invent it. */
+      .fr .h1b {
+        font-family: "GowunBatang", "Pretendard", serif;
+        font-size: var(--f-figure);
+        font-weight: 700;
+        line-height: 1.12;
+        letter-spacing: var(--ls-figure);
+        color: var(--text);
+        margin-bottom: 5px;
+      }
+      .fr .tp s {
+        font-size: var(--f-caption);
+        font-weight: 600;
+        letter-spacing: 0;
+      }
+
+      /* ================================================================
+   SECTION 1e: the signature — two stacks meeting.
+
+   The consent screen is the emotional peak of this feature, so it is where
+   the one deliberate risk is spent. Flighty draws two portraits joined by a
+   flight path, because a flight is what they share. Libstack's subject is a
+   *stack* — it is the name and it is the icon (`assets/branding/app_icon.svg`
+   is fanned covers) — so what meets here is two libraries, one in
+   `surfaceVariant` and one washed with brand green, interleaving at the
+   seam. Everything else on that screen stays quiet.
+   ================================================================ */
+      .fr .sduo {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        /* Was 52/44 around a 31px stack, which is how a 54px mark ended up
+           adrift in a 431px body. The mark now carries its own height. */
+        padding: 22px 0 30px;
+      }
+      .fr .sduo .fan {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+      }
+      .fr .sduo .fan.r {
+        margin-left: calc(var(--bk-w) * -0.62);
+      }
+      /* The same book the shelves draw, one size up because an illustration may
+         draw a bigger book than a shelf does — but off the same variable, so the
+         mark can never drift away from the object it is made of. It was 21x31
+         while the shelf beside it drew 48.6x77.9, which made the signature
+         smaller than the thing it signified. */
+      .fr .sduo .fan u {
+        display: block;
+        position: relative;
+        width: calc(var(--bk-w) * 1.12);
+        height: calc(var(--bk-h) * 1.12);
+        margin-left: calc(var(--bk-w) * -0.5);
+        /* Spine side rounder, as on `.bk` and in book_geometry.dart:321-324. */
+        border-radius: 3.5px 1.5px 1.5px 3.5px;
+        background: var(--paper1);
+        box-shadow: 1.5px 2px 5px rgba(0, 0, 0, 0.16);
+        transform-origin: bottom center;
+      }
+      /* A spine fold on the illustrated books too, or a fanned stack reads as
+         plain paper — the same 8.2% band `.bk` carries. */
+      .fr .sduo .fan u::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 8.2%;
+        border-radius: inherit;
+        background: linear-gradient(
+          90deg,
+          rgba(0, 0, 0, 0.13),
+          rgba(0, 0, 0, 0)
+        );
+      }
+      .fr .sduo .fan u:nth-child(2) {
+        background: var(--paper2);
+      }
+      .fr .sduo .fan u:nth-child(3) {
+        background: var(--paper3);
+      }
+      /* Yours is the washed one, so the two sides are told apart by tone rather
+               than by a label. */
+      .fr .sduo .fan.r u {
+        background: var(--brandwash);
+      }
+      .fr .sduo .fan.r u:nth-child(2) {
+        background: #c9e8da;
+      }
+      .fr .sduo .fan.r u:nth-child(3) {
+        background: #ddf1e8;
+      }
+      .fr .sduo .fan.l u:nth-child(1) {
+        transform: rotate(-11deg);
+      }
+      .fr .sduo .fan.l u:nth-child(2) {
+        transform: rotate(-5.5deg);
+      }
+      .fr .sduo .fan.r u:nth-child(2) {
+        transform: rotate(5.5deg);
+      }
+      .fr .sduo .fan.r u:nth-child(3) {
+        transform: rotate(11deg);
+      }
+      .fr .sduo .chip {
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--surface);
+        border: 1px solid var(--divider);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        z-index: 3;
+      }
+      /* A white chip overlapping the stack's foot, which is how the reference
+               labels its portraits — grey uppercase text floating underneath was
+               unreadable and read as a caption rather than a name. */
+      .fr .sduo .nm2 {
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: var(--f-caption);
+        font-weight: 700;
+        letter-spacing: 0;
+        white-space: nowrap;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--divider);
+        border-radius: 999px;
+        padding: 1.5px 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        z-index: 3;
+      }
+      /* The seal, for the success state. Flighty drops a green check between the
+               two portraits once the connection lands; the same mark works between two
+               stacks, and it is the only place brand green is a fill behind white in
+               these drawings.
+
+               `.sduo` had no `position: relative`, so this was absolutely positioned
+               against the phone frame and rendered at the bottom of the screen instead
+               of between the stacks. Fixed on `.sduo` above. */
+      .fr .sduo .seal {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--brandText);
+        border: 2.5px solid var(--surface);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 4;
+      }
+
+      /* ================================================================
+   SECTION 1f: the payoff illustration.
+
+   Flighty's invite sheet does not show a link, a code, or anything
+   administrative — it shows a globe with three friends' flights on it,
+   each carrying a live status pill (DELAYED / LANDED / IN 8H 55M). The
+   sheet sells the *payoff*, and the status pills are what make it feel
+   live rather than illustrative.
+
+   The reading analogue is a shelf: three friends' stacks, each with the
+   status this app actually reports — what they are reading, and how many
+   they have finished.
+   ================================================================ */
+      .fr .illus {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        /* Keyed to the illustration's book, not the shelf's, because it is
+           separating groups of those. Three groups of two 32px books come to
+           198px and the block is full-bleed (the negative margins below cancel
+           the body's padding), so there are ~36px to spend on two gaps. At the
+           previous 11.7px the three shelves read as one continuous band of six
+           books, which lost the whole point: three separate libraries. */
+        gap: calc(var(--bk-wi) * 0.56);
+        padding: 26px 0 26px;
+        margin: -13px -13px 14px;
+        /* Atmosphere. The reference sits its globe on a soft gradient and its
+                 portraits on a faint world map; flat white behind three grey
+                 rectangles was why this read as UI rather than as a scene. */
+        background:
+          radial-gradient(
+            120% 90% at 50% 12%,
+            var(--brandwash) 0%,
+            rgba(215, 239, 229, 0.35) 45%,
+            rgba(255, 255, 255, 0) 78%
+          ),
+          var(--surface);
+      }
+      /* Each friend is a shelf, not a stack of blank paper. The books are
+         `.bk` — the same element the library shelves draw — shrunk by
+         overriding the book variables for this subtree only, so the mark is
+         literally made of the app's book and cannot drift from it. */
+      .fr .illus .ig {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        --bk-w: var(--bk-wi);
+        --bk-h: var(--bk-hi);
+      }
+      .fr .illus .fan2 {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+      }
+      /* The outer books lean, which is what made the old version read as a
+         stack rather than a row. Kept slight: these are shelved books, and a
+         shelf that leans this way at every stop looks broken, not lived in. */
+      .fr .illus .fan2 .bk:first-child {
+        transform: rotate(-4deg);
+        transform-origin: bottom right;
+      }
+      .fr .illus .fan2 .bk:last-child {
+        transform: rotate(3deg);
+        transform-origin: bottom left;
+      }
+      /* A real plank, as under the library shelves. The old 1.5px hairline at
+         18% opacity was invisible in every screenshot. Slightly wider than the
+         books, so it reads as a shelf they stand on rather than a underline. */
+      .fr .illus .ig .plank2 {
+        /* Only a slight overhang. At +6px the planks nearly met across the gap
+           and re-joined the three shelves the gap had just separated. */
+        width: calc(100% + 3px);
+        height: 3px;
+        border-radius: 1px;
+        background: var(--surface);
+        box-shadow: 0 1.5px 2px rgba(0, 0, 0, 0.22);
+      }
+      .fr .illus .ig .chip2 {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--surface);
+        border: 1px solid var(--divider);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+      }
+      .fr .illus .st2 {
+        font-size: var(--f-caption);
+        font-weight: 700;
+        letter-spacing: var(--ls-caption);
+        padding: 2px 5px;
+        border-radius: 999px;
+        white-space: nowrap;
+        background: var(--surface);
+        border: 1px solid var(--divider);
+        color: var(--text2);
+      }
+      .fr .illus .st2.now {
+        background: var(--brandText);
+        border-color: var(--brandText);
+        color: #fff;
+      }
+      .fr .illus .st2.new {
+        background: var(--brandwash);
+        border-color: transparent;
+        color: var(--brandText);
+      }
+      /* The compact flow still carries the whole argument, not merely the mark.
+         Its illustration gives 28px back to the two descriptive paragraphs and
+         expiration note; only the read-aloud fallback is omitted from this
+         review thumbnail. The full invite screen above is unchanged. */
+      .fr.sm .illus {
+        padding: 12px 0 14px;
+        margin-bottom: 10px;
+      }
+      .fr.sm .h1b {
+        margin-bottom: 7px;
+      }
+      .fr.sm .txt {
+        line-height: 1.38;
+        margin-bottom: 7px;
+      }
+      .fr.sm .fine {
+        line-height: 1.4;
+        margin-top: 4px;
+      }
+      /* Secondary action: outlined, never a second fill. Flighty's success
+               screen pairs Done with an outlined "Customize Alerts for This
+               Friend", which is where per-friend settings get their one
+               well-timed introduction. */
+      .fr .pl.out {
+        background: transparent;
+        border: 0.5px solid var(--divider);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="top-in">
+        <div class="cbox" id="vbox">
+          <button class="cbtn vbtn hk" id="vbtn" data-key="v">
+            <span class="branch">&#9095;</span><span id="vbtn-label">main</span
+            ><span class="chev">&#9660;</span>
+          </button>
+          <div class="cpanel">
+            <div class="csearch">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="#fff"
+                stroke-width="1.8"
+              >
+                <circle cx="6.8" cy="6.8" r="4.6" />
+                <path d="M10.4 10.4 14 14" />
+              </svg>
+              <input
+                id="vsearch"
+                placeholder="Search versions&hellip;"
+                autocomplete="off"
+              />
+            </div>
+            <div class="clist" id="vlist"></div>
+            <div class="cfoot">
+              <span class="n" id="vfoot-n"></span
+              ><button id="vcmp-clear">Stop comparing</button>
+            </div>
+          </div>
+        </div>
+        <span class="sep"></span>
+        <span class="brand"
+          >Libstack &mdash; <span>friends &amp; invites</span></span
+        >
+        <div class="vtabs">
+          <button data-v="screens" data-key="1" class="on">Screens</button>
+          <button data-v="elements" data-key="2">UI Elements</button>
+          <button data-v="flows" data-key="3">Flows</button>
+        </div>
+        <span class="sep"></span>
+        <div class="cbox" id="cbox">
+          <button class="cbtn hk" id="cbtn" data-key="/">
+            <span id="cbtn-label">Screens</span
+            ><span class="badge" id="cbtn-badge" hidden></span
+            ><span class="chev">&#9660;</span>
+          </button>
+          <div class="cpanel">
+            <div class="csearch">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="#fff"
+                stroke-width="1.8"
+              >
+                <circle cx="6.8" cy="6.8" r="4.6" />
+                <path d="M10.4 10.4 14 14" />
+              </svg>
+              <input
+                id="csearch"
+                placeholder="Search screens&hellip;"
+                autocomplete="off"
+              />
+            </div>
+            <div class="clist" id="clist"></div>
+            <div class="cfoot">
+              <span class="n" id="cfoot-n"></span
+              ><button id="cclear">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div class="count" id="cnt"></div>
+        <div class="vinfo">
+          <span class="lbl" id="vinfo-lbl"></span>
+          <span class="note" id="vinfo-note"></span>
+          <span class="diffs" id="vinfo-diffs"></span>
+          <button id="difftoggle" class="off">Only differences</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="view on" id="v-screens">
+        <h1>Screens</h1>
+        <p class="lead">
+          Moving from a one-directional <code>follows</code> row to mutual
+          friendship, with <b>invite links as the only path in</b> &mdash; no
+          handle search, so no request queue and no badge. Modelled on Flighty
+          and checked against its real flows. <br /><br />
+          Drawn in the app's own materials: colours from
+          <code>lib/constants/app_theme.dart</code>
+          (<code>brandFill #067657</code>, <code>surfaceVariant #E9ECEF</code>,
+          <code>secondaryText #626A72</code>,
+          <code>softRedColor #D9433A</code>), and
+          <b
+            >the real typefaces loaded off disk from
+            <code>assets/fonts/</code></b
+          >
+          &mdash; Pretendard throughout, GowunBatang on the single serif token.
+          Every size is a real token from
+          <code>app_text_styles.dart</code> scaled by 0.615, so these frames are
+          metrically faithful rather than merely tidy. <b>The books are too</b>:
+          a shelf book is <code>screenHeight * 0.15</code> tall and
+          <code>height / 1.6</code> wide (<code>shelf_row.dart:208</code>), the
+          cover is a colour block over a title from
+          <code>kGeneratedCoverPalette</code>
+          (<code>generated_cover.dart:12</code>), and the binding band is 8.2%
+          of the width (<code>book_geometry.dart:340</code>). Drawn at 40% of
+          that, as the first pass did, a library reads as a row of loading
+          skeletons.
+          <br /><br />
+          Chrome is post-redesign: the Friends sheet is the switcher, and a
+          visit is <code>&#10005;</code> / the friend's library / Poke, with
+          <b>no tab bar at all</b>. Full-screen sheets are laid out the way the
+          reference lays them out &mdash; illustration at the top, copy in the
+          middle, fine print then <b>the action on the floor</b>.
+          <b>But only where there is an illustration to carry the middle.</b>
+          A screen pinned at the top and the floor with nothing between frames
+          the emptiness instead of using it, which is what three of these
+          screens did; they now flow from the top, and a destructive confirm is
+          the app's own
+          <code>AlertDialog.adaptive</code> rather than a page. That rule is
+          asserted, not trusted &mdash; see <code>verify.py</code>. Two versions
+          &mdash; switch with <span class="kbd">v</span>, filter with
+          <span class="kbd">/</span>, change view with
+          <span class="kbd">1</span> <span class="kbd">2</span>
+          <span class="kbd">3</span>.
+        </p>
+        <div id="screens"></div>
+        <div class="noneleft gone" id="screens-none">
+          Nothing matches that filter.
+        </div>
+      </div>
+
+      <div class="view" id="v-elements">
+        <h1>UI elements</h1>
+        <p class="lead">
+          The components the screens are assembled from, each with the decision
+          it encodes.
+        </p>
+        <div id="elements"></div>
+        <div class="noneleft gone" id="elements-none">
+          Nothing matches that filter.
+        </div>
+      </div>
+
+      <div class="view" id="v-flows">
+        <h1>UX flows</h1>
+        <p class="lead">
+          Step-by-step journeys. Every step is a real state from the Screens
+          tab.
+        </p>
+        <div class="flowlayout">
+          <div class="side">
+            <div class="sbox" id="sbox">
+              <input
+                class="search"
+                id="fsearch"
+                placeholder="Search flows&hellip;"
+                autocomplete="off"
+              />
+              <span class="hint hint-slash"><span class="kbd">/</span></span>
+              <span class="hint hint-esc"><span class="kbd">Esc</span></span>
+            </div>
+            <div id="sidenav"></div>
+          </div>
+          <div>
+            <div id="flows"></div>
+            <div class="noneleft gone" id="flows-none">
+              No flows match that search.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* ==================================================================
+      SECTION 2: FRAME RENDERER — replace with your product's chrome.
+
+      Screens are declared as DATA and drawn by this one function. When a
+      shared decision changes (a button leaves the header, a tab is
+      renamed) you edit it here once instead of in every mockup, which is
+      how hand-drawn sets go stale.
+      ================================================================== */
+      /* `kGeneratedCoverPalette`, verbatim — generated_cover.dart:12-19.
+            Harmonised with the brand green rather than sampled at random, "so a
+            shelf of coverless books still looks like it belongs to this app".
+            What was here before was an invented blue/purple/grey set that
+            belonged to no app at all, which is most of why these frames read as
+            generic. Brand green leads, so the first book on every shelf is the
+            brand colour. */
+      const PAL = [
+        "#09BC8A",
+        "#0E7C7B",
+        "#2F6690",
+        "#E0644E",
+        "#F2B544",
+        "#7C5CBF",
+      ];
+      /* Illustrative, not ground truth: shelves and their books are entirely
+            user-named, so there is nothing in the schema to be faithful to. Real
+            titles rather than lorem, because a cover's lower half is a title and
+            a Korean title sets at a completely different density than a Latin
+            one — which is the whole reason `_kTitleSizeRatio` runs above the
+            reference's 10.5%. */
+      const BOOK_TITLES = [
+        "소년이 온다",
+        "아몬드",
+        "달러구트 꿈 백화점",
+        "여행의 이유",
+        "불편한 편의점",
+        "코스모스",
+        "해변의 카프카",
+        "작별인사",
+        "파친코",
+        "미움받을 용기",
+      ];
+
+      function block(b) {
+        switch (b.t) {
+          case "text":
+            return `<div class="txt${b.dim ? " dim" : ""}">${b.v}</div>`;
+          case "chat":
+            return (
+              `<div class="chat"><div class="who">${b.who}</div>` +
+              b.msgs
+                .map(
+                  (m, i) =>
+                    `<div class="msg"><span class="av">${i ? "" : b.e}</span>` +
+                    `<span class="bub">${m}</span></div>`,
+                )
+                .join("") +
+              `<div class="og"><div class="im"><u></u><u></u><u></u></div>` +
+              `<div class="tx"><div class="ot">${b.card.t}</div>` +
+              `<div class="od">${b.card.d}</div>` +
+              `<div class="oh">${b.card.h}</div></div></div></div>`
+            );
+          case "store":
+            return (
+              `<div class="store"><div class="top">` +
+              `<span class="ico">${b.e}</span>` +
+              `<span class="meta"><span class="nm3">${b.name}</span>` +
+              `<span class="sub3">${b.sub}</span></span>` +
+              `<span class="get">${b.cta}</span></div>` +
+              `<div class="shots">${[0, 3]
+                .map(
+                  (seed) =>
+                    `<div class="shot">${[0, 1]
+                      .map(
+                        (row) =>
+                          `<div class="r">${[0, 1, 2, 3]
+                            .map(
+                              (i) =>
+                                `<u style="--c:${PAL[(seed + row * 3 + i) % PAL.length]}"></u>`,
+                            )
+                            .join("")}</div>`,
+                      )
+                      .join("")}</div>`,
+                )
+                .join("")}</div></div>`
+            );
+          case "shelf": {
+            const titles = b.titles || BOOK_TITLES;
+            let bs = "";
+            for (let i = 0; i < (b.n ?? 4); i++) {
+              const k = i + (b.seed || 0);
+              // heightFactor's real range is [0.94, 1.06] —
+              // book_geometry.dart:213-214. Hashed, so a shelf is not a
+              // staircase and the same seed always draws the same shelf.
+              const hf = (0.94 + ((k * 5) % 7) * 0.02).toFixed(3);
+              bs +=
+                `<i class="bk" style="--c:${b.color || PAL[k % PAL.length]};--hf:${hf}">` +
+                `<b></b><em>${titles[k % titles.length]}</em></i>`;
+            }
+            return (
+              `<div class="shelf"><div class="bks">${bs}</div>` +
+              (b.label ? `<span class="stab">${b.label}</span>` : "") +
+              `<div class="plank"></div></div>`
+            );
+          }
+          case "rows":
+            return b.items
+              .map(
+                (r, i) =>
+                  `<div class="row"${i === b.items.length - 1 ? ' style="border:0"' : ""}>${
+                    r.thumb !== undefined
+                      ? `<span class="thumb" style="--c:${r.thumb || PAL[i % PAL.length]}"></span>`
+                      : ""
+                  }<span class="rt">${r.t}${r.s ? `<div class="rs">${r.s}</div>` : ""}</span>${
+                    r.v ? `<span class="rv">${r.v}</span>` : ""
+                  }</div>`,
+              )
+              .join("");
+          case "stat":
+            return `<div class="stat"><div class="l">${b.label}</div><div class="b">${b.big}</div>${
+              b.sub ? `<div class="s">${b.sub}</div>` : ""
+            }</div>`;
+          case "caps":
+            return `<div class="caps">${b.items
+              .map((x) => `<s class="${x === b.on ? "on" : ""}">${x}</s>`)
+              .join("")}</div>`;
+          /* ---- friend-request primitives ---- */
+          case "hdr":
+            return `<div class="hdr"><span class="av">${b.emoji || "&#128293;"}</span><span class="who"><div class="nmx">${b.name}</div>${
+              b.handle ? `<div class="hd">@${b.handle}</div>` : ""
+            }<div class="st${b.stats.length > 1 ? " two" : ""}">${b.stats
+              .map((s) => `${s.l}<i>${s.v}</i>`)
+              .join("")}</div></span></div>`;
+          case "plrow":
+            return `<div class="plrow"${b.full ? ' style="width:100%"' : ""}>${b.items
+              .map(
+                (p) =>
+                  `<span class="pl ${p.k || "vary"}${b.full ? " wide" : ""}">${p.l}</span>`,
+              )
+              .join("")}</div>`;
+          case "sect":
+            return `<div class="sect">${b.v}</div>`;
+          case "hint":
+            return `<div class="hint2">${b.v}</div>`;
+          case "fld":
+            return `<div class="fld">${b.v}</div>`;
+          case "link":
+            return `<div class="link">${b.v}</div>`;
+          /* Eats the leftover height, pinning whatever follows to the floor.
+                            Every full-screen sheet in the reference is laid out this way. */
+          case "push":
+            return `<div class="push"></div>`;
+          case "h2b":
+            return `<div class="h2b">${b.v}</div>`;
+          case "hero":
+            return `<div class="h1b">${b.v}</div>`;
+          case "fine":
+            return `<div class="fine${b.code ? " code" : ""}">${b.v}</div>`;
+          case "tog":
+            return `<div class="tog${b.on ? " on" : ""}">${b.v}<u></u></div>`;
+          /* The signature. Two fans of covers meeting — see SECTION 1e. */
+          case "sduo":
+            return `<div class="sduo"><span class="fan l"><u></u><u></u><u></u><span class="chip">${b.a.e}</span><span class="nm2">${b.a.n}</span></span>${
+              b.done ? '<span class="seal">&#10003;</span>' : ""
+            }<span class="fan r"><u></u><u></u><u></u><span class="chip">${b.b.e}</span><span class="nm2">${b.b.n}</span></span></div>`;
+          /* The payoff illustration — see SECTION 1f. */
+          case "illus":
+            return `<div class="illus">${b.items
+              .map((g, gi) => {
+                // Two books each, built the same way `shelf` builds them, so a
+                // friend's shelf in the mark is the same object as a friend's
+                // shelf in the app. Seeded off the group index so the three
+                // read as different libraries rather than three copies of one.
+                const books = [0, 1]
+                  .map((i) => {
+                    const k = gi * 2 + i + (b.seed || 0);
+                    return (
+                      `<i class="bk" style="--c:${PAL[k % PAL.length]}">` +
+                      `<b></b><em>${BOOK_TITLES[k % BOOK_TITLES.length]}</em></i>`
+                    );
+                  })
+                  .join("");
+                return (
+                  `<span class="ig"><span class="chip2">${g.e}</span>` +
+                  `<span class="fan2">${books}</span>` +
+                  `<span class="plank2"></span>` +
+                  `<span class="st2 ${g.k || ""}">${g.s}</span></span>`
+                );
+              })
+              .join("")}</div>`;
+          /* People rows: avatar + name + @handle + trailing pills.
+                          One primitive for search results, request rows and the
+                          friends list, because they are the same row wearing
+                          different actions. */
+          case "people":
+            return b.items
+              .map(
+                (p) =>
+                  `<div class="prow"><span class="av sm">${p.e || "&#128218;"}</span><span class="pt"><div class="pn">${p.n}</div>${
+                    p.h ? `<div class="ph">@${p.h}</div>` : ""
+                  }</span>${
+                    p.acts
+                      ? `<span class="plrow">${p.acts
+                          .map(
+                            (a) =>
+                              `<span class="pl ${a.k || "vary"}">${a.l}</span>`,
+                          )
+                          .join("")}</span>`
+                      : ""
+                  }</div>`,
+              )
+              .join("");
+          default:
+            return "";
+        }
+      }
+      function blocks(list) {
+        return (list || []).map(block).join("");
+      }
+
+      /** Draw one screen from its spec.
+       *
+       * Chrome is defined here once: app bar, sheet, and the three-tab
+       * pill (Library / Friends / Card — `LibraryTab` has exactly three
+       * values, `library_shell_provider.dart:30`).
+       *
+       * `bar.actions` / `sheet.actions` entries are either a string
+       * (plain icon) or `{i, badge}`. The badge is what carries the
+       * pending-request count, and it lives on an existing icon because
+       * the tab bar cannot take a fourth item — the 4th native slot is
+       * Add Book (`shell_tab_bar.dart:261`).
+       *
+       * `bar.pills` draws a trailing relationship affordance at intrinsic
+       * width. `bar.visit: true` draws the shell's visit state instead —
+       * ✕ in the leading slot, the friend's library as the title, Poke
+       * trailing — which is what `_LibraryBar` renders now
+       * (`home_page.dart:834`, contract at `:820`, Poke wired at `:376`).
+       *
+       * `bar.visit` does NOT imply `tabs: false`, and an earlier revision of
+       * this file had that backwards. The tab bar stays up during a visit:
+       * `shell_chrome_provider.dart:56-62` records that it used to be hidden
+       * and that hiding it is *gone*, because no tab changes meaning inside a
+       * visit — Library is your books, Card is your card, Friends is your list
+       * or the friend one level down it. Selecting Library or Card ends the
+       * visit, which is what makes the bar the way out rather than a claim
+       * about where you are. Friends is therefore the live tab on a visit.
+       */
+      function frame(s) {
+        let h = `<div class="fr${s.sm ? " sm" : ""}"><div class="status"></div>`;
+        const icons = (list) =>
+          (list || [])
+            .map((a) =>
+              typeof a === "string"
+                ? `<span class="ic">${a}</span>`
+                : `<span class="ic">${a.i}${a.badge ? `<span class="bd">${a.badge}</span>` : ""}</span>`,
+            )
+            .join("");
+        const visit = s.bar && s.bar.visit;
+        /* A visit's trailing group is the gear then the Poke pill. Poke is a
+              `brandFill` pill and not an icon (`home_page.dart:1094-1112`), and it
+              occupies the slot your own avatar would (`:1030`). The gear is where
+              `manage-friend` is reached from: it replaced a long press that nothing
+              on the row advertised. Gear inboard, Poke outermost, which is how iOS
+              orders a trailing group -- secondary first, primary at the edge. */
+        const visitTrail = visit
+          ? `<span class="ic">&#9881;</span><span class="pl brand">Poke</span>`
+          : "";
+        if (s.bar !== false)
+          h += `<div class="bar">${visit ? '<span class="ic">&#10005;</span>' : s.bar?.back ? '<span class="ic">&#8249;</span>' : ""}<span class="t">${s.bar?.title || ""}</span>${(
+            s.bar?.pills || []
+          )
+            .map((p) => `<span class="pl ${p.k || "vary"}">${p.l}</span>`)
+            .join("")}${visitTrail}${icons(visit ? [] : s.bar?.actions)}</div>`;
+        if (s.body) h += `<div class="body">${blocks(s.body)}</div>`;
+        if (s.sheet) {
+          h += `<div class="sheet" style="height:${s.sheet.h}%"><div class="hdl"></div>`;
+          if (s.sheet.title)
+            h += `<div class="sh"><span class="lt">${s.sheet.title}${
+              s.sheet.count !== undefined ? ` <i>${s.sheet.count}</i>` : ""
+            }</span>${icons(s.sheet.actions)}</div>`;
+          h += blocks(s.sheet.body) + `</div>`;
+        }
+        /* `AlertDialog.adaptive` over a scrim — the app's own confirm, at
+              manage_friend_page.dart:195. Drawn
+              after the body so it covers it, and before the tab bar because an
+              iOS alert dims the tab bar too. */
+        if (s.alert) {
+          h +=
+            `<div class="scrim"></div><div class="alert">` +
+            `<div class="at">${s.alert.title}</div>` +
+            (s.alert.msg ? `<div class="am">${s.alert.msg}</div>` : "") +
+            `<div class="aa">${s.alert.actions
+              .map(
+                (a) =>
+                  `<s class="${a.k || ""}">${typeof a === "string" ? a : a.l}</s>`,
+              )
+              .join("")}</div></div>`;
+        }
+        if (s.tabs !== false)
+          h += `<div class="tb"><div class="tp${s.dim ? " dim" : ""}">${(
+            s.tabs || ["Library", "Friends", "Card"]
+          )
+            .map((t) => `<s class="${t === s.tab ? "on" : ""}">${t}</s>`)
+            .join("")}</div></div>`;
+        return h + `</div>`;
+      }
+
+      /* ==================================================================
+      SECTION 3: DATA — the base version. Replace all of it.
+
+      SCREENS  [group, [ [id, name, note, spec], ... ] ]
+      FLOWS    [group, [ [id, name, note, [ [stepName, stepNote, spec], ... ] ] ] ]
+      ELEMENTS [group, [ [id, name, note, demoHTML], ... ] ]
+
+      ids must be unique per view; they drive filtering and versioning.
+      Notes are searchable, so put real reasoning in them.
+      ================================================================== */
+      /* Shared bodies, so a library looks the same everywhere it is drawn.
+            Covers are face-out, not spines — `docs/mockups/library-shell/decided.html`.
+
+            Four shelves, because that is what fits: the body is ~431px tall here
+            and a shelf is ~103px, so a real visit shows four with the fourth
+            cut off. Two shelves of tiny tiles was not a smaller library, it was
+            a wrong one — and it left the emotional payoff screen 80% white. */
+      const THEIR_LIB = [
+        { t: "shelf", label: "소설", n: 5, seed: 0 },
+        { t: "shelf", label: "에세이", n: 4, seed: 5 },
+        { t: "shelf", label: "2026", n: 5, seed: 2 },
+        { t: "shelf", label: "다시 읽기", n: 4, seed: 7 },
+      ];
+      const MY_LIB = [
+        { t: "shelf", label: "읽는 중", n: 4, seed: 3 },
+        { t: "shelf", label: "2026", n: 5, seed: 1 },
+        { t: "shelf", label: "빌린 책", n: 4, seed: 6 },
+        { t: "shelf", label: "언젠가", n: 5, seed: 4 },
+      ];
+      /* Shared so the confirm draws its own screen underneath rather than a
+            second copy that can drift from it.
+
+            No `push`: pinning the header to the top and the destructive action to
+            the floor is what turned a short settings page into a framed 350px
+            hole. Air below flowing content reads as a short page; air *between*
+            two anchored things reads as a bug. Remove sits in its own group under
+            the toggles, which is also where iOS Settings puts a destructive row. */
+      const MANAGE_BODY = [
+        {
+          t: "hdr",
+          emoji: "🦊",
+          name: "지수",
+          handle: "jisoo_reads",
+          stats: [{ l: "Friends since", v: "Mar" }],
+        },
+        { t: "sect", v: "Notifications" },
+        { t: "tog", v: "When they finish a book", on: true },
+        { t: "tog", v: "When they start a book" },
+        { t: "sect", v: "" },
+        {
+          t: "plrow",
+          full: true,
+          items: [{ l: "Remove friend", k: "dgrfill" }],
+        },
+        {
+          t: "fine",
+          v: "They will not get an alert.",
+        },
+      ];
+      /* Shared with the "First launch" flow step, which was a stale copy of it:
+            the step still pinned `Continue` to the floor after the screen stopped
+            doing that, because a step carries its own spec and nothing connected
+            the two. `verify.py` now walks steps as well as screens. */
+      const CODE_BODY = [
+        { t: "hero", v: "One last thing" },
+        { t: "sect", v: "Have an invite code?" },
+        { t: "fld", v: "<b>K7M2QP4X</b>" },
+        { t: "hint", v: "Optional — you can invite friends later." },
+        {
+          t: "plrow",
+          full: true,
+          items: [{ l: "Continue", k: "brand" }],
+        },
+      ];
+      /* Shared with flow step 01, which was `illus + hero + push + button` with
+            no copy at all — a third stale duplicate of a screen, and one that got
+            past the pin assertion precisely because it does carry a mark.
+
+            The copy is rebuilt on Flighty's structure, which was doing more work
+            than mine. Theirs enumerates three concrete capabilities, then spends a
+            whole paragraph on one specific recurring annoyance it removes ("saves
+            you from ever hearing 'Send me your flight info!' again"). Mine named
+            two capabilities vaguely and then observed that shelves are nicer in
+            pairs, which is a pleasant sentence that sells nothing. All three
+            capabilities named here exist: the visit, the finished-books sheet, and
+            praise — `book_compliments` is the app's only persisted social object. */
+      /* Shared with every step that redraws them. Six duplicates have now drifted
+            across three passes, always the same way: the screen gets fixed and the
+            strip does not, because a step carries its own spec. `verify.py` asserts
+            both the sharing and the "a headline must carry copy" rule that found
+            the last three. */
+      const CONSENT_BODY = [
+        {
+          t: "sduo",
+          a: { e: "\u{1F98A}", n: "\uC9C0\uC218" },
+          b: { e: "\u{1F525}", n: "YOU" },
+        },
+        { t: "hero", v: "\uC9C0\uC218 wants to share books with you" },
+        {
+          t: "text",
+          v: "You'll both see what the other is reading and what you've finished, and you can react to each other's books.",
+        },
+        { t: "push" },
+        {
+          t: "fine",
+          v: "You're in control. You can remove this friend at any time.",
+        },
+        {
+          t: "plrow",
+          full: true,
+          items: [{ l: "Become friends", k: "brand" }],
+        },
+      ];
+      /* Derived, not copied: the pending state differs from the screen in exactly
+            one way — the button — so that is the only thing allowed to differ. The
+            step used to draw the mark and a button and nothing else, which made the
+            one moment where the user is waiting the emptiest frame in the flow. */
+      const CONSENT_PENDING = [
+        ...CONSENT_BODY.slice(0, -1),
+        {
+          t: "plrow",
+          full: true,
+          items: [{ l: "Becoming friends\u2026", k: "vary" }],
+        },
+      ];
+      const DONE_BODY = [
+        {
+          t: "sduo",
+          done: true,
+          a: { e: "\u{1F98A}", n: "\uC9C0\uC218" },
+          b: { e: "\u{1F525}", n: "YOU" },
+        },
+        { t: "hero", v: "You're now friends" },
+        {
+          t: "text",
+          v: "You and \uC9C0\uC218 can see each other's shelves, what you're reading now, and what you've finished.",
+        },
+        { t: "push" },
+        {
+          t: "plrow",
+          full: true,
+          items: [{ l: "Done", k: "brand" }],
+        },
+        {
+          t: "plrow",
+          full: true,
+          items: [{ l: "Notify me about \uC9C0\uC218", k: "out" }],
+        },
+      ];
+      const INVITE_BODY = [
+        {
+          t: "illus",
+          items: [
+            { e: "\u{1F98A}", s: "READING", k: "now" },
+            { e: "\u{1F423}", s: "24 READ" },
+            { e: "\u{1F319}", s: "JUST JOINED", k: "new" },
+          ],
+        },
+        { t: "hero", v: "Libstack friends" },
+        {
+          t: "text",
+          v: "Send a link to anyone. You'll both see what the other is reading now, can browse each other's finished shelves, and can leave a reaction on any book.",
+        },
+        {
+          t: "text",
+          v: "It's free, and it saves you from screenshotting your shelf every time someone asks what you've been reading.",
+        },
+        {
+          t: "fine",
+          v: "Links last 48 hours and can be used up to 10 times. You can remove a friend at any time.",
+        },
+        { t: "push" },
+        {
+          t: "fine",
+          code: true,
+          v: "Or read them the code: <b>K7M2QP4X</b>",
+        },
+        {
+          t: "plrow",
+          full: true,
+          items: [{ l: "Share invite", k: "brand" }],
+        },
+      ];
+      /* Derived rather than copied. The strip is a review thumbnail, so it
+         omits only the read-aloud fallback; both descriptive paragraphs and
+         the expiry/removal contract remain. Every retained block is the exact
+         object used by the full screen, so copy cannot drift between them. */
+      const INVITE_FLOW_BODY = INVITE_BODY.filter((b) => !b.code);
+      /* The cast, so no screen invents one. */
+      const P_JISOO = { n: "지수", h: "jisoo_reads", e: "🦊" };
+      const P_MINHO = { n: "민호", h: "minho", e: "🐣" };
+      const P_HANA = { n: "하나", h: "hana_b", e: "🌙" };
+      const ACCOUNT_ROWS_PRIVATE = {
+        t: "rows",
+        items: [{ t: "Email", v: "aschung1005@…" }],
+      };
+
+      const SCREENS = [
+        [
+          "Profile header",
+          [
+            [
+              "header-now",
+              "Profile &middot; today",
+              "<b>Superseded.</b> Two numbers that a mutual model makes one number. Both are <code>GestureDetector</code>s opening <code>_FollowListSheet</code> at tab 0 or 1 (both gone; <code>settings_page.dart:577</code> is the one count that replaced them), so the labels, the tab indices and the <code>initialTab</code> plumbing retire together. The <code>@handle</code> line is current — it shipped just before this work.",
+              {
+                bar: { back: true, title: "" },
+                tab: "Library",
+                dim: true,
+                body: [
+                  {
+                    t: "hdr",
+                    name: "독서하는 유니콘",
+                    handle: "unicorn_reads",
+                    stats: [
+                      { l: "Followers", v: "9" },
+                      { l: "Following", v: "7" },
+                    ],
+                  },
+                  {
+                    t: "plrow",
+                    full: true,
+                    items: [{ l: "Edit profile", k: "vary" }],
+                  },
+                  { t: "sect", v: "Account" },
+                  {
+                    t: "rows",
+                    items: [
+                      { t: "Email", v: "aschung1005@…" },
+                      {
+                        t: "Allow profile search",
+                        v: "On",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            [
+              "header-next",
+              "Profile &middot; one Friends stat",
+              "One number, because under a mutual model there is only one. Tapping it opens a single list, so <code>_FollowListSheet</code> loses its <code>TabBar</code>, its <code>initialTab</code> and the 0/1 routing. <b>Allow profile search is gone too</b> — with no handle search there is nothing for it to gate. That row's survival is the version question; compare <code>public-profiles</code>.",
+              {
+                bar: { back: true, title: "" },
+                tab: "Library",
+                dim: true,
+                body: [
+                  {
+                    t: "hdr",
+                    name: "독서하는 유니콘",
+                    handle: "unicorn_reads",
+                    stats: [{ l: "Friends", v: "12" }],
+                  },
+                  {
+                    t: "plrow",
+                    full: true,
+                    items: [{ l: "Edit profile", k: "vary" }],
+                  },
+                  { t: "sect", v: "Account" },
+                  ACCOUNT_ROWS_PRIVATE,
+                ],
+              },
+            ],
+          ],
+        ],
+        [
+          "Friends tab",
+          [
+            [
+              "friends-list",
+              "Friends &middot; the feed",
+              "<b>No badge, because there is no queue.</b> The queue was never created by mutual friendship — it was created by handle search, and handle search is gone. The header icon is now unambiguously <i>Invite</i> rather than <i>Search friends</i>, which is what <code>friends_sheet.dart:152</code>'s tooltip now says. Rows lead to a visit; managing the relationship lives on its own screen.",
+              {
+                bar: { title: "My library", actions: ["👤"] },
+                tab: "Friends",
+                body: [
+                  {
+                    t: "shelf",
+                    label: "읽는 중",
+                    n: 4,
+                    seed: 3,
+                  },
+                  {
+                    t: "shelf",
+                    label: "2026",
+                    n: 5,
+                    seed: 1,
+                  },
+                ],
+                sheet: {
+                  h: 62,
+                  title: "Friends",
+                  count: 12,
+                  actions: ["✉"],
+                  body: [
+                    {
+                      t: "people",
+                      items: [
+                        {
+                          ...P_JISOO,
+                          acts: [{ l: "24", k: "ghost" }],
+                        },
+                        {
+                          ...P_MINHO,
+                          acts: [{ l: "9", k: "ghost" }],
+                        },
+                        {
+                          ...P_HANA,
+                          acts: [{ l: "31", k: "ghost" }],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            ],
+            [
+              "friends-empty-none",
+              "Friends &middot; empty, no friends",
+              "Today this is a dead end: <code>_Empty(message: l10n.noFriendsYet)</code> at <code>friends_sheet.dart:163</code>, whose only escape is the header icon. With invite links as the sole path in, the empty state <i>must</i> carry the invite action or a new user has nothing to do. Flighty's equivalent does exactly this.",
+              {
+                bar: { title: "My library", actions: ["👤"] },
+                tab: "Friends",
+                body: [
+                  {
+                    t: "shelf",
+                    label: "읽는 중",
+                    n: 4,
+                    seed: 3,
+                  },
+                  {
+                    t: "shelf",
+                    label: "2026",
+                    n: 5,
+                    seed: 1,
+                  },
+                ],
+                sheet: {
+                  h: 62,
+                  title: "Friends",
+                  count: 0,
+                  actions: ["✉"],
+                  body: [
+                    {
+                      t: "hint",
+                      v: "No friends yet. Send someone an invite link and you'll both see what the other is reading.",
+                    },
+                    {
+                      t: "plrow",
+                      full: true,
+                      items: [
+                        {
+                          l: "Invite a friend",
+                          k: "brand",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            ],
+            [
+              "friends-empty-quiet",
+              "Friends &middot; nobody reading (rejected)",
+              "<b>Not built — and the reason is visible in this very frame.</b> Stolen from Flighty, which has two empty states where I had drawn one: friends exist but none are mid-book, which for a reading app is the <i>common</i> state, not the edge case. All of that still holds. What does not is the premise underneath it. <b>Flighty's row reports a flight status; the row above reports a read count</b> — neither says whether the person is reading <i>right now</i>, so a banner is the only thing that can. Libstack's shipped row prints <code>friendNothingInProgress</code> on its own second line, so with three idle friends the sheet said it four times: once per row, then again in a summary of the rows directly beneath it. A summary earns its place when it tells you something the list does not, and this one could not — nor could it offer an action, since inviting is not the fix for friends between books. <b>The state survives; the banner does not.</b> Note the rows drawn here carry <code>24</code> and <code>9</code> and no subtitle, which is exactly the row this screen was designed against.",
+              {
+                bar: { title: "My library", actions: ["👤"] },
+                tab: "Friends",
+                body: [
+                  {
+                    t: "shelf",
+                    label: "읽는 중",
+                    n: 4,
+                    seed: 3,
+                  },
+                  {
+                    t: "shelf",
+                    label: "2026",
+                    n: 5,
+                    seed: 1,
+                  },
+                ],
+                sheet: {
+                  h: 62,
+                  title: "Friends",
+                  count: 12,
+                  actions: ["✉"],
+                  body: [
+                    {
+                      t: "hint",
+                      v: "Nobody's mid-book right now. Their finished shelves are still here — tap anyone to look.",
+                    },
+                    {
+                      t: "people",
+                      items: [
+                        {
+                          ...P_JISOO,
+                          acts: [{ l: "24", k: "ghost" }],
+                        },
+                        {
+                          ...P_MINHO,
+                          acts: [{ l: "9", k: "ghost" }],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            ],
+          ],
+        ],
+        [
+          "Inviting",
+          [
+            [
+              "invite-sheet",
+              "Invite &middot; create and share",
+              "<b>Rebuilt after looking at Flighty's invite sheet properly.</b> Mine showed a URL in a field and a Share button — an administrative screen for what is actually the app's only growth surface. Flighty shows <i>no link and no code</i>: it shows a globe carrying three friends' flights, each with a live status pill (DELAYED / LANDED / IN 8H 55M), then two paragraphs where the second is the emotional one — <i>'saves you from ever hearing \"Send me your flight info!\" again'</i>. The sheet sells the payoff. <b>The reading analogue is a shelf</b>, and the status this app actually reports is what someone is reading and how much they have finished. 48h and a use cap are Flighty's numbers, stated on their sheet. <b>One deliberate divergence:</b> the code stays, demoted below the button — they have no typed fallback and we do, so a sender may need to read it aloud. <b>Second pass on both the mark and the copy.</b> The mark drew two blank rectangles per friend, which against Flighty's rendered globe is the reading equivalent of a grey box; each friend is now a real shelf of covers on a plank, drawn with the same <code>.bk</code> the library uses, sized at <code>kGeneratedCoverMinWidth</code> so the covers carry titles. The copy was two thin sentences: theirs names three concrete capabilities and then spends a paragraph on one specific annoyance it removes, so this now does the same — the visit, the finished shelves, praise, then the screenshot habit it replaces.",
+              {
+                bar: { actions: ["✕"] },
+                tabs: false,
+                body: INVITE_BODY,
+              },
+            ],
+            [
+              "invite-consent",
+              "Invite &middot; the consent screen",
+              "<b>The screen this redraw exists for, and where the one deliberate risk is spent.</b> Full-screen, because accepting grants someone access to your library and that cannot be explained on a 12pt pill in an app bar. <b>There is no Decline button</b> — the <code>✕</code> is the refusal, which is Flighty's exact structure. But not Flighty's <i>image</i>: they draw two portraits joined by a flight path because a flight is what they share. Libstack's subject is a <b>stack</b> — it is the name, and <code>assets/branding/app_icon.svg</code> is fanned covers — so what meets here is two libraries, one in <code>surfaceVariant</code> and one washed in brand green, interleaving at the seam. The headline is the app's only serif token (<code>AppTextStyles.title</code>, GowunBatang), which is the one place its voice shows.",
+              {
+                bar: { actions: ["✕"] },
+                tabs: false,
+                body: CONSENT_BODY,
+              },
+            ],
+            [
+              "invite-done",
+              "Invite &middot; now friends",
+              "<b>A screen I had missed entirely until looking at Flighty's flow properly.</b> They confirm the connection on its own screen — the two portraits with a green check dropped between them, 'You're Now Sharing Flights' — and then use the moment for something useful: an outlined <i>Customize Alerts for This Friend</i> beside <b>Done</b>. Both this screen and the step that redraws it now share one body, as do the consent screen and its three steps — including the pending one, which drew the mark and a button and no words at all, leaving the single moment where the user is actually waiting as the emptiest frame in the flow. That is the best possible introduction to per-friend settings, because it arrives exactly when you have just thought about this specific person. It also settles the open question on <code>manage-friend</code>: the notification toggles have a reason to exist if this is where they are first offered.",
+              {
+                bar: false,
+                tabs: false,
+                body: DONE_BODY,
+              },
+            ],
+            [
+              "invite-code",
+              "Invite &middot; the code floor",
+              "<b>The tier that makes the loop reliable, and the one no vendor sells.</b> Pre-filled from the clipboard when readable, typed when not. 8 characters from an alphabet without <code>O/0/I/1</code>. This is what works when the iOS paste prompt is declined, when Kakao's in-app webview swallows the Universal Link, and when someone reads the code aloud. <b>Continue with the field empty is the skip</b> — that is what 'optional' means here, and it is why there is no second action to draw. A Skip button beside Continue would only make it ambiguous which one declines. <b>No longer pinned to the floor:</b> it was, under 380px of white, and unlike the three sheets before it this screen has no mark to fill that space — so the pin framed the emptiness rather than using it.",
+              {
+                bar: false,
+                tabs: false,
+                body: CODE_BODY,
+              },
+            ],
+            [
+              "invite-dead",
+              "Invite &middot; link no longer valid",
+              "Expired, revoked and exhausted are told apart, because the recovery differs: two mean <i>ask for a new link</i> and one means <i>you already used this</i>. <b>And with search gone there is no fallback action to offer</b> — the old draft said 'add by handle instead', which no longer exists. All this screen can honestly do is explain and get out of the way, so it now does that from the top instead of pinning the way out to the floor. <b>Nothing here earns an illustration:</b> an error screen that draws a picture of itself is asking to be admired for failing.",
+              {
+                bar: { actions: ["✕"] },
+                tabs: false,
+                body: [
+                  { t: "hero", v: "This link has expired" },
+                  {
+                    t: "hint",
+                    v: "Invite links last 48 hours. Ask 지수 to send you a new one.",
+                  },
+                  {
+                    t: "plrow",
+                    full: true,
+                    items: [
+                      {
+                        l: "Continue to my library",
+                        k: "vary",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          ],
+        ],
+        [
+          "A friend's library",
+          [
+            [
+              "their-library",
+              "Friend &middot; visiting",
+              "The only relationship state that can exist on this page now: you are friends, or you could not be here. Two of the four states I drew last round (<code>outgoing</code>, <code>incoming</code>) are gone with the queue, and <code>none</code> is unreachable. And the friend-navigation redesign settled what this bar is: <code>✕</code>, the friend's library as the title, and Poke as a <code>brandFill</code> pill (<code>home_page.dart:834</code>, contract at <code>:820</code>, pill at <code>:1094-1112</code>, gear at <code>:1067-1093</code>). <b>The gear is new, and it is where managing a friend now starts.</b> An earlier draft said there was nowhere on this bar for a relationship affordance and put the action on a long press instead; that was wrong twice over — the bar's trailing group takes two items perfectly well, and a long press that nothing advertises is not an affordance at all. <b>Corrected: the tab bar stays up.</b> This was drawn without one, on the strength of a note claiming <code>shellBarVisibleProvider</code> goes false while a friend is selected — <code>shell_chrome_provider.dart:56-62</code> says that behaviour existed and was deliberately removed, because no tab changes meaning inside a visit, and selecting Library or Card is how you leave. So Friends stays lit and the bar is the way out. The hardcoded <code>width: 104</code> that used to sit in <code>user_library_page.dart</code> stopped being a problem to solve and became a file to delete: the page is gone, and a friend's library is a visit inside the shell.",
+              {
+                bar: { visit: true, title: "지수's Library" },
+                tab: "Friends",
+                body: THEIR_LIB,
+              },
+            ],
+          ],
+        ],
+        [
+          "Managing a friend",
+          [
+            [
+              "manage-friend",
+              "Manage friend",
+              "Split out from the feed rows after seeing Flighty's <i>Manage Friend</i> screen. A feed row is for reading, not for administering a relationship. <b>Reached by the gear in the visit app bar</b>, beside Poke. It was drawn on a long press of the Friends row — a real gesture (<code>friends_sheet.dart:408</code>, inherited from the deleted <code>FriendRail</code>) but an invisible one, and reusing an existing gesture is not the same as advertising an action. <b>Rejected: the gear in her sheet header.</b> <code>home_page.dart:209-214</code> already declined a back control there because it &quot;costs no pixels in a header that has a title, a count and a year control in it&quot;, and said the point is that it &quot;leaves her read view identical to your own&quot;; <code>finished_books_sheet.dart:132-137</code> measures the slack at 5.8px and <code>test/library_clearance_test.dart</code> guards it at 2x. The app bar is the friend-level chrome — <code>✕</code>, her name, Poke all act on the person — so the gear joins a group it belongs to. This screen replaces that dialog, and with it <b>two</b> confirms with different button labels — No/Unfollow on the deleted <code>user_library_page.dart</code> and Cancel/Confirm in the deleted <code>friend_info_dialog.dart</code>; both files are gone, and <code>manage_friend_page.dart:198-207</code> is the one confirm left. <b>Note the ground moved under this while it was being drawn:</b> the friend-navigation redesign landed (2026-08-22), deleting <code>friend_rail.dart</code> and migrating its dialog to <code>dialogs/friend_info_dialog.dart</code>, which still carries both Followers/Following counts. All line numbers here were re-checked against the working tree, not the last commit. <b>Deliberately omitted:</b> Flighty's per-friend sharing toggle — see <code>el-toggle</code>.",
+              {
+                bar: { back: true, title: "Manage friend" },
+                tabs: false,
+                body: MANAGE_BODY,
+              },
+            ],
+            [
+              "manage-remove",
+              "Manage friend &middot; remove confirm",
+              "Copy taken almost directly from Flighty, whose version is better than mine was: I had 'you will both lose access', they add <b>'They will not get an alert.'</b> Telling you that removal is silent is what stops someone hesitating over it. One <code>DELETE</code> on the canonical row severs both directions at once — the half-friendship the current schema cannot detect stops being expressible. <b>Redrawn as the alert the app actually uses.</b> This was a full-screen page with the destructive button on the floor, which was wrong twice over: both confirms it replaced were <code>AlertDialog.adaptive</code>, and so is the one that replaces them (<code>manage_friend_page.dart:195</code>), and a full screen for a two-line question left 350px of white framed between a header and a floor button — the worst dead zone on this page. The native alert also settles the button-label question for free: iOS puts Cancel first and the destructive action second, in red and unbolded, so the No/Unfollow versus Cancel/Confirm split disappears into the platform.",
+              {
+                bar: { back: true, title: "Manage friend" },
+                tabs: false,
+                body: MANAGE_BODY,
+                alert: {
+                  title: "Remove 지수?",
+                  msg: "Access to each other's libraries will be revoked for both of you. They will not get an alert.",
+                  actions: [{ l: "Cancel" }, { l: "Remove", k: "dgr" }],
+                },
+              },
+            ],
+          ],
+        ],
+      ];
+
+      const FLOWS = [
+        [
+          "Invites",
+          [
+            [
+              "invite-installed",
+              "Invite &middot; recipient already has the app",
+              "The common case once you have a base, and fully deterministic — <b>once it exists</b>. None of this is wired today: <code>app_links</code> is not a dependency, <code>Runner.entitlements</code> carries no <code>associated-domains</code>, and Android has only the <code>bookworm-friends://</code> custom scheme (<code>AndroidManifest.xml:42</code>), no verified App Link. So this strip draws the tier that needs the most new plumbing, not the least. <b>Nothing here depends on push</b> — which is why invite-only can ship before the FCM v1 migration, and a request queue could not.",
+              [
+                [
+                  "Invite sheet",
+                  "Sells the payoff, not the link: three friends' shelves, each carrying the status this app actually reports. <b>Same body as the <code>invite-sheet</code> screen</b> — this step used to be a copy of it with the copy left out.",
+                  {
+                    sm: true,
+                    bar: { actions: ["✕"] },
+                    tabs: false,
+                    body: INVITE_FLOW_BODY,
+                  },
+                ],
+                [
+                  "Tapped in KakaoTalk",
+                  "The link preview is the whole tier: an unbranded URL in a group chat does not get tapped, so the card has to carry the inviter's name and show a shelf. <b>There is no button on this screen</b> — the card is the tap, and drawing an 'Open in app' CTA on somebody else's chat was inventing a control Kakao does not give us. What we do control is the OG tags the landing page serves, which is why this frame exists at all.",
+                  {
+                    sm: true,
+                    bar: false,
+                    tabs: false,
+                    body: [
+                      {
+                        t: "chat",
+                        who: "독서 모임",
+                        e: "🦊",
+                        msgs: [
+                          "나 이거 쓰고 있는데 같이 볼래?",
+                          "libstack.app/i/K7M2QP4X",
+                        ],
+                        card: {
+                          t: "지수 invited you to Libstack",
+                          d: "See what each other is reading, and what you've finished.",
+                          h: "libstack.app",
+                        },
+                      },
+                    ],
+                  },
+                ],
+                [
+                  "Consent",
+                  "Full screen, one button, ✕ to refuse.",
+                  {
+                    sm: true,
+                    bar: { actions: ["✕"] },
+                    tabs: false,
+                    body: CONSENT_BODY,
+                  },
+                ],
+                [
+                  "Accepting",
+                  "Redemption writes a friendship, so the button holds a pending state rather than the screen flashing.",
+                  {
+                    sm: true,
+                    bar: { actions: ["✕"] },
+                    tabs: false,
+                    body: CONSENT_PENDING,
+                  },
+                ],
+                [
+                  "Now friends",
+                  "Confirmed on its own screen — and the one good moment to offer per-friend notifications.",
+                  {
+                    sm: true,
+                    bar: false,
+                    tabs: false,
+                    body: DONE_BODY,
+                  },
+                ],
+                [
+                  "Their shelves",
+                  "Done lands on their library — ✕ / title / Poke, no tab bar.",
+                  {
+                    sm: true,
+                    bar: {
+                      visit: true,
+                      title: "지수's Library",
+                    },
+                    tab: "Friends",
+                    body: [
+                      {
+                        t: "shelf",
+                        label: "소설",
+                        n: 5,
+                        seed: 0,
+                      },
+                      {
+                        t: "shelf",
+                        label: "에세이",
+                        n: 4,
+                        seed: 5,
+                      },
+                      {
+                        t: "shelf",
+                        label: "2026",
+                        n: 5,
+                        seed: 2,
+                      },
+                    ],
+                  },
+                ],
+              ],
+            ],
+            [
+              "invite-deferred",
+              "Invite &middot; recipient has to install",
+              "The growth case, and the only genuinely hard tier. Android is deterministic through the Play Install Referrer; iOS uses clipboard-on-tap; the typed code is the floor under both. <b>Probabilistic IP matching is deliberately omitted</b> — it is the fastest-degrading part of the vendor offering, and Korean carrier NAT makes it worse than average.",
+              [
+                [
+                  "Landing page",
+                  "'Get the app' copies the token inside the click handler, then redirects — the copy has to happen in the same user gesture or Safari drops it. <b>Drawn, not designed:</b> the page itself is being built separately, so this frame commits only to what the invite tier depends on — the inviter named, the payoff shown, and a way past the copy for anyone who declines the paste prompt.",
+                  {
+                    sm: true,
+                    bar: false,
+                    tabs: false,
+                    body: [
+                      {
+                        t: "sduo",
+                        a: { e: "🦊", n: "지수" },
+                        b: { e: "🔥", n: "YOU" },
+                      },
+                      {
+                        t: "hero",
+                        v: "지수 invited you",
+                      },
+                      {
+                        t: "text",
+                        v: "Libstack is a shelf you can show someone. See what each other is reading, and what you've finished.",
+                      },
+                      { t: "push" },
+                      {
+                        t: "fine",
+                        v: "Your code is <b>K7M2QP4X</b> — we'll fill it in for you.",
+                      },
+                      {
+                        t: "plrow",
+                        full: true,
+                        items: [
+                          {
+                            l: "Get the app",
+                            k: "brand",
+                          },
+                        ],
+                      },
+                      {
+                        t: "link",
+                        v: "Continue without copying",
+                      },
+                    ],
+                  },
+                ],
+                [
+                  "Store",
+                  "A campaign token on the redirect gives free install counts by source — <code>pt</code>/<code>ct</code> on the App Store, <code>referrer</code> on Play, which is the same parameter Android later reads back to recover the token. The screenshot strip is drawn because it is the only place the listing shows the shelf, and the shelf is the product.",
+                  {
+                    sm: true,
+                    bar: false,
+                    tabs: false,
+                    body: [
+                      {
+                        t: "store",
+                        e: "📚",
+                        name: "Libstack",
+                        sub: "A shelf you can show someone",
+                        cta: "GET",
+                      },
+                    ],
+                  },
+                ],
+                [
+                  "First launch",
+                  "Clipboard on iOS, Install Referrer on Android, typed if both fail. Same body as the <code>invite-code</code> screen, not a copy of it.",
+                  {
+                    sm: true,
+                    bar: false,
+                    tabs: false,
+                    body: CODE_BODY,
+                  },
+                ],
+                [
+                  "Consent, then a populated app",
+                  "A first screen with a real library in it, instead of the empty state.",
+                  {
+                    sm: true,
+                    bar: {
+                      visit: true,
+                      title: "지수's Library",
+                    },
+                    tab: "Friends",
+                    body: [
+                      {
+                        t: "shelf",
+                        label: "소설",
+                        n: 5,
+                        seed: 0,
+                      },
+                      {
+                        t: "shelf",
+                        label: "에세이",
+                        n: 4,
+                        seed: 5,
+                      },
+                      {
+                        t: "shelf",
+                        label: "2026",
+                        n: 5,
+                        seed: 2,
+                      },
+                    ],
+                  },
+                ],
+              ],
+            ],
+            [
+              "invite-refused",
+              "Invite &middot; dismissed rather than accepted",
+              "<b>Worth drawing because it is the state with no button.</b> Dismissal is the decline, so nothing is written, no row is created, and — importantly — <code>used_count</code> is <i>not</i> incremented, so the inviter's link is not silently consumed by someone who changed their mind. The inviter is never told, which is the same silence Flighty chose for removal.",
+              [
+                [
+                  "Consent",
+                  "The only affirmative is the button; ✕ is the other answer.",
+                  {
+                    sm: true,
+                    bar: { actions: ["✕"] },
+                    tabs: false,
+                    body: CONSENT_BODY,
+                  },
+                ],
+                [
+                  "Dismissed",
+                  "Lands in their own library. No friendship, no record, link still valid.",
+                  {
+                    sm: true,
+                    bar: { title: "My library" },
+                    tab: "Library",
+                    body: MY_LIB,
+                  },
+                ],
+              ],
+            ],
+          ],
+        ],
+        [
+          "Leaving",
+          [
+            [
+              "remove-friend",
+              "Removing a friend",
+              "One path, from the visit's gear through Manage friend, replacing two dialogs with different labels that were reachable only by a long press nothing advertised. The eviction at the end is <code>home_page.dart:502-513</code>, which already clears a selected friend who has left the list — but under a mutual model it can now fire because <b>they</b> removed <b>you</b>, a case that could never happen before.",
+              [
+                [
+                  "Tap the gear",
+                  "In the visit bar, beside Poke. Was a long press on the Friends row, which nothing advertised.",
+                  {
+                    sm: true,
+                    bar: {
+                      visit: true,
+                      title: "지수's Library",
+                    },
+                    tab: "Friends",
+                    body: [
+                      {
+                        t: "shelf",
+                        label: "소설",
+                        n: 5,
+                        seed: 0,
+                      },
+                      {
+                        t: "shelf",
+                        label: "에세이",
+                        n: 4,
+                        seed: 5,
+                      },
+                      {
+                        t: "shelf",
+                        label: "2026",
+                        n: 5,
+                        seed: 2,
+                      },
+                    ],
+                  },
+                ],
+                [
+                  "Manage friend",
+                  "The gear opens it. Same body as the screen, so the two cannot drift.",
+                  {
+                    sm: true,
+                    bar: {
+                      back: true,
+                      title: "Manage friend",
+                    },
+                    tabs: false,
+                    body: MANAGE_BODY,
+                  },
+                ],
+                [
+                  "Confirm",
+                  "The app's own <code>AlertDialog.adaptive</code>, over the screen it acts on. Cancel first, the destructive action second and red, as iOS orders them.",
+                  {
+                    sm: true,
+                    bar: {
+                      back: true,
+                      title: "Manage friend",
+                    },
+                    tabs: false,
+                    body: MANAGE_BODY,
+                    alert: {
+                      title: "Remove 지수?",
+                      msg: "Access to each other's libraries will be revoked for both of you. They will not get an alert.",
+                      actions: [{ l: "Cancel" }, { l: "Remove", k: "dgr" }],
+                    },
+                  },
+                ],
+                [
+                  "Back to your own",
+                  "Same eviction runs if they removed you mid-visit.",
+                  {
+                    sm: true,
+                    bar: { title: "My library" },
+                    tab: "Library",
+                    body: MY_LIB,
+                  },
+                ],
+              ],
+            ],
+          ],
+        ],
+      ];
+
+      const ELEMENTS = [
+        [
+          "Consent",
+          [
+            [
+              "el-consent",
+              "The consent moment",
+              "<b>Why full-screen and not a pill.</b> Accepting grants access to your library, so the screen has to name both people, state the consequence, and pre-answer 'can I undo this'. None of that fits in an app-bar button — which is what my first draft tried. <b>No Decline button:</b> dismissal is the refusal, so the screen has exactly one thing to press. The mark is two libraries interleaving rather than two portraits: it is the brand's own subject, and it says what is actually being merged.",
+              `<div class="fr" style="width:190px;height:auto;border:0;background:#fff;padding:8px 9px;border-radius:8px">${block(
+                {
+                  t: "sduo",
+                  a: { e: "🦊", n: "지수" },
+                  b: { e: "🔥", n: "YOU" },
+                },
+              )}${block({ t: "hero", v: "지수 wants to share books with you" })}${block({ t: "plrow", full: true, items: [{ l: "Become friends", k: "brand" }] })}${block({ t: "fine", v: "You're in control. You can remove this friend at any time." })}</div>`,
+            ],
+            [
+              "el-destructive",
+              "Destructive confirm",
+              "<b>Two objects, not one — and that split is the point.</b> The <i>row</i> lives on <code>manage-friend</code>: light red fill, red text, full width, never side by side with a green button. The <i>copy</i> moved into the alert, because the app confirms destructive things with <code>AlertDialog.adaptive</code> (<code>manage_friend_page.dart:195</code>) and an alert is where a consequence is stated. Drawing both together, as this demo does, is what exposed the earlier mistake: a fill button and a sentence explaining it were being drawn on the same full screen, which is a confirm pretending to be a page. What survives unchanged is the sentence. It states <i>both</i> facts — access is revoked mutually, and the other person is not told — and the second half is Flighty's, which is the half that stops people hesitating.",
+              `<div class="fr" style="width:190px;height:auto;border:0;background:#fff;padding:8px 9px;border-radius:8px">${block({ t: "text", v: "Access will be revoked for both of you. They will not get an alert." })}${block({ t: "plrow", full: true, items: [{ l: "Remove friend", k: "dgrfill" }] })}</div>`,
+            ],
+          ],
+        ],
+        [
+          "Chrome",
+          [
+            [
+              "el-friendstat",
+              "One stat, not two",
+              "Under a mutual model Followers and Following are the same number, so the header states it once. Deleting the pair also removes two <code>.count()</code> round trips — the dialog that fired them on every long press is deleted, and <code>settings_page.dart:577</code> now states the one number.",
+              `<div class="fr" style="width:190px;height:auto;border:0;background:#fff;padding:8px 9px;border-radius:8px">${block({ t: "hdr", name: "독서하는 유니콘", handle: "unicorn_reads", stats: [{ l: "Friends", v: "12" }] })}</div>`,
+            ],
+            [
+              "el-prow",
+              "Person row",
+              "One primitive for the friends list and the roster. Carries the <code>@handle</code> even though search is gone, because two friends can share a display name — 40 of 136 profiles are auto-generated 독서하는 + hex, so collisions are the norm rather than the exception.",
+              `<div class="fr" style="width:190px;height:auto;border:0;background:#fff;padding:6px 9px;border-radius:8px">${block(
+                {
+                  t: "people",
+                  items: [
+                    {
+                      n: "지수",
+                      h: "jisoo_reads",
+                      e: "🦊",
+                      acts: [{ l: "24", k: "ghost" }],
+                    },
+                    {
+                      n: "민호",
+                      h: "minho",
+                      e: "🐣",
+                      acts: [{ l: "9", k: "ghost" }],
+                    },
+                  ],
+                },
+              )}</div>`,
+            ],
+          ],
+        ],
+        [
+          "Invites",
+          [
+            [
+              "el-code",
+              "Invite code field",
+              "8 characters, alphabet without <code>O/0/I/1</code>. Pre-filled from the clipboard when readable. The tier that makes the loop reliable, and the one no link vendor sells.",
+              `<div class="fr" style="width:190px;height:auto;border:0;background:#fff;padding:8px 9px;border-radius:8px">${block({ t: "sect", v: "Have an invite code?" })}${block({ t: "fld", v: "<b>K7M2QP4X</b>" })}</div>`,
+            ],
+            [
+              "el-toggle",
+              "Per-friend sharing toggle &mdash; not built",
+              "<b>Recorded as a decision, not a component.</b> Flighty's Manage Friend has a 'Share My Flights' switch that can be off <i>while you are still friends</i>, so friendship and visibility are separable per direction. A shipped product in this shape found that necessary — but flights are near-real-time location and a finished-books list is not, and it would re-introduce the exact per-direction asymmetry this whole design removes. Would need a flag per direction on the friendship row. Revisit only if people ask.",
+              `<div class="fr" style="width:190px;height:auto;border:0;background:#fff;padding:6px 9px;border-radius:8px;opacity:.45">${block({ t: "tog", v: "Share my library", on: true })}${block({ t: "tog", v: "Share my reactions" })}</div>`,
+            ],
+          ],
+        ],
+      ];
+
+      /* Mark an id as an unresolved decision; renders inline as a red callout. */
+      const OPEN = {
+        "header-next":
+          "<b>Open, and the biggest one left:</b> does public-by-default survive? Today <code>is_profile_visible()</code> grants access on <code>is_private = false</code> <i>before</i> checking any relationship — and with <code>auth.uid()</code> null that means an anonymous caller can read every non-private user's whole library. If the new rule is friends-only, <code>is_private</code> and the Allow-profile-search row both become vestigial and nobody can browse a stranger's shelves at all. Compare the <code>public-profiles</code> version.",
+        "invite-consent":
+          "Open: is the inviter told when someone redeems? It closes the loop and is the one notification this design would actually need — which also means it is the one thing still blocked on the FCM v1 migration.",
+        "manage-friend":
+          "<b>Narrowed, not closed.</b> The toggles were speculative until <code>invite-done</code> gave them a reason: Flighty offers per-friend alerts at the moment the friendship lands, which is the one time you are thinking about that specific person. Still open is whether they ship in Phase 1 at all — there is no per-friend notification preference anywhere in the app today, and the only push that exists is <code>poke</code>, which is itself unauthenticated. If they slip, this screen is identity plus Remove and <code>invite-done</code> loses its secondary button.",
+      };
+
+      /* ==================================================================
+      SECTION 4: VERSIONS — named variants, git-branch style.
+
+        [id, label, note, parentId, patch]
+
+      The first entry is the root and must have parentId null; its data is
+      SECTION 3 above. Every other version stores ONLY a patch over its
+      parent, so unchanged screens stay defined once. That is what keeps
+      versions from drifting, and it lets the page compute what changed.
+
+      patch = {
+        screens:  { id: {spec, name?, note?, group?} | null },
+        flows:    { id: {steps, name?, note?, group?} | null },
+        elements: { id: {demo, name?, note?, group?} | null },
+        open:     { id: 'callout text' | null }
+      }
+
+      null removes. An id not present in the parent is an addition (give it
+      a `group`, or it lands in "Added in <label>").
+
+      To retire versioning entirely, leave just the root entry — the
+      selector hides itself when there is only one version.
+      ================================================================== */
+      const VERSIONS = [
+        [
+          "friends-only",
+          "friends-only",
+          "Recommended. Visibility is gated on friendship, so nobody can browse a stranger's shelves. `is_private` and the Allow-profile-search row retire, because with no search there is nothing left for them to gate.",
+          null,
+          {},
+        ],
+
+        [
+          "public-profiles",
+          "public-profiles",
+          "Alternative: public-by-default survives, as it works today. Non-private libraries stay readable — but with handle search gone, nothing inside the app links to one, so the reachable surface is web and deep links only.",
+          "friends-only",
+          {
+            screens: {
+              "header-next": {
+                note: "Allow profile search survives, but it no longer describes what it does: there is no search to allow. It would have to be renamed to something like <i>Let anyone view my library</i>, because that is the switch it actually is once search is gone.",
+                spec: {
+                  bar: { back: true, title: "" },
+                  tab: "Library",
+                  dim: true,
+                  body: [
+                    {
+                      t: "hdr",
+                      name: "독서하는 유니콘",
+                      handle: "unicorn_reads",
+                      stats: [{ l: "Friends", v: "12" }],
+                    },
+                    {
+                      t: "plrow",
+                      full: true,
+                      items: [
+                        {
+                          l: "Edit profile",
+                          k: "vary",
+                        },
+                      ],
+                    },
+                    { t: "sect", v: "Account" },
+                    {
+                      t: "rows",
+                      items: [
+                        {
+                          t: "Email",
+                          v: "aschung1005@…",
+                        },
+                        {
+                          t: "Let anyone view my library",
+                          v: "On",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+              "stranger-library": {
+                group: "A friend's library",
+                name: "Stranger &middot; public library",
+                note: "Only exists in this version. <code>UserLibraryPage</code> exists for the case a visit cannot serve — a person who is not a friend — and with search deleted, <b>this version is the only thing keeping that page alive.</b> Note there is no action available: you cannot add them, so the bar carries nothing. A page you can reach but do nothing on is a strong argument for the friends-only version.",
+                spec: {
+                  bar: { back: true, title: "하나" },
+                  tabs: false,
+                  body: THEIR_LIB,
+                },
+              },
+            },
+            open: {
+              "stranger-library":
+                "Open: if this page survives, <b>how is it reached?</b> Search is gone. The remaining candidates are a reaction from a non-friend on one of your books, and a shared library-card link — both narrow. If neither is worth keeping, <code>UserLibraryPage</code> can be deleted outright, which is the single largest simplification available in this phase.",
+            },
+          },
+        ],
+      ];
+
+      /* ==================================================================
+      SECTION 5: ENGINE — behaviour is load-bearing.
+      See reference/pitfalls.md in this skill before changing it.
+      ================================================================== */
+      function stripTags(s) {
+        return String(s)
+          .replace(/<[^>]*>/g, "")
+          .replace(/&[a-z]+;/g, " ");
+      }
+      /* Every query term must appear somewhere (order-independent AND), so
+      "cover book" finds "Book cover". Haystack must be pre-lowercased. */
+      function matchWords(haystack, query) {
+        return query
+          .trim()
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean)
+          .every((t) => haystack.includes(t));
+      }
+      function escapeReg(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+      function highlightText(text, query) {
+        const terms = query.trim().split(/\s+/).filter(Boolean).map(escapeReg);
+        if (!terms.length) return text;
+        return text.replace(
+          new RegExp(`(${terms.join("|")})`, "gi"),
+          '<mark class="hl">$1</mark>',
+        );
+      }
+      /** Every string *value* inside a screen spec.
+       *
+       * Added because the search index was names, groups, notes and step
+       * captions only — so copy the reader can plainly see on a drawn
+       * frame ("They will not get an alert") matched nothing. That is the
+       * exact pitfall the shell's own reference documents.
+       *
+       * **Values, not keys.** Indexing keys would make `t`, `v`, `l` and
+       * `k` match every flow. Note that a match found only in spec text
+       * highlights nothing visible, since `highlightText` runs over the
+       * name and caption — a hit with no highlight is still better than a
+       * reader concluding the page is broken.
+       */
+      function specText(v) {
+        if (typeof v === "string") return v;
+        if (Array.isArray(v)) return v.map(specText).join(" ");
+        if (v && typeof v === "object")
+          return Object.values(v).map(specText).join(" ");
+        return "";
+      }
+      function flowSearchText(g, nm, ds, steps) {
+        return stripTags(
+          [
+            nm,
+            g,
+            ds,
+            steps
+              .map(([sn, sc, sp]) => `${sn} ${sc} ${specText(sp)}`)
+              .join(" "),
+          ].join(" "),
+        )
+          .toLowerCase()
+          .replace(/["&<>]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      /* ---- version resolution ---------------------------------------- */
+      const VMAP = new Map(VERSIONS.map((v) => [v[0], v]));
+      const VROOT = VERSIONS[0][0];
+
+      function chainOf(vid) {
+        const out = [];
+        let cur = vid;
+        const seen = new Set();
+        while (cur && VMAP.has(cur) && !seen.has(cur)) {
+          seen.add(cur);
+          out.unshift(cur);
+          cur = VMAP.get(cur)[3];
+        }
+        return out;
+      }
+      /* payload key per view: what a patch entry carries */
+      const PAYLOAD = {
+        screens: "spec",
+        flows: "steps",
+        elements: "demo",
+      };
+
+      /** Resolve one view for a version into [group, [[id,nm,ds,payload],...]]. */
+      function resolveView(vid, kind) {
+        const base =
+          kind === "screens" ? SCREENS : kind === "flows" ? FLOWS : ELEMENTS;
+        // flat map of id -> {group,nm,ds,payload}, preserving group order
+        const groups = base.map(([g]) => g);
+        const items = new Map();
+        base.forEach(([g, list]) =>
+          list.forEach(([id, nm, ds, payload]) =>
+            items.set(id, { group: g, nm, ds, payload }),
+          ),
+        );
+
+        for (const step of chainOf(vid).slice(1)) {
+          const patch = (VMAP.get(step)[4] || {})[kind] || {};
+          for (const [id, val] of Object.entries(patch)) {
+            if (val === null) {
+              items.delete(id);
+              continue;
+            }
+            const prev = items.get(id);
+            const group =
+              val.group || prev?.group || `Added in ${VMAP.get(step)[1]}`;
+            if (!groups.includes(group)) groups.push(group);
+            items.set(id, {
+              group,
+              nm: val.name ?? prev?.nm ?? id,
+              ds: val.note ?? prev?.ds ?? "",
+              payload: val[PAYLOAD[kind]] ?? prev?.payload,
+            });
+          }
+        }
+        return groups
+          .map((g) => [
+            g,
+            [...items.entries()]
+              .filter(([, v]) => v.group === g)
+              .map(([id, v]) => [id, v.nm, v.ds, v.payload]),
+          ])
+          .filter(([, l]) => l.length);
+      }
+      function resolveOpen(vid) {
+        let out = { ...OPEN };
+        for (const step of chainOf(vid).slice(1)) {
+          const patch = (VMAP.get(step)[4] || {}).open || {};
+          for (const [id, val] of Object.entries(patch))
+            val === null ? delete out[id] : (out[id] = val);
+        }
+        return out;
+      }
+      /** id -> 'changed' | 'onlyHere' | 'onlyThere', reading a against b. */
+      function diffMap(a, b, kind) {
+        const A = new Map(),
+          B = new Map();
+        resolveView(a, kind).forEach(([, l]) =>
+          l.forEach((it) => A.set(it[0], it)),
+        );
+        resolveView(b, kind).forEach(([, l]) =>
+          l.forEach((it) => B.set(it[0], it)),
+        );
+        const out = new Map();
+        for (const [id, it] of A) {
+          if (!B.has(id)) out.set(id, "onlyHere");
+          else if (JSON.stringify(it[3]) !== JSON.stringify(B.get(id)[3]))
+            out.set(id, "changed");
+        }
+        for (const id of B.keys()) if (!A.has(id)) out.set(id, "onlyThere");
+        return out;
+      }
+
+      let activeV = VROOT,
+        compareV = null,
+        onlyDiff = false;
+      let view = "screens",
+        cbOpen = false,
+        kbIndex = -1,
+        kbId = null,
+        vbOpen = false,
+        vkbIndex = -1,
+        vkbId = null;
+      const sel = { screens: new Set(), elements: new Set() };
+
+      /**
+       * One list per group of entries to draw, for the active version.
+       *
+       * In compare mode this also emits "ghost" entries for items the
+       * compared version has and the active one doesn't. Without them a
+       * removal is invisible: render only walks the active version, so a
+       * deleted screen just silently isn't there.
+       */
+      function viewModel(kind) {
+        const A = resolveView(activeV, kind);
+        const cmp = compareV && compareV !== activeV;
+        const d = cmp ? diffMap(activeV, compareV, kind) : new Map();
+        const B = cmp ? resolveView(compareV, kind) : [];
+        const bItem = new Map(),
+          bGroup = new Map();
+        B.forEach(([g, l]) =>
+          l.forEach((it) => {
+            bItem.set(it[0], it);
+            bGroup.set(it[0], g);
+          }),
+        );
+        const groups = A.map(([g]) => g);
+        if (cmp) for (const [g] of B) if (!groups.includes(g)) groups.push(g);
+
+        return groups
+          .map((g) => {
+            const own = (A.find(([n]) => n === g)?.[1] || []).map(
+              ([id, nm, ds, payload]) => ({
+                id,
+                nm,
+                ds,
+                payload,
+                diff: d.get(id) || null,
+                ghost: false,
+                other: bItem.get(id)?.[3] ?? null,
+              }),
+            );
+            const ghosts = cmp
+              ? [...d.entries()]
+                  .filter(
+                    ([id, k]) => k === "onlyThere" && bGroup.get(id) === g,
+                  )
+                  .map(([id]) => {
+                    const it = bItem.get(id);
+                    return {
+                      id,
+                      nm: it[1],
+                      ds: it[2],
+                      payload: it[3],
+                      diff: "onlyThere",
+                      ghost: true,
+                      other: null,
+                    };
+                  })
+              : [];
+            return [g, own.concat(ghosts)];
+          })
+          .filter(([, l]) => l.length);
+      }
+
+      /* ---- render (re-runnable; version changes call this) ------------ */
+      let CB = {},
+        nScreens = 0,
+        nFlows = 0,
+        nEls = 0;
+
+      function render() {
+        const SM = viewModel("screens");
+        const EM = viewModel("elements");
+        const FM = viewModel("flows");
+        const openMap = resolveOpen(activeV);
+        const cmp = compareV && compareV !== activeV;
+        const bLabel = cmp ? VMAP.get(compareV)[1] : "";
+        const aLabel = VMAP.get(activeV)[1];
+
+        // Labels read from the point of view of the version on screen.
+        const TAGTEXT = {
+          changed: "changed",
+          onlyHere: "only here",
+          onlyThere: `only in ${bLabel}`,
+        };
+        const tagFor = (d) =>
+          d ? `<span class="tag ${d}">${TAGTEXT[d]}</span>` : "";
+        const keep = (e) => !(onlyDiff && cmp && !e.diff);
+
+        const count = (m) =>
+          m.reduce((a, [, l]) => a + l.filter(keep).length, 0);
+        nScreens = count(SM);
+        nEls = count(EM);
+        nFlows = count(FM);
+
+        document.getElementById("screens").innerHTML = SM.map(
+          ([g, entries]) => {
+            const cells = entries
+              .filter(keep)
+              .map((e) => {
+                let shot;
+                if (cmp && e.diff === "changed")
+                  shot = `<div class="pair"><div><div class="vl">${aLabel}</div><div class="shot">${frame({ ...e.payload, sm: true })}</div></div><div><div class="vl b">${bLabel}</div><div class="shot">${frame({ ...(e.other || e.payload), sm: true })}</div></div></div>`;
+                else shot = `<div class="shot">${frame(e.payload)}</div>`;
+                return `<div class="item${e.ghost ? " ghost" : ""}" data-id="${e.id}">${shot}<div class="cap"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`;
+              })
+              .join("");
+            return cells
+              ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="grid${cmp ? " cmp" : ""}">${cells}</div></div>`
+              : "";
+          },
+        ).join("");
+
+        document.getElementById("elements").innerHTML = EM.map(
+          ([g, entries]) => {
+            const cells = entries
+              .filter(keep)
+              .map(
+                (e) =>
+                  `<div class="el${e.ghost ? " ghost" : ""}" data-id="${e.id}"><div class="demo">${e.payload}</div><div class="body"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`,
+              )
+              .join("");
+            return cells
+              ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="egrid">${cells}</div></div>`
+              : "";
+          },
+        ).join("");
+
+        const stepRow = (steps) =>
+          `<div class="steps">${steps
+            .map(
+              ([sn, sc, spec], i) =>
+                (i ? '<div class="arrow">&rarr;</div>' : "") +
+                `<div class="step"><div class="sn">${String(i + 1).padStart(2, "0")} &middot; ${sn}</div><div class="shot">${frame(spec)}</div><div class="sc">${sc}</div></div>`,
+            )
+            .join("")}</div>`;
+
+        document.getElementById("flows").innerHTML = FM.map(([g, entries]) =>
+          entries
+            .filter(keep)
+            .map((e) => {
+              const rows =
+                cmp && e.diff === "changed"
+                  ? `<div class="vrow">${aLabel}</div>${stepRow(e.payload)}<div class="vrow b">${bLabel}</div>${stepRow(e.other || e.payload)}`
+                  : stepRow(e.payload);
+              return `<div class="flow${e.ghost ? " ghost" : ""}" id="f-${e.id}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}"><p class="fh">${e.nm}${tagFor(e.diff)}</p><p class="fd">${e.ds}</p>${
+                openMap[e.id] ? `<p class="pend">${openMap[e.id]}</p>` : ""
+              }${rows}</div>`;
+            })
+            .join(""),
+        ).join("");
+
+        document.getElementById("sidenav").innerHTML = FM.map(
+          ([g, entries]) => {
+            const links = entries
+              .filter(keep)
+              .map(
+                (e) =>
+                  `<a href="#f-${e.id}" data-id="${e.id}" data-nm="${stripTags(e.nm)}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}">${stripTags(e.nm)}</a>`,
+              )
+              .join("");
+            return links ? `<div class="sh">${g}</div>${links}` : "";
+          },
+        ).join("");
+
+        const cbGroups = (m) =>
+          m
+            .map(([g, entries]) => [
+              g,
+              entries.filter(keep).map((e) => [e.id, e.nm, e.ds]),
+            ])
+            .filter(([, l]) => l.length);
+
+        CB = {
+          screens: {
+            label: "Screens",
+            placeholder: "Search screens…",
+            container: "screens",
+            itemSel: ".item",
+            none: "screens-none",
+            groups: cbGroups(SM),
+          },
+          elements: {
+            label: "UI Elements",
+            placeholder: "Search elements…",
+            container: "elements",
+            itemSel: ".el",
+            none: "elements-none",
+            groups: cbGroups(EM),
+          },
+        };
+        // drop filter selections for ids this version doesn't have
+        for (const k of ["screens", "elements"]) {
+          const live = new Set(
+            CB[k].groups.flatMap(([, l]) => l.map(([id]) => id)),
+          );
+          [...sel[k]].forEach((id) => {
+            if (!live.has(id)) sel[k].delete(id);
+          });
+        }
+
+        const total = cmp
+          ? ["screens", "elements", "flows"].reduce(
+              (a, k) => a + diffMap(activeV, compareV, k).size,
+              0,
+            )
+          : 0;
+        document.getElementById("vinfo-lbl").textContent = cmp
+          ? `${aLabel} ↔ ${bLabel}`
+          : aLabel;
+        document.getElementById("vinfo-note").innerHTML = cmp
+          ? `${VMAP.get(activeV)[2]}`
+          : VMAP.get(activeV)[2];
+        document.getElementById("vinfo-diffs").textContent = cmp
+          ? total
+            ? `${total} difference${total === 1 ? "" : "s"}`
+            : "identical"
+          : "";
+        document.getElementById("difftoggle").classList.toggle("gone", !cmp);
+        document.getElementById("vbtn-label").textContent = cmp
+          ? `${aLabel} ↔ ${bLabel}`
+          : aLabel;
+        document.getElementById("vcmp-clear").classList.toggle("gone", !cmp);
+        if (view !== "flows") applyFilter();
+        else updateCount(0);
+        if (view === "flows" && fsearch.value)
+          fsearch.dispatchEvent(new Event("input", { bubbles: true }));
+        spy();
+      }
+
+      /* ---- filter combobox ---- */
+      const cbox = document.getElementById("cbox"),
+        cbtn = document.getElementById("cbtn"),
+        cbtnLabel = document.getElementById("cbtn-label"),
+        cbtnBadge = document.getElementById("cbtn-badge"),
+        csearch = document.getElementById("csearch"),
+        clist = document.getElementById("clist"),
+        cfootN = document.getElementById("cfoot-n"),
+        cclear = document.getElementById("cclear");
+
+      function visibleOpts() {
+        const q = csearch.value.trim().toLowerCase();
+        if (!q) return CB[view].groups;
+        return CB[view].groups
+          .map(([g, items]) => [
+            g,
+            // A group's own name pulls in its whole contents (browse by category);
+            // otherwise an item needs every query word in its name or note.
+            matchWords(g.toLowerCase(), q)
+              ? items
+              : items.filter(([, nm, ds]) =>
+                  matchWords(stripTags(`${nm} ${ds || ""}`).toLowerCase(), q),
+                ),
+          ])
+          .filter(([, items]) => items.length);
+      }
+      function renderList() {
+        const groups = visibleOpts(),
+          q = csearch.value.trim();
+        if (!groups.length) {
+          kbIndex = -1;
+          kbId = null;
+          clist.innerHTML = '<div class="cempty">No matches.</div>';
+          return;
+        }
+        clist.innerHTML = groups
+          .map(
+            ([g, items]) =>
+              `<div class="cgrp" data-group="${g}">${g}</div>` +
+              items
+                .map(
+                  ([id, nm]) =>
+                    `<div class="copt${sel[view].has(id) ? " sel" : ""}" data-id="${id}"><span class="box">${
+                      sel[view].has(id) ? "&#10003;" : ""
+                    }</span><span class="lb">${highlightText(stripTags(nm), q)}</span></div>`,
+                )
+                .join(""),
+          )
+          .join("");
+        // Keep keyboard focus on the same option across a re-render, so toggling
+        // with Enter doesn't fling focus back to the top.
+        const opts = [...clist.querySelectorAll(".copt")];
+        let idx = kbId ? opts.findIndex((o) => o.dataset.id === kbId) : -1;
+        if (idx < 0) idx = 0;
+        if (opts.length) {
+          kbIndex = idx;
+          kbId = opts[idx].dataset.id;
+          opts[idx].classList.add("kb");
+        } else {
+          kbIndex = -1;
+          kbId = null;
+        }
+      }
+      function applyFilter() {
+        const cfg = CB[view],
+          s = sel[view],
+          root = document.getElementById(cfg.container);
+        let shown = 0;
+        root.querySelectorAll(cfg.itemSel).forEach((el) => {
+          const on = s.size === 0 || s.has(el.dataset.id);
+          el.classList.toggle("gone", !on);
+          if (on) shown++;
+        });
+        root
+          .querySelectorAll(".gsec")
+          .forEach((g) =>
+            g.classList.toggle(
+              "gone",
+              !g.querySelector(cfg.itemSel + ":not(.gone)"),
+            ),
+          );
+        document.getElementById(cfg.none).classList.toggle("gone", shown > 0);
+        const total = view === "screens" ? nScreens : nEls;
+        cbtnBadge.hidden = s.size === 0;
+        cbtnBadge.textContent = s.size;
+        cfootN.textContent =
+          s.size === 0
+            ? `Showing all ${total}`
+            : `Showing ${shown} of ${total}`;
+        updateCount(shown);
+      }
+      function updateCount(shown) {
+        const s = sel[view] ? sel[view].size : 0;
+        document.getElementById("cnt").textContent = [
+          `${view === "screens" && s ? shown + " of " : ""}${nScreens} screens`,
+          `${nFlows} flows`,
+          `${view === "elements" && s ? shown + " of " : ""}${nEls} elements`,
+        ].join(" · ");
+      }
+      function openCB(focus) {
+        if (view === "flows") return;
+        closeVB(); // only one dropdown at a time
+        cbOpen = true;
+        cbox.classList.add("open");
+        kbId = null;
+        renderList();
+        if (focus) csearch.focus();
+      }
+      function closeCB() {
+        cbOpen = false;
+        cbox.classList.remove("open");
+        csearch.blur();
+      }
+
+      cbtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        cbOpen ? closeCB() : openCB(true);
+      });
+      csearch.addEventListener("input", () => {
+        clist.scrollTop = 0;
+        renderList();
+      });
+      clist.addEventListener("click", (e) => {
+        const opt = e.target.closest(".copt");
+        if (opt) {
+          // stopPropagation is required: renderList() replaces clist.innerHTML,
+          // detaching this node before the click finishes bubbling, which would
+          // make the document listener below see a detached target and close.
+          e.stopPropagation();
+          const id = opt.dataset.id;
+          sel[view].has(id) ? sel[view].delete(id) : sel[view].add(id);
+          renderList();
+          applyFilter();
+          return;
+        }
+        const grp = e.target.closest(".cgrp");
+        if (grp) {
+          e.stopPropagation();
+          const ids = CB[view].groups
+            .find(([n]) => n === grp.dataset.group)[1]
+            .map(([id]) => id);
+          const allOn = ids.every((id) => sel[view].has(id));
+          ids.forEach((id) =>
+            allOn ? sel[view].delete(id) : sel[view].add(id),
+          );
+          renderList();
+          applyFilter();
+        }
+      });
+      cclear.addEventListener("click", (e) => {
+        e.stopPropagation();
+        sel[view].clear();
+        csearch.value = "";
+        renderList();
+        applyFilter();
+      });
+      document.addEventListener("click", (e) => {
+        if (cbOpen && !cbox.contains(e.target)) closeCB();
+        if (vbOpen && !vbox.contains(e.target)) closeVB();
+      });
+
+      /* ---- version combobox (single-select, plus compare) ---- */
+      const vbox = document.getElementById("vbox"),
+        vbtn = document.getElementById("vbtn"),
+        vsearch = document.getElementById("vsearch"),
+        vlist = document.getElementById("vlist"),
+        vfootN = document.getElementById("vfoot-n"),
+        vcmpClear = document.getElementById("vcmp-clear"),
+        diffToggle = document.getElementById("difftoggle");
+
+      function renderVList() {
+        const q = vsearch.value.trim(),
+          ql = q.toLowerCase();
+        const rows = VERSIONS.filter(
+          ([id, label, note]) =>
+            !ql ||
+            matchWords(stripTags(`${label} ${note} ${id}`).toLowerCase(), ql),
+        );
+        if (!rows.length) {
+          vkbIndex = -1;
+          vkbId = null;
+          vlist.innerHTML = '<div class="cempty">No matches.</div>';
+          return;
+        }
+        vlist.innerHTML =
+          `<div class="cgrp" style="cursor:default">Show version</div>` +
+          rows
+            .map(
+              ([id, label, note, parent]) =>
+                `<div class="copt radio${id === activeV ? " sel" : ""}" data-v="${id}">
+           <span class="box">${id === activeV ? "&#10003;" : ""}</span>
+           <span class="col"><span class="lb">${highlightText(label, q)}</span>${
+             note
+               ? `<div class="sub">${parent ? `from ${VMAP.get(parent)[1]} &middot; ` : ""}${note}</div>`
+               : ""
+           }</span>
+           ${id !== activeV ? `<span class="tagn" data-cmp="${id}">${compareV === id ? "comparing" : "compare"}</span>` : ""}
+         </div>`,
+            )
+            .join("");
+        // Keep keyboard focus on the same version across a re-render
+        // (toggling compare re-renders this list), falling back to the
+        // first row only when the focused version is filtered out.
+        const vopts = [...vlist.querySelectorAll(".copt")];
+        let vi = vkbId ? vopts.findIndex((o) => o.dataset.v === vkbId) : -1;
+        if (vi < 0) vi = 0;
+        if (vopts.length) {
+          vkbIndex = vi;
+          vkbId = vopts[vi].dataset.v;
+          vopts[vi].classList.add("kb");
+        } else {
+          vkbIndex = -1;
+          vkbId = null;
+        }
+
+        const legend = "&#8629; show &middot; &#8679;&#8629; compare";
+        vfootN.innerHTML = compareV
+          ? `Comparing with ${VMAP.get(compareV)[1]} &middot; ${legend}`
+          : `${VERSIONS.length} version${VERSIONS.length === 1 ? "" : "s"} &middot; ${legend}`;
+      }
+      function openVB(focus) {
+        closeCB(); // only one dropdown at a time, or they fight over the arrow keys
+        vbOpen = true;
+        vbox.classList.add("open");
+        vkbId = activeV; // open focused on where you already are
+        renderVList();
+        if (focus) vsearch.focus();
+      }
+      function closeVB() {
+        vbOpen = false;
+        vbox.classList.remove("open");
+        vsearch.blur();
+      }
+
+      vbtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        vbOpen ? closeVB() : openVB(true);
+      });
+      vsearch.addEventListener("input", () => {
+        vlist.scrollTop = 0;
+        renderVList();
+      });
+      vlist.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const cmpBtn = e.target.closest("[data-cmp]");
+        if (cmpBtn) {
+          const id = cmpBtn.dataset.cmp;
+          compareV = compareV === id ? null : id;
+          renderVList();
+          render();
+          return;
+        }
+        const opt = e.target.closest(".copt");
+        if (opt) {
+          activeV = opt.dataset.v;
+          if (compareV === activeV) compareV = null;
+          renderVList();
+          render();
+          closeVB();
+        }
+      });
+      vcmpClear.addEventListener("click", (e) => {
+        e.stopPropagation();
+        compareV = null;
+        onlyDiff = false;
+        diffToggle.classList.add("off");
+        renderVList();
+        render();
+      });
+      diffToggle.addEventListener("click", () => {
+        onlyDiff = !onlyDiff;
+        diffToggle.classList.toggle("off", !onlyDiff);
+        render();
+      });
+
+      /* ---- view switching ---- */
+      function switchView(v) {
+        const btn = document.querySelector(`.vtabs button[data-v="${v}"]`);
+        if (!btn || view === v) return;
+        view = v;
+        document
+          .querySelectorAll(".vtabs button")
+          .forEach((x) => x.classList.toggle("on", x === btn));
+        document
+          .querySelectorAll(".view")
+          .forEach((el) => el.classList.toggle("on", el.id === "v-" + view));
+        closeCB();
+        const isFlows = view === "flows";
+        cbox.classList.toggle("hide", isFlows);
+        if (!isFlows) {
+          cbtnLabel.textContent = CB[view].label;
+          csearch.placeholder = CB[view].placeholder;
+          csearch.value = "";
+          applyFilter();
+        } else updateCount(0);
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
+      document
+        .querySelectorAll(".vtabs button")
+        .forEach((b) =>
+          b.addEventListener("click", () => switchView(b.dataset.v)),
+        );
+
+      /* ---- flow search + scroll-spy ---- */
+      const fsearch = document.getElementById("fsearch"),
+        sbox = document.getElementById("sbox");
+      fsearch.addEventListener("focus", () => sbox.classList.add("focused"));
+      fsearch.addEventListener("blur", () => sbox.classList.remove("focused"));
+      fsearch.addEventListener("input", () => {
+        sbox.classList.toggle("dirty", fsearch.value.length > 0);
+        const q = fsearch.value.trim().toLowerCase();
+        let any = false;
+        document.querySelectorAll(".flow").forEach((f) => {
+          const show = !q || matchWords(f.dataset.f, q);
+          f.classList.toggle("gone", !show);
+          if (show) any = true;
+        });
+        document.querySelectorAll("#sidenav a").forEach((a) => {
+          a.classList.toggle("gone", !(!q || matchWords(a.dataset.f, q)));
+          a.innerHTML = highlightText(a.dataset.nm, fsearch.value.trim());
+        });
+        document.querySelectorAll("#sidenav .sh").forEach((h) => {
+          let n = h.nextElementSibling,
+            on = false;
+          while (n && n.tagName === "A") {
+            if (!n.classList.contains("gone")) on = true;
+            n = n.nextElementSibling;
+          }
+          h.classList.toggle("gone", !on);
+        });
+        document.getElementById("flows-none").classList.toggle("gone", any);
+        spy();
+      });
+
+      /* Highlights whichever flow is under the header as you scroll, not only on
+      click. Filter-aware, and clamps to the last section at the page bottom. */
+      let spyRAF = null;
+      function spy() {
+        if (spyRAF) return;
+        spyRAF = requestAnimationFrame(() => {
+          spyRAF = null;
+          if (view !== "flows") return;
+          const flows = [...document.querySelectorAll(".flow:not(.gone)")];
+          if (!flows.length) return;
+          let cur = flows[0];
+          for (const f of flows)
+            if (f.getBoundingClientRect().top <= 100) cur = f;
+          if (
+            window.innerHeight + window.scrollY >=
+            document.body.scrollHeight - 4
+          )
+            cur = flows[flows.length - 1];
+          const id = cur.id.replace(/^f-/, "");
+          document
+            .querySelectorAll("#sidenav a")
+            .forEach((a) => a.classList.toggle("cur", a.dataset.id === id));
+        });
+      }
+      window.addEventListener("scroll", spy, { passive: true });
+      window.addEventListener("resize", spy);
+
+      /* ---- hotkeys: 1/2/3 views, v versions, / search, Esc clear-then-close ---- */
+      function isTyping(el) {
+        return (
+          el &&
+          (el.tagName === "INPUT" ||
+            el.tagName === "TEXTAREA" ||
+            el.isContentEditable)
+        );
+      }
+      document.addEventListener("keydown", (e) => {
+        const free =
+          !isTyping(document.activeElement) && !e.metaKey && !e.ctrlKey;
+        if (["1", "2", "3"].includes(e.key) && free) {
+          e.preventDefault();
+          switchView({ 1: "screens", 2: "elements", 3: "flows" }[e.key]);
+          return;
+        }
+        if ((e.key === "v" || e.key === "V") && free) {
+          e.preventDefault();
+          vbOpen ? closeVB() : openVB(true);
+          return;
+        }
+        if (e.key === "/" && free) {
+          e.preventDefault();
+          if (view === "flows") {
+            fsearch.focus();
+            fsearch.select();
+          } else openCB(true);
+          return;
+        }
+        if (e.key === "Escape") {
+          if (vbOpen) {
+            if (vsearch.value) {
+              vsearch.value = "";
+              renderVList();
+            } else closeVB();
+            return;
+          }
+          if (cbOpen) {
+            if (csearch.value) {
+              csearch.value = "";
+              renderList();
+            } else closeCB();
+            return;
+          }
+          if (isTyping(document.activeElement)) {
+            const el = document.activeElement;
+            el.value = "";
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.blur();
+          }
+          return;
+        }
+        if (
+          vbOpen &&
+          (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter")
+        ) {
+          const vopts = [...vlist.querySelectorAll(".copt")];
+          if (!vopts.length) return;
+          if (e.key === "Enter") {
+            if (vkbIndex < 0) return;
+            e.preventDefault();
+            const id = vopts[vkbIndex].dataset.v;
+            if (e.shiftKey) {
+              // Shift+Enter compares instead of switching. A letter
+              // key can't be used here: the search field has focus,
+              // so it would just be typed.
+              if (id !== activeV) {
+                compareV = compareV === id ? null : id;
+                renderVList();
+                render();
+              }
+            } else {
+              activeV = id;
+              if (compareV === activeV) compareV = null;
+              renderVList();
+              render();
+              closeVB();
+            }
+            return;
+          }
+          e.preventDefault();
+          vkbIndex =
+            e.key === "ArrowDown"
+              ? Math.min(vkbIndex + 1, vopts.length - 1)
+              : Math.max(vkbIndex - 1, 0);
+          vkbId = vopts[vkbIndex].dataset.v;
+          vopts.forEach((o, i) => o.classList.toggle("kb", i === vkbIndex));
+          vopts[vkbIndex].scrollIntoView({ block: "nearest" });
+          return;
+        }
+        if (
+          cbOpen &&
+          (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter")
+        ) {
+          const opts = [...clist.querySelectorAll(".copt")];
+          if (!opts.length) return;
+          if (e.key === "Enter") {
+            if (kbIndex >= 0) {
+              e.preventDefault();
+              opts[kbIndex].click();
+            }
+            return;
+          }
+          e.preventDefault();
+          kbIndex =
+            e.key === "ArrowDown"
+              ? Math.min(kbIndex + 1, opts.length - 1)
+              : Math.max(kbIndex - 1, 0);
+          kbId = opts[kbIndex].dataset.id;
+          opts.forEach((o, i) => o.classList.toggle("kb", i === kbIndex));
+          opts[kbIndex].scrollIntoView({ block: "nearest" });
+        }
+      });
+
+      /* one version means versioning is unused: hide the selector entirely */
+      if (VERSIONS.length < 2) {
+        vbox.classList.add("hide");
+        document.querySelector(".vinfo").classList.add("gone");
+      }
+      renderVList();
+      render();
+    </script>
+  </body>
+</html>

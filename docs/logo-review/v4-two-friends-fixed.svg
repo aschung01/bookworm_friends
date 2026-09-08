@@ -1,0 +1,24 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- two readers of different size, behind the book -->
+  <g fill="#ffffff">
+    <path d="M256 466 V380 A88 88 0 0 1 432 380 V466 Z"/>
+    <path d="M646 466 V404 A58 58 0 0 1 762 404 V466 Z"/>
+  </g>
+  <g fill="#09BC8A">
+    <circle cx="314" cy="348" r="17"/>
+    <circle cx="378" cy="348" r="17"/>
+    <circle cx="684" cy="386" r="12"/>
+    <circle cx="726" cy="386" r="12"/>
+  </g>
+  <path d="M320 384 Q346 404 372 384" fill="none" stroke="#09BC8A" stroke-width="16" stroke-linecap="round"/>
+  <!-- book on top, green-outlined so the readers read as behind it -->
+  <g fill="#ffffff" stroke="#09BC8A" stroke-width="14" stroke-linejoin="round">
+    <path d="M500 452 L172 396 C160 394 152 402 152 414 L152 676 C152 686 159 695 169 697 L500 754 Z"/>
+    <path d="M524 452 L852 396 C864 394 872 402 872 414 L872 676 C872 686 865 695 855 697 L524 754 Z"/>
+  </g>
+  <g fill="none" stroke="#09BC8A" stroke-width="18" stroke-linecap="round">
+    <path d="M216 520 L452 560"/>
+    <path d="M808 520 L572 560"/>
+  </g>
+</svg>

@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    The reconciliation candidate. Drawing P1 exposed something: a back board
+    peeking out from behind a cover is visually identical to a second book
+    behind it. M4 was never purely one book — it already had two layers, which
+    is the escape hatch from "Libstack has no stack".
+
+    So this takes M4's own device and runs it once more: three offset boards,
+    reading as one book with depth at a glance and as a small pile on a second
+    look. Offset 80, gap 40, so a 40-wide strip of each board stays visible.
+  -->
+  <rect x="202" y="126" width="460" height="612" rx="40" fill="#ffffff"/>
+  <rect x="242" y="166" width="540" height="692" rx="80" fill="#09BC8A"/>
+  <rect x="282" y="206" width="460" height="612" rx="40" fill="#ffffff"/>
+  <rect x="322" y="246" width="540" height="692" rx="80" fill="#09BC8A"/>
+  <rect x="362" y="286" width="460" height="612" rx="40" fill="#ffffff"/>
+  <path d="M640 286 H736 V420 L688 384 L640 420 Z" fill="#09BC8A"/>
+</svg>

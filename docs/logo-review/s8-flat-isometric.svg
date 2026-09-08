@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    Vector translation of docs/logo-review/ai-moodboard/i1-flat-iso.png — the
+    only AI output that held together at 48px. Filled mass, not outline.
+
+    True isometric: rhombus half-axes 270 x 156 (ratio 0.577 = tan 30 degrees).
+    #067657 is not a new colour; it is `brandFill` from
+    lib/constants/app_theme.dart.
+
+    Value balance is deliberate. Only the right-hand faces are dark, because
+    #067657 on #09BC8A is roughly 2.2:1 — too weak to carry the silhouette. The
+    white left faces and covers do that work; the dark side only supplies depth.
+
+    Stack pitch (140) is wider than book thickness (92), so each lower cover
+    shows a V-shaped sliver that reads as the page edge.
+  -->
+  <g transform="translate(512,512) scale(1.11) translate(-512,-486)">
+    <!-- bottom book -->
+    <path d="M242 580 L512 736 L512 828 L242 672 Z" fill="#ffffff"/>
+    <path d="M782 580 L512 736 L512 828 L782 672 Z" fill="#067657"/>
+    <path d="M512 424 L782 580 L512 736 L242 580 Z" fill="#ffffff"/>
+    <!-- middle book -->
+    <path d="M242 440 L512 596 L512 688 L242 532 Z" fill="#ffffff"/>
+    <path d="M782 440 L512 596 L512 688 L782 532 Z" fill="#067657"/>
+    <path d="M512 284 L782 440 L512 596 L242 440 Z" fill="#ffffff"/>
+    <!-- top book -->
+    <path d="M242 300 L512 456 L512 548 L242 392 Z" fill="#ffffff"/>
+    <path d="M782 300 L512 456 L512 548 L782 392 Z" fill="#067657"/>
+    <path d="M512 144 L782 300 L512 456 L242 300 Z" fill="#ffffff"/>
+    <!-- bookmark, draped over the top cover's front-right edge onto the dark
+         face where a white ribbon has maximum contrast -->
+    <path d="M690 353 L642 381 L642 631 L666 588 L690 603 Z" fill="#ffffff"/>
+  </g>
+</svg>

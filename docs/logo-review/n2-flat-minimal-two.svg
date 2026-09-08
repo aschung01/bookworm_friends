@@ -1,0 +1,16 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    The most reduced form that still says "stack": two slabs. One would be a
+    book; two is the minimum that reads as more than one book.
+
+    Slabs are fatter here (168 tall) because with only two of them there is room,
+    and mass is what survives downscaling. Offset horizontally rather than
+    tilted, so the silhouette stays rectilinear and calm.
+  -->
+  <g transform="translate(512,512) scale(1.06) translate(-512,-512)">
+    <rect x="176" y="344" width="608" height="168" rx="34" fill="#ffffff"/>
+    <rect x="240" y="552" width="608" height="168" rx="34" fill="#ffffff"/>
+    <path d="M636 344 H724 V430 L680 396 L636 430 Z" fill="#09BC8A"/>
+  </g>
+</svg>

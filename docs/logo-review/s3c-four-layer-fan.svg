@@ -1,0 +1,23 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- C: four layers, tighter fan. More layers = more "stack", thinner slivers. -->
+  <g transform="translate(512,512) scale(1.12) translate(-512,-537)">
+    <g transform="rotate(-12 512 806)">
+      <rect x="339" y="297" width="346" height="476" rx="50" fill="#09BC8A"/>
+      <rect x="352" y="310" width="320" height="450" rx="40" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(-4 512 806)">
+      <rect x="339" y="297" width="346" height="476" rx="50" fill="#09BC8A"/>
+      <rect x="352" y="310" width="320" height="450" rx="40" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(4 512 806)">
+      <rect x="339" y="297" width="346" height="476" rx="50" fill="#09BC8A"/>
+      <rect x="352" y="310" width="320" height="450" rx="40" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(12 512 806)">
+      <rect x="339" y="297" width="346" height="476" rx="50" fill="#09BC8A"/>
+      <rect x="352" y="310" width="320" height="450" rx="40" fill="#ffffff"/>
+      <rect x="392" y="352" width="22" height="366" rx="11" fill="#09BC8A"/>
+    </g>
+  </g>
+</svg>

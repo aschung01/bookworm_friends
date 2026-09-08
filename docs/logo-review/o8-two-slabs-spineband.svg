@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    N2's two slabs with the bookmark swapped for a spine band — the detail the
+    s3i/s3h comparison said actually survives, where a ribbon laid on white
+    does not.
+
+    Bands are 56 wide (about 2.6px at 48px, on the right side of the ~44 vs ~20
+    finding) and cut the full slab height, so each book reads as spine plus
+    cover rather than as a bar with a smudge on it.
+
+    Two verticals total and no bookmark, which keeps this inside the
+    stroke-count budget the README sets at four.
+  -->
+  <rect x="176" y="312" width="672" height="176" rx="36" fill="#ffffff"/>
+  <rect x="176" y="536" width="672" height="176" rx="36" fill="#ffffff"/>
+  <rect x="272" y="312" width="56" height="176" fill="#09BC8A"/>
+  <rect x="272" y="536" width="56" height="176" fill="#09BC8A"/>
+</svg>

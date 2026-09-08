@@ -5,7 +5,10 @@
 `docs/superpowers/plans/2026-08-14-phase-1-shell-plan.md` for what shipped, what it deviated
 on and why, and the eight bugs building it surfaced. **Phase 2 (Read view) complete** — see
 `docs/superpowers/plans/2026-08-16-phase-2-read-view-plan.md`, which records four more bugs, the
-drag-versus-scroll decision, and why `user_library_page.dart` survived. **Phase 3 (Library Card) next.**
+drag-versus-scroll decision, and why `user_library_page.dart` survived. **Phase 3 (Library Card)
+complete** — see `docs/superpowers/plans/2026-08-16-phase-3-library-card-plan.md`, which records
+why two of the five drawn stats were cut, and note that **this record's own Phase 3 description
+below was half wrong** (corrected in place). **Phase 4 (Friends activity) next.**
 **Visual record:** `docs/mockups/library-shell/decided.html` — every screen, UI
 element and flow, browsable. Open it from disk; no server needed.
 
@@ -64,6 +67,19 @@ white sheet with an upward shadow below.
 "jisoo's Library" with Poke instead. Edit and `+` are gone — long-press a book to
 edit, search button to add. Edit mode swaps in manage-shelves and Done.
 
+**The profile is the reader's own avatar**, 32pt inside the band's 44pt target —
+the drawing has `ic pf`, a filled circle wearing their initials, the same control
+the rail's "me" lead is. It was a `person_outline` glyph until profiles could
+carry a photo; now it is `AvatarCircle`, so the one place a reader looks for
+themselves shows them what everyone else sees.
+
+**Share arrived with the artifact, not with the bar.** Through Phases 1 and 2 the
+slot left of the profile was empty, because the only thing a share sheet could
+have offered was a screenshot. Phase 3's Library Card is the artifact, so the
+button is now the Card sheet's own — one export path (`shareLibraryCard`), so the
+two places cannot hand out different images — and it is absent whenever it would
+lie: nothing read, inside a visit, or mid-edit.
+
 ### The sheet sits above the library, on every tab
 
 Library, Friends and Card all behave the same way, and the behaviour is stated as
@@ -80,16 +96,110 @@ overlay would do just as well provided the library carried a matching bottom
 inset. The distinction is invisible on screen, which is the point: implementation
 choice, not design.
 
+**A tab switch moves the sheet; it does not cut to it.** Tabs rest at different
+heights, so switching is a change of height as well as of contents — and the two are
+not treated alike. The contents swap at once, because the incoming tab is what you
+asked for and there is nothing to be gained by showing the outgoing one on its way
+out. The box travels, with the same spring a drag releases into. It is the same sheet
+throughout, not a new one appearing at a new size, and that is structural rather than
+apparent: all three tabs hand one `LibrarySheet` between them, which is what gives the
+motion something to start from. Where the incoming tab's collapsed height is taller
+than the height being left — Friends can rest below the read view's pile — the sheet
+slides up from the bottom edge instead, because a sheet is never shorter than its own
+header.
+
+**A swipe inside a sheet belongs to the sheet until there is no more sheet to open.**
+From the collapsed position, a swipe up on the list opens the sheet one detent; a second
+reaches the cap; only a third scrolls the list. Going the other way, a downward drag
+that runs the list out of offset carries on into the sheet rather than stopping dead, so
+the sheet can always be put away from wherever the finger already is. This is Flighty's
+Passport sheet and iOS's own, and it was arrived at the wrong way round first: the list
+scrolled at every position, which meant the shortest viewport the sheet has — a fifth of
+the screen — was also the one you were expected to read a whole list through, and it
+snapped back to the top on any touch that moved the sheet at all.
+
+The consequence worth stating is that **the collapsed position is a preview, not a
+reading position**. It shows the top of the list cut off at the card's edge, and the way
+to see the rest of it is to open the sheet. That is why no tab tries to fit its content
+into the collapsed height.
+
 ### Read books
 
-One sheet, two snap positions: collapsed is today's spine pile with the count;
-expanded is covers grouped by month. Sheet position replaces any Shelves/Read
-toggle.
+One sheet, three snap positions: collapsed is today's spine pile with the count;
+expanded is covers grouped by month, and it takes the whole band. Between them is a
+middle position at ~60% of the screen, which is where most people rest — the whole
+band is the right ceiling for a year of covers and is also the entire shell gone.
+Sheet position replaces any Shelves/Read toggle.
+
+**Where a sheet _opens_ is a separate decision from what positions it has**, and it
+is decided per tab by what that tab has to rest on. The read view opens collapsed
+because its collapsed state is a real thing to look at — the pile. The Card opens at
+the middle position because its collapsed state is a title and nothing else, so
+launching there would show none of the card; see Library Card below. Friends opens at
+the middle position too, and for the same reason: it has no separate collapsed state,
+so the collapsed height is its list with most of it cut off — a preview of the tab
+rather than the tab.
 
 ### Filters
 
-iOS 26 capsules when expanded, glass popover select when collapsed. Month-level
-filtering dropped — the grid is already grouped by month.
+Button-like capsules when expanded, glass popover select when collapsed.
+Month-level filtering dropped — the grid is already grouped by month.
+
+The expanded row is **not a `CNSegmentedControl`**, which it was at first and which
+was the wrong shape: the native control spreads its segments across the full width
+inside a grey track, so the row read as a toolbar with the years given as much
+weight as "All time". The drawing — `.caps` in `decided.html`, taken from Flighty's
+Passport — is a short row of pills hugging their labels, flush left, unselected
+ones with no fill at all.
+
+So **Flutter lays the row out and draws every label; the platform supplies the
+material**. The selected capsule stacks a native `CNButton` styled
+`UIButton.Configuration.glass()` behind the label, empty of content and inert, so
+it is the pill's material and nothing more; the painted pill stands in elsewhere.
+
+The division of labour is not fussiness — both halves were tried the other way
+round and both failed:
+
+- **A `CNButton` per option, label and all** (`.glass()` selected, `.plain()`
+  otherwise) put the _text_ in the native view, and selecting a year restyled a
+  live button. `setStyle` swaps the whole `UIButton.Configuration`, which restores
+  the title as a plain string and drops its attributed font, and `setLabelStyle`
+  re-applies 13pt several awaited channel hops later. For about half a second the
+  label rendered at the system's 17pt in the theme's tint, wrapped onto two lines
+  inside a view sized for 13pt.
+- **`LiquidGlassContainer`** fixed that by leaving the text to Flutter, but it
+  renders a _bare_ `Capsule().glassEffect(.regular)`. Glass refracts what is behind
+  it, and behind it is an opaque sheet the platform view is composited over, so the
+  pill came out flat — no rim, no shadow. (`CNGlassEffect.prominent` would not have
+  helped; the plugin pins `Glass.regular` either way.) A button _configuration_
+  carries its own material, rim and shadow, which is why the glass had to come from
+  one.
+
+Because the glass button only exists while its option is selected, its style is
+fixed for its whole life and the restyle path never runs — a selection change
+disposes one platform view and creates another. The cost is a single frame in which
+the newly selected label has no pill yet, measured at ~33ms on an iOS 26.4
+simulator; the label itself never flickers, because Flutter owns it. Laying the row
+out natively via `CNGlassButtonGroup` was rejected too: it puts the row in one
+SwiftUI `HStack` that centres itself in the width it is given and sizes on a
+44pt-per-button estimate, which clips "All time". Selection haptics are asked for
+explicitly, since glass is a material rather than a behaviour.
+
+**Pressing is felt on both halves**, which is most of what separates a glass button
+from a picture of one. The glass button stays interactive rather than being wrapped
+in an `IgnorePointer`: `CNButton` watches raw pointers and pushes `isHighlighted`
+to UIKit, so the selected capsule brightens and its halo pulls in under the finger.
+An unselected capsule has no platform view to do that, so it **shrinks** under the
+finger, as Flighty's tab pills do. The scale is not applied over the native pill —
+transforming a platform view in hybrid composition is unreliable, and it answers a
+press on its own. Letting the button see pointers also puts its tap recognizer in
+the gesture arena, where it usually beats the row's, so it carries the same
+callback: whichever wins, the year is reported once.
+
+**One label weight throughout**, selected or not. The pill and the label's colour
+carry the selection between them; `decided.html` originally drew the chosen label at
+800 against 700, which reads as two type sizes in one row. The drawing is corrected
+rather than the code.
 
 ### Library Card
 
@@ -98,6 +208,33 @@ artifacts only — **no read-books list**. Read books belong entirely to the
 Library tab, which already groups them by month, so a sortable
 Date/Title/Author/Rating list here would be a second home for the same data.
 
+**What shipped, after the data was counted.** Three figures, not five: books read
+(the hero), pace, and most-read author. Pages and rating are cut for the reasons in
+Phasing below. The card is thinner than the drawing because **the readers are
+thinner than the drawing assumed** — the median reader here has finished two books,
+57% of finished books were logged same-day and so contribute no reading span, and 40
+of the 53 readers with author data have a "top author" who wrote exactly one of their
+books. So the governing rule is that **every tile is omitted rather than
+zero-filled**, and a tile left alone in its row takes the full width. A card with one
+true figure beats a card with four hollow ones.
+
+The share renders the card **off-screen as a separate, pure-Flutter widget tree**
+rather than screenshotting the sheet, for two reasons either of which would do. The
+sheet is not the artifact — grab handle, share button, capsules, scroll offset,
+phone width — while the export is pinned. And `RepaintBoundary.toImage` cannot
+capture platform views: the year capsules put a native glass `CNButton` behind the
+selected label on iOS 26, so a screenshot would arrive with a hole in it, and only
+on a device.
+
+**The sheet rests at the middle position, not at either end.** Both ends were built
+first and both were wrong from opposite sides: expanded is the whole band, so the tab
+opened onto a screen of mostly empty white with no cover left to long-press and no way
+to start an edit; collapsed is `card-down`, a title and nothing else, so the Card tab
+opened showing none of the card. `card-down` is what the grab handle gets you — the
+drawing's "any sheet collapses to its title" still holds — it is just not where the tab
+opens. What makes this the Card's answer and not the read view's is that the Card has
+no collapsed body: a resting position needs something to look at there.
+
 ### Friends
 
 Sheet titled "Friends" with Everyone / Activity capsules and an icon-only Add
@@ -105,6 +242,19 @@ Friend (home for `search_user_page`). Everyone lists friends with what they are
 reading and their read count; it works on existing data, so Activity can ship
 later. The avatar rail appears only inside a visit, and holds friends only — not
 you.
+
+**Everyone shipped in Phase 4a.** The row is name, what they are part-way through,
+a colour swatch for it, and their read count in brand green — from **one** query
+for the whole list (`friendsReadingProvider`), not one per friend, which is why it
+could not ship in Phase 1. The chevron is gone; the count sits where it was.
+
+**Activity is deferred, and the reason is data rather than effort.** Measured on the
+live database: **zero** start/finish events in the last 90 days for every user, the
+most recent finished book 884 days old, the most recent praise 939 days old, and 113
+of 136 users following nobody at all — so a feed of "what just happened" would ship
+empty and stay empty until after release. Two of the four events the drawing shows
+also need ratings, which do not exist. See the Phase 4 plan; the capsules land with
+the feed.
 
 ### Friend paging
 
@@ -271,6 +421,29 @@ collision is a geometry bug, not an argument against the affordance.
 - **Praise policy gaps** (API-only, unreachable from the UI): you can praise your
   own book, and a stranger's book with no follow. Both are INSERT-policy
   tightenings.
+- **The same gap on pokes.** `poke_user()` looks its target up by username and never
+  checks that you follow them, so anyone can poke anyone. Phase 4b left this alone
+  deliberately — it is a behaviour change, and that migration was about recording —
+  but pokes are now written to `poke_events`, so an abusive one at least leaves a
+  trace. Worth fixing alongside the praise policies, since it is the same shape of
+  problem and the same kind of fix.
+- **Nobody can rate a book.** `books.rating` has existed since the initial schema
+  and every one of the 624 migrated rows is null, because `BookRating`
+  (`lib/ui/widgets/book_rating.dart`) is defined and never instantiated — there is
+  no control anywhere that sets one. Phase 3 cut the Rating tile from the Library
+  Card over this rather than invent a rating UI to feed one tile. Whether ratings
+  should exist at all is a product question (stars vs. five-point vs. thumbs, and
+  whether a rating is private); if the answer is yes, the column and the card tile
+  are both waiting.
+- **Page counts are unobtainable for Korean books**, so anything that wants "pages
+  read" is blocked on a data source rather than on code. Kakao has no page field;
+  Google Books covered 14 of 40 sampled titles from the real library. A Korean
+  bibliographic source (Aladin and Naver Books both expose page counts) would
+  unblock the cut hero figure — that is a new provider, not a new column.
+- **The Library Card is not shown on a visit.** `userFinishedBooksProvider` exists
+  and `libraryCardStats` takes a plain list, so a friend's card would be nearly
+  free — but whether your reading stats are yours alone is a privacy decision, not
+  a technical one.
 
 ## Phasing
 
@@ -291,11 +464,51 @@ data.**
 
 ### 3 — Library Card
 
-Stat providers, card UI, share. **Needs `books.page_count` and `books.authors`
-plus a backfill** — both are already returned by every search provider and
-currently discarded, so capturing them early is cheap and unblocks this phase.
+Stat providers, card UI, share. **Complete** —
+`docs/superpowers/plans/2026-08-16-phase-3-library-card-plan.md`.
+
+This entry originally read: _"Needs `books.page_count` and `books.authors` plus a
+backfill — both are already returned by every search provider and currently
+discarded, so capturing them early is cheap and unblocks this phase."_ **That was
+true of `authors` and false of `page_count`,** and the false half was the expensive
+one:
+
+- **`books.authors` shipped as described.** Migration applied and backfilled through Kakao, which
+  resolved 407 of the 430 distinct ISBNs in the live table — **437 of 472 rows**, and 217 of the 230
+  _finished_ books (94.3%), which are the only ones the card counts. Kakao rather than Google Books
+  because Google had only 16 of a 40-book sample — for a Korean library that difference is the whole
+  result. Net effect: 9 of the 45 readers with a finished book clear the tile's floor of two.
+- **`books.page_count` was not added, and the "4,180 pages" stat is cut.** No
+  provider can fill it: Kakao has no page field at all, and Google Books answered
+  for 14 of 40 sampled titles. A hero figure summed from a third of a shelf
+  understates a reader threefold, silently, in the one number on the card a reader
+  could check by hand.
+- **The Rating tile is also cut.** `books.rating` exists and all 624 migrated rows
+  are null, because `BookRating` is defined and never instantiated — there is no
+  control anywhere that sets a rating. Rating entry is a book-detail feature with
+  its own design questions and was not worth inventing to feed one tile.
+
+What the phase did not need: **any new query.** Phase 2 already made
+`finishedBooksProvider` fetch the whole finished set, so every shipping figure is a
+pure function of a list the app has in memory.
 
 ### 4 — Friends activity
 
-Feed query for the Activity tab. Optional `poke_events` table if pokes should
-appear in it, since `poke_user()` writes no row today.
+**Reordered after a data audit; see
+`docs/superpowers/plans/2026-08-17-phase-4-friends-activity-plan.md`.**
+
+- **4a — the Everyone row. Complete.** What each friend is reading and their read
+  count, from one batched query. This was the real regression against the drawing:
+  Phase 1 shipped the row as name + avatar because building it from the per-user
+  providers meant a round trip per friend.
+- **4b — `poke_events`. Complete.** `poke_user()` sent a notification and stored
+  nothing, so a poke existed only as an alert on a lock screen. It now records a row
+  too — shipped ahead of the feed that will read it, because history is not
+  recoverable and every poke before the table existed was lost. Nothing reads it yet,
+  by design. **One thing left unverified:** the insert is guarded on `auth.uid()`, so
+  no service-role or anon call can exercise it — confirm on the first signed-in build
+  that a real poke writes a row.
+- **4c — the Activity feed. Deferred.** Not for effort: there is no activity. Zero
+  events in the last 90 days for every user, the newest finished book 884 days old,
+  the newest praise 939 days old, 37 follows in the whole app, and 113 of 136 users
+  following nobody. Revisit after release, when the numbers can be checked again.

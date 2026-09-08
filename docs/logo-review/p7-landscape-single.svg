@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    P2 turned on its side: one book lying flat, ribbon over the top edge.
+
+    s3e established that portrait was load-bearing for a fanned stack, but that
+    was a finding about fans, not about books — a lone landscape slab is how
+    every mark in the N and O rounds drew a book, just never on its own. This
+    tests whether one book still reads as a book without a pile to sit in.
+  -->
+  <rect x="140" y="224" width="744" height="576" rx="48" fill="#ffffff"/>
+  <path d="M660 224 H780 V394 L720 354 L660 394 Z" fill="#09BC8A"/>
+</svg>

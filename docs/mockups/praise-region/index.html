@@ -1,0 +1,3804 @@
+<!doctype html>
+<!--
+  GENERATED. Edit _build/{tokens.css,frame.css,data.js} and run
+    python3 _build/build.py && sh _build/verify.sh
+  Hand edits here are lost on the next build. The output is still fully
+  self-contained: no build step, no server, no network to view it.
+  Open it straight from disk.
+
+  Replace the marked sections in the script below:
+    SECTION 1  TOKENS    - real colours/metrics copied from the codebase
+    SECTION 2  FRAME     - how one screen of THIS product is drawn
+    SECTION 3  DATA      - the screens, flows and elements themselves
+    SECTION 4  VERSIONS  - named variants, git-branch style (optional)
+  Leave SECTION 5 (ENGINE) alone unless you're changing behaviour.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Reactions on a book &mdash; seven directions</title>
+        <style>
+            :root {
+                /* ---- SECTION 1a: product tokens.
+                   Copied verbatim from AppColors.light in
+                   lib/constants/app_theme.dart. Not eyeballed — the pitfall
+                   that wasted three review rounds on the library set was
+                   invented brand colours. ---- */
+                --page: #f8f9fa; /* pageBackground   */
+                --surface: #ffffff; /* surface          */
+                --variant: #e9ecef; /* surfaceVariant — the hero's background */
+                --text: #212529; /* primaryText      */
+                --text2: #adb5bd; /* secondaryText    */
+                --divider: #e9ecef; /* divider          */
+                --brand: #09bc8a; /* decoration only, 2.45:1 on white */
+                --brandText: #067657; /* brandText == brandFill */
+                --sheet: #eff5ef; /* sheetBackground, the pinned mint tint */
+                /* ---- page chrome (safe to leave) ---- */
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.5;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            mark.hl {
+                background: rgba(79, 125, 243, 0.28);
+                color: inherit;
+                border-radius: 3px;
+                padding: 0 1px;
+            }
+            .gone {
+                display: none;
+            }
+
+            /* ---------- top chrome ---------- */
+            .top {
+                position: sticky;
+                top: 0;
+                z-index: 300;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+            }
+            .top-in {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 11px 22px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+            }
+            .brand span {
+                color: var(--brandText);
+            }
+            .vtabs {
+                display: flex;
+                gap: 2px;
+            }
+            .vtabs button {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--muted);
+                background: none;
+                border: 0;
+                padding: 6px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+            }
+            .vtabs button:hover {
+                color: var(--ink);
+            }
+            .vtabs button.on {
+                color: var(--ink);
+                font-weight: 800;
+                background: #fff;
+                border: 0.5px solid var(--line);
+                box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.1);
+            }
+            .vtabs button::after,
+            .hk::after {
+                content: attr(data-key);
+                position: absolute;
+                top: calc(100% + 7px);
+                left: 50%;
+                transform: translateX(-50%) translateY(3px);
+                background: #26262b;
+                color: #fff;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2.5px 6px;
+                border-radius: 5px;
+                box-shadow: 0 3px 9px rgba(0, 0, 0, 0.28);
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.12s,
+                    transform 0.12s;
+                z-index: 50;
+            }
+            .vtabs button:hover::after,
+            .hk:hover::after {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+                transition-delay: 0.3s;
+            }
+            .sep {
+                width: 1px;
+                height: 20px;
+                background: var(--line);
+            }
+            .count {
+                margin-left: auto;
+                font-size: 12px;
+                color: var(--text2);
+                text-align: right;
+                line-height: 1.4;
+                white-space: nowrap;
+            }
+            .kbd {
+                display: inline-block;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--muted);
+                background: #f4f2ef;
+                border: 1px solid var(--line);
+                border-bottom-width: 2px;
+                border-radius: 4px;
+                padding: 0 4px;
+                line-height: 15px;
+                min-width: 15px;
+                text-align: center;
+            }
+
+            /* ---------- comboboxes (version + filter share the panel styling) ---------- */
+            .cbox {
+                position: relative;
+            }
+            .cbox.hide {
+                display: none;
+            }
+            .cbtn {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--ink);
+                background: #f4f2ef;
+                border: 0.5px solid var(--line);
+                padding: 6px 13px;
+                border-radius: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .cbtn:hover {
+                background: #eeece7;
+            }
+            .cbtn .chev {
+                font-size: 9px;
+                color: var(--muted);
+                transition: transform 0.15s;
+            }
+            .cbox.open .cbtn .chev {
+                transform: rotate(180deg);
+            }
+            .cbtn .badge {
+                font-size: 11px;
+                font-weight: 800;
+                color: #fff;
+                background: var(--brandText);
+                border-radius: 20px;
+                padding: 0 6px;
+                line-height: 16px;
+            }
+            .cbtn .branch {
+                font-size: 12px;
+                opacity: 0.5;
+            }
+            .cbtn.vbtn {
+                background: #eef2fd;
+                border-color: #cddafb;
+                color: #22407f;
+            }
+            .cbtn.vbtn:hover {
+                background: #e3ebfc;
+            }
+            .cpanel {
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                width: 340px;
+                max-height: min(70vh, 520px);
+                display: none;
+                flex-direction: column;
+                background: rgba(38, 38, 41, 0.97);
+                backdrop-filter: blur(20px);
+                border-radius: 15px;
+                box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+                overflow: hidden;
+                z-index: 400;
+            }
+            .cbox.open .cpanel {
+                display: flex;
+            }
+            .csearch {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                padding: 13px 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .csearch svg {
+                flex: 0 0 auto;
+                opacity: 0.5;
+            }
+            .csearch input {
+                flex: 1;
+                font: inherit;
+                font-size: 14.5px;
+                color: #fff;
+                background: none;
+                border: 0;
+                outline: none;
+            }
+            .csearch input::placeholder {
+                color: rgba(255, 255, 255, 0.42);
+            }
+            .clist {
+                overflow-y: auto;
+                padding: 7px 7px 9px;
+                flex: 1 1 auto;
+            }
+            .clist::-webkit-scrollbar {
+                width: 9px;
+            }
+            .clist::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.22);
+                border-radius: 9px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+            .cgrp {
+                font-size: 12px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.45);
+                padding: 9px 11px 4px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .cgrp:hover {
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .copt {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                padding: 8px 11px;
+                border-radius: 9px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .copt:hover,
+            .copt.kb {
+                background: rgba(255, 255, 255, 0.11);
+            }
+            .copt .box {
+                width: 17px;
+                height: 17px;
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.16);
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: #fff;
+            }
+            .copt.sel .box {
+                background: var(--brand);
+                color: #fff;
+                font-weight: 900;
+            }
+            .copt.radio .box {
+                border-radius: 50%;
+            }
+            .copt .lb {
+                font-size: 14.5px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .copt .lb mark.hl {
+                background: rgba(79, 125, 243, 0.5);
+                color: #fff;
+            }
+            .copt .sub {
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+                line-height: 1.45;
+            }
+            .copt .col {
+                flex: 1;
+                min-width: 0;
+            }
+            .copt .tagn {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1px 6px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.14);
+                color: rgba(255, 255, 255, 0.75);
+                white-space: nowrap;
+            }
+            .cfoot {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .cfoot .n {
+                flex: 1;
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .cfoot button {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                color: #fff;
+                background: rgba(255, 255, 255, 0.13);
+                border: 0;
+                border-radius: 7px;
+                padding: 4px 10px;
+                cursor: pointer;
+            }
+            .cfoot button:hover {
+                background: rgba(255, 255, 255, 0.22);
+            }
+            .cempty {
+                color: rgba(255, 255, 255, 0.45);
+                font-size: 13px;
+                padding: 16px 11px;
+            }
+
+            /* ---------- version bar ---------- */
+            .vinfo {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                color: var(--muted);
+                padding: 2px 0 0;
+            }
+            .vinfo .lbl {
+                font-weight: 800;
+                color: var(--brandText);
+                white-space: nowrap;
+            }
+            .vinfo .note {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .vinfo .diffs {
+                white-space: nowrap;
+                font-weight: 700;
+            }
+            .vinfo button {
+                font: inherit;
+                font-size: 11.5px;
+                font-weight: 700;
+                color: var(--brandText);
+                background: #eef2fd;
+                border: 0.5px solid #cddafb;
+                border-radius: 7px;
+                padding: 2px 9px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .vinfo button:hover {
+                background: #e3ebfc;
+            }
+            .vinfo button.off {
+                color: var(--muted);
+                background: #f4f2ef;
+                border-color: var(--line);
+            }
+
+            /* ---------- layout ---------- */
+            .wrap {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 22px 22px 90px;
+            }
+            .view {
+                display: none;
+            }
+            .view.on {
+                display: block;
+            }
+            h1 {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.4px;
+                margin: 6px 0 4px;
+            }
+            .lead {
+                color: var(--muted);
+                font-size: 14px;
+                max-width: 800px;
+                margin: 0 0 22px;
+            }
+            h2.grp {
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #a09c95;
+                margin: 30px 0 12px;
+                padding-bottom: 7px;
+                border-bottom: 1px solid var(--line);
+                scroll-margin-top: 80px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 20px 16px;
+            }
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+            .item .cap {
+                margin-top: 9px;
+            }
+            .item .nm {
+                font-size: 12.5px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .item .ds {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                margin-top: 2px;
+            }
+            .shot {
+                background: #e6e3dd;
+                border-radius: 10px;
+                padding: 14px 0;
+                display: flex;
+                justify-content: center;
+            }
+            .pair {
+                display: flex;
+                gap: 8px;
+            }
+            .pair > div {
+                flex: 1;
+                min-width: 0;
+            }
+            .pair .vl {
+                font-size: 9.5px;
+                font-weight: 800;
+                color: var(--muted);
+                text-align: center;
+                margin-bottom: 5px;
+                letter-spacing: 0.03em;
+            }
+            .pair .vl.b {
+                color: var(--brandText);
+            }
+            .noneleft {
+                color: var(--muted);
+                font-size: 13.5px;
+                padding: 26px 0;
+            }
+            .pend {
+                background: #fdf3f0;
+                border-left: 3px solid #c05746;
+                padding: 9px 13px;
+                border-radius: 0 6px 6px 0;
+                font-size: 12px;
+                line-height: 1.55;
+                margin: 0 0 13px;
+                max-width: 840px;
+            }
+            .tag {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1.5px 7px;
+                border-radius: 20px;
+                white-space: nowrap;
+            }
+            .tag.changed {
+                background: #fff4e0;
+                color: #8a5a10;
+            }
+            .tag.onlyHere {
+                background: #e6f4ee;
+                color: #0b6b4f;
+            }
+            .tag.onlyThere {
+                background: #fdecea;
+                color: #a3302a;
+            }
+            .tag.ver {
+                background: #eef2fd;
+                color: #2f55b8;
+            }
+
+            /* ---------- flows ---------- */
+            /* ghosts: present in the compared version, absent here */
+            .item.ghost .shot,
+            .el.ghost .demo {
+                opacity: 0.5;
+                outline: 1px dashed #c7a9a4;
+                outline-offset: -1px;
+            }
+            .item.ghost .nm,
+            .el.ghost .nm,
+            .flow.ghost .fh {
+                text-decoration: line-through;
+                text-decoration-color: #c7a9a4;
+            }
+            .flowlayout {
+                display: grid;
+                grid-template-columns: 216px 1fr;
+                gap: 26px;
+                align-items: start;
+            }
+            .side {
+                position: sticky;
+                top: 80px;
+            }
+            .sbox {
+                position: relative;
+                margin-bottom: 14px;
+            }
+            .search {
+                width: 100%;
+                font: inherit;
+                font-size: 13px;
+                padding: 9px 40px 9px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #faf9f7;
+                outline: none;
+            }
+            .search:focus {
+                border-color: var(--brandText);
+                background: #fff;
+            }
+            .sbox .hint {
+                position: absolute;
+                display: none;
+                right: 9px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+            .sbox .hint-slash {
+                display: block;
+            }
+            .sbox.focused .hint-slash,
+            .sbox.dirty .hint-slash {
+                display: none;
+            }
+            .sbox.dirty .hint-esc {
+                display: block;
+            }
+            .side a {
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--muted);
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border-left: 2px solid transparent;
+            }
+            .side a:hover {
+                background: #f5f4f1;
+                color: var(--ink);
+            }
+            .side a.cur {
+                color: var(--brandText);
+                background: #eef2fd;
+                font-weight: 800;
+                border-left-color: var(--brandText);
+            }
+            .side .sh {
+                font-size: 10.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                color: #b9b6b0;
+                margin: 16px 0 5px;
+                padding-left: 10px;
+            }
+            .flow {
+                margin-bottom: 38px;
+                scroll-margin-top: 88px;
+            }
+            .flow .fh {
+                font-size: 15.5px;
+                font-weight: 800;
+                margin: 0 0 3px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                flex-wrap: wrap;
+            }
+            .flow .fd {
+                font-size: 12.5px;
+                color: var(--muted);
+                margin: 0 0 13px;
+                max-width: 780px;
+            }
+            .flow .vrow {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--muted);
+                margin: 0 0 5px;
+                letter-spacing: 0.03em;
+            }
+            .flow .vrow.b {
+                color: var(--brandText);
+            }
+            .steps {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            .step {
+                flex: 0 0 auto;
+                width: 170px;
+            }
+            .step .shot {
+                border-radius: 9px;
+                padding: 11px 0;
+            }
+            .step .sn {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--brandText);
+                margin-bottom: 5px;
+            }
+            .step .sc {
+                font-size: 10.5px;
+                color: var(--muted);
+                line-height: 1.45;
+                margin-top: 7px;
+                padding-right: 8px;
+            }
+            .arrow {
+                flex: 0 0 auto;
+                width: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #c9c5be;
+                font-size: 17px;
+                padding-bottom: 40px;
+            }
+
+            /* ---------- elements ---------- */
+            .egrid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+                gap: 16px;
+            }
+            .el {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .el .demo {
+                background: #f2f0ec;
+                padding: 20px 18px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 96px;
+            }
+            .el .body {
+                padding: 12px 15px 14px;
+            }
+            .el .nm {
+                font-size: 13px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .el .ds {
+                font-size: 11.5px;
+                color: var(--muted);
+                line-height: 1.55;
+                margin-top: 3px;
+            }
+            .el .ds b {
+                color: #c05746;
+            }
+
+            /* ================================================================
+SECTION 1b: DEVICE / FRAME STYLES.
+
+   Not a phone: a *crop* of the book-details hero, from the back button to
+   the first rows of the tab body. That is the unit under review — the
+   praise controls cannot be judged apart from the status badge, the shelf
+   label and the shelf they share a corner with.
+
+   The frame is 393px wide and 1px == 1pt, so every number below is the
+   real Flutter value and can be checked against the widget. Contexts that
+   need it smaller set --z (zoom shrinks the layout box, unlike transform,
+   so the grid still packs correctly).
+   ================================================================ */
+            /* Wider columns than the shell's default: a 393pt frame does not
+               fit in a 210px cell. */
+            .grid {
+    grid-template-columns: repeat(auto-fill, minmax(415px, 1fr));
+}
+.grid.cmp {
+    grid-template-columns: repeat(auto-fill, minmax(478px, 1fr));
+}
+.grid.cmp .fr {
+    --z: 0.56;
+}
+.step {
+    width: 262px;
+}
+.step .fr {
+    --z: 0.62;
+}
+.shot {
+    align-items: flex-start;
+}
+
+.fr {
+    width: 393px; /* iPhone 15 logical width */
+    zoom: var(--z, 1);
+    background: var(--page);
+    border: 1px solid #d9d6d0;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 0 0 auto;
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    line-height: 1.3;
+}
+
+/* ---------- chrome above the hero ---------- */
+.fr .nav {
+    height: 54px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+}
+.fr .back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ---------- hero: cover, right column, corner, shelf ----------
+               Container(color: surfaceVariant, padding: only(top 20, l/r 20)).
+               No bottom padding, which is what lets the corner's `bottom: 0`
+               land on the shelf. */
+.fr .hero {
+    background: var(--variant);
+    padding: 20px 20px 0;
+    position: relative;
+}
+.fr .hrow {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+/* Positioned(bottom: 0, right: 0) inside the hero's Stack. */
+.fr .corner {
+    position: absolute;
+    right: 20px;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+/* ShelfWidget: 8pt, surface, shadow offset(0,2) blur 2 black@25%. */
+.fr .shelf {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- the book ----------
+               height 180 (BookWidget height: 180), width 120 from
+               kDefaultCoverAspect 2/3. Binding is 8.2% of width with the
+               overlay blend _BlendMask applies. The cover art is a stand-in
+               for the real thumbnail — deliberately crude, so nobody reads it
+               as a rendering of the artwork. */
+.fr .cover {
+    width: 120px;
+    height: 180px;
+    flex: 0 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: #e12a20;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.fr .cover .k1 {
+    position: absolute;
+    left: 13px;
+    top: 24px;
+    right: 10px;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: #fff;
+    line-height: 1.05;
+}
+.fr .cover .k2 {
+    display: none; /* drawn, then cut: at 1:1 a white bar on the
+                      stand-in cover read as a rendering artefact
+                      rather than as cover art. */
+}
+.fr .cover .k3 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 34px;
+    background: rgba(0, 0, 0, 0.2);
+}
+.fr .cover .bind {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 9.84px;
+    mix-blend-mode: overlay;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.26) 0%,
+        rgba(0, 0, 0, 0.07) 34%,
+        rgba(255, 255, 255, 0.3) 78%,
+        rgba(0, 0, 0, 0.11) 100%
+    );
+}
+.fr .cover .hair {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+/* ---------- right column ----------
+               Expanded(Column(crossAxisAlignment: end)). 217pt wide at 393:
+               393 - 40 padding - 120 cover - 16 gap. Every praise treatment
+               has to live inside that. */
+.fr .rcol {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* BookStatusBadge: h10/v4, radius 10, colour@10% fill and @40%
+               border. status 2 uses primaryText, status 1 brandText. */
+.fr .sbadge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.fr .sbadge.read {
+    color: var(--text);
+    background: rgba(33, 37, 41, 0.1);
+    border: 1px solid rgba(33, 37, 41, 0.4);
+}
+.fr .sbadge.reading {
+    color: var(--brandText);
+    background: rgba(6, 118, 87, 0.1);
+    border: 1px solid rgba(6, 118, 87, 0.4);
+}
+/* Status 0, exactly as shipped: secondaryText at 10% fill and 40%
+   border, with the text in secondaryText too. Measured 1.66:1
+   against its own fill and a 1.23:1 border — which is why it looks
+   like a smudge and not like a badge. */
+.fr .sbadge.interested {
+    color: #adb5bd;
+    background: rgba(173, 181, 189, 0.1);
+    border: 1px solid rgba(173, 181, 189, 0.4);
+}
+/* Repaired, and folded into stack-status.
+
+   Text goes to primaryText (13.01:1 on surfaceVariant, 15.43:1 in
+   the white status card). The fill goes away entirely, which is the
+   part that does the real work: the shipped Interested and Read
+   tints composite to #E3E6EA and #D5D8DB, near-identical greys, so
+   they were only ever told apart by a text colour nobody could read.
+   Take the fill off Interested and the three statuses read as a
+   progression of weight — empty outline, green fill, dark fill —
+   which survives being photocopied, dimmed, or seen by someone who
+   cannot separate two pale greys.
+
+   With no fill the border is what identifies the thing as a badge
+   rather than as loose text, so it is held to WCAG 1.4.11's 3:1:
+   primaryText at 55% measures 3.41:1, where the 35% I first drew was
+   2.06:1. */
+.fr .sbadge.interested.fixed {
+    color: var(--text);
+    background: transparent;
+    border: 1px solid rgba(33, 37, 41, 0.55);
+}
+/* ShelfLabel: surface, top radius 3 only, h9/v5, bold 14, max 140. */
+.fr .slab {
+    background: var(--surface);
+    border-radius: 3px 3px 0 0;
+    padding: 5px 9px;
+    font-size: 14px;
+    font-weight: 700;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- the praise pill ----------
+               ElevatedButton.icon: brandFill, white, radius 20, h12/v6,
+               label 13 bold, icon 18 (Icons.celebration) or the emoji at 15. */
+.fr .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--brandText);
+    color: #fff;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+}
+.fr .pill .em {
+    font-size: 15px;
+}
+/* Outlined variant. Padding is reduced by exactly the border width
+               so the box stays 34pt tall — the same trap as Border.all on
+               AvatarCircle, which insets its child by 2pt a side. */
+.fr .pill.out {
+    background: transparent;
+    color: var(--brandText);
+    border: 1.5px solid var(--brandText);
+    padding: 4.5px 10.5px;
+    box-shadow: none;
+}
+
+/* ---------- ComplimentBlock: anonymous chips ----------
+               28pt circle, pageBackground fill, brand@30% hairline, emoji 14,
+               wrap spacing 4, aligned end, 8pt above. */
+.fr .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+.fr .chip {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+/* ---------- attributed praise: the chip, widened ----------
+               Drawn at 1:1 first as a 26pt avatar with the emoji notched into
+               its corner on a 16pt disc. That put the emoji at 9px, which is a
+               smudge rather than a reaction — the badge shape borrowed from
+               iOS reactions assumes the badge is a *marker*, and here the emoji
+               is the content.
+
+               So: the shipped 28pt chip, widened into a capsule that holds the
+               praiser's face beside it. Same material as ComplimentBlock
+               (pageBackground fill, brand@30% hairline), same emoji size class,
+               nothing new to learn. 56pt wide, so three per row in the 217pt
+               column — no book in production has more than two praises. */
+.fr .gifts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+.fr .gift {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    padding: 0 8px 0 2px;
+    flex: 0 0 auto;
+}
+.fr .gift .bdg {
+    font-size: 15px;
+    line-height: 1;
+}
+.fr .av {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--variant);
+    overflow: hidden;
+    flex: 0 0 auto;
+}
+.fr .av.photo {
+    color: #fff;
+    font-weight: 800;
+}
+
+/* ---------- the record as one capped capsule ----------
+   Up to two emoji, then +N. Same material as the chip it replaces
+   (pageBackground fill, brand@30% hairline) so it reads as the same
+   kind of object, but one capsule instead of N loose circles — which
+   is what stops the record widening without limit and what gives it
+   a single tap target.
+
+   No count when N is 0: `+1` is information, a bare `1` is not.
+   secondaryText is not available for the +N (2.0:1 on
+   pageBackground), so it takes primaryText and stays subordinate by
+   size. */
+.fr .caprow {
+    margin-top: 8px;
+}
+/* When the button is hidden the capsule becomes the first thing in
+   the column, and an 8pt gap above nothing reads as misalignment
+   against the cover's top edge. */
+.fr .rcol > .caprow:first-child {
+    margin-top: 0;
+}
+.fr .cap {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    padding: 0 9px;
+    white-space: nowrap;
+}
+.fr .cap .e {
+    font-size: 15px;
+    line-height: 1;
+}
+.fr .cap .n {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
+}
+.fr .cap .chev {
+    font-size: 14px;
+    color: var(--text);
+    margin-left: 1px;
+    margin-right: -2px;
+}
+
+/* "This one is yours", borrowed from the emoji picker's marked cell:
+   brand at 25% with a brandFill border. Deliberately 1pt rather than
+   the grid cell's 2pt — a 30pt capsule does not need the same weight
+   as a 44pt cell, and a 2pt border would inset the contents (the
+   Border.all trap AvatarCircle already hit).
+
+   Measured on surfaceVariant: the two fills are only 1.37:1 apart in
+   luminance, so the hue is doing most of that work — but the border
+   goes from 1.3:1 (brand@30%, effectively invisible) to 3.88:1
+   (solid brandFill), and *that* is the cue that survives a dim
+   screen. +N stays legible in both, 14.63:1 and 10.65:1. */
+.fr .cap.mine {
+    background: rgba(9, 188, 138, 0.25);
+    border-color: var(--brandText);
+}
+
+/* ---------- the status card ----------
+   The reading-period card, with the badge standing in for the
+   "Reading period" label rather than being added beside it. Status,
+   dates and duration are the same class of fact, and the label was
+   doing less work than the badge does. */
+.fr .period.withbadge b {
+    display: none;
+}
+.fr .period .sbadge {
+    margin-right: 2px;
+}
+
+/* ---------- the who-reacted sheet ---------- */
+.fr .rsheet .r {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+}
+.fr .rsheet .r .nm {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fr .rsheet .r .nm i {
+    font-style: normal;
+    color: var(--brandText);
+    font-weight: 700;
+}
+.fr .rsheet .r .em {
+    font-size: 22px;
+    line-height: 1;
+}
+.fr .rsheet .r .chev {
+    font-size: 17px;
+    color: var(--text);
+}
+
+/* ---------- title band ----------
+               surfaceVariant, bottom radius 30, padding fromLTRB(30,8,30,16).
+               Title 20 bold height 1; author 13 with 10 above; period card 12
+               above. */
+.fr .band {
+    background: var(--variant);
+    border-radius: 0 0 30px 30px;
+    padding: 8px 30px 16px;
+}
+.fr .btitle {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+}
+.fr .bauth {
+    font-size: 13px;
+    margin-top: 10px;
+}
+.fr .period {
+    margin-top: 12px;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 8px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: center;
+    font-size: 14px;
+}
+.fr .period b {
+    font-weight: 700;
+}
+.fr .period i {
+    font-style: normal;
+    color: var(--brandText);
+    font-weight: 700;
+}
+
+/* Status in the band with no card around it, for a book with no
+   dates. Same vertical position the card would occupy, so the badge
+   does not appear to move between statuses. */
+.fr .barebadge {
+    margin-top: 12px;
+}
+
+/* ---------- praise as a caption line in the band ---------- */
+.fr .named {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 13px;
+}
+.fr .named .p {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text);
+}
+.fr .named .p em {
+    font-style: normal;
+    font-size: 15px;
+}
+.fr .named .p.mine {
+    color: var(--brandText);
+    font-weight: 700;
+}
+/* Measured, not chosen by eye: secondaryText (#ADB5BD) on
+   surfaceVariant is 1.75:1, which is unusable for a label. The
+   eyebrow takes primaryText (13.01:1) instead and earns its weight
+   from size and tracking rather than from being faint. brandText on
+   the same background measures 4.74:1, matching the figure
+   app_theme.dart claims for it. */
+.fr .named .lbl {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+
+/* ---------- tab strip ---------- */
+.fr .tabs {
+    background: var(--surface);
+    display: flex;
+}
+.fr .tabs s {
+    flex: 1;
+    text-decoration: none;
+    text-align: center;
+    font-size: 14px;
+    padding: 15px 0 13px;
+    position: relative;
+}
+.fr .tabs s.on {
+    font-weight: 700;
+}
+.fr .tabs s.on:after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 62px;
+    height: 2px;
+    background: var(--text);
+}
+.fr .tail {
+    height: 24px;
+    background: var(--surface);
+}
+
+/* ---------- the emoji sheet, for the flows ----------
+               CNBottomSheet: top radius 20, padding 20/24, title 18 bold,
+               search pill radius kSearchPillRadius = 10. Column count is the
+               package's, so the grid below is approximate — flagged in the
+               element note rather than pretended to be exact. */
+.fr .scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+.fr .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    background: var(--sheet);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px;
+    box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.18);
+}
+.fr .sheet .st {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+.fr .sheet .sf {
+    background: var(--variant);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 15px;
+    color: var(--text2);
+    margin-bottom: 10px;
+}
+.fr .egrid2 {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+}
+.fr .egrid2 s {
+    text-decoration: none;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    border-radius: 8px;
+}
+/* emojiRenderer's marked cell: brand@25% on radius 8, 2pt
+               brandFill border. Load-bearing — it is the only thing saying
+               which praise is yours once the sheet is open. */
+.fr .egrid2 s.mine {
+    background: rgba(9, 188, 138, 0.25);
+    border: 2px solid var(--brandText);
+}
+
+/* ---------- element gallery panels ---------- */
+.el .demo {
+    background: var(--variant);
+}
+.demopanel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+.demorow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+        </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="top-in">
+                <div class="cbox" id="vbox">
+                    <button class="cbtn vbtn hk" id="vbtn" data-key="v">
+                        <span class="branch">&#9095;</span
+                        ><span id="vbtn-label">main</span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="vsearch"
+                                placeholder="Search versions&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="vlist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="vfoot-n"></span
+                            ><button id="vcmp-clear">Stop comparing</button>
+                        </div>
+                    </div>
+                </div>
+                <span class="sep"></span>
+                <span class="brand"
+                    >진벅레 친구들 &mdash; <span>reactions on a book</span></span
+                >
+                <div class="vtabs">
+                    <button data-v="screens" data-key="1" class="on">
+                        Screens
+                    </button>
+                    <button data-v="elements" data-key="2">UI Elements</button>
+                    <button data-v="flows" data-key="3">Flows</button>
+                </div>
+                <span class="sep"></span>
+                <div class="cbox" id="cbox">
+                    <button class="cbtn hk" id="cbtn" data-key="/">
+                        <span id="cbtn-label">Screens</span
+                        ><span class="badge" id="cbtn-badge" hidden></span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="csearch"
+                                placeholder="Search screens&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="clist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="cfoot-n"></span
+                            ><button id="cclear">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="count" id="cnt"></div>
+                <div class="vinfo">
+                    <span class="lbl" id="vinfo-lbl"></span>
+                    <span class="note" id="vinfo-note"></span>
+                    <span class="diffs" id="vinfo-diffs"></span>
+                    <button id="difftoggle" class="off">
+                        Only differences
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="view on" id="v-screens">
+                <h1>Reactions on a book &mdash; seven directions</h1>
+                <p class="lead">
+                    Every situation the reaction controls can be in, drawn at
+                    <b>1px&nbsp;=&nbsp;1pt</b> on a 393pt frame, cropped to the
+                    book-details hero because that is the unit under review:
+                    the button and the record share a corner with the status
+                    badge, the shelf label and the shelf. Three live directions
+                    on one branch (<code>stack</code> &rarr;
+                    <code>stack-status</code> &rarr; <code>stack-tint</code>,
+                    each adding one decision) and three marked <i>rejected</i>,
+                    kept browsable because of what they turned up. Colours are
+                    <code>AppColors.light</code> verbatim &mdash;
+                    <code>surfaceVariant #E9ECEF</code> for the hero,
+                    <code>brandFill #067657</code> for the button,
+                    <code>brand #09BC8A</code> at 30% for a chip's hairline. The
+                    cover is 120&times;180 from <code>kDefaultCoverAspect</code>
+                    2/3, the shelf 8pt with
+                    <code>offset(0,2) blur 2 black@25%</code>, the badge
+                    <code>h10/v4 radius 10</code>, the shelf label top-radius-3
+                    only. The right column is 217pt: 393 less 40pt padding, the
+                    cover and the 16pt gap. Switch direction with
+                    <span class="kbd">v</span>, compare two with
+                    <span class="kbd">&#8679;Enter</span>.
+                </p>
+                <div id="screens"></div>
+                <div class="noneleft gone" id="screens-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-elements">
+                <h1>UI elements</h1>
+                <p class="lead">
+                    The parts each direction is assembled from, and the corner
+                    they have to live in. Real metrics; the emoji sheet's grid is
+                    the one approximation on this page, because its columns and
+                    category chrome belong to
+                    <code>awesome_emoji_picker</code>.
+                </p>
+                <div id="elements"></div>
+                <div class="noneleft gone" id="elements-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-flows">
+                <h1>UX flows</h1>
+                <p class="lead">
+                    Leaving, changing, withdrawing and receiving a reaction,
+                    plus the two routes that only exist once the record is
+                    capped. Every step is a real state from the Screens tab, so
+                    a direction cannot have its screens corrected and its flows
+                    left stale.
+                </p>
+                <div class="flowlayout">
+                    <div class="side">
+                        <div class="sbox" id="sbox">
+                            <input
+                                class="search"
+                                id="fsearch"
+                                placeholder="Search flows&hellip;"
+                                autocomplete="off"
+                            />
+                            <span class="hint hint-slash"
+                                ><span class="kbd">/</span></span
+                            >
+                            <span class="hint hint-esc"
+                                ><span class="kbd">Esc</span></span
+                            >
+                        </div>
+                        <div id="sidenav"></div>
+                    </div>
+                    <div>
+                        <div id="flows"></div>
+                        <div class="noneleft gone" id="flows-none">
+                            No flows match that search.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            /* ==================================================================
+   SECTION 2: FRAME RENDERER — the book-details hero, drawn once.
+
+   Every screen on this page is the same hero with a different praise
+   treatment, so the treatment is the only thing declared per screen. The
+   chrome around it (cover, corner, shelf, band, tabs) is defined here
+   once, which is what stops a corrected detail from surviving in half the
+   drawings.
+   ================================================================== */
+            /* People. `a` is the avatar mode, and there are exactly the two
+               AvatarCircle has: 'photo' (avatar_path set) and 'emoji'
+               (avatar_path null, profile emoji). 'unknown' is a third thing —
+               not a mode but an absence: a profile the profiles RLS policy will
+               not let this viewer read at all.
+
+               Photos are drawn as a tinted disc with the initial. The page
+               embeds no images by design, and a crude stand-in is safer than a
+               convincing one nobody can check. */
+            const ME = { n: "아름", a: "photo", c: "#2f6f63", me: true };
+            const P = {
+                jihyun: { n: "지현", a: "photo", c: "#7c5cd6" },
+                minsu: { n: "민수", a: "emoji", g: "🐳" },
+                seoyeon: { n: "서연", a: "emoji", g: "📚" },
+                haneul: { n: "하늘", a: "photo", c: "#d4685a" },
+                taeho: { n: "태호", a: "emoji", g: "🍊" },
+                unseen: { n: null, a: "unknown" },
+            };
+            const pr = (who, e) => ({ who, e });
+
+            /* Icons.person_rounded at 0.6 diameter in secondaryText: what
+               AvatarCircle._PhotoPending draws for a photo that has not
+               arrived. Reused for an unreadable profile, deliberately — both
+               mean "a person, no picture", and inventing a second glyph would
+               make them look like different kinds of problem. */
+            function personGlyph(d) {
+                const s = Math.round(d * 0.6);
+                return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="#adb5bd"><circle cx="12" cy="8" r="4.2"/><path d="M12 13.6c-4.3 0-7.4 2.6-7.4 5.6 0 .5.4.8.9.8h13c.5 0 .9-.3.9-.8 0-3-3.1-5.6-7.4-5.6z"/></svg>`;
+            }
+
+            function avatar(p, d) {
+                const box = `width:${d}px;height:${d}px`;
+                if (p.a === "photo")
+                    return `<span class="av photo" style="${box};background:${p.c};font-size:${Math.round(d * 0.44)}px">${p.n.slice(0, 1)}</span>`;
+                if (p.a === "unknown")
+                    return `<span class="av" style="${box}">${personGlyph(d)}</span>`;
+                return `<span class="av" style="${box};font-size:${d / 2}px">${p.g}</span>`;
+            }
+
+            const mineOf = (s) =>
+                (s.praises.find((x) => x.who.me) || {}).e || null;
+            const othersOf = (s) => s.praises.filter((x) => !x.who.me);
+            /* Yours first. The provider orders by created_at desc, so this is a
+               display decision, not the data's — it puts your face directly
+               under the pill that changes it. */
+            const ordered = (s) =>
+                s.praises.filter((x) => x.who.me).concat(othersOf(s));
+
+            /* _ComplimentButton is behind `if (!isSelf)` and returns an empty
+               box unless status == 2. Both conditions, in one place, because
+               three treatments below need to ask. */
+            const pillShown = (s) => !s.isSelf && s.status === 2;
+
+            /* Three statuses, not two. The first draft of this function had only
+               a Read/Reading ternary, so the Interested screen drew a Reading
+               badge — wrong, and invisible in the grid because nobody had a
+               reason to look twice at a grey chip.
+
+               `badgefix` repairs status 0 only. Reading is left exactly as it
+               ships despite measuring 4.14:1 against its own tint, which is a
+               knowing near-miss rather than an oversight: brandText really is
+               4.74:1 on surfaceVariant — the figure app_theme.dart documents and
+               color_contrast_test.dart asserts — and it is the badge's own 10%
+               tint that darkens the background under it. Fixing it means giving
+               up either the green text or the green fill, and green-means-reading
+               is load-bearing across the app. Recorded, not silently absorbed. */
+            function statusBadge(s) {
+                const [cls, label] =
+                    s.status === 2
+                        ? ["read", "Read"]
+                        : s.status === 1
+                          ? ["reading", "Reading"]
+                          : [
+                                "interested" + (s.badgefix ? " fixed" : ""),
+                                "Interested",
+                            ];
+                return `<span class="sbadge ${cls}">${label}</span>`;
+            }
+
+            function pill(s) {
+                if (!pillShown(s)) return "";
+                const mine = mineOf(s);
+                const add = `<span class="pill"><span class="em">🎉</span>${s.verb}</span>`;
+                if (!mine) return add;
+                /* Hidden outright once you hold a reaction. You can only hold
+                   one, so a button labelled React would be promising to add
+                   something it cannot add — what it actually does is replace or
+                   withdraw, and both of those belong to the reaction you already
+                   have rather than to a fresh action. The tinted capsule owns
+                   them.
+
+                   An intermediate draft kept the button filled and unchanged and
+                   let the tint alone carry the state. It read fine, but it left a
+                   large green button in the corner whose label described
+                   something you could not do. */
+                if (s.tintMine) return "";
+                /* chips and owned carry your emoji on the button face. The rest
+                   cannot: the record below already shows it, and showing it
+                   twice is the whole reason this page exists. */
+                return s.record === "chips" || s.record === "owned"
+                    ? `<span class="pill"><span class="em">${mine}</span>${s.verb}</span>`
+                    : `<span class="pill out">${s.verb}ed</span>`;
+            }
+
+            function chips(list) {
+                if (!list.length) return "";
+                return `<div class="chips">${list
+                    .map((x) => `<span class="chip">${x.e}</span>`)
+                    .join("")}</div>`;
+            }
+
+            function gifts(list) {
+                if (!list.length) return "";
+                return `<div class="gifts">${list
+                    .map(
+                        (x) =>
+                            `<span class="gift">${avatar(x.who, 24)}<span class="bdg">${x.e}</span></span>`,
+                    )
+                    .join("")}</div>`;
+            }
+
+            /* The capped record. Two emoji is not arbitrary: no book in
+               production holds more than two, so the collapsed form is the
+               complete form for every real book today and +N is the escape hatch
+               rather than the normal case.
+
+               Yours is pinned first. It has to be: if it fell behind +N you
+               could hold a reaction with nothing on screen showing it, and the
+               pill's state label would be the only clue. */
+            function capsule(s, opts) {
+                const list = ordered(s);
+                if (!list.length) return "";
+                const shown = list.slice(0, 2);
+                const rest = list.length - shown.length;
+                const yours = s.tintMine && mineOf(s) ? " mine" : "";
+                /* The chevron is not decoration in tintMine. Once the button is
+                   hidden, this capsule is the only route to changing or
+                   withdrawing your reaction — and on a book at any status other
+                   than Read, the only interactive thing in the hero at all. It
+                   was an open question while the button was still there as a
+                   second route. It is not one now. */
+                const chev =
+                    s.tintMine || (opts || {}).chevron
+                        ? `<span class="chev">&#8250;</span>`
+                        : "";
+                return (
+                    `<div class="caprow"><span class="cap${yours}">` +
+                    shown.map((x) => `<span class="e">${x.e}</span>`).join("") +
+                    (rest ? `<span class="n">+${rest}</span>` : "") +
+                    chev +
+                    `</span></div>`
+                );
+            }
+
+            function rightColumn(s) {
+                /* With the badge in the status card there is nothing to hoist
+                   here on your own book, which also retires the oddity of the
+                   badge living in two different places depending on isSelf. */
+                const head =
+                    s.isSelf && s.badge === "corner" ? statusBadge(s) : "";
+                switch (s.record) {
+                    case "chips":
+                        return head + pill(s) + chips(ordered(s));
+                    case "owned":
+                        /* Your praise leaves the strip only when the pill is
+                           actually on screen to carry it. Keyed to pillShown,
+                           not to `mine != null` — the `stranded` screen is what
+                           the unconditional version does. */
+                        return (
+                            head +
+                            pill(s) +
+                            chips(pillShown(s) ? othersOf(s) : ordered(s))
+                        );
+                    case "gift":
+                        return head + pill(s) + gifts(ordered(s));
+                    case "capsule":
+                        return head + pill(s) + capsule(s);
+                    case "named":
+                        return head + pill(s);
+                }
+                return "";
+            }
+
+            function bandPraise(s) {
+                if (s.record !== "named" || !s.praises.length) return "";
+                const one = (x) =>
+                    `<span class="p${x.who.me ? " mine" : ""}"><em>${x.e}</em>${
+                        x.who.me ? "You" : x.who.n || "Someone you can't see"
+                    }</span>`;
+                return `<div class="named"><span class="lbl">Praise</span>${ordered(
+                    s,
+                )
+                    .map(one)
+                    .join("")}</div>`;
+            }
+
+            /* The reading-period card, which becomes the status card when the
+               badge moves into it. It only renders at status >= 1 with a start
+               date, so a status-0 book has no card to put the badge in.
+
+               First answer was to render the card anyway with the badge alone.
+               Drawn at 1:1 that is a full-width white slab containing one small
+               chip — worse than the corner it replaced. So at status 0 the badge
+               sits in the band *without* a card. The rule that matters is "status
+               lives in the band, under the author", and that holds either way;
+               the card is for dates, and when there are none there is no card. */
+            function statusCard(s) {
+                const inCard = s.badge === "card";
+                const dated = s.status >= 1;
+                if (!inCard && !dated) return "";
+                if (inCard && !dated)
+                    return `<div class="barebadge">${statusBadge(s)}</div>`;
+                const dates = `<span>2023.09.04 ~ ${
+                    s.status === 2 ? "2023.09.05" : ""
+                }</span><i>${s.status === 2 ? "1 day" : "12 days"}</i>`;
+                return `<div class="period${inCard ? " withbadge" : ""}">${
+                    inCard ? statusBadge(s) : ""
+                }<b>Reading period</b>${dates}</div>`;
+            }
+
+            /* The praise sheet. Title and hint are the real strings
+               (selectComplimentEmoji, emojiSearchHint); the column count and
+               category chrome belong to awesome_emoji_picker, so this grid is
+               approximate and says so in its element note. */
+            const SHEET_EMOJI = [
+                "👏", "🎉", "❤️", "🔥", "⭐", "💪", "😍", "🥰",
+                "👍", "✨", "🎊", "💯", "🙌", "😎", "🤩", "💐",
+                "💥", "😆", "🦄", "💗", "🤑", "😉", "📚", "🍀",
+            ];
+            function pickerSheet(s) {
+                const sel = s.sheet.selected;
+                /* Not `verb.toLowerCase()`: that rendered "Choose a react emoji"
+                   on every React version. The picker's title takes the noun, and
+                   the noun is not the button's verb — which is exactly the seam
+                   where the shipped English was found still saying "praise"
+                   under a button saying "React". */
+                return (
+                    `<div class="sheet"><div class="st">Choose a ${
+                        s.verb === "React" ? "reaction" : "praise"
+                    } emoji</div>` +
+                    `<div class="sf">Search</div>` +
+                    `<div class="egrid2">${SHEET_EMOJI.map(
+                        (e) =>
+                            `<s class="${e === sel ? "mine" : ""}">${e}</s>`,
+                    ).join("")}</div></div>`
+                );
+            }
+
+            /* Who reacted, and with what. The thing the capped capsule buys, and
+               the reason capping costs nothing: detail moves somewhere it has
+               room instead of being crammed into a 217pt column.
+
+               It also gives withdrawal its first real home. Your row opens the
+               picker, and because the capsule is visible whether or not the
+               button is, this route survives a book going back to Reading — the
+               one state where the shipped build strands your reaction.
+
+               A line of help text under the list was drawn here and cut in the
+               build: it captioned a single row that already carries You and a
+               chevron, which is the disclosure every other drill-in row in the
+               app uses unexplained. The chevron is the whole affordance. */
+            function whoSheet(s) {
+                const rows = ordered(s)
+                    .map(
+                        (x) =>
+                            `<div class="r">${avatar(x.who, 40)}<span class="nm">${
+                                x.who.me
+                                    ? `${x.who.n} <i>You</i>`
+                                    : x.who.n || "Someone you don't follow"
+                            }</span><span class="em">${x.e}</span>${
+                                x.who.me ? `<span class="chev">&#8250;</span>` : ""
+                            }</div>`,
+                    )
+                    .join("");
+                return (
+                    `<div class="sheet rsheet"><div class="st">${
+                        s.verb === "React" ? "Reactions" : "Praise"
+                    }</div>${rows}` +
+                    `</div>`
+                );
+            }
+
+            function sheet(s) {
+                return s.sheet.kind === "who" ? whoSheet(s) : pickerSheet(s);
+            }
+
+            /** Draw one screen from its spec. */
+            function frame(s) {
+                let h = `<div class="fr">`;
+                h += `<div class="nav"><span class="back">&#8249;</span></div>`;
+                h += `<div class="hero"><div class="hrow">`;
+                h += `<div class="cover"><div class="k1">라이브<br/>커머스</div><div class="k2"></div><div class="k3"></div><span class="bind"></span><span class="hair"></span></div>`;
+                h += `<div class="rcol">${rightColumn(s)}</div></div>`;
+                /* The badge is in the corner only when this direction leaves it
+                   there. Missing this condition drew it twice in stack-status,
+                   once here and once in the status card, and only the assertion
+                   noticed — in the grid it looked like a deliberate repeat. */
+                h += `<div class="corner">${
+                    !s.isSelf && s.badge === "corner" ? statusBadge(s) : ""
+                }<span class="slab">${s.shelf}</span></div>`;
+                h += `</div><div class="shelf"></div>`;
+                h += `<div class="band"><div class="btitle">라이부 코머스 성공 전략</div><div class="bauth">이현숙</div>`;
+                h += statusCard(s);
+                h += bandPraise(s) + `</div>`;
+                h += `<div class="tabs"><s class="on">Book info</s><s>Notes</s></div><div class="tail"></div>`;
+                if (s.sheet) h += `<div class="scrim"></div>${sheet(s)}`;
+                return h + `</div>`;
+            }
+
+            /* ==================================================================
+   SECTION 3: DATA — the base version, which is the shipped build.
+
+   One case table drives everything. A case is a *situation* (who is
+   looking, what praise exists, what status the book is in) and is
+   independent of the four praise treatments; the treatment comes from the
+   version. So each direction is one line of configuration rather than a
+   restated set of screens, and adding a case adds it to all four at once.
+   ================================================================== */
+            /* The two axes a direction can move on, plus the verb it uses.
+               Kept as a table rather than baked into the renderer so a version
+               is one line of configuration and the badge's placement can be
+               varied independently of the record's treatment. */
+            const STYLE = {
+                main: { record: "chips", badge: "corner", verb: "Praise" },
+                owned: { record: "owned", badge: "corner", verb: "Praise" },
+                named: { record: "named", badge: "corner", verb: "Praise" },
+                gift: { record: "gift", badge: "corner", verb: "Praise" },
+                stack: { record: "capsule", badge: "corner", verb: "React" },
+                "stack-status": {
+                    record: "capsule",
+                    badge: "card",
+                    verb: "React",
+                    badgefix: true,
+                },
+                "stack-tint": {
+                    record: "capsule",
+                    badge: "card",
+                    verb: "React",
+                    badgefix: true,
+                    tintMine: true,
+                },
+            };
+            const hero = (cfg, style) =>
+                Object.assign(
+                    {
+                        style,
+                        shelf: "쇼호스트",
+                        status: 2,
+                        isSelf: false,
+                        praises: [],
+                    },
+                    STYLE[style],
+                    cfg,
+                );
+
+            /* [id, group, name, note-for-main, config] */
+            const CASES = [
+                [
+                    "none",
+                    "A friend's finished book",
+                    "No reaction yet",
+                    "The baseline, and the one state no direction changes: nothing is duplicated when there is nothing to duplicate. Note how much of the 217pt column is empty here — the crowding only arrives with content.",
+                    { praises: [] },
+                ],
+                [
+                    "mine",
+                    "A friend's finished book",
+                    "One reaction &middot; yours",
+                    "The reported state, at real scale. 💥 twice, 40pt apart, in two shapes that mean different things: the pill face is <b>your</b> praise (the only thing telling you the sheet will withdraw rather than add) and the chip is <b>the book's</b>. 31 of the 35 praised books in production hold exactly one praise, so this is the ordinary case, not an edge one.",
+                    { praises: [pr(ME, "💥")] },
+                ],
+                [
+                    "mine-plus",
+                    "A friend's finished book",
+                    "Two praises &middot; one yours",
+                    "Two identical chips, nothing marking which is yours, so the pill's emoji is the only key. All four two-praise books in production have two different emoji, so at least the chips never collide — but the reader still has to match one against the button.",
+                    { praises: [pr(ME, "🥰"), pr(P.jihyun, "😆")] },
+                ],
+                [
+                    "theirs",
+                    "A friend's finished book",
+                    "Two praises &middot; none yours",
+                    "Where the shipped design is at its best: no pill emoji, so nothing is duplicated, and two anonymous chips cost nothing when neither of them is yours to find. Any change has to not break this state.",
+                    { praises: [pr(P.jihyun, "😆"), pr(P.minsu, "🔥")] },
+                ],
+                [
+                    "crowd",
+                    "A friend's finished book",
+                    "Five praises &middot; one yours",
+                    "A stress test, not a real state — no book in production has more than two. Five chips still fit one row (5&times;28 + 4&times;4 = 156 of 217pt), so nothing collides with the corner: overlap needs about three rows, and the shelf only drops away from the book if this column passes the cover's 180pt, which takes roughly a dozen praises. The problem at this volume is noise, not collision.",
+                    {
+                        praises: [
+                            pr(ME, "💥"),
+                            pr(P.jihyun, "😆"),
+                            pr(P.minsu, "🔥"),
+                            pr(P.seoyeon, "💗"),
+                            pr(P.haneul, "🦄"),
+                        ],
+                    },
+                ],
+                [
+                    "unseen",
+                    "A friend's finished book",
+                    "A reaction you can't attribute",
+                    "The praiser is private and you don't follow them, so the profiles policy hides the row: <code>is_private = false OR id = auth.uid() OR id IN (who you follow)</code>. The shipped design handles this for free, because an anonymous chip needs no profile. This is the one thing it does better than every attributed alternative below. Currently hypothetical — 0 of the 8 praisers are private — but 15 of 136 profiles are.",
+                    { praises: [pr(P.unseen, "👏")] },
+                ],
+                [
+                    "interested-friend",
+                    "Before it is finished",
+                    "A friend's book &middot; Interested",
+                    "Status 0, and the second most common status in the library — 133 of 472 books. No button, because you cannot react to a book nobody has finished; no reactions; and no reading-period card, since <code>ReadingPeriodRow</code> renders nothing below status 1. So the whole hero is a cover, a badge, a shelf label and two lines of text, and the right column is entirely empty. <b>Look at the badge.</b> Status 0 draws it in <code>secondaryText</code> at 10% fill and 40% border, which measures 1.66:1 against its own fill with a 1.23:1 border — the one thing on screen naming the state is the one thing you cannot read. Not caused by anything on this page, and not covered by <code>color_contrast_test.dart</code>, which only guards the brand tokens.",
+                    { status: 0, praises: [] },
+                ],
+                [
+                    "interested-reacted",
+                    "Before it is finished",
+                    "Interested, and still carrying your reaction",
+                    "The extreme form of <code>stranded</code>: a book you reacted to when it was finished, moved all the way back to <i>Interested</i>. Your reaction survives, the button is gone, and in main there is no route to it at all. The capsule directions reach it anyway, because the record is not part of the button. Rare, but reachable in two taps by the owner.",
+                    { status: 0, praises: [pr(ME, "🍀")] },
+                ],
+                [
+                    "stranded",
+                    "Before it is finished",
+                    "Your reaction, book back to Reading",
+                    "The owner moved the book back to Reading. <code>_ComplimentButton</code> returns an empty box unless <code>status == 2</code>, so your reaction is stranded: on screen, with no route to the sheet that would withdraw it. Present in the shipped build, and not caused by anything on this page — but every direction here has to answer for it.",
+                    { status: 1, praises: [pr(ME, "👏")] },
+                ],
+                [
+                    "owner",
+                    "Your own book",
+                    "Your own book &middot; two reactions",
+                    "No button: you can't react to yourself. The record is therefore the owner's only sight of the reactions they were given, which is why it isn't behind the same <code>!isSelf</code> guard as the button — it used to be, and the person reacted to never saw it anywhere in the app. The status badge moves up into this column because the corner belongs to the button that isn't here.",
+                    {
+                        isSelf: true,
+                        praises: [pr(P.jihyun, "😆"), pr(P.taeho, "💯")],
+                    },
+                ],
+                [
+                    "interested",
+                    "Your own book",
+                    "Your own book &middot; Interested",
+                    "The emptiest state the hero has: no dates, no reactions, no button, and on your own book the badge is hoisted to the top of the right column instead of sitting in the corner. Drawn because it is the case that decides where the badge can live — a direction that moves it into the reading-period card has to say what happens when there is no card.",
+                    { isSelf: true, status: 0, praises: [] },
+                ],
+            ];
+
+            /* Screens that only exist once the record is capped: a capsule can
+               be tapped, so there is a sheet behind it to draw. Added per
+               version rather than defined here, since main has nothing to put
+               in them. */
+            const CAPSULE_ONLY = [
+                [
+                    "who",
+                    "The sheet behind the capsule",
+                    "Who reacted &middot; three, one yours",
+                    "What the cap buys. Detail moves somewhere it has room instead of being crammed into a 217pt column, and every reaction gets the one thing an emoji alone cannot carry: whose it is. Your row leads, is the only one that drills in, and says so with <i>You</i> and a chevron. Dismissing the picker it opens comes back here rather than to the book — the sheet is the hub, not one leg of a chain.",
+                    {
+                        praises: [
+                            pr(ME, "🦄"),
+                            pr(P.jihyun, "🎊"),
+                            pr(P.minsu, "🦙"),
+                        ],
+                        sheet: { kind: "who" },
+                    },
+                ],
+                [
+                    "who-owner",
+                    "The sheet behind the capsule",
+                    "Who reacted &middot; your own book",
+                    "The recipient's version, and the strongest argument for the sheet. There is no notification and no history anywhere in the app, so before this the entire experience of being reacted to was two anonymous circles beside a cover. No row is yours, so no row is tappable and nothing drills in.",
+                    {
+                        isSelf: true,
+                        praises: [
+                            pr(P.jihyun, "🎊"),
+                            pr(P.taeho, "💯"),
+                            pr(P.unseen, "🦙"),
+                        ],
+                        sheet: { kind: "who" },
+                    },
+                ],
+                [
+                    "who-reading",
+                    "The sheet behind the capsule",
+                    "Who reacted &middot; book back to Reading",
+                    "The same sheet, reached from a book at status 1 where the button does not render. This is the fix for <code>stranded</code>, and it costs nothing extra: the capsule is part of the record, not part of the button, so it is on screen at every status. Compare <code>stranded</code> in <b>main</b>, where the same state has no route at all.",
+                    {
+                        status: 1,
+                        praises: [pr(ME, "👏")],
+                        sheet: { kind: "who" },
+                    },
+                ],
+            ];
+
+            function screensFor(style) {
+                const groups = new Map();
+                const rows = CASES.concat(
+                    STYLE[style].record === "capsule" ? CAPSULE_ONLY : [],
+                );
+                for (const [id, g, nm, note, cfg] of rows) {
+                    if (!groups.has(g)) groups.set(g, []);
+                    groups.get(g).push([id, nm, note, hero(cfg, style)]);
+                }
+                return Array.from(groups, ([g, items]) => [g, items]);
+            }
+            const SCREENS = screensFor("main");
+
+            /* Flows are generated the same way, so a direction cannot have its
+               screens updated and its flows left behind. */
+            function flowsFor(style) {
+                const H = (cfg) => hero(cfg, style);
+                /* With the button hidden once you hold a reaction, changing and
+                   withdrawing route through the who-reacted sheet rather than
+                   straight into the picker. Branching the steps here rather than
+                   leaving the old three matters: a flow that contradicts the
+                   screens is the exact drift this page is built to prevent. */
+                const viaSheet = !!STYLE[style].tintMine;
+                return [
+                    [
+                        "Leaving a reaction",
+                        [
+                            [
+                                "first-praise",
+                                "Reacting for the first time",
+                                "The happy path. The sheet is the only way in, and it is the only way out again.",
+                                [
+                                    [
+                                        "Nothing given",
+                                        "The button is the whole affordance.",
+                                        H({ praises: [] }),
+                                    ],
+                                    [
+                                        "Sheet open",
+                                        "3,500 emoji behind a search field, seeded with sixteen Recents so the first visit isn't blank. Nothing is marked, because you hold nothing.",
+                                        H({
+                                            praises: [],
+                                            sheet: { selected: null },
+                                        }),
+                                    ],
+                                    [
+                                        "Praised",
+                                        "Where the two treatments of your reaction land next to each other — or, in the capsule directions, where the button leaves and the record takes over.",
+                                        H({ praises: [pr(ME, "💥")] }),
+                                    ],
+                                ],
+                            ],
+                            [
+                                "change-praise",
+                                "Changing your reaction",
+                                "One reaction per person, so picking a different emoji replaces rather than adds. <code>created_at</code> is deliberately untouched: swapping the emoji is not a new reaction.",
+                                viaSheet
+                                    ? [
+                                          [
+                                              "Holding 💥",
+                                              "No button here — the tinted capsule is the whole control.",
+                                              H({ praises: [pr(ME, "💥")] }),
+                                          ],
+                                          [
+                                              "Who reacted",
+                                              "Tapping the capsule always lands here, whether or not one of the reactions is yours. One control, one destination.",
+                                              H({
+                                                  praises: [pr(ME, "💥")],
+                                                  sheet: { kind: "who" },
+                                              }),
+                                          ],
+                                          [
+                                              "Your row opens the picker",
+                                              "One tap further than it used to be. Acceptable for an action taken 39 times in the app's life, and the cost of the button not lying about what it does.",
+                                              H({
+                                                  praises: [pr(ME, "💥")],
+                                                  sheet: {
+                                                      kind: "picker",
+                                                      selected: "💥",
+                                                  },
+                                              }),
+                                          ],
+                                          [
+                                              "Replaced",
+                                              "praiseTapFor reads a tap on anything else as replace.",
+                                              H({ praises: [pr(ME, "🥰")] }),
+                                          ],
+                                      ]
+                                    : [
+                                          [
+                                              "Holding 💥",
+                                              "The state you start from.",
+                                              H({ praises: [pr(ME, "💥")] }),
+                                          ],
+                                          [
+                                              "Yours is the marked cell",
+                                              "brand@25% on radius 8 with a 2pt brandFill border. Usually visible without hunting, since your own reaction is in Recents.",
+                                              H({
+                                                  praises: [pr(ME, "💥")],
+                                                  sheet: { selected: "💥" },
+                                              }),
+                                          ],
+                                          [
+                                              "Replaced",
+                                              "praiseTapFor reads a tap on anything else as replace.",
+                                              H({ praises: [pr(ME, "🥰")] }),
+                                          ],
+                                      ],
+                            ],
+                            [
+                                "withdraw",
+                                "Taking your reaction back",
+                                viaSheet
+                                    ? "Reachable, and for the first time somewhere you would think to look. Your own row is the first thing in the sheet and the only one that drills in, so withdrawal stops being a property of the picker and becomes a property of the record."
+                                    : "Tapping the emoji you already hold removes it. There is no Remove button anywhere — the strip that used to carry one was deleted, on the grounds that the marked cell already says which is yours and tapping it already withdraws.",
+                                viaSheet
+                                    ? [
+                                          [
+                                              "Holding 💥",
+                                              "",
+                                              H({ praises: [pr(ME, "💥")] }),
+                                          ],
+                                          [
+                                              "Your row, and only yours",
+                                              "<i>You</i> and a chevron on the row wearing your own name. Everyone else's row is inert.",
+                                              H({
+                                                  praises: [pr(ME, "💥")],
+                                                  sheet: { kind: "who" },
+                                              }),
+                                          ],
+                                          [
+                                              "Tap the marked cell",
+                                              "Same picker, same mark, same rule — but reached from the record rather than found in a 3,500-cell grid. Backing out here returns to the sheet, not to the book.",
+                                              H({
+                                                  praises: [pr(ME, "💥")],
+                                                  sheet: {
+                                                      kind: "picker",
+                                                      selected: "💥",
+                                                  },
+                                              }),
+                                          ],
+                                          [
+                                              "Withdrawn",
+                                              "No reactions left, so no capsule, and the button comes back — there is something to add again.",
+                                              H({ praises: [] }),
+                                          ],
+                                      ]
+                                    : [
+                                          [
+                                              "Holding 💥",
+                                              "",
+                                              H({ praises: [pr(ME, "💥")] }),
+                                          ],
+                                          [
+                                              "Tap the marked cell",
+                                              "The mark is the entire instruction. Nothing on screen uses the word remove.",
+                                              H({
+                                                  praises: [pr(ME, "💥")],
+                                                  sheet: { selected: "💥" },
+                                              }),
+                                          ],
+                                          [
+                                              "Withdrawn",
+                                              "Back to the empty state.",
+                                              H({ praises: [] }),
+                                          ],
+                                      ],
+                            ],
+                        ],
+                    ],
+                    [
+                        "Receiving one",
+                        [
+                            [
+                                "receive",
+                                "Being reacted to",
+                                "The owner's side. No button in either step — you cannot react to yourself — so the recipient is a spectator of their own reactions, which is what makes the record's legibility their whole experience of the feature.",
+                                [
+                                    [
+                                        "Before",
+                                        "Your finished book, no reactions yet.",
+                                        H({ isSelf: true, praises: [] }),
+                                    ],
+                                    [
+                                        "After",
+                                        "Two friends reacted. This is the only place they appear — there is no notification and no history anywhere in the app.",
+                                        H({
+                                            isSelf: true,
+                                            praises: [
+                                                pr(P.jihyun, "😆"),
+                                                pr(P.taeho, "💯"),
+                                            ],
+                                        }),
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    [
+                        "When the status changes",
+                        [
+                            [
+                                "stranded-route",
+                                "A reaction that outlives the status",
+                                "The owner can move a finished book back to Reading, and the reaction rows survive it. Drawn as a flow because the problem is a route, not a state: nothing on the second screen is wrong to look at, there is simply no longer a way off it.",
+                                STYLE[style].record === "capsule"
+                                    ? [
+                                          [
+                                              "Back to Reading",
+                                              "The button is gone, because you cannot react to a book nobody has finished. The capsule is not part of the button, so it stays.",
+                                              H({
+                                                  status: 1,
+                                                  praises: [pr(ME, "👏")],
+                                              }),
+                                          ],
+                                          [
+                                              "Tap the capsule",
+                                              "Reached without the button. Your row is still tappable, so the reaction is still yours to change or take back.",
+                                              H({
+                                                  status: 1,
+                                                  praises: [pr(ME, "👏")],
+                                                  sheet: { kind: "who" },
+                                              }),
+                                          ],
+                                          [
+                                              "Withdrawn",
+                                              "No reactions left, so no capsule, and the corner is back to the shelf label.",
+                                              H({ status: 1, praises: [] }),
+                                          ],
+                                      ]
+                                    : [
+                                          [
+                                              "Finished, reacted to by you",
+                                              "The pill is the only entry to the sheet, and the sheet is the only way to withdraw.",
+                                              H({ praises: [pr(ME, "👏")] }),
+                                          ],
+                                          [
+                                              "Back to Reading",
+                                              "status 1, so the pill returns an empty box. Your reaction is still there, still counted, and now unreachable.",
+                                              H({
+                                                  status: 1,
+                                                  praises: [pr(ME, "👏")],
+                                              }),
+                                          ],
+                                      ],
+                            ],
+                        ],
+                    ],
+                ].concat(
+                    STYLE[style].record !== "capsule"
+                        ? []
+                        : [
+                              [
+                                  "Reading who reacted",
+                                  [
+                                      [
+                                          "open-who",
+                                          "Finding out who reacted",
+                                          "The route the cap creates. Two emoji and a +1 say what the book collected; the sheet says who. Note that the capsule is the affordance and nothing labels it as one — the open question below.",
+                                          [
+                                              [
+                                                  "Capped record",
+                                                  "Three reactions, two shown, +1 for the rest. Yours is pinned first so it can never fall behind the count.",
+                                                  H({
+                                                      praises: [
+                                                          pr(ME, "🦄"),
+                                                          pr(P.jihyun, "🎊"),
+                                                          pr(P.minsu, "🦙"),
+                                                      ],
+                                                  }),
+                                              ],
+                                              [
+                                                  "Who reacted",
+                                                  "Avatar, nickname, emoji. Yours is marked and is the only tappable row.",
+                                                  H({
+                                                      praises: [
+                                                          pr(ME, "🦄"),
+                                                          pr(P.jihyun, "🎊"),
+                                                          pr(P.minsu, "🦙"),
+                                                      ],
+                                                      sheet: { kind: "who" },
+                                                  }),
+                                              ],
+                                              [
+                                                  "Your row opens the picker",
+                                                  "Same sheet as the button opens, with your emoji marked. Tapping it withdraws; tapping another replaces.",
+                                                  H({
+                                                      praises: [
+                                                          pr(ME, "🦄"),
+                                                          pr(P.jihyun, "🎊"),
+                                                          pr(P.minsu, "🦙"),
+                                                      ],
+                                                      sheet: {
+                                                          kind: "picker",
+                                                          selected: "🦄",
+                                                      },
+                                                  }),
+                                              ],
+                                          ],
+                                      ],
+                                  ],
+                              ],
+                          ],
+                );
+            }
+            const FLOWS = flowsFor("main");
+
+            function elementsFor(style) {
+                const S = STYLE[style];
+                const panel = (inner, align) =>
+                    `<div class="fr" style="width:auto;border:0;border-radius:0;background:none"><div class="demopanel" style="align-items:${align || "flex-end"}">${inner}</div></div>`;
+                const row = (inner) =>
+                    `<div class="fr" style="width:auto;border:0;border-radius:0;background:none"><div class="demorow">${inner}</div></div>`;
+
+                const carries = S.record === "chips" || S.record === "owned";
+                const pillStates = carries
+                    ? row(
+                          `<span class="pill"><span class="em">🎉</span>${S.verb}</span><span class="pill"><span class="em">💥</span>${S.verb}</span>`,
+                      )
+                    : S.tintMine
+                      ? row(
+                            `<span class="pill"><span class="em">🎉</span>${S.verb}</span><span style="font:600 12px system-ui;color:#212529">then nothing</span>`,
+                        )
+                      : row(
+                            `<span class="pill"><span class="em">🎉</span>${S.verb}</span><span class="pill out">${S.verb}ed</span>`,
+                        );
+                const pillNote = carries
+                    ? "brandFill with white text, radius 20, h12/v6, label 13 bold. The icon slot is Icons.celebration at 18 until you react, then your emoji at 15. The label is the same in both states, so a pill you have already used still reads as an invitation."
+                    : S.tintMine
+                      ? "<b>One state, then none.</b> The button exists only while there is something to add; once you hold a reaction it is gone and the capsule owns replacing and withdrawing. That is the honest shape, because you can only hold one reaction — a button still saying <i>React</i> would be offering an action it cannot perform. It also removes the second string entirely: no <code>reacted</code> key, and no Korean wording to settle, which was one of the two things blocking implementation."
+                      : "The state moved from the icon slot to the pill's weight: filled is an invitation, outlined is a record. Padding drops by exactly the 1.5pt border so the box stays 34pt — the same inset trap as <code>Border.all</code> on AvatarCircle. Needs one new string per locale; the Korean wording is an open question for a native speaker.";
+
+                const record =
+                    S.record === "capsule"
+                        ? panel(
+                              capsule({
+                                  tintMine: S.tintMine,
+                                  praises: [pr(P.jihyun, "🎊")],
+                              }) +
+                                  capsule({
+                                      tintMine: S.tintMine,
+                                      praises: [
+                                          pr(ME, "🦄"),
+                                          pr(P.jihyun, "🎊"),
+                                      ],
+                                  }) +
+                                  capsule({
+                                      tintMine: S.tintMine,
+                                      praises: [
+                                          pr(ME, "🦄"),
+                                          pr(P.jihyun, "🎊"),
+                                          pr(P.minsu, "🦙"),
+                                          pr(P.seoyeon, "🤑"),
+                                          pr(P.haneul, "🛸"),
+                                      ],
+                                  }),
+                          )
+                        : S.record === "gift"
+                          ? panel(
+                                gifts([
+                                    pr(ME, "💥"),
+                                    pr(P.jihyun, "😆"),
+                                    pr(P.minsu, "🔥"),
+                                    pr(P.unseen, "👏"),
+                                ]),
+                            )
+                          : S.record === "named"
+                            ? `<div class="fr" style="width:333px;border:0;border-radius:0;background:var(--variant);padding:10px 0">${bandPraise(
+                                  {
+                                      record: "named",
+                                      praises: [
+                                          pr(ME, "💥"),
+                                          pr(P.jihyun, "😆"),
+                                      ],
+                                  },
+                              )}</div>`
+                            : panel(
+                                  chips([
+                                      pr(ME, "💥"),
+                                      pr(P.jihyun, "😆"),
+                                      pr(P.minsu, "🔥"),
+                                  ]),
+                              );
+                const recordNote =
+                    S.record === "capsule"
+                        ? (S.tintMine
+                              ? "One reaction that is not yours, then two and five that are. "
+                              : "One, two, and five reactions. ") +
+                          "Same material as the chip it replaces — pageBackground fill, brand@30% hairline — but one capsule rather than N loose circles, which is what fixes both the ragged cluster and the unbounded width. The <code>+N</code> appears only when there is a remainder: <code>+1</code> is information, a bare <code>1</code> is not. It takes primaryText, because secondaryText measures 2.0:1 on pageBackground." +
+                          (S.tintMine
+                              ? " The tinted state is the picker's marked-cell treatment, and the numbers are better than they look: the two fills are only 1.37:1 apart in luminance, but the border goes from 1.3:1 to 3.88:1, so the cue that survives a dim screen is the border becoming visible rather than the hue changing."
+                              : "")
+                        : S.record === "gift"
+                          ? "The shipped chip, widened into a capsule that holds the reactor beside the emoji — same pageBackground fill and brand@30% hairline, 24pt avatar, emoji at 15. The first attempt notched the emoji onto the avatar as a 16pt badge, which put it at 9px: drawing it at 1:1 is the only reason that did not ship."
+                          : S.record === "named"
+                            ? "Text, in the band, under the reading period. Yours reads You in brandText; the eyebrow says what the line is, which it needs. It started in secondaryText and had to change: measured against surfaceVariant that is 1.75:1, unusable for a label. primaryText (13.01:1) instead, subordinate by size and tracking."
+                            : "28pt circle, pageBackground fill, brand@30% hairline, emoji 14. Anonymous by construction: it cannot say who gave what, which is exactly why the button has to carry a copy of yours.";
+
+                const extras =
+                    S.record !== "capsule"
+                        ? []
+                        : [
+                              [
+                                  "el-chevron",
+                                  S.tintMine
+                                      ? "Chevron &middot; settled"
+                                      : "Does the capsule need a chevron?",
+                                  S.tintMine
+                                      ? "<b>Settled by hiding the button.</b> While the button stayed on screen it was a second route to the sheet, so the chevron was a nice-to-have — reaction pills work without one everywhere else, and most people never discover that they reveal who. With the button gone the moment you react, this capsule is the only way to change or withdraw your reaction, and on any book that is not <i>Read</i> it is the only interactive thing in the hero. So it ships with the chevron. Left is the version without, kept to show what it costs: 8pt, and a device iOS normally reserves for rows rather than inline pills."
+                                      : "Left, as drawn: nothing says the capsule is tappable, which is how reaction pills work everywhere else — most people never discover that a long press reveals who, and lose nothing by it. Right, with a chevron: unambiguous, costs 8pt, and borrows a device iOS reserves for rows rather than for inline pills. <b>The case that decides it is one reaction, not five:</b> at a single emoji the capsule is 33pt and near-circular, visually identical to the chip it replaces, and 31 of the 35 reacted-to books in production are in exactly that state. So the weakest affordance falls in the commonest state. <b>Open here; settled in stack-tint.</b>",
+                                  panel(
+                                      capsule({
+                                          praises: [
+                                              pr(ME, "🦄"),
+                                              pr(P.jihyun, "🎊"),
+                                              pr(P.minsu, "🦙"),
+                                          ],
+                                      }) +
+                                          capsule(
+                                              {
+                                                  praises: [
+                                                      pr(ME, "🦄"),
+                                                      pr(P.jihyun, "🎊"),
+                                                      pr(P.minsu, "🦙"),
+                                                  ],
+                                              },
+                                              { chevron: true },
+                                          ),
+                                  ),
+                              ],
+                              [
+                                  "el-verb",
+                                  "What the button should say",
+                                  "The word is not cosmetic here. 35 distinct emoji across 39 rows in production, and only about 8 of them are praise (👏🥳🎉🎊⭐🤩); another 8 are affection; the rest are ☃️ 🌪️ 🐙 🦕 🦙 🧸 🪐 🛸 🤑 🤪. People are already using this as a free-form reaction, so <b>React</b> is the label that matches the affordance behind it — a 3,500-emoji picker — and the warmth belongs to the emoji rather than to a label the picker contradicts. <i>Praise</i> also reads oddly to a native English speaker: slightly grand, and a verb almost no interface uses. <i>Cheer</i> is the warm alternative if the register matters more than the accuracy.",
+                                  row(
+                                      `<span class="pill"><span class="em">🎉</span>Praise</span><span class="pill"><span class="em">🎉</span>React</span><span class="pill"><span class="em">🎉</span>Cheer</span>`,
+                                  ),
+                              ],
+                          ];
+
+                return [
+                    [
+                        "The reaction itself",
+                        [
+                            [
+                                "el-pill",
+                                "The button &middot; both states",
+                                pillNote,
+                                pillStates,
+                            ],
+                            ["el-record", "The record", recordNote, record],
+                            [
+                                "el-cell",
+                                "Marked cell in the sheet",
+                                "brand@25% on radius 8 with a 2pt brandFill border, from emojiRenderer. Load-bearing rather than decorative: since the Your-praise strip was deleted, this mark is the only thing in the sheet telling you where you stand, and tapping it is the only way to withdraw.",
+                                `<div class="fr" style="width:220px;border:0;border-radius:0;background:var(--sheet);padding:8px"><div class="egrid2" style="grid-template-columns:repeat(4,1fr)"><s>👏</s><s class="mine">💥</s><s>❤️</s><s>🔥</s></div></div>`,
+                            ],
+                        ].concat(extras),
+                    ],
+                    [
+                        "The corner they share",
+                        [
+                            [
+                                "el-corner",
+                                "The stack, at real scale",
+                                S.badge === "card"
+                                    ? "Two objects in the column and one on the shelf, down from four. The badge left for the status card, the record is one capsule instead of a cluster, and the two capsules are close enough in width that the right edge stops reading as a staircase. This is the crowding fix; the record change alone does not get here."
+                                    : "Pill, record, status badge, shelf label: four shapes, four widths, four alignments, nothing relating them. Switch to <b>stack-status</b> to see this with the badge moved out.",
+                                `<div class="fr" style="width:237px;border:0;border-radius:0;background:var(--variant);padding:10px"><div class="demopanel">${pill(
+                                    {
+                                        ...S,
+                                        status: 2,
+                                        praises: [pr(ME, "🦄")],
+                                    },
+                                )}${
+                                    S.record === "capsule"
+                                        ? capsule({
+                                              praises: [
+                                                  pr(ME, "🦄"),
+                                                  pr(P.jihyun, "🎊"),
+                                              ],
+                                          })
+                                        : S.record === "gift"
+                                          ? gifts([pr(ME, "🦄")])
+                                          : S.record === "named"
+                                            ? ""
+                                            : chips([pr(ME, "🦄")])
+                                }${
+                                    S.badge === "card"
+                                        ? ""
+                                        : `<span class="sbadge read" style="margin-top:14px">Read</span>`
+                                }<span class="slab" style="margin-top:14px">쇼호스트</span></div></div>`,
+                            ],
+                            [
+                                "el-badge",
+                                "Status badge &middot; all three",
+                                S.badgefix
+                                    ? "With status 0 repaired. The three now read as a <b>progression of weight</b> — empty outline, green fill, dark fill — rather than as three pale tints. Text measures 13.01:1 / 4.14:1 / 10.78:1 against what sits behind it; the Interested border is held to 3:1 (3.41:1) because with no fill it is the thing that identifies the badge as a badge. Reading is untouched and is the one knowing near-miss: see the note in <code>statusBadge</code>."
+                                    : "h10/v4, radius 10, the status colour at 10% fill and 40% border, text in the same colour. Measured against its own composited fill: <b>Read 10.78:1</b>, <b>Reading 4.14:1</b>, <b>Interested 1.66:1</b>. Only the first clears AA, and Interested is not marginal — it is unreadable. Moving it into the white status card does not fix it either (1.95:1 there). Switch to <b>stack-status</b> for the repair.",
+                                `<div class="fr" style="width:auto;border:0;border-radius:0;background:var(--variant)"><div class="demorow"><span class="sbadge interested${
+                                    S.badgefix ? " fixed" : ""
+                                }">Interested</span><span class="sbadge reading">Reading</span><span class="sbadge read">Read</span></div></div>`,
+                            ],
+                            [
+                                "el-badge-fix",
+                                "Interested &middot; shipped vs repaired",
+                                "Left is what ships: <code>secondaryText</code> for the text, its own colour at 10% fill and 40% border. <b>1.66:1</b> text, <b>1.23:1</b> border. Right drops the fill and takes the text to <code>primaryText</code>: <b>13.01:1</b> text, <b>3.41:1</b> border. Dropping the fill is the part that matters, not the darker text — the shipped Interested and Read tints composite to <code>#E3E6EA</code> and <code>#D5D8DB</code>, two near-identical greys, so the two ends of the progression were only ever separated by a text colour you could not read. An intermediate version that darkened only the text was drawn and cut for exactly that reason: legible, but it made <i>Interested</i> look like <i>Read</i>. Folded into <b>stack-status</b>; affects 133 books.",
+                                `<div class="fr" style="width:auto;border:0;border-radius:0;background:var(--variant)"><div class="demorow"><span class="sbadge interested">Interested</span><span class="sbadge interested fixed">Interested</span></div></div>`,
+                            ],
+                            [
+                                "el-card",
+                                "Reading period card, both ways",
+                                "Top: as shipped, with a <i>Reading period</i> label. Bottom: the badge standing in for that label. Status, dates and duration are one class of fact, so they belong in one card — and the badge does more work than the label did, so this <b>removes</b> a string rather than adding one. It also retires an oddity: today the badge sits in the corner on a friend's book and at the top of the column on your own, two places for one thing. The catch is status 0, where the card does not render at all — see the <code>interested</code> screen.",
+                                `<div class="fr" style="width:333px;border:0;border-radius:0;background:var(--variant)"><div class="demopanel" style="align-items:stretch;gap:12px"><div class="period"><b>Reading period</b><span>2023.09.04 ~ 2023.09.05</span><i>1 day</i></div><div class="period withbadge"><span class="sbadge read">Read</span><b>Reading period</b><span>2023.09.04 ~ 2023.09.05</span><i>1 day</i></div></div></div>`,
+                            ],
+                            [
+                                "el-shelf",
+                                "Shelf label and shelf",
+                                "surface, top radius 3 only, h9/v5, bold 14, capped at 140 then ellipsized. It reads as a tab because it sits on the 8pt shelf, whose shadow is offset(0,2) blur 2 at black@25%.",
+                                `<div class="fr" style="width:180px;border:0;border-radius:0;background:var(--variant);padding:14px 0 0"><div class="demopanel" style="align-items:center;gap:0"><span class="slab">쇼호스트</span></div><div class="shelf"></div></div>`,
+                            ],
+                        ],
+                    ],
+                ];
+            }
+            const ELEMENTS = elementsFor("main");
+
+            /* Unresolved decisions. Keyed by *flow* id: the engine only renders
+               this callout in the flows view, so an entry under a screen id is
+               dead configuration. That is why `stranded-route` exists as a flow
+               rather than as a note on the `stranded` screen. */
+            const OPEN = {
+                "stranded-route":
+                    "Pre-existing, and <b>fixed by the two capsule directions</b>: in main a reaction you left on a book that has since gone back to <i>Reading</i> is visible and unreachable, because the sheet only opens from a button that hides at <code>status != 2</code>. Switch to <b>stack</b> to see the route the capsule restores. Still open in main, owned, named and gift.",
+                withdraw:
+                    "Open in main: withdrawal is reachable only by recognising your own emoji among 3,500 and tapping it, with nothing anywhere using the word <i>remove</i>. Acceptable while reactions are dormant (39 in total, 8 people, 0 in the last 90 days), and answered properly by the who-reacted sheet in <b>stack</b>, where your row is the first thing in it.",
+                "open-who":
+                    "Open: nothing labels the capsule as tappable. Reaction pills work this way everywhere else — most people never learn that a long press reveals who, and lose nothing — but on your own book the capsule is the only object in the corner and the only thing standing in for a notification the app does not have. See <code>el-chevron</code> for the version that spells it out.",
+            };
+
+            /* ==================================================================
+   SECTION 4: VERSIONS — four directions for the same region.
+
+   Each is a whole answer, not a variation in padding. The axis they
+   differ on is where the record of a praise lives and how much it says:
+
+     main   the record is an anonymous chip beside the button
+     owned  the record splits by owner: button holds yours, chips theirs
+     named  the record leaves the corner for the band, as text
+     gift   the record stays, and becomes the praiser's face
+
+   Compare any two with Shift+Enter in the version panel.
+   ================================================================== */
+            function byId(id) {
+                for (const [i, , , , cfg] of CASES) if (i === id) return cfg;
+                return {};
+            }
+            const flatScreens = (S) =>
+                new Map(
+                    S.flatMap(([g, items]) =>
+                        items.map(([id, nm, note, spec]) => [
+                            id,
+                            [g, nm, note, spec],
+                        ]),
+                    ),
+                );
+            const flatFlows = (F) =>
+                new Map(
+                    F.flatMap(([g, items]) =>
+                        items.map(([id, nm, note, steps]) => [
+                            id,
+                            [g, nm, note, steps],
+                        ]),
+                    ),
+                );
+            const renderSteps = (steps) =>
+                steps.map(([n, c, sp]) => n + "|" + c + "|" + frame(sp)).join("~");
+            const flatEls = (E) =>
+                new Map(
+                    E.flatMap(([g, items]) =>
+                        items.map(([id, nm, note, demo]) => [
+                            id,
+                            [g, nm, note, demo],
+                        ]),
+                    ),
+                );
+
+            /* Notes attached to a case a direction does not actually change.
+               Collected rather than silently honoured: see patch(). */
+            const DROPPED = [];
+
+            /* Builds a version's patch against its <b>parent</b>, and leaves out
+               anything the two draw identically.
+
+               The baseline is a parameter because the version tree is no longer
+               flat: stack-tint hangs off stack-status, which hangs off stack.
+               Diffing every version against main would have made stack-tint
+               restate the whole capsule direction as if it had invented it, and
+               the compare view would then report a dozen changes where there are
+               six.
+
+               Ids the parent does not have are additions and carry their own
+               group, name and note. A note written for a case this version draws
+               identically to its parent goes to DROPPED rather than dragging the
+               screen into the diff — that check has now caught three notes
+               claiming changes that were not there. */
+            function patch(style, notes, base) {
+                base = base || "main";
+                const out = { screens: {}, flows: {}, elements: {} };
+
+                const mineS = flatScreens(screensFor(style));
+                const baseS = flatScreens(screensFor(base));
+                for (const [id, [g, nm, note, spec]] of mineS) {
+                    const b = baseS.get(id);
+                    if (b && frame(spec) === frame(b[3])) {
+                        if (notes[id]) DROPPED.push(style + "/" + id);
+                        continue;
+                    }
+                    out.screens[id] = b
+                        ? notes[id]
+                            ? { spec, note: notes[id] }
+                            : { spec }
+                        : { group: g, name: nm, note: notes[id] || note, spec };
+                }
+
+                const mineF = flatFlows(flowsFor(style));
+                const baseF = flatFlows(flowsFor(base));
+                for (const [id, [g, nm, note, steps]] of mineF) {
+                    const b = baseF.get(id);
+                    if (!b) {
+                        out.flows[id] = { group: g, name: nm, note, steps };
+                        continue;
+                    }
+                    const sameSteps = renderSteps(steps) === renderSteps(b[3]);
+                    const sameText = nm === b[1] && note === b[2];
+                    if (sameSteps && sameText) continue;
+                    /* Name and note travel with the steps. Dropping them left the
+                       four-step withdraw flow in stack-tint captioned with main's
+                       three-step prose, which claimed nothing anywhere uses the
+                       word remove — on a screen whose sheet says exactly that. */
+                    out.flows[id] = sameText
+                        ? { steps }
+                        : { name: nm, note, steps };
+                }
+
+                const mineE = flatEls(elementsFor(style));
+                const baseE = flatEls(elementsFor(base));
+                for (const [id, [g, nm, note, demo]] of mineE) {
+                    const b = baseE.get(id);
+                    if (b && b[1] === nm && b[2] === note && b[3] === demo)
+                        continue;
+                    out.elements[id] = b
+                        ? { name: nm, note, demo }
+                        : { group: g, name: nm, note, demo };
+                }
+                return out;
+            }
+
+            const VERSIONS = [
+                [
+                    "main",
+                    "main",
+                    "The shipped build. The button carries your emoji on its face; ComplimentBlock lists every reaction on the book as anonymous 28pt chips underneath. When you are the only one — 31 of 35 reacted-to books — the two are the same emoji, twice.",
+                    null,
+                    {},
+                ],
+
+                [
+                    "stack",
+                    "stack",
+                    "Cap the record and put the detail behind it. Up to two emoji plus <code>+N</code> in one capsule; tapping it opens a sheet listing who reacted with what. Isolates the record change — the badge stays in the corner — so the two decisions can be judged apart. Renames the verb to <b>React</b>, which the production data argues for: of 39 reactions only about 8 are praise, and the rest are ☃️ 🌪️ 🐙 🦕 🦙 🧸 🪐 🛸 🤑 🤪.",
+                    "main",
+                    patch("stack", {
+                        mine: "One capsule where there were a pill-emoji and a chip. The button drops the emoji and takes the state into its weight, because the capsule already shows what you left.",
+                        "mine-plus":
+                            "Two reactions, both visible, no <code>+N</code> yet — and no book in production holds more than two, so this is the complete form for every real book today. Which means the capsule is not a truncation in practice; it is a cap that has not yet had to bite.",
+                        theirs: "Two emoji, one object. Compare against main's two loose circles: same information, half the shapes.",
+                        crowd: "Where the cap earns itself. Five reactions become <code>💥 😆 +3</code> at a fixed 96pt instead of a 156pt row that grows without limit, and the detail is one tap away rather than crammed into a 217pt column.",
+                        unseen: "Unchanged on the surface — a lone emoji in a capsule needs no profile. The unreadable praiser only becomes visible in the sheet, where it can be said in words instead of guessed from a glyph.",
+                        owner: "The recipient's corner is now one capsule, and it is the only object there. That is an argument for the chevron: see <code>el-chevron</code>.",
+                        stranded:
+                            "Fixed, and almost incidentally. The capsule belongs to the record rather than to the button, so it survives the status change and the sheet behind it still has your row in it. See the <code>who-reading</code> screen and the <b>stranded-route</b> flow.",
+                        "interested-reacted":
+                            "Compare this against <b>main</b> and the two are nearly identical — a lone emoji at the top of an empty column. The difference is entirely invisible: here it opens the sheet, there it does nothing. That makes this the sharpest version of the chevron question in <code>el-chevron</code>, because the capsule is the only interactive thing in the whole hero and nothing whatsoever marks it as one. It also shows the record floating at the top of a 180pt column with nothing above it, which is how the shipped layout has always behaved when the button is absent.",
+                    }),
+                ],
+
+                [
+                    "stack-status",
+                    "stack-status",
+                    "The capsule, plus the status badge moved out of the corner and into the reading-period card — where it stands in for the <i>Reading period</i> label rather than being added beside it. Status, dates and duration are one class of fact. Takes the corner from four objects to three, retires the oddity of the badge living in two different places depending on whose book it is, and removes a string instead of adding one. <b>Also repairs the Interested badge</b>, which measures 1.66:1 as shipped and appears on 133 of 472 books — folded in here rather than tracked separately, because moving the badge and being able to read it are the same job. My recommendation.",
+                    "stack",
+                    patch("stack-status", {
+                        none: "The empty state is where the decrowding is easiest to see: a single button in the corner and a shelf label, against main's button-plus-badge-plus-label.",
+                        mine: "The whole proposal in one screen. Two capsules of similar width in the column, one tab on the shelf, and the status where the dates are.",
+                        owner: "The badge no longer has to be hoisted to the top of this column on your own book, because it is not in this column at all. One rule for both viewers.",
+                        interested:
+                            "The case that tests the relocation. <code>ReadingPeriodRow</code> renders nothing below status 1, so there is no card to move into. First answer was to render the card anyway with the badge alone; at 1:1 that is a full-width white slab holding one small chip, worse than the corner it replaced. So at status 0 the badge sits in the band <i>without</i> a card. The rule holds either way — status lives in the band, under the author — and the card stays what it always was, a container for dates.",
+                        "interested-friend":
+                            "Same answer on a friend's book, where the right column is now completely empty and the corner is a single shelf label. The badge is also the repaired one here, so compare against <b>main</b>: the state is finally named by something you can read, and it is the only text in the hero that was not legible before.",
+                        "interested-reacted":
+                            "Both changes at once, on the state that had neither: the reaction is reachable through the capsule and the status is readable. In <b>main</b> this screen has an unreachable emoji and an illegible badge.",
+                    }),
+                ],
+
+                [
+                    "stack-tint",
+                    "stack-tint",
+                    "Once you hold a reaction the button <b>goes away</b>, and the tinted capsule is the whole control. You can only hold one reaction, so a button saying <i>React</i> is offering to add something it cannot add — what it really does is replace or withdraw, and both of those belong to the reaction you already have. Hiding it removes the lie, takes the reacted corner down to a capsule and a shelf label, and needs no second string, so <b>no Korean wording to settle</b>. The tint is the emoji picker's own marked-cell treatment, so the record and the sheet finally say <i>this one is yours</i> the same way. My recommendation, replacing stack-status.",
+                    "stack-status",
+                    Object.assign(
+                        patch(
+                            "stack-tint",
+                            {
+                                mine: "The reacted state, with nothing in the corner but the reaction itself and the shelf label. Compare against <b>stack-status</b>, where a relabelled outlined button sat above the same capsule saying a second time what the capsule already said.",
+                                "mine-plus":
+                                    "Two reactions, one yours, tinted as a whole rather than marking which emoji inside it is yours. Deliberate — yours is pinned first, so per-emoji marking would repeat what the order already says at a size too small to read. The cost is real: the tint means <i>you are in this set</i>, not <i>this emoji is yours</i>.",
+                                theirs: "Reactions exist but none are yours, so the button stays — there is still something to add — and the capsule stays untinted. This is the state that shows the two capsule treatments against each other in one glance.",
+                                crowd: "Tinted, with a +3, and no button. The corner is now quieter with five reactions than main was with one.",
+                                stranded:
+                                    "The stranded problem does not get fixed here so much as <b>dissolved</b>. There is no longer a state where the button vanishes and takes the route with it, because the button is already gone the moment you react. This screen and <code>mine</code> now differ only in what the status badge says.",
+                                "interested-reacted":
+                                    "The same, at status 0. One tinted capsule alone in the hero, carrying that a reaction exists, that it is yours, and that there is more behind it.",
+                            },
+                            "stack-status",
+                        ),
+                        {
+                            /* Resolved, not inherited: the chevron question was
+                               open while the button was still a second route to
+                               the sheet. With the button hidden it is the only
+                               route, so the capsule ships with the chevron and
+                               the callout comes off this version. */
+                            open: { "open-who": null },
+                        },
+                    ),
+                ],
+
+                [
+                    "owned",
+                    "owned (rejected)",
+                    "<b>Rejected in review.</b> Split the record by owner: the button holds yours, the strip holds everyone else's. Cheapest possible fix — no query change, no new string, three of eight cases touched — but it only removes the duplication; the corner stays as crowded and the record stays anonymous. Kept browsable because the hazard it exposed still applies to anything that hides your own reaction: with no button on screen, an unconditional exclusion hides your reaction completely, so the exclusion has to be keyed to whether the button rendered and passed in as a <b>required</b> parameter.",
+                    "main",
+                    patch("owned", {
+                        mine: "Duplication gone by construction rather than by marking: there is only one place your reaction can appear. The cost is that the strip stops being the book's total — the total is now button plus strip, and nothing says so.",
+                        "mine-plus":
+                            "One chip means one other person, and yours is on the button. Compare against <b>main</b>, where the same state is two identical circles.",
+                        crowd: "Four chips instead of five. Slightly quieter, same fundamental shape — this direction fixes an ambiguity, not the crowding.",
+                    }),
+                ],
+
+                [
+                    "named",
+                    "named (rejected)",
+                    "<b>Rejected in review.</b> The record leaves the corner for the title band, as an attributed text line. Decrowds the most and scales best, but it grows the hero by about 21pt — and the hero's height is what the title-collapse threshold is measured against — and it separates the record from the button that creates it. Its good idea survives in <b>stack-status</b>: move something out of that corner.",
+                    "main",
+                    patch("named", {
+                        mine: "Your reaction reads as a sentence rather than a token. Cost: the hero grows about 21pt, and the hero's height is exactly what the title-collapse threshold is measured against (see the comment at book_details_tab_view.dart:321).",
+                        "mine-plus":
+                            "Where attribution starts paying: two names, two emoji, no matching exercise.",
+                        theirs: "Strictly better than main's two anonymous chips — you learn who, for free.",
+                        crowd: "Scales in the one direction that has room, at the cost of a taller hero.",
+                        unseen: "The fallback has to be prose, and prose is worse at being vague than a glyph is.",
+                        owner: "The recipient reads a list of friends rather than a row of tokens.",
+                        stranded:
+                            "Still stranded, and now further away: the record is in the band while the missing route back is in the corner.",
+                    }),
+                ],
+
+                [
+                    "gift",
+                    "gift (rejected)",
+                    "<b>Rejected in review.</b> Every reaction carries its giver's face inline: the shipped chip widened into a capsule holding a 24pt avatar. Most informative at a glance and it uses the avatar work that just shipped, but it puts attribution in the one place with no room for it, and it widens without limit — which is exactly what <b>stack</b> caps. Worth keeping for the finding that killed the first draft: a 16pt emoji badge notched onto a 26pt avatar puts the emoji at 9px.",
+                    "main",
+                    patch("gift", {
+                        mine: "One emoji, once, on the face of the person who left it. Which reaction is yours needs no marking because it is wearing your photo.",
+                        "mine-plus":
+                            "Two faces, two emoji. Immediate in a way the two-chip version never is.",
+                        theirs: "Two friends, named by their faces.",
+                        crowd: "A 56pt capsule fits three per row against the chips' five, so five reactions wrap to two lines — the unbounded growth stack exists to cap.",
+                        unseen: "The price of inline attribution: a reactor you can't read has no face and no name, so it falls back to the person glyph AvatarCircle already uses for a photo that hasn't arrived.",
+                        owner: "For the recipient, the reactions on your book have faces on it.",
+                        stranded:
+                            "Still stranded, though this direction hinted at the fix stack takes: make the record itself tappable.",
+                    }),
+                ],
+            ];
+            /* ==================================================================
+   SECTION 5: ENGINE — behaviour is load-bearing.
+   See reference/pitfalls.md in this skill before changing it.
+   ================================================================== */
+            function stripTags(s) {
+                return String(s)
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&[a-z]+;/g, " ");
+            }
+            /* Every query term must appear somewhere (order-independent AND), so
+   "cover book" finds "Book cover". Haystack must be pre-lowercased. */
+            function matchWords(haystack, query) {
+                return query
+                    .trim()
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .every((t) => haystack.includes(t));
+            }
+            function escapeReg(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+            function highlightText(text, query) {
+                const terms = query
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(escapeReg);
+                if (!terms.length) return text;
+                return text.replace(
+                    new RegExp(`(${terms.join("|")})`, "gi"),
+                    '<mark class="hl">$1</mark>',
+                );
+            }
+            function flowSearchText(g, nm, ds, steps) {
+                return stripTags(
+                    [
+                        nm,
+                        g,
+                        ds,
+                        steps.map(([sn, sc]) => `${sn} ${sc}`).join(" "),
+                    ].join(" "),
+                )
+                    .toLowerCase()
+                    .replace(/["&<>]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            /* ---- version resolution ---------------------------------------- */
+            const VMAP = new Map(VERSIONS.map((v) => [v[0], v]));
+            const VROOT = VERSIONS[0][0];
+
+            function chainOf(vid) {
+                const out = [];
+                let cur = vid;
+                const seen = new Set();
+                while (cur && VMAP.has(cur) && !seen.has(cur)) {
+                    seen.add(cur);
+                    out.unshift(cur);
+                    cur = VMAP.get(cur)[3];
+                }
+                return out;
+            }
+            /* payload key per view: what a patch entry carries */
+            const PAYLOAD = {
+                screens: "spec",
+                flows: "steps",
+                elements: "demo",
+            };
+
+            /** Resolve one view for a version into [group, [[id,nm,ds,payload],...]]. */
+            function resolveView(vid, kind) {
+                const base =
+                    kind === "screens"
+                        ? SCREENS
+                        : kind === "flows"
+                          ? FLOWS
+                          : ELEMENTS;
+                // flat map of id -> {group,nm,ds,payload}, preserving group order
+                const groups = base.map(([g]) => g);
+                const items = new Map();
+                base.forEach(([g, list]) =>
+                    list.forEach(([id, nm, ds, payload]) =>
+                        items.set(id, { group: g, nm, ds, payload }),
+                    ),
+                );
+
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {})[kind] || {};
+                    for (const [id, val] of Object.entries(patch)) {
+                        if (val === null) {
+                            items.delete(id);
+                            continue;
+                        }
+                        const prev = items.get(id);
+                        const group =
+                            val.group ||
+                            prev?.group ||
+                            `Added in ${VMAP.get(step)[1]}`;
+                        if (!groups.includes(group)) groups.push(group);
+                        items.set(id, {
+                            group,
+                            nm: val.name ?? prev?.nm ?? id,
+                            ds: val.note ?? prev?.ds ?? "",
+                            payload: val[PAYLOAD[kind]] ?? prev?.payload,
+                        });
+                    }
+                }
+                return groups
+                    .map((g) => [
+                        g,
+                        [...items.entries()]
+                            .filter(([, v]) => v.group === g)
+                            .map(([id, v]) => [id, v.nm, v.ds, v.payload]),
+                    ])
+                    .filter(([, l]) => l.length);
+            }
+            function resolveOpen(vid) {
+                let out = { ...OPEN };
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {}).open || {};
+                    for (const [id, val] of Object.entries(patch))
+                        val === null ? delete out[id] : (out[id] = val);
+                }
+                return out;
+            }
+            /** id -> 'changed' | 'onlyHere' | 'onlyThere', reading a against b. */
+            function diffMap(a, b, kind) {
+                const A = new Map(),
+                    B = new Map();
+                resolveView(a, kind).forEach(([, l]) =>
+                    l.forEach((it) => A.set(it[0], it)),
+                );
+                resolveView(b, kind).forEach(([, l]) =>
+                    l.forEach((it) => B.set(it[0], it)),
+                );
+                const out = new Map();
+                for (const [id, it] of A) {
+                    if (!B.has(id)) out.set(id, "onlyHere");
+                    else if (
+                        JSON.stringify(it[3]) !== JSON.stringify(B.get(id)[3])
+                    )
+                        out.set(id, "changed");
+                }
+                for (const id of B.keys())
+                    if (!A.has(id)) out.set(id, "onlyThere");
+                return out;
+            }
+
+            let activeV = VROOT,
+                compareV = null,
+                onlyDiff = false;
+            let view = "screens",
+                cbOpen = false,
+                kbIndex = -1,
+                kbId = null,
+                vbOpen = false,
+                vkbIndex = -1,
+                vkbId = null;
+            const sel = { screens: new Set(), elements: new Set() };
+
+            /**
+             * One list per group of entries to draw, for the active version.
+             *
+             * In compare mode this also emits "ghost" entries for items the
+             * compared version has and the active one doesn't. Without them a
+             * removal is invisible: render only walks the active version, so a
+             * deleted screen just silently isn't there.
+             */
+            function viewModel(kind) {
+                const A = resolveView(activeV, kind);
+                const cmp = compareV && compareV !== activeV;
+                const d = cmp ? diffMap(activeV, compareV, kind) : new Map();
+                const B = cmp ? resolveView(compareV, kind) : [];
+                const bItem = new Map(),
+                    bGroup = new Map();
+                B.forEach(([g, l]) =>
+                    l.forEach((it) => {
+                        bItem.set(it[0], it);
+                        bGroup.set(it[0], g);
+                    }),
+                );
+                const groups = A.map(([g]) => g);
+                if (cmp)
+                    for (const [g] of B)
+                        if (!groups.includes(g)) groups.push(g);
+
+                return groups
+                    .map((g) => {
+                        const own = (A.find(([n]) => n === g)?.[1] || []).map(
+                            ([id, nm, ds, payload]) => ({
+                                id,
+                                nm,
+                                ds,
+                                payload,
+                                diff: d.get(id) || null,
+                                ghost: false,
+                                other: bItem.get(id)?.[3] ?? null,
+                            }),
+                        );
+                        const ghosts = cmp
+                            ? [...d.entries()]
+                                  .filter(
+                                      ([id, k]) =>
+                                          k === "onlyThere" &&
+                                          bGroup.get(id) === g,
+                                  )
+                                  .map(([id]) => {
+                                      const it = bItem.get(id);
+                                      return {
+                                          id,
+                                          nm: it[1],
+                                          ds: it[2],
+                                          payload: it[3],
+                                          diff: "onlyThere",
+                                          ghost: true,
+                                          other: null,
+                                      };
+                                  })
+                            : [];
+                        return [g, own.concat(ghosts)];
+                    })
+                    .filter(([, l]) => l.length);
+            }
+
+            /* ---- render (re-runnable; version changes call this) ------------ */
+            let CB = {},
+                nScreens = 0,
+                nFlows = 0,
+                nEls = 0;
+
+            function render() {
+                const SM = viewModel("screens");
+                const EM = viewModel("elements");
+                const FM = viewModel("flows");
+                const openMap = resolveOpen(activeV);
+                const cmp = compareV && compareV !== activeV;
+                const bLabel = cmp ? VMAP.get(compareV)[1] : "";
+                const aLabel = VMAP.get(activeV)[1];
+
+                // Labels read from the point of view of the version on screen.
+                const TAGTEXT = {
+                    changed: "changed",
+                    onlyHere: "only here",
+                    onlyThere: `only in ${bLabel}`,
+                };
+                const tagFor = (d) =>
+                    d ? `<span class="tag ${d}">${TAGTEXT[d]}</span>` : "";
+                const keep = (e) => !(onlyDiff && cmp && !e.diff);
+
+                const count = (m) =>
+                    m.reduce((a, [, l]) => a + l.filter(keep).length, 0);
+                nScreens = count(SM);
+                nEls = count(EM);
+                nFlows = count(FM);
+
+                document.getElementById("screens").innerHTML = SM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map((e) => {
+                                let shot;
+                                if (cmp && e.diff === "changed")
+                                    shot = `<div class="pair"><div><div class="vl">${aLabel}</div><div class="shot">${frame({ ...e.payload, sm: true })}</div></div><div><div class="vl b">${bLabel}</div><div class="shot">${frame({ ...(e.other || e.payload), sm: true })}</div></div></div>`;
+                                else
+                                    shot = `<div class="shot">${frame(e.payload)}</div>`;
+                                return `<div class="item${e.ghost ? " ghost" : ""}" data-id="${e.id}">${shot}<div class="cap"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`;
+                            })
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="grid${cmp ? " cmp" : ""}">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                document.getElementById("elements").innerHTML = EM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<div class="el${e.ghost ? " ghost" : ""}" data-id="${e.id}"><div class="demo">${e.payload}</div><div class="body"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`,
+                            )
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="egrid">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                const stepRow = (steps) =>
+                    `<div class="steps">${steps
+                        .map(
+                            ([sn, sc, spec], i) =>
+                                (i ? '<div class="arrow">&rarr;</div>' : "") +
+                                `<div class="step"><div class="sn">${String(i + 1).padStart(2, "0")} &middot; ${sn}</div><div class="shot">${frame(spec)}</div><div class="sc">${sc}</div></div>`,
+                        )
+                        .join("")}</div>`;
+
+                document.getElementById("flows").innerHTML = FM.map(
+                    ([g, entries]) =>
+                        entries
+                            .filter(keep)
+                            .map((e) => {
+                                const rows =
+                                    cmp && e.diff === "changed"
+                                        ? `<div class="vrow">${aLabel}</div>${stepRow(e.payload)}<div class="vrow b">${bLabel}</div>${stepRow(e.other || e.payload)}`
+                                        : stepRow(e.payload);
+                                return `<div class="flow${e.ghost ? " ghost" : ""}" id="f-${e.id}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}"><p class="fh">${e.nm}${tagFor(e.diff)}</p><p class="fd">${e.ds}</p>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }${rows}</div>`;
+                            })
+                            .join(""),
+                ).join("");
+
+                document.getElementById("sidenav").innerHTML = FM.map(
+                    ([g, entries]) => {
+                        const links = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<a href="#f-${e.id}" data-id="${e.id}" data-nm="${stripTags(e.nm)}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}">${stripTags(e.nm)}</a>`,
+                            )
+                            .join("");
+                        return links
+                            ? `<div class="sh">${g}</div>${links}`
+                            : "";
+                    },
+                ).join("");
+
+                const cbGroups = (m) =>
+                    m
+                        .map(([g, entries]) => [
+                            g,
+                            entries.filter(keep).map((e) => [e.id, e.nm, e.ds]),
+                        ])
+                        .filter(([, l]) => l.length);
+
+                CB = {
+                    screens: {
+                        label: "Screens",
+                        placeholder: "Search screens…",
+                        container: "screens",
+                        itemSel: ".item",
+                        none: "screens-none",
+                        groups: cbGroups(SM),
+                    },
+                    elements: {
+                        label: "UI Elements",
+                        placeholder: "Search elements…",
+                        container: "elements",
+                        itemSel: ".el",
+                        none: "elements-none",
+                        groups: cbGroups(EM),
+                    },
+                };
+                // drop filter selections for ids this version doesn't have
+                for (const k of ["screens", "elements"]) {
+                    const live = new Set(
+                        CB[k].groups.flatMap(([, l]) => l.map(([id]) => id)),
+                    );
+                    [...sel[k]].forEach((id) => {
+                        if (!live.has(id)) sel[k].delete(id);
+                    });
+                }
+
+                const total = cmp
+                    ? ["screens", "elements", "flows"].reduce(
+                          (a, k) => a + diffMap(activeV, compareV, k).size,
+                          0,
+                      )
+                    : 0;
+                document.getElementById("vinfo-lbl").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document.getElementById("vinfo-note").innerHTML = cmp
+                    ? `${VMAP.get(activeV)[2]}`
+                    : VMAP.get(activeV)[2];
+                document.getElementById("vinfo-diffs").textContent = cmp
+                    ? total
+                        ? `${total} difference${total === 1 ? "" : "s"}`
+                        : "identical"
+                    : "";
+                document
+                    .getElementById("difftoggle")
+                    .classList.toggle("gone", !cmp);
+                document.getElementById("vbtn-label").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document
+                    .getElementById("vcmp-clear")
+                    .classList.toggle("gone", !cmp);
+                if (view !== "flows") applyFilter();
+                else updateCount(0);
+                if (view === "flows" && fsearch.value)
+                    fsearch.dispatchEvent(
+                        new Event("input", { bubbles: true }),
+                    );
+                spy();
+            }
+
+            /* ---- filter combobox ---- */
+            const cbox = document.getElementById("cbox"),
+                cbtn = document.getElementById("cbtn"),
+                cbtnLabel = document.getElementById("cbtn-label"),
+                cbtnBadge = document.getElementById("cbtn-badge"),
+                csearch = document.getElementById("csearch"),
+                clist = document.getElementById("clist"),
+                cfootN = document.getElementById("cfoot-n"),
+                cclear = document.getElementById("cclear");
+
+            function visibleOpts() {
+                const q = csearch.value.trim().toLowerCase();
+                if (!q) return CB[view].groups;
+                return CB[view].groups
+                    .map(([g, items]) => [
+                        g,
+                        // A group's own name pulls in its whole contents (browse by category);
+                        // otherwise an item needs every query word in its name or note.
+                        matchWords(g.toLowerCase(), q)
+                            ? items
+                            : items.filter(([, nm, ds]) =>
+                                  matchWords(
+                                      stripTags(
+                                          `${nm} ${ds || ""}`,
+                                      ).toLowerCase(),
+                                      q,
+                                  ),
+                              ),
+                    ])
+                    .filter(([, items]) => items.length);
+            }
+            function renderList() {
+                const groups = visibleOpts(),
+                    q = csearch.value.trim();
+                if (!groups.length) {
+                    kbIndex = -1;
+                    kbId = null;
+                    clist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                clist.innerHTML = groups
+                    .map(
+                        ([g, items]) =>
+                            `<div class="cgrp" data-group="${g}">${g}</div>` +
+                            items
+                                .map(
+                                    ([id, nm]) =>
+                                        `<div class="copt${sel[view].has(id) ? " sel" : ""}" data-id="${id}"><span class="box">${
+                                            sel[view].has(id) ? "&#10003;" : ""
+                                        }</span><span class="lb">${highlightText(stripTags(nm), q)}</span></div>`,
+                                )
+                                .join(""),
+                    )
+                    .join("");
+                // Keep keyboard focus on the same option across a re-render, so toggling
+                // with Enter doesn't fling focus back to the top.
+                const opts = [...clist.querySelectorAll(".copt")];
+                let idx = kbId
+                    ? opts.findIndex((o) => o.dataset.id === kbId)
+                    : -1;
+                if (idx < 0) idx = 0;
+                if (opts.length) {
+                    kbIndex = idx;
+                    kbId = opts[idx].dataset.id;
+                    opts[idx].classList.add("kb");
+                } else {
+                    kbIndex = -1;
+                    kbId = null;
+                }
+            }
+            function applyFilter() {
+                const cfg = CB[view],
+                    s = sel[view],
+                    root = document.getElementById(cfg.container);
+                let shown = 0;
+                root.querySelectorAll(cfg.itemSel).forEach((el) => {
+                    const on = s.size === 0 || s.has(el.dataset.id);
+                    el.classList.toggle("gone", !on);
+                    if (on) shown++;
+                });
+                root.querySelectorAll(".gsec").forEach((g) =>
+                    g.classList.toggle(
+                        "gone",
+                        !g.querySelector(cfg.itemSel + ":not(.gone)"),
+                    ),
+                );
+                document
+                    .getElementById(cfg.none)
+                    .classList.toggle("gone", shown > 0);
+                const total = view === "screens" ? nScreens : nEls;
+                cbtnBadge.hidden = s.size === 0;
+                cbtnBadge.textContent = s.size;
+                cfootN.textContent =
+                    s.size === 0
+                        ? `Showing all ${total}`
+                        : `Showing ${shown} of ${total}`;
+                updateCount(shown);
+            }
+            function updateCount(shown) {
+                const s = sel[view] ? sel[view].size : 0;
+                document.getElementById("cnt").textContent = [
+                    `${view === "screens" && s ? shown + " of " : ""}${nScreens} screens`,
+                    `${nFlows} flows`,
+                    `${view === "elements" && s ? shown + " of " : ""}${nEls} elements`,
+                ].join(" · ");
+            }
+            function openCB(focus) {
+                if (view === "flows") return;
+                closeVB(); // only one dropdown at a time
+                cbOpen = true;
+                cbox.classList.add("open");
+                kbId = null;
+                renderList();
+                if (focus) csearch.focus();
+            }
+            function closeCB() {
+                cbOpen = false;
+                cbox.classList.remove("open");
+                csearch.blur();
+            }
+
+            cbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                cbOpen ? closeCB() : openCB(true);
+            });
+            csearch.addEventListener("input", () => {
+                clist.scrollTop = 0;
+                renderList();
+            });
+            clist.addEventListener("click", (e) => {
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    // stopPropagation is required: renderList() replaces clist.innerHTML,
+                    // detaching this node before the click finishes bubbling, which would
+                    // make the document listener below see a detached target and close.
+                    e.stopPropagation();
+                    const id = opt.dataset.id;
+                    sel[view].has(id)
+                        ? sel[view].delete(id)
+                        : sel[view].add(id);
+                    renderList();
+                    applyFilter();
+                    return;
+                }
+                const grp = e.target.closest(".cgrp");
+                if (grp) {
+                    e.stopPropagation();
+                    const ids = CB[view].groups
+                        .find(([n]) => n === grp.dataset.group)[1]
+                        .map(([id]) => id);
+                    const allOn = ids.every((id) => sel[view].has(id));
+                    ids.forEach((id) =>
+                        allOn ? sel[view].delete(id) : sel[view].add(id),
+                    );
+                    renderList();
+                    applyFilter();
+                }
+            });
+            cclear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                sel[view].clear();
+                csearch.value = "";
+                renderList();
+                applyFilter();
+            });
+            document.addEventListener("click", (e) => {
+                if (cbOpen && !cbox.contains(e.target)) closeCB();
+                if (vbOpen && !vbox.contains(e.target)) closeVB();
+            });
+
+            /* ---- version combobox (single-select, plus compare) ---- */
+            const vbox = document.getElementById("vbox"),
+                vbtn = document.getElementById("vbtn"),
+                vsearch = document.getElementById("vsearch"),
+                vlist = document.getElementById("vlist"),
+                vfootN = document.getElementById("vfoot-n"),
+                vcmpClear = document.getElementById("vcmp-clear"),
+                diffToggle = document.getElementById("difftoggle");
+
+            function renderVList() {
+                const q = vsearch.value.trim(),
+                    ql = q.toLowerCase();
+                const rows = VERSIONS.filter(
+                    ([id, label, note]) =>
+                        !ql ||
+                        matchWords(
+                            stripTags(`${label} ${note} ${id}`).toLowerCase(),
+                            ql,
+                        ),
+                );
+                if (!rows.length) {
+                    vkbIndex = -1;
+                    vkbId = null;
+                    vlist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                vlist.innerHTML =
+                    `<div class="cgrp" style="cursor:default">Show version</div>` +
+                    rows
+                        .map(
+                            ([id, label, note, parent]) =>
+                                `<div class="copt radio${id === activeV ? " sel" : ""}" data-v="${id}">
+        <span class="box">${id === activeV ? "&#10003;" : ""}</span>
+        <span class="col"><span class="lb">${highlightText(label, q)}</span>${
+            note
+                ? `<div class="sub">${parent ? `from ${VMAP.get(parent)[1]} &middot; ` : ""}${note}</div>`
+                : ""
+        }</span>
+        ${id !== activeV ? `<span class="tagn" data-cmp="${id}">${compareV === id ? "comparing" : "compare"}</span>` : ""}
+      </div>`,
+                        )
+                        .join("");
+                // Keep keyboard focus on the same version across a re-render
+                // (toggling compare re-renders this list), falling back to the
+                // first row only when the focused version is filtered out.
+                const vopts = [...vlist.querySelectorAll(".copt")];
+                let vi = vkbId
+                    ? vopts.findIndex((o) => o.dataset.v === vkbId)
+                    : -1;
+                if (vi < 0) vi = 0;
+                if (vopts.length) {
+                    vkbIndex = vi;
+                    vkbId = vopts[vi].dataset.v;
+                    vopts[vi].classList.add("kb");
+                } else {
+                    vkbIndex = -1;
+                    vkbId = null;
+                }
+
+                const legend = "&#8629; show &middot; &#8679;&#8629; compare";
+                vfootN.innerHTML = compareV
+                    ? `Comparing with ${VMAP.get(compareV)[1]} &middot; ${legend}`
+                    : `${VERSIONS.length} version${VERSIONS.length === 1 ? "" : "s"} &middot; ${legend}`;
+            }
+            function openVB(focus) {
+                closeCB(); // only one dropdown at a time, or they fight over the arrow keys
+                vbOpen = true;
+                vbox.classList.add("open");
+                vkbId = activeV; // open focused on where you already are
+                renderVList();
+                if (focus) vsearch.focus();
+            }
+            function closeVB() {
+                vbOpen = false;
+                vbox.classList.remove("open");
+                vsearch.blur();
+            }
+
+            vbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                vbOpen ? closeVB() : openVB(true);
+            });
+            vsearch.addEventListener("input", () => {
+                vlist.scrollTop = 0;
+                renderVList();
+            });
+            vlist.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const cmpBtn = e.target.closest("[data-cmp]");
+                if (cmpBtn) {
+                    const id = cmpBtn.dataset.cmp;
+                    compareV = compareV === id ? null : id;
+                    renderVList();
+                    render();
+                    return;
+                }
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    activeV = opt.dataset.v;
+                    if (compareV === activeV) compareV = null;
+                    renderVList();
+                    render();
+                    closeVB();
+                }
+            });
+            vcmpClear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                compareV = null;
+                onlyDiff = false;
+                diffToggle.classList.add("off");
+                renderVList();
+                render();
+            });
+            diffToggle.addEventListener("click", () => {
+                onlyDiff = !onlyDiff;
+                diffToggle.classList.toggle("off", !onlyDiff);
+                render();
+            });
+
+            /* ---- view switching ---- */
+            function switchView(v) {
+                const btn = document.querySelector(
+                    `.vtabs button[data-v="${v}"]`,
+                );
+                if (!btn || view === v) return;
+                view = v;
+                document
+                    .querySelectorAll(".vtabs button")
+                    .forEach((x) => x.classList.toggle("on", x === btn));
+                document
+                    .querySelectorAll(".view")
+                    .forEach((el) =>
+                        el.classList.toggle("on", el.id === "v-" + view),
+                    );
+                closeCB();
+                const isFlows = view === "flows";
+                cbox.classList.toggle("hide", isFlows);
+                if (!isFlows) {
+                    cbtnLabel.textContent = CB[view].label;
+                    csearch.placeholder = CB[view].placeholder;
+                    csearch.value = "";
+                    applyFilter();
+                } else updateCount(0);
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }
+            document
+                .querySelectorAll(".vtabs button")
+                .forEach((b) =>
+                    b.addEventListener("click", () => switchView(b.dataset.v)),
+                );
+
+            /* ---- flow search + scroll-spy ---- */
+            const fsearch = document.getElementById("fsearch"),
+                sbox = document.getElementById("sbox");
+            fsearch.addEventListener("focus", () =>
+                sbox.classList.add("focused"),
+            );
+            fsearch.addEventListener("blur", () =>
+                sbox.classList.remove("focused"),
+            );
+            fsearch.addEventListener("input", () => {
+                sbox.classList.toggle("dirty", fsearch.value.length > 0);
+                const q = fsearch.value.trim().toLowerCase();
+                let any = false;
+                document.querySelectorAll(".flow").forEach((f) => {
+                    const show = !q || matchWords(f.dataset.f, q);
+                    f.classList.toggle("gone", !show);
+                    if (show) any = true;
+                });
+                document.querySelectorAll("#sidenav a").forEach((a) => {
+                    a.classList.toggle(
+                        "gone",
+                        !(!q || matchWords(a.dataset.f, q)),
+                    );
+                    a.innerHTML = highlightText(
+                        a.dataset.nm,
+                        fsearch.value.trim(),
+                    );
+                });
+                document.querySelectorAll("#sidenav .sh").forEach((h) => {
+                    let n = h.nextElementSibling,
+                        on = false;
+                    while (n && n.tagName === "A") {
+                        if (!n.classList.contains("gone")) on = true;
+                        n = n.nextElementSibling;
+                    }
+                    h.classList.toggle("gone", !on);
+                });
+                document
+                    .getElementById("flows-none")
+                    .classList.toggle("gone", any);
+                spy();
+            });
+
+            /* Highlights whichever flow is under the header as you scroll, not only on
+   click. Filter-aware, and clamps to the last section at the page bottom. */
+            let spyRAF = null;
+            function spy() {
+                if (spyRAF) return;
+                spyRAF = requestAnimationFrame(() => {
+                    spyRAF = null;
+                    if (view !== "flows") return;
+                    const flows = [
+                        ...document.querySelectorAll(".flow:not(.gone)"),
+                    ];
+                    if (!flows.length) return;
+                    let cur = flows[0];
+                    for (const f of flows)
+                        if (f.getBoundingClientRect().top <= 100) cur = f;
+                    if (
+                        window.innerHeight + window.scrollY >=
+                        document.body.scrollHeight - 4
+                    )
+                        cur = flows[flows.length - 1];
+                    const id = cur.id.replace(/^f-/, "");
+                    document
+                        .querySelectorAll("#sidenav a")
+                        .forEach((a) =>
+                            a.classList.toggle("cur", a.dataset.id === id),
+                        );
+                });
+            }
+            window.addEventListener("scroll", spy, { passive: true });
+            window.addEventListener("resize", spy);
+
+            /* ---- hotkeys: 1/2/3 views, v versions, / search, Esc clear-then-close ---- */
+            function isTyping(el) {
+                return (
+                    el &&
+                    (el.tagName === "INPUT" ||
+                        el.tagName === "TEXTAREA" ||
+                        el.isContentEditable)
+                );
+            }
+            document.addEventListener("keydown", (e) => {
+                const free =
+                    !isTyping(document.activeElement) &&
+                    !e.metaKey &&
+                    !e.ctrlKey;
+                if (["1", "2", "3"].includes(e.key) && free) {
+                    e.preventDefault();
+                    switchView(
+                        { 1: "screens", 2: "elements", 3: "flows" }[e.key],
+                    );
+                    return;
+                }
+                if ((e.key === "v" || e.key === "V") && free) {
+                    e.preventDefault();
+                    vbOpen ? closeVB() : openVB(true);
+                    return;
+                }
+                if (e.key === "/" && free) {
+                    e.preventDefault();
+                    if (view === "flows") {
+                        fsearch.focus();
+                        fsearch.select();
+                    } else openCB(true);
+                    return;
+                }
+                if (e.key === "Escape") {
+                    if (vbOpen) {
+                        if (vsearch.value) {
+                            vsearch.value = "";
+                            renderVList();
+                        } else closeVB();
+                        return;
+                    }
+                    if (cbOpen) {
+                        if (csearch.value) {
+                            csearch.value = "";
+                            renderList();
+                        } else closeCB();
+                        return;
+                    }
+                    if (isTyping(document.activeElement)) {
+                        const el = document.activeElement;
+                        el.value = "";
+                        el.dispatchEvent(new Event("input", { bubbles: true }));
+                        el.blur();
+                    }
+                    return;
+                }
+                if (
+                    vbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const vopts = [...vlist.querySelectorAll(".copt")];
+                    if (!vopts.length) return;
+                    if (e.key === "Enter") {
+                        if (vkbIndex < 0) return;
+                        e.preventDefault();
+                        const id = vopts[vkbIndex].dataset.v;
+                        if (e.shiftKey) {
+                            // Shift+Enter compares instead of switching. A letter
+                            // key can't be used here: the search field has focus,
+                            // so it would just be typed.
+                            if (id !== activeV) {
+                                compareV = compareV === id ? null : id;
+                                renderVList();
+                                render();
+                            }
+                        } else {
+                            activeV = id;
+                            if (compareV === activeV) compareV = null;
+                            renderVList();
+                            render();
+                            closeVB();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    vkbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(vkbIndex + 1, vopts.length - 1)
+                            : Math.max(vkbIndex - 1, 0);
+                    vkbId = vopts[vkbIndex].dataset.v;
+                    vopts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === vkbIndex),
+                    );
+                    vopts[vkbIndex].scrollIntoView({ block: "nearest" });
+                    return;
+                }
+                if (
+                    cbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const opts = [...clist.querySelectorAll(".copt")];
+                    if (!opts.length) return;
+                    if (e.key === "Enter") {
+                        if (kbIndex >= 0) {
+                            e.preventDefault();
+                            opts[kbIndex].click();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    kbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(kbIndex + 1, opts.length - 1)
+                            : Math.max(kbIndex - 1, 0);
+                    kbId = opts[kbIndex].dataset.id;
+                    opts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === kbIndex),
+                    );
+                    opts[kbIndex].scrollIntoView({ block: "nearest" });
+                }
+            });
+
+            /* one version means versioning is unused: hide the selector entirely */
+            if (VERSIONS.length < 2) {
+                vbox.classList.add("hide");
+                document.querySelector(".vinfo").classList.add("gone");
+            }
+            renderVList();
+            render();
+        </script>
+    </body>
+</html>

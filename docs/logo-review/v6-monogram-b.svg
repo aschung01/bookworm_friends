@@ -1,0 +1,9 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <g transform="translate(512,512) scale(1.42) translate(-530,-512)">
+    <!-- single path, so there are no seams between stem and bowls -->
+    <path d="M330 252 H556 C650 252 716 302 716 372 C716 434 674 470 612 486 C704 496 760 552 760 632 C760 718 690 772 588 772 H330 C314 772 300 758 300 742 V282 C300 266 314 252 330 252 Z" fill="#ffffff"/>
+    <rect x="452" y="316" width="196" height="112" rx="56" fill="#09BC8A"/>
+    <rect x="452" y="556" width="226" height="152" rx="76" fill="#09BC8A"/>
+  </g>
+</svg>

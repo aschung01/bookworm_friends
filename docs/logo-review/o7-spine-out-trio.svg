@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    Rotates the whole idea 90 degrees: books shelved spine-out, not piled.
+
+    Three shapes, no detail, and the only cue is height — 400 / 480 / 344,
+    with the bottoms aligned on an implied shelf. Uneven tops are what stop
+    three verticals reading as a bar chart.
+
+    Flagged against the README's vertical-stroke warning: this spends three
+    verticals where a fanned stack spends two. If it fails, it will fail as
+    stripes, and the graduated heights are the only defence.
+  -->
+  <rect x="176" y="352" width="160" height="400" rx="28" fill="#ffffff"/>
+  <rect x="432" y="272" width="160" height="480" rx="28" fill="#ffffff"/>
+  <rect x="688" y="408" width="160" height="344" rx="28" fill="#ffffff"/>
+</svg>

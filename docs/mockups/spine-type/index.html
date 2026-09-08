@@ -1,0 +1,1674 @@
+<!doctype html>
+<!--
+  Read-pile spine typography.
+
+  Self-contained: no build, no server, no network. Open it straight from disk.
+  Data-driven in the way the index promises -- the ten books, the five layouts,
+  the twelve faces and the two Hangul orientations are each declared once and
+  drawn by one renderer, so changing a decision cannot leave half the page stale.
+
+  Layout and face are separate controls because they are separate decisions. A
+  flat list of settings cannot answer the question that matters once serifs are
+  on the table: is a serif bad on a spine, or is it only bad at a measure that is
+  30pt short of what the spine has?
+
+  Everything geometric is the shipped code, not a guess:
+
+    * thickness 28-39pt and height 110-124pt are `BookMetrics.from` at
+      `ReadPile.spineBase` (~117) under `BookJitter`'s factor ranges — the range
+      `docs/superpowers/specs/2026-08-22-read-pile-spines-design.md` records.
+    * the 5pt arched head is `bookSpinePath`.
+    * the 1pt 28%-black right-edge hairline is `BookVertical`'s `separator`.
+    * the ink is `spineToneFor`'s rule: whichever of #FFFFFF and #212529 reads
+      better on the fill. So a pale book takes dark type here as on device.
+
+  The `now` setting is `AppTextStyles.label` exactly — Pretendard SemiBold 13pt,
+  tracking 0, `EdgeInsets.only(top: 15, bottom: 15)`, `Center`, one line,
+  ellipsis. It should match a screenshot of the collapsed Library tab. Every
+  other setting differs from it only in what its own note claims.
+
+  Two honest differences from `render.py`, which draws the layouts to PNG. The
+  arch here is an elliptical corner radius rather than the quadratic
+  bezier `bookSpinePath` uses -- visually indistinguishable at 5pt, and CSS has no
+  cheap bezier clip. And wrapping is the browser's greedy line breaker, where
+  `render.py` picks the most balanced break -- what is being compared is measure
+  and voice, not the break algorithm.
+
+  What the two do *not* differ on, deliberately: neither will clip a third line.
+  `render.py` refuses a break unless both halves fit; this page lets the browser
+  wrap and then demotes the result to one line if it spilled. Getting that wrong
+  is how the fade layout came to report `The Zero Marginal Cost Society` as whole
+  while quietly dropping `Society` off the side of the spine.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Libstack &mdash; read-pile spine typography</title>
+        <style>
+            /* The app's real faces, loaded straight off disk from `assets/fonts/`.
+               Pretendard carries arbitrary text and has the full Hangul block;
+               GowunBatang is subset to `app_ko.arb`, which is the whole point of
+               the specimen at the bottom of this page. DesignHouse is registered
+               in `pubspec.yaml` at 300 and 700 and referenced by exactly one
+               label, so the Light file ships and never renders. */
+            @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-Regular.otf")
+                    format("opentype");
+                font-weight: 400;
+            }
+            @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-SemiBold.otf")
+                    format("opentype");
+                font-weight: 600;
+            }
+            @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-Bold.otf")
+                    format("opentype");
+                font-weight: 700;
+            }
+            @font-face {
+                font-family: "GowunBatang";
+                src: url("../../../assets/fonts/GowunBatang-Bold.ttf")
+                    format("truetype");
+                font-weight: 700;
+            }
+            @font-face {
+                font-family: "DesignHouse";
+                src: url("../../../assets/fonts/designhouseOTFLight.otf")
+                    format("opentype");
+                font-weight: 300;
+            }
+            @font-face {
+                font-family: "DesignHouse";
+                src: url("../../../assets/fonts/designhouseOTFBold.otf")
+                    format("opentype");
+                font-weight: 700;
+            }
+
+            /* ---- mockup-only serifs -------------------------------------
+               NOT app assets. Built by `build_serifs.py` into `./fonts/`,
+               subset to exactly the text this page sets, which is why they are
+               ~35KB each instead of ~8MB. They exist because the app's serif
+               *cannot* set a book title -- that is the finding -- so a page that
+               wants to argue about serifs has to bring its own.
+
+               Nothing here is evidence about what shipping a serif would cost.
+               For that number see README.md. */
+            @font-face {
+                font-family: "GowunBatangFull";
+                src: url("fonts/GowunBatangFull-400.ttf") format("truetype");
+                font-weight: 400;
+            }
+            @font-face {
+                font-family: "GowunBatangFull";
+                src: url("fonts/GowunBatangFull-700.ttf") format("truetype");
+                font-weight: 700;
+            }
+            @font-face {
+                font-family: "NotoSerifKR";
+                src: url("fonts/NotoSerifKR-400.ttf") format("truetype");
+                font-weight: 400;
+            }
+            @font-face {
+                font-family: "NotoSerifKR";
+                src: url("fonts/NotoSerifKR-600.ttf") format("truetype");
+                font-weight: 600;
+            }
+            @font-face {
+                font-family: "NanumMyeongjo";
+                src: url("fonts/NanumMyeongjo-400.ttf") format("truetype");
+                font-weight: 400;
+            }
+            @font-face {
+                font-family: "NanumMyeongjo";
+                src: url("fonts/NanumMyeongjo-700.ttf") format("truetype");
+                font-weight: 700;
+            }
+            @font-face {
+                font-family: "SongMyung";
+                src: url("fonts/SongMyung-400.ttf") format("truetype");
+                font-weight: 400;
+            }
+            @font-face {
+                font-family: "Hahmlet";
+                src: url("fonts/Hahmlet-400.ttf") format("truetype");
+                font-weight: 400;
+            }
+            @font-face {
+                font-family: "Hahmlet";
+                src: url("fonts/Hahmlet-500.ttf") format("truetype");
+                font-weight: 500;
+            }
+            @font-face {
+                font-family: "Hahmlet";
+                src: url("fonts/Hahmlet-600.ttf") format("truetype");
+                font-weight: 600;
+            }
+
+            :root {
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+                --brand: #067657;
+                /* The sheet the pile is actually seen against. `ReadPile` is a
+                   sheet's `collapsedBody`, so this is `sheetBackground` in dark
+                   mode — not `surface`. See `BookVertical.background`. */
+                --sheet: #2b2d2f;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                padding: 46px 22px 80px;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.55;
+            }
+            .wrap {
+                max-width: 980px;
+                margin: 0 auto;
+            }
+            a.back {
+                font-size: 13px;
+                color: var(--muted);
+                text-decoration: none;
+            }
+            a.back:hover {
+                color: var(--brand);
+            }
+            h1 {
+                font-size: 26px;
+                letter-spacing: -0.5px;
+                margin: 10px 0 6px;
+            }
+            .lead {
+                color: #55555c;
+                font-size: 14px;
+                margin: 0 0 30px;
+            }
+            h2 {
+                font-size: 12px;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin: 40px 0 12px;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+
+            /* ---- the option panel ---- */
+            .ctl {
+                display: grid;
+                grid-template-columns: 74px 1fr;
+                align-items: start;
+                gap: 10px;
+                margin-bottom: 9px;
+            }
+            .ctl > .lbl {
+                font-size: 10.5px;
+                font-weight: 800;
+                letter-spacing: 0.7px;
+                text-transform: uppercase;
+                color: var(--muted);
+                padding-top: 8px;
+            }
+            .opts {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 7px;
+            }
+            .opts .sep {
+                width: 1px;
+                align-self: stretch;
+                background: var(--line);
+                margin: 2px 4px;
+            }
+            .opts button {
+                font: inherit;
+                font-size: 12.5px;
+                font-weight: 700;
+                cursor: pointer;
+                border: 1px solid var(--line);
+                background: #fff;
+                color: #55555c;
+                border-radius: 20px;
+                padding: 6px 13px;
+                transition:
+                    background 0.13s ease,
+                    border-color 0.13s ease,
+                    color 0.13s ease;
+            }
+            .opts button:hover {
+                border-color: #c9c6c0;
+            }
+            .opts button[aria-pressed="true"] {
+                background: var(--brand);
+                border-color: var(--brand);
+                color: #fff;
+            }
+            .opts button:focus-visible {
+                outline: 2px solid var(--brand);
+                outline-offset: 2px;
+            }
+            .why {
+                font-size: 13.5px;
+                color: #55555c;
+                border-left: 3px solid var(--line);
+                padding: 3px 0 3px 14px;
+                margin: 16px 0 20px;
+                min-height: 44px;
+            }
+            .why b {
+                color: var(--ink);
+            }
+
+            /* ---- the stage ---- */
+            .stage {
+                background: var(--sheet);
+                border-radius: 14px;
+                padding: 26px 0 0;
+                overflow-x: auto;
+            }
+            .row {
+                display: flex;
+                align-items: flex-end;
+                gap: 4px;
+                /* The 25pt the pile's ListView is padded by. */
+                padding: 0 25px;
+                /* `ReadPile.rowExtent` is 124 + 13; the books stand on the plank,
+                   so the row is bottom-aligned and a short book leaves headroom. */
+                min-height: 137px;
+            }
+            .plank {
+                height: 8px;
+                background: #787e82;
+                margin: 6px 0 0;
+            }
+            .caption {
+                color: #9aa0a4;
+                font-size: 11.5px;
+                padding: 9px 25px 14px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            }
+
+            /* ---- a spine ---- */
+            .spine {
+                position: relative;
+                flex: none;
+                overflow: hidden;
+                /* `bookSpinePath`'s 5pt arch, as an elliptical corner. */
+                border-radius: 50% 50% 0 0 / 5px 5px 0 0;
+            }
+            /* The hairline between two books. Unnecessary while every spine was
+               one green at three opacities; load-bearing now that each takes its
+               own cover's tone. */
+            .spine::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 1px;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.28);
+            }
+            /* A pale spine has no silhouette against the sheet, so it gets the
+               same faint outline the chassis gives a pale cover. Drawn only when
+               `BookVertical._contrast` would fall under 1.25. */
+            .spine.pale {
+                box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.11);
+            }
+            .title {
+                /* `RotatedBox(quarterTurns: 1)`: the title reads from the head
+                   down. In vertical writing mode the inline axis runs down the
+                   spine, so `inline-size` is the measure and `block-size` is how
+                   many lines fit across the thickness. */
+                writing-mode: vertical-rl;
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                overflow: hidden;
+            }
+            .title.sideways {
+                /* Everything rotated, Hangul included — what the app does. */
+                text-orientation: sideways;
+            }
+            .title.mixed {
+                /* Hangul upright, Latin rotated. The Korean shelf convention,
+                   and free: this is what `text-orientation` does by default. */
+                text-orientation: mixed;
+            }
+            .title.one {
+                white-space: nowrap;
+            }
+            /* Only where overflow is meant to be handled by cutting.
+
+               **Deliberately not on `.one`**, which is where it used to be and is
+               the bug that put an ellipsis in the fade layout: `.one` means "one
+               line", and every spine under `twoLineMin` gets it whatever the
+               layout says about overflow. So the fade layout ellipsised its thin
+               books and faded them, which is the one combination it exists to
+               avoid. `render.py` never had this bug -- its fade branch replaces
+               the ellipsis rather than sitting beside it. */
+            .title.ellipsis {
+                text-overflow: ellipsis;
+            }
+            .title.fade {
+                /* No ellipsis. Rotated, `…` is three dots stacked down the spine
+                   and it costs about a syllable of the measure it is apologising
+                   for. A ramp costs none.
+
+                   Added after measuring, never at build time: a title that fits
+                   has nothing to apologise for, and fading its last 15px reads as
+                   the type dissolving for no reason. */
+                -webkit-mask-image: linear-gradient(
+                    to bottom,
+                    #000 calc(100% - 15px),
+                    transparent
+                );
+                mask-image: linear-gradient(
+                    to bottom,
+                    #000 calc(100% - 15px),
+                    transparent
+                );
+            }
+
+            /* ---- tables ---- */
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                font-size: 13px;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 7px 10px 7px 0;
+                border-bottom: 1px solid var(--line);
+                vertical-align: top;
+            }
+            th {
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                color: var(--muted);
+                font-weight: 700;
+            }
+            td.ko {
+                font-family: "Pretendard", sans-serif;
+            }
+            .cut {
+                color: #c05746;
+                font-weight: 700;
+            }
+            .whole {
+                color: var(--brand);
+                font-weight: 700;
+            }
+
+            /* ---- the face specimen ---- */
+            .spec {
+                background: var(--sheet);
+                border-radius: 14px;
+                padding: 8px 24px 20px;
+                color: #eef1f3;
+            }
+            .spec .face {
+                border-top: 1px solid rgba(255, 255, 255, 0.09);
+                padding: 14px 0 4px;
+            }
+            .spec .face:first-child {
+                border-top: 0;
+            }
+            .spec .nm {
+                font-size: 12px;
+                font-weight: 800;
+                color: #96d6ba;
+                letter-spacing: 0.2px;
+            }
+            .spec .nt {
+                font-size: 11.5px;
+                color: #8a9094;
+                margin-bottom: 8px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            }
+            /* The page's `code` chip is a dark-on-light pill, which inverts badly
+               on the specimen's dark stock. Nothing should ever need it in here,
+               but a note added later would otherwise land as a white block. */
+            .spec code {
+                background: rgba(255, 255, 255, 0.1);
+                color: #dfe3e6;
+            }
+            .spec .big {
+                font-size: 30px;
+                line-height: 1.35;
+            }
+            .spec .small {
+                font-size: 13px;
+                line-height: 1.5;
+                color: #dfe3e6;
+            }
+            .note {
+                font-size: 13px;
+                color: #55555c;
+                border-left: 3px solid var(--line);
+                padding: 2px 0 2px 14px;
+                margin: 0 0 12px;
+            }
+            .note.bad {
+                border-left-color: #c05746;
+            }
+            .cfg {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 12px;
+                line-height: 1.65;
+                background: #f7f6f3;
+                border: 1px solid var(--line);
+                border-radius: 9px;
+                padding: 14px 16px;
+                margin: 0;
+                white-space: pre-wrap;
+                color: #33333a;
+            }
+            .cfg b {
+                color: #c05746;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <a class="back" href="../index.html">&larr; all mockups</a>
+            <h1>Read-pile spine typography</h1>
+            <p class="lead">
+                Five layouts &times; twelve faces &times; nine sizes for the
+                title on a spine, at the geometry the pile actually draws
+                &mdash; thickness 28&ndash;39pt and height 110&ndash;124pt from
+                <code>BookMetrics.from</code>, the 5pt arch from
+                <code>bookSpinePath</code>, inks from <code>spineToneFor</code>.
+                Layout and face are separate controls because they are separate
+                decisions, and because the interesting comparisons are diagonal:
+                a serif at today&rsquo;s cramped measure is not the same
+                argument as a serif at a fixed one. The books are real titles
+                off the shelves in the Library tab, which matters for the reason
+                <code>spine_tone_test.dart</code> gives at the top of its file:
+                a corpus of six-syllable titles makes any measure rule look
+                fine. <b>The defaults are the shipped drawing</b> &mdash; layout
+                <code>now</code>, face Pretendard SemiBold 13 &mdash; and should
+                match a screenshot.
+            </p>
+
+            <h2>Controls</h2>
+            <div class="ctl">
+                <span class="lbl">Layout</span>
+                <div
+                    class="opts"
+                    id="optsLayout"
+                    role="group"
+                    aria-label="Layout"
+                ></div>
+            </div>
+            <div class="ctl">
+                <span class="lbl">Face</span>
+                <div
+                    class="opts"
+                    id="optsFace"
+                    role="group"
+                    aria-label="Face"
+                ></div>
+            </div>
+            <div class="ctl">
+                <span class="lbl">Size</span>
+                <div
+                    class="opts"
+                    id="optsSize"
+                    role="group"
+                    aria-label="Type size"
+                ></div>
+            </div>
+            <div class="ctl">
+                <span class="lbl">Hangul</span>
+                <div
+                    class="opts"
+                    id="optsOrient"
+                    role="group"
+                    aria-label="Hangul orientation"
+                ></div>
+            </div>
+            <p class="why" id="why"></p>
+
+            <div class="stage">
+                <div class="row" id="row"></div>
+                <div class="plank"></div>
+                <div class="caption" id="caption"></div>
+            </div>
+
+            <h2>This config</h2>
+            <p class="note">
+                The current selection, resolved. Every number here is what a
+                <code>TextStyle</code> or an <code>EdgeInsets</code> would carry
+                — the point being that a config you liked in a browser can be
+                transcribed without re-deriving it. The URL updates as you
+                change the controls, so a config is a link.
+            </p>
+            <pre class="cfg" id="cfg"></pre>
+
+            <h2>What survives</h2>
+            <p class="note">
+                Measured from the drawing above rather than described: a title
+                is
+                <span class="cut">cut</span> when its rotated line overflows the
+                measure it was given.
+                <b
+                    >Half of the truncation in <code>now</code> is not about
+                    measure at all</b
+                >
+                &mdash; it is the parenthetical original title and the subtitle
+                after a colon, which a Korean catalogue supplies as a matter of
+                course.
+            </p>
+            <table id="survives">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Thickness</th>
+                        <th>Measure</th>
+                        <th>Set as</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <h2>The faces</h2>
+            <p class="note">
+                At 30pt, where letterforms are arguable, and at the 13pt a spine
+                actually sets them &mdash; a face that reads well large can
+                close up entirely small.
+            </p>
+            <div class="spec" id="spec"></div>
+
+            <h2>Why not the serif</h2>
+            <p class="note bad">
+                <b
+                    >The obvious move &mdash; set the most bookish surface in
+                    the app in the serif &mdash; is unavailable, and the code
+                    already knows why.</b
+                >
+                <code>AppFonts.serif</code> is cut to the 262 Hangul syllables
+                that occur in <code>app_ko.arb</code>, and a book title is
+                catalogue text. <b>A browser cannot show you the failure</b>
+                &mdash; it always substitutes a system face for a missing glyph,
+                so the line below renders complete and looks fine. That is
+                exactly what makes this defect dangerous, and it is what
+                <code>fontFamilyFallback: [sans]</code> does in the app too: not
+                a box, but a silent change of family <i>mid-title</i>. So the
+                substituted syllables are marked here from the font&rsquo;s real
+                <code>cmap</code>, read by <code>fontTools</code> in
+                <code>render.py</code> rather than guessed at in the page.
+                <b>Red is a syllable Gowun Batang does not have</b>; every red
+                glyph you see is Pretendard wearing the serif&rsquo;s clothes.
+                Across the ten titles in this corpus, 17 fall through.
+            </p>
+            <div class="spec" id="tofu"></div>
+
+            <h2>Notes</h2>
+            <p class="note">
+                <b>A spine is set in a UI token.</b>
+                <code>BookVertical</code> uses <code>AppTextStyles.label</code>,
+                whose own doc says &ldquo;tab labels, shelf tabs, badges,
+                capsules, buttons&rdquo; &mdash; so in the collapsed Library tab
+                the book titles are the same family and weight as the
+                <code>Library / Friends / Card</code> labels 40pt below them.
+                The design record for this feature says &ldquo;the 12pt rotated
+                title&rdquo; twice; the code ships 13, because the token moved
+                and the spine came along. <code>label</code> also carries
+                <code>FontFeature.tabularFigures()</code>, right for a count and
+                wrong for a title: <code>세계를 바꾼 테크놀로지 10</code> pays
+                monospaced digit advances out of a measure with none to spare.
+            </p>
+            <p class="note">
+                <b
+                    ><code>Center</code> hides the jitter the feature paid
+                    for.</b
+                >
+                The spec&rsquo;s argument is that &ldquo;a row of identical
+                objects is the one thing a shelf never looks like&rdquo; &mdash;
+                but centring puts every title at the middle of its
+                <i>own</i> spine, so the row has no shared datum and the ragged
+                heads do not read. Head-aligning at a fixed 8pt lets them.
+            </p>
+            <p class="note">
+                <b
+                    >Nothing scales with thickness, so thickness reads as
+                    noise.</b
+                >
+                A book&rsquo;s width is its page count via
+                <code>bookThicknessPositionFromPages</code>, which is real data
+                wherever the catalogue supplied one. Sizing the title
+                12.5&rarr;15pt across the 28&ndash;39pt range makes that signal
+                visible, and it composes with the measure fix: thin books get
+                smaller type and therefore <i>more</i> measure, thick books get
+                larger type and a second line.
+            </p>
+            <p class="note">
+                <b
+                    ><code>designhouseOTFLight.otf</code> is already in the
+                    bundle, carries all 11,172 Hangul syllables, and is
+                    referenced nowhere.</b
+                >
+                The only <code>DesignHouse</code> call site is the auth wordmark
+                at <code>titleUser</code>&rsquo;s w600, which resolves to the
+                700 file &mdash; so 376KB ships and never renders a glyph. A
+                free option for a distinctive spine, with two caveats visible in
+                setting 4: its Hangul is 탈네모꼴 (deconstructed), which is
+                striking but wide, and Light is thin enough that
+                <code>kSpineTintMinContrast</code>&rsquo;s 4.6:1 &mdash; a floor
+                tuned for normal-weight text &mdash; is no longer the right
+                floor. Either adopt it deliberately or drop it from
+                <code>pubspec.yaml</code>.
+            </p>
+            <p class="note">
+                <b>Rejected: Hangul set upright</b> (setting 5). The Korean
+                shelf convention and the prettiest row here for short titles.
+                Killed by capacity: an upright column holds about seven
+                syllables against a rotated line&rsquo;s eight, so the titles
+                that most need help get less, punctuation sets badly upright,
+                and a mixed title has to change orientation mid-string. Worth
+                revisiting if titles are ever stored with a short form.
+            </p>
+            <p class="note">
+                Out of scope, found in passing: the separator hairline is 28%
+                black while <code>BookVertical._kOutline</code> is 11%, and the
+                last spine in the row is given one with nothing to its right,
+                where it reads as a drawn border rather than as an edge.
+            </p>
+            <p class="note">
+                <b>The serif faces on this page are not app assets.</b> They are
+                built by <code>build_serifs.py</code> into
+                <code>./fonts/</code>, subset to exactly the text shown here
+                &mdash; about 35KB each instead of 2&ndash;13MB &mdash; so
+                <b>their size says nothing about what shipping one would cost</b
+                >. They exist only because the app&rsquo;s own serif cannot set
+                a book title, which is the finding above rather than a thing to
+                work around. <code>Gowun Batang</code> here is that same face
+                <i>whole</i>: it is what the pile would look like if
+                <code>AppFonts.serif</code> were not cut to
+                <code>app_ko.arb</code>.
+            </p>
+            <p class="lead" style="margin-top: 30px">
+                The layouts also render to PNG via
+                <code
+                    >/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
+                    docs/mockups/spine-type/render.py</code
+                >, which prints the measure arithmetic and the serif&rsquo;s
+                per-title coverage. See <code>README.md</code> beside this file.
+            </p>
+        </div>
+
+        <script>
+            "use strict";
+
+            /* ---- the corpus ----------------------------------------------------
+            Ten real books: [title, thickness pt, height pt, cover tone]. The
+            tones are the covers' own; `spineToneFor` leaves most of them
+            untouched, which is what makes it a floor rather than a treatment. */
+            const BOOKS = [
+                ["The Hard Thing About Hard Things", 31, 121, "#16110E"],
+                ["인공지능, 머신러닝, 딥러닝 입문", 34, 118, "#F4F6F7"],
+                ["이더리움과 솔리디티 입문", 30, 115, "#FAFAFA"],
+                ["The Zero Marginal Cost Society", 36, 124, "#0A0A0C"],
+                ["권도균의 스타트업 경영 수업", 29, 113, "#29A8D8"],
+                ["Crossing the Chasm", 33, 120, "#F2F5F8"],
+                ["무조건 팔리는 카피", 28, 110, "#123C8C"],
+                ["세계를 바꾼 테크놀로지 10", 38, 123, "#B0299E"],
+                ["그로스 해킹(Growth Hacking)", 32, 117, "#F7F5F0"],
+                ["Shoe Dog", 31, 116, "#111214"],
+            ];
+
+            /* ---- the ink rule, which is `spineToneFor`'s -------------------- */
+            const INK_DARK = "#212529"; // kSpineInkDark
+            const INK_LIGHT = "#FFFFFF";
+
+            function rgb(hex) {
+                const h = hex.replace("#", "");
+                return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+            }
+            function luminance(hex) {
+                const [r, g, b] = rgb(hex).map((c) => {
+                    c /= 255;
+                    return c <= 0.03928
+                        ? c / 12.92
+                        : Math.pow((c + 0.055) / 1.055, 2.4);
+                });
+                return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            }
+            function contrast(a, b) {
+                const la = luminance(a),
+                    lb = luminance(b);
+                return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+            }
+            const inkFor = (fill) =>
+                contrast(fill, INK_LIGHT) >= contrast(fill, INK_DARK)
+                    ? INK_LIGHT
+                    : INK_DARK;
+
+            /* Below 1.25 against the sheet a spine has no silhouette of its own.
+            Not a legibility threshold — the point where the eye stops seeing an
+            edge. See `BookVertical._kPaleSpineContrast`. */
+            const SHEET = "#2B2D2F";
+            const isPale = (fill) => contrast(fill, SHEET) < 1.25;
+
+            /* ---- where a catalogue title stops being the title -------------- */
+            const MARKS = ["(", ":", "[", " - ", " ~ ", "~", "―", "—"];
+            function stripSubtitle(t) {
+                let cut = t.length;
+                for (const m of MARKS) {
+                    const i = t.indexOf(m);
+                    if (i > 0 && i < cut) cut = i;
+                }
+                return t.slice(0, cut).trim() || t;
+            }
+
+            /* ---- the three axes --------------------------------------------
+            Layout owns everything geometric: padding, alignment, line count, how
+            overflow is handled, and the size *rule*. Face owns family, weight and
+            an optical-size nudge. They are separate because they are separate
+            decisions -- and separating them is what lets the page answer the
+            question a flat list of settings cannot: is a serif bad here, or is it
+            only bad at a measure that is 30pt short? */
+            const PRE = '"Pretendard", sans-serif';
+            const DH = '"DesignHouse", "Pretendard", sans-serif';
+
+            const LAYOUTS = [
+                {
+                    id: "now",
+                    label: "now",
+                    size: 13,
+                    track: 0,
+                    tnum: true,
+                    padHead: 15,
+                    padTail: 15,
+                    align: "centre",
+                    maxLines: 1,
+                    twoLineMin: Infinity,
+                    strip: false,
+                    fade: false,
+                    why:
+                        "<b>Shipped.</b> 15/15 padding, centred, one line, ellipsis, " +
+                        "tabular figures, 13pt, tracking 0 &mdash; i.e. " +
+                        "<code>AppTextStyles.label</code>. The measure is 80&ndash;94pt, of " +
+                        "which 30 is padding spent clearing an arch 5pt deep.",
+                },
+                {
+                    id: "measure",
+                    label: "1 · measure",
+                    size: 13,
+                    track: 0,
+                    tnum: false,
+                    padHead: 8,
+                    padTail: 9,
+                    align: "head",
+                    maxLines: 1,
+                    twoLineMin: Infinity,
+                    strip: true,
+                    fade: false,
+                    why:
+                        "<b>Three cheap changes, same size.</b> Padding 8/9 takes the " +
+                        "measure to 93&ndash;107pt. Head-aligned, so the row has a datum and " +
+                        "the ragged heads read as the jitter they are. Subtitle stripped at " +
+                        "the first ( : [ &mdash;, which is what lets <code>그로스 해킹</code> " +
+                        "fit whole. Tabular figures dropped.",
+                },
+                {
+                    id: "twoline",
+                    label: "2 · + 14pt, 2 lines",
+                    size: 14,
+                    track: 0.2,
+                    tnum: false,
+                    padHead: 8,
+                    padTail: 9,
+                    align: "head",
+                    maxLines: 2,
+                    twoLineMin: 33,
+                    strip: true,
+                    fade: false,
+                    why:
+                        "<b>14pt and tracking +0.2, with a second line where the spine is " +
+                        "at least 33pt thick.</b> Larger and lighter is what makes type look " +
+                        "like a book rather than a chip &mdash; which is most of the argument " +
+                        "for changing the face as well as the size.",
+                },
+                {
+                    id: "thickness",
+                    label: "3 · + size by thickness",
+                    size: 14,
+                    sizeRange: [12.5, 15],
+                    track: 0.2,
+                    tnum: false,
+                    padHead: 8,
+                    padTail: 9,
+                    align: "head",
+                    maxLines: 2,
+                    twoLineMin: 33,
+                    strip: true,
+                    fade: false,
+                    why:
+                        "<b>12.5pt at 28pt thick, 15pt at 39pt.</b> Thickness is page count " +
+                        "via <code>bookThicknessPositionFromPages</code>, real data wherever " +
+                        "the catalogue had one &mdash; this makes the signal visible instead " +
+                        "of merely present, and it composes with the measure fix: thin books " +
+                        "get smaller type and therefore more measure.",
+                },
+                {
+                    id: "fade",
+                    label: "4 · + fade, not ellipsis",
+                    size: 14,
+                    sizeRange: [12.5, 15],
+                    track: 0.2,
+                    tnum: false,
+                    padHead: 8,
+                    padTail: 9,
+                    align: "head",
+                    maxLines: 2,
+                    twoLineMin: 33,
+                    strip: true,
+                    fade: true,
+                    why:
+                        "<b>Layout 3 with the tail ramped away instead of ellipsised.</b> " +
+                        "Rotated, <code>…</code> is three dots stacked down the spine, and it " +
+                        "costs about a syllable of the measure it is apologising for. A fade " +
+                        "costs none, works on a wrapped line where ellipsis cannot, and reads " +
+                        "as the title running under the shelf rather than as a string cut.",
+                },
+            ];
+
+            /* `nudge` is an optical-size correction, not a preference. These faces
+            do not share an x-height or a Hangul body ratio, so setting them all at
+            one `font-size` compares the numbers rather than the type: Song Myung's
+            Hangul draws small in its em, Gowun Batang's smaller still. Without
+            this the serifs lose the comparison for a reason that has nothing to do
+            with being serifs. */
+            const FACES = [
+                {
+                    id: "pre600",
+                    label: "Pretendard SemiBold",
+                    font: PRE,
+                    weight: 600,
+                    nudge: 1,
+                    why:
+                        "The shipped face and weight, via <code>AppTextStyles.label</code> " +
+                        "&mdash; also the tab bar's, 40pt below it in the same screenshot.",
+                },
+                {
+                    id: "pre400",
+                    label: "Pretendard Regular",
+                    font: PRE,
+                    weight: 400,
+                    nudge: 1,
+                    why:
+                        "Already shipped; the same family stepped down to a reading weight. " +
+                        "The cheapest real improvement on this page: no bytes, no new " +
+                        "dependency, and it stops a book title looking like a UI chip.",
+                },
+                {
+                    id: "dh300",
+                    label: "DesignHouse Light",
+                    font: DH,
+                    weight: 300,
+                    nudge: 1.04,
+                    why:
+                        "<b>Already in the bundle, full Hangul, referenced nowhere — 0 added " +
+                        "bytes.</b> Its Hangul is 허네모긴 (deconstructed), striking but wide, " +
+                        "and Light is thin enough that the 4.6:1 contrast floor — tuned for " +
+                        "normal-weight text — no longer fits.",
+                },
+                {
+                    id: "gowun400",
+                    label: "Gowun Batang",
+                    font: '"GowunBatangFull", serif',
+                    weight: 400,
+                    nudge: 1.09,
+                    serif: true,
+                    why:
+                        "<b>The app's own serif, whole.</b> The direct answer to &ldquo;what " +
+                        "if we shipped it&rdquo; — what you see below is what the pile would " +
+                        "look like if <code>AppFonts.serif</code> were not subset to " +
+                        "<code>app_ko.arb</code>. Warm and quiet; the lightest of the serifs " +
+                        "here, which is the trade.",
+                },
+                {
+                    id: "gowun700",
+                    label: "Gowun Batang Bold",
+                    font: '"GowunBatangFull", serif',
+                    weight: 700,
+                    nudge: 1.09,
+                    serif: true,
+                    why:
+                        "The weight the app actually registers. <code>AppTextStyles.title</code>'s " +
+                        "doc records that its stem measures 250/1000 — lighter than most " +
+                        "families' <i>regular</i> — and on a spine that reads as about a " +
+                        "Pretendard 500 rather than a bold.",
+                },
+                {
+                    id: "noto400",
+                    label: "Noto Serif KR",
+                    font: '"NotoSerifKR", serif',
+                    weight: 400,
+                    nudge: 1,
+                    serif: true,
+                    why:
+                        "The workhorse Korean serif, and the most legible of this set at " +
+                        "13pt: large Hangul body, even stroke weight, no surprises. The " +
+                        "conservative choice if a serif is wanted.",
+                },
+                {
+                    id: "noto600",
+                    label: "Noto Serif KR SemiBold",
+                    font: '"NotoSerifKR", serif',
+                    weight: 600,
+                    nudge: 1,
+                    serif: true,
+                    why:
+                        "The same face with enough weight to hold a saturated fill at 12.5pt " +
+                        "— worth comparing against Gowun Batang Bold, which is nominally " +
+                        "heavier and visibly is not.",
+                },
+                {
+                    id: "nanum400",
+                    label: "Nanum Myeongjo",
+                    font: '"NanumMyeongjo", serif',
+                    weight: 400,
+                    nudge: 1.05,
+                    serif: true,
+                    why:
+                        "A classic myeongjo: narrower than Noto, which buys measure — the " +
+                        "one place a serif can actually beat Pretendard here, since a " +
+                        "narrower face fits more title in the same 93–107pt.",
+                },
+                {
+                    id: "nanum700",
+                    label: "Nanum Myeongjo Bold",
+                    font: '"NanumMyeongjo", serif',
+                    weight: 700,
+                    nudge: 1.05,
+                    serif: true,
+                    why:
+                        "Narrow and heavy — on paper the best fit for a small spine on a " +
+                        "coloured fill. Check the pale books: at this weight the myeongjo " +
+                        "stroke contrast starts to fill in.",
+                },
+                {
+                    id: "song400",
+                    label: "Song Myung",
+                    font: '"SongMyung", serif',
+                    weight: 400,
+                    nudge: 1.07,
+                    serif: true,
+                    why:
+                        "<b>The most book-jacket of the set</b> — a display myeongjo with " +
+                        "high stroke contrast, and the one most likely to fall apart at " +
+                        "12.5pt. Compare it at layout <code>now</code> against layout 3: it " +
+                        "is a different verdict at each.",
+                },
+                {
+                    id: "hahmlet400",
+                    label: "Hahmlet",
+                    font: '"Hahmlet", serif',
+                    weight: 400,
+                    nudge: 0.98,
+                    serif: true,
+                    why:
+                        "A modern serif with noticeably heavier stems — the comparison the " +
+                        "spine spec names when it calls Gowun Batang light. Squarer Hangul, " +
+                        "so it holds a small size better than the myeongjos.",
+                },
+                {
+                    id: "hahmlet500",
+                    label: "Hahmlet Medium",
+                    font: '"Hahmlet", serif',
+                    weight: 500,
+                    nudge: 0.98,
+                    serif: true,
+                    why:
+                        "<b>The only cut on this page that sits between regular and " +
+                        "semibold</b> — Hahmlet is variable wght 100–900, so Google " +
+                        "serves a static instance at every 100 step, which none of the " +
+                        "other four families here offer. Worth a look precisely because " +
+                        "400 and 600 bracket the answer for a small spine on a saturated " +
+                        "fill: 400 thins out, 600 starts reading as a slab.",
+                },
+                {
+                    id: "hahmlet600",
+                    label: "Hahmlet SemiBold",
+                    font: '"Hahmlet", serif',
+                    weight: 600,
+                    nudge: 0.98,
+                    serif: true,
+                    why:
+                        "The heaviest serif here. Legible at every layout, and the point at " +
+                        "which &ldquo;serif&rdquo; stops reading as literary and starts " +
+                        "reading as a slab — which may be the right answer for a 28pt spine.",
+                },
+            ];
+
+            /* `pt: null` means "whatever the layout says", which is the only value
+           that leaves the shipped control intact and is therefore the default.
+           The rest pin a size and override the layout's rule -- including layout
+           3's size-by-thickness, which is why `draw` says so out loud rather than
+           letting that layout quietly stop demonstrating itself. */
+            const SIZES = [
+                { id: "auto", label: "as laid out", pt: null },
+                { id: "10", label: "10", pt: 10 },
+                { id: "11", label: "11", pt: 11 },
+                { id: "12", label: "12", pt: 12 },
+                { id: "13", label: "13", pt: 13 },
+                { id: "14", label: "14", pt: 14 },
+                { id: "15", label: "15", pt: 15 },
+                { id: "16", label: "16", pt: 16 },
+                { id: "17", label: "17", pt: 17 },
+            ];
+
+            const ORIENTS = [
+                {
+                    id: "sideways",
+                    label: "rotated",
+                    why: "Everything turned, Hangul included — what <code>RotatedBox</code> does.",
+                },
+                {
+                    id: "mixed",
+                    label: "upright",
+                    why:
+                        "<b>Hangul upright, Latin still rotated</b> — the Korean shelf " +
+                        "convention, and free: it is what <code>text-orientation: mixed</code> " +
+                        "does by default. Rejected on capacity: about seven syllables against " +
+                        "a rotated line's eight, so the titles that most need help get less, " +
+                        "and punctuation sets badly upright.",
+                },
+            ];
+
+            /* ---- the renderer ---------------------------------------------- */
+            const row = document.getElementById("row");
+            const caption = document.getElementById("caption");
+            const why = document.getElementById("why");
+            const tbody = document.querySelector("#survives tbody");
+            const cfg = document.getElementById("cfg");
+
+            const state = {
+                layout: LAYOUTS[0],
+                face: FACES[0],
+                size: SIZES[0],
+                orient: ORIENTS[0],
+            };
+
+            /* The nominal size before the face's optical nudge, which is the number
+           a `TextStyle` would carry. */
+            function nominalSize(layout, thickness) {
+                if (state.size.pt !== null) return state.size.pt;
+                if (!layout.sizeRange) return layout.size;
+                const [lo, hi] = layout.sizeRange;
+                const t = Math.min(
+                    1,
+                    Math.max(0, (thickness - 28) / (39 - 28)),
+                );
+                return lo + t * (hi - lo);
+            }
+
+            function sizeFor(layout, face, thickness) {
+                return nominalSize(layout, thickness) * face.nudge;
+            }
+
+            /* What the caption prints: one number, or the range a size-by-thickness
+           rule spans across 28-39pt. */
+            function sizeLabel(layout) {
+                if (state.size.pt !== null) return state.size.pt + "pt";
+                if (!layout.sizeRange) return layout.size + "pt";
+                return layout.sizeRange[0] + "–" + layout.sizeRange[1] + "pt";
+            }
+
+            function draw() {
+                const { layout, face, orient } = state;
+                row.textContent = "";
+                tbody.textContent = "";
+
+                const rows = [];
+                for (const [title, thickness, height, tone] of BOOKS) {
+                    const ink = inkFor(tone);
+                    const measure = height - layout.padHead - layout.padTail;
+                    const size = sizeFor(layout, face, thickness);
+                    const text = layout.strip ? stripSubtitle(title) : title;
+                    const twoLines =
+                        layout.maxLines === 2 && thickness >= layout.twoLineMin;
+
+                    const spine = document.createElement("div");
+                    spine.className = "spine" + (isPale(tone) ? " pale" : "");
+                    spine.style.width = thickness + "px";
+                    spine.style.height = height + "px";
+                    spine.style.background = tone;
+
+                    const el = document.createElement("div");
+                    // Neither `fade` nor `ellipsis` is set here. Both depend on
+                    // whether the title actually overflows, which is not known
+                    // until it has been laid out -- see the measurement pass.
+                    el.className =
+                        "title " + orient.id + (twoLines ? "" : " one");
+                    el.textContent = text;
+                    el.style.color = ink;
+                    el.style.fontFamily = face.font;
+                    el.style.fontWeight = face.weight;
+                    el.style.fontSize = size + "px";
+                    el.style.letterSpacing = layout.track + "px";
+                    el.style.lineHeight = 1.04;
+                    el.style.fontVariantNumeric = layout.tnum
+                        ? "tabular-nums"
+                        : "normal";
+                    // The inline axis runs down the spine, so this is the measure.
+                    el.style.inlineSize = measure + "px";
+                    if (twoLines) {
+                        el.style.whiteSpace = "normal";
+                        el.style.maxBlockSize = size * 1.04 * 2 + "px";
+                    }
+                    // Head-aligned means a fixed offset from the top; centred
+                    // means the middle of this book's own spine.
+                    if (layout.align === "head") {
+                        el.style.top = layout.padHead + "px";
+                    } else {
+                        el.style.top = "50%";
+                        el.style.transform = "translate(-50%, -50%)";
+                    }
+
+                    spine.appendChild(el);
+                    row.appendChild(spine);
+                    rows.push({
+                        title,
+                        thickness,
+                        measure,
+                        text,
+                        el,
+                        twoLines,
+                    });
+                }
+
+                // Overflow is measured off the drawing rather than predicted, and
+                // the two failure modes are different things:
+                //
+                //   too many lines -- counted with `lineCount`, because the layout
+                //                     caps how many fit across the thickness.
+                //   line too long  -- the inline axis is vertical here, so it shows
+                //                     up as scrollHeight past clientHeight.
+                //
+                // Both are truncation, and checking only the second is a bug this
+                // page shipped with: `The Zero Marginal Cost Society` wrapped to two
+                // lines, had `Society` clipped, and was reported whole.
+                // Waiting on `document.fonts.ready` before measuring, and not just
+                // on a frame.
+                //
+                // **A frame is not enough**, and this was wrong until it was
+                // measured: `@font-face` files load asynchronously, so the first
+                // `requestAnimationFrame` after a face changes can land while the
+                // title is still laid out in a fallback. The fallback breaks lines
+                // elsewhere, so a title that fits in two lines in Hahmlet measured
+                // as three, was demoted to one, and the config was reported three
+                // titles worse than it is. Every number on this page comes out of
+                // this block, so measuring early does not just misdraw one spine --
+                // it corrupts the count, the table and the config readout together.
+                //
+                // `document.fonts.ready` is re-read per draw on purpose: it returns
+                // a fresh promise covering whatever is pending now, which is what
+                // makes it correct for a face that is being used for the first time.
+                document.fonts.ready.then(() =>
+                    requestAnimationFrame(() => {
+                        let cut = 0;
+                        for (const r of rows) {
+                            // A title that laid out into more lines than the layout
+                            // allows is demoted to one, which is what `render.py`'s
+                            // `wrap_two` does by returning null unless both halves fit.
+                            // Silently clipping the extra line is the alternative, and
+                            // it loses a whole line of the title rather than the tail
+                            // of one.
+                            if (
+                                r.twoLines &&
+                                lineCount(r.el) > layout.maxLines
+                            ) {
+                                r.el.classList.add("one");
+                                r.el.style.whiteSpace = "nowrap";
+                                r.el.style.maxBlockSize = "";
+                                r.twoLines = false;
+                            }
+                            // Reading `scrollHeight` forces layout, so this sees the
+                            // demotion above rather than the state before it.
+                            const over =
+                                r.el.scrollHeight - r.el.clientHeight > 1;
+                            if (over) {
+                                cut++;
+                                r.el.classList.add(
+                                    layout.fade ? "fade" : "ellipsis",
+                                );
+                            }
+                            const tr = document.createElement("tr");
+                            tr.innerHTML =
+                                '<td class="ko">' +
+                                r.title +
+                                "</td><td>" +
+                                r.thickness +
+                                "pt</td><td>" +
+                                r.measure +
+                                'pt</td><td class="ko">' +
+                                r.text +
+                                (r.twoLines ? " <i>(2 lines)</i>" : "") +
+                                '</td><td class="' +
+                                (over ? "cut" : "whole") +
+                                '">' +
+                                (over ? "cut" : "whole") +
+                                "</td>";
+                            tbody.appendChild(tr);
+                        }
+                        caption.textContent =
+                            face.label +
+                            " " +
+                            sizeLabel(layout) +
+                            (face.nudge === 1
+                                ? ""
+                                : " (" +
+                                  (face.nudge > 1 ? "+" : "") +
+                                  Math.round((face.nudge - 1) * 100) +
+                                  "% optical)") +
+                            "  ·  measure " +
+                            (110 - layout.padHead - layout.padTail) +
+                            "–" +
+                            (124 - layout.padHead - layout.padTail) +
+                            "pt  ·  " +
+                            cut +
+                            " of " +
+                            BOOKS.length +
+                            " titles cut";
+                    }),
+                );
+
+                // A pinned size silently disables a layout's own size rule, so the
+                // panel says so rather than letting layout 3 stop demonstrating the
+                // one thing it is for.
+                const overridesRule =
+                    state.size.pt !== null && Boolean(layout.sizeRange);
+                why.innerHTML =
+                    layout.why +
+                    " <br /><br /> <b>" +
+                    face.label +
+                    ".</b> " +
+                    face.why +
+                    (orient.id === "sideways" ? "" : " " + orient.why) +
+                    (overridesRule
+                        ? " <br /><br /> <b>Size is pinned to " +
+                          state.size.pt +
+                          "pt, which overrides this layout's size-by-thickness " +
+                          "rule</b> — every spine now carries the same type, which " +
+                          "is the thing this layout exists to stop doing. Choose " +
+                          "<i>as laid out</i> to get it back."
+                        : "");
+
+                writeConfig();
+                writeHash();
+            }
+
+            /* How many line boxes the title actually laid out into.
+
+           Counted from `Range.getClientRects()`, which returns one rect per line
+           box. **The obvious alternative is wrong**: comparing `scrollWidth` to
+           `clientWidth` looks like a block-axis overflow test and is really a test
+           for "does the glyph ink exceed the line box", which is true of every CJK
+           title here because `line-height: 1.04` is far tighter than these faces'
+           natural line height. Using it demoted all ten titles to one line at every
+           layout, and reported a config as three titles worse than it was. */
+            function lineCount(el) {
+                const r = document.createRange();
+                r.selectNodeContents(el);
+                return Array.from(r.getClientRects()).filter(
+                    (rect) => rect.width > 0.5 && rect.height > 0.5,
+                ).length;
+            }
+
+            /* ---- the config readout -----------------------------------------
+           Resolved values rather than the option ids, because the reason to write
+           this down is to be able to transcribe it into Dart without re-deriving
+           anything. Flags the two things about any config here that are not free:
+           a face the app does not carry, and a pinned size that discards the
+           thickness signal. */
+            function writeConfig() {
+                const { layout, face, size, orient } = state;
+                const nominal = size.pt !== null ? size.pt : null;
+                const effective = (pt) => +(pt * face.nudge).toFixed(2);
+
+                const sizeLine =
+                    nominal !== null
+                        ? "fontSize:      " +
+                          nominal +
+                          (face.nudge === 1
+                              ? ""
+                              : "   // " +
+                                effective(nominal) +
+                                " as drawn, after this face's optical nudge")
+                        : layout.sizeRange
+                          ? "fontSize:      " +
+                            layout.sizeRange[0] +
+                            " → " +
+                            layout.sizeRange[1] +
+                            "   // lerped on thickness 28→39pt"
+                          : "fontSize:      " + layout.size;
+
+                /* Per-weight cost of a full-Hangul subset, measured with
+                   pyftsubset on the upstream files rather than estimated. "Full
+                   Hangul" because a book title is arbitrary catalogue text, so
+                   every one of the 11,172 syllables is reachable; "subset"
+                   because everything else is dropped. See README.md. */
+                const SHIP_KB = {
+                    GowunBatangFull: 7908,
+                    Hahmlet: 1352,
+                };
+
+                const notes = [];
+                if (face.serif) {
+                    const fam = face.font.replace(/"/g, "").split(",")[0];
+                    const kb = SHIP_KB[fam];
+                    notes.push(
+                        "This face is NOT in the app. " +
+                            fam +
+                            " is a mockup-only 43KB subset in ./fonts/, cut to just " +
+                            "the text this page draws. Shipping it means a " +
+                            "full-Hangul subset in assets/fonts/ plus a pubspec " +
+                            "entry" +
+                            (kb
+                                ? ": ≈" +
+                                  (kb / 1024).toFixed(2) +
+                                  "MB per weight, measured, against a 4.97MB " +
+                                  "font bill today (" +
+                                  (kb >= 4000
+                                      ? "more than doubles it"
+                                      : "+" +
+                                        Math.round((kb / 1024 / 4.97) * 100) +
+                                        "%") +
+                                  ")."
+                                : "."),
+                    );
+                }
+                if (nominal !== null && layout.sizeRange)
+                    notes.push(
+                        "Size is pinned, so this layout's size-by-thickness rule is " +
+                            "off and the page-count signal in a spine's width is not " +
+                            "echoed by its type.",
+                    );
+
+                cfg.textContent =
+                    "padding:       EdgeInsets.only(top: " +
+                    layout.padHead +
+                    ", bottom: " +
+                    layout.padTail +
+                    ")\n" +
+                    "align:         " +
+                    (layout.align === "head" ? "head (top)" : "centre") +
+                    "\n" +
+                    "maxLines:      " +
+                    (layout.maxLines === 2
+                        ? "2 where thickness >= " +
+                          layout.twoLineMin +
+                          "pt, else 1"
+                        : "1") +
+                    "\n" +
+                    "overflow:      " +
+                    (layout.fade
+                        ? "fade 15pt at the tail (no ellipsis)"
+                        : "ellipsis") +
+                    "\n" +
+                    "title:         " +
+                    (layout.strip ? "strip at first ( : [ —" : "as stored") +
+                    "\n" +
+                    "fontFamily:    " +
+                    face.font.replace(/"/g, "").split(",")[0] +
+                    "\n" +
+                    "fontWeight:    w" +
+                    face.weight +
+                    "\n" +
+                    sizeLine +
+                    "\n" +
+                    "letterSpacing: " +
+                    layout.track +
+                    "\n" +
+                    "fontFeatures:  " +
+                    (layout.tnum ? "[tabularFigures()]" : "none") +
+                    "\n" +
+                    "hangul:        " +
+                    (orient.id === "sideways"
+                        ? "rotated with the line (RotatedBox)"
+                        : "upright, Latin rotated") +
+                    (notes.length
+                        ? "\n\n" + notes.map((n) => "! " + n).join("\n\n")
+                        : "");
+            }
+
+            /* ---- config in the URL ------------------------------------------
+           So "I like this one" survives a reload and can be sent to someone.
+           `replaceState` rather than assigning `location.hash`, which would push
+           a history entry per click. */
+            const AXES = [
+                ["layout", LAYOUTS],
+                ["face", FACES],
+                ["size", SIZES],
+                ["hangul", ORIENTS],
+            ];
+            const AXIS_KEY = { hangul: "orient" };
+
+            function writeHash() {
+                const parts = AXES.map(
+                    ([name]) => name + "=" + state[AXIS_KEY[name] || name].id,
+                );
+                history.replaceState(null, "", "#" + parts.join("&"));
+            }
+
+            function readHash() {
+                const raw = location.hash.replace(/^#/, "");
+                if (!raw) return;
+                const params = new Map(raw.split("&").map((p) => p.split("=")));
+                for (const [name, items] of AXES) {
+                    const found = items.find((i) => i.id === params.get(name));
+                    if (found) state[AXIS_KEY[name] || name] = found;
+                }
+            }
+
+            /* ---- the control panel ------------------------------------------
+           One builder for all three axes, so adding a face is adding a row to
+           `FACES` and nothing else. Each group is remembered so that a config
+           arriving from the URL can be reflected in the buttons. */
+            const GROUPS = [];
+
+            function syncPanel() {
+                for (const g of GROUPS) {
+                    const buttons = g.el.querySelectorAll("button");
+                    g.items.forEach((item, i) => {
+                        buttons[i].setAttribute(
+                            "aria-pressed",
+                            state[g.key] === item ? "true" : "false",
+                        );
+                    });
+                }
+            }
+
+            function buildGroup(el, items, key, dividerAfter) {
+                items.forEach((item) => {
+                    const b = document.createElement("button");
+                    b.type = "button";
+                    b.textContent = item.label;
+                    b.setAttribute(
+                        "aria-pressed",
+                        state[key] === item ? "true" : "false",
+                    );
+                    b.addEventListener("click", () => {
+                        state[key] = item;
+                        syncPanel();
+                        draw();
+                    });
+                    el.appendChild(b);
+                    // A rule between the shipped faces and the serifs, so the
+                    // panel says which of these the app could use today.
+                    if (dividerAfter && dividerAfter === item.id) {
+                        const sep = document.createElement("span");
+                        sep.className = "sep";
+                        el.appendChild(sep);
+                    }
+                });
+                GROUPS.push({ el, items, key });
+            }
+
+            // The URL is read before the panel is built, so a config restored
+            // from a link shows as the pressed buttons rather than only in the
+            // drawing.
+            readHash();
+
+            buildGroup(
+                document.getElementById("optsLayout"),
+                LAYOUTS,
+                "layout",
+            );
+            buildGroup(
+                document.getElementById("optsFace"),
+                FACES,
+                "face",
+                "dh300",
+            );
+            // A rule after `as laid out`, because it is the only option there that
+            // is not a number.
+            buildGroup(
+                document.getElementById("optsSize"),
+                SIZES,
+                "size",
+                "auto",
+            );
+            buildGroup(
+                document.getElementById("optsOrient"),
+                ORIENTS,
+                "orient",
+            );
+
+            /* ---- the face specimen -----------------------------------------
+           Driven off `FACES`, so the specimen and the shelf cannot disagree
+           about what a face is. `nudge` is applied here too, or the specimen
+           would compare em sizes rather than type. */
+            const LATIN = "Crossing the Chasm";
+            const HANGUL = "인공지능 딥러닝 입문";
+            const spec = document.getElementById("spec");
+            for (const face of FACES) {
+                const d = document.createElement("div");
+                d.className = "face";
+                d.innerHTML =
+                    '<div class="nm">' +
+                    face.label +
+                    (face.serif ? " · mockup-only font" : "") +
+                    '</div><div class="nt"></div>' +
+                    '<div class="big">' +
+                    LATIN +
+                    "&nbsp;&nbsp;&nbsp;" +
+                    HANGUL +
+                    '</div><div class="small">' +
+                    LATIN +
+                    "&nbsp;&nbsp;&nbsp;" +
+                    HANGUL +
+                    "</div>";
+                // The technical line, not the argument. The rationale lives in the
+                // `why` panel, which is on white stock where the page's `code`
+                // chips belong -- pasting it in here rendered them as white blocks
+                // and made every specimen three lines taller than its own type.
+                d.querySelector(".nt").textContent =
+                    face.font.replace(/"/g, "").split(",")[0] +
+                    "  ·  w" +
+                    face.weight +
+                    (face.nudge === 1
+                        ? ""
+                        : "  ·  optical size " +
+                          (face.nudge > 1 ? "+" : "") +
+                          Math.round((face.nudge - 1) * 100) +
+                          "%");
+                d.querySelector(".big").style.font =
+                    face.weight + " " + 30 * face.nudge + "px " + face.font;
+                d.querySelector(".small").style.font =
+                    face.weight + " " + 13 * face.nudge + "px " + face.font;
+                spec.appendChild(d);
+            }
+
+            /* ---- the serif's coverage gap ----------------------------------
+            Which Hangul syllables Gowun Batang's subset actually lacks, per
+            title. Read from the shipped font's `cmap` by `fontTools` in
+            `render.py` -- not detected here, because it cannot be: a browser
+            substitutes silently, `document.fonts.check()` reports on the face
+            rather than the glyph, and Hangul is full-width so advance-width
+            probing cannot tell the two apart either. Regenerate with the snippet
+            in README.md if the subset changes. */
+            const SERIF_GAPS = [
+                ["인공지능, 머신러닝, 딥러닝 입문", "닝딥머신"],
+                ["이더리움과 솔리디티 입문", "솔움티"],
+                ["권도균의 스타트업 경영 수업", "균업"],
+                ["무조건 팔리는 카피", "건조"],
+                ["세계를 바꾼 테크놀로지 10", "꾼놀테"],
+                ["그로스 해킹(Growth Hacking)", "킹"],
+            ];
+
+            const tofu = document.getElementById("tofu");
+            for (const [title, missing] of SERIF_GAPS) {
+                const gaps = new Set(missing);
+                const d = document.createElement("div");
+                d.className = "face";
+
+                const line = document.createElement("div");
+                line.className = "big";
+                // The serif first, Pretendard behind it -- the app's own stack.
+                line.style.font = '700 30px "GowunBatang", "Pretendard", serif';
+                for (const ch of title) {
+                    if (gaps.has(ch)) {
+                        const s = document.createElement("span");
+                        s.textContent = ch;
+                        s.style.color = "#e8806f";
+                        line.appendChild(s);
+                    } else {
+                        line.appendChild(document.createTextNode(ch));
+                    }
+                }
+
+                const nt = document.createElement("div");
+                nt.className = "nt";
+                const total = [...title].filter(
+                    (c) => c >= "\uac00" && c <= "\ud7a3",
+                ).length;
+                const fell = [...title].filter((c) => gaps.has(c)).length;
+                nt.textContent =
+                    fell + " of " + total + " syllables are not the serif";
+
+                d.appendChild(nt);
+                d.appendChild(line);
+                tofu.appendChild(d);
+            }
+
+            draw();
+
+            // A config link pasted into an already-open tab changes the hash
+            // without reloading the document, so without this the URL and the
+            // drawing silently disagree — which is exactly how a sweep of six
+            // configs came back reporting the same numbers six times.
+            window.addEventListener("hashchange", () => {
+                readHash();
+                syncPanel();
+                draw();
+            });
+        </script>
+    </body>
+</html>

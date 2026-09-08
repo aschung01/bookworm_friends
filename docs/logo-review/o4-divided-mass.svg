@@ -1,0 +1,16 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    Inverts the construction: instead of three white slabs laid on green, one
+    white mass with two green rules cut through it.
+
+    Only the four outer corners are rounded, so the mark keeps a single solid
+    outline — mass is what survives downscaling, and this is the most mass any
+    three-book composition here can hold. The rules are 58 wide, deliberately
+    heavier than the gaps in N1, because a cut that closes up leaves one blank
+    white brick.
+  -->
+  <rect x="176" y="244" width="672" height="536" rx="56" fill="#ffffff"/>
+  <rect x="176" y="384" width="672" height="58" fill="#09BC8A"/>
+  <rect x="176" y="582" width="672" height="58" fill="#09BC8A"/>
+</svg>

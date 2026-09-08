@@ -182,6 +182,37 @@ over `showModalBottomSheet`, so there is no native detent to fight. It does cap
 height at 9/16 of the screen unless told otherwise, so the sheet passes
 `isScrollControlled: true` and sizes the picker itself.
 
+## Superseded: the header strip is gone (2026-08-19)
+
+§4 and its amendment are no longer what the code does. The strip — your current
+praise as a chip, with a text button that withdraws it — was deleted, for praise
+and for the profile-emoji picker that shares the sheet.
+
+Two reasons, in order of weight.
+
+**It said nothing the marked cell did not.** §4's amendment already conceded that
+the highlight survived after all, and that your praise is _usually_ in the Recents
+run where a highlight is findable. Once the cell is marked, the strip's chip is a
+restatement, and its Remove button duplicates a path that already exists: tapping
+the emoji you hold withdraws it, because `praiseTapFor` reads that as removal.
+
+**Sharing it with the profile picker made it actively wrong.** The strip hardcoded
+`l10n.yourPraise`, so "Edit profile > Change emoji" captioned someone's avatar
+emoji as praise they had sent. Parameterising the label fixed the symptom but left
+a caption that has to be threaded correctly through two unrelated callers.
+
+The honest cost is the one §4's amendment named: "only the strip can withdraw"
+was true in the sense that only the strip could withdraw _without finding the
+emoji first_. That is now the withdrawal path, and it is hard for a legacy emoji
+on a device with no local Recents. The live data says it does not matter yet — 39
+praises from 8 people, **none in the last 90 days**. If praise revives and
+withdrawal proves hard to find, put a Remove row on the praise pill rather than
+rebuilding the strip.
+
+`CurrentPraiseStrip` is deleted, `showEmojiBottomSheet` lost `onRemove`, and the
+`yourPraise` / `removePraise` ARB keys are gone. `selected` remains and still
+marks your cell, which is now the whole of the toggle's legibility.
+
 ## Consequences
 
 - All 28 legacy off-palette praises become first-class rather than

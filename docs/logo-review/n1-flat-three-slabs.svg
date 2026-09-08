@@ -1,0 +1,22 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    Flat-vector reading of "simpler": K4B's composition with the chalk texture
+    removed. Three filled slabs, one bookmark, nothing else.
+
+    Slab pitch (176) is deliberately wider than slab height (128), so the green
+    gap is heavier than in K4B. Thin gaps are the first thing to close up under
+    downscaling, which is what makes a stack read as one white mass.
+
+    Corner radius 26 on a 128-tall slab is enough to feel like a book board
+    without rounding away the horizontal edge that does the stacking work.
+  -->
+  <g transform="translate(512,512) scale(1.06) translate(-512,-512)">
+    <rect x="216" y="296" width="592" height="128" rx="26" fill="#ffffff"/>
+    <rect x="216" y="472" width="592" height="128" rx="26" fill="#ffffff"/>
+    <rect x="216" y="648" width="592" height="128" rx="26" fill="#ffffff"/>
+    <!-- Bookmark as a green notch cut into the top slab, not a white shape laid
+         over it: white-on-white has no contrast to work with. -->
+    <path d="M646 296 H726 V372 L686 342 L646 372 Z" fill="#09BC8A"/>
+  </g>
+</svg>

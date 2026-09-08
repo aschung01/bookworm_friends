@@ -37,7 +37,7 @@ books the shelf has _in progress_, because a face-out cover is expensive: at
 | ----------------------- | ------------------------------ | ----------------- |
 | `covers`                | **3.57**                       | **3.57**          |
 | `leaning` (20.3pt step) | **~13.6**                      | **~9.7**          |
-| `spines` (nominal 26pt) | **~13.1**                      | **~10.2**         |
+| `spines` (~37pt)        | **~9.2**                       | **~7.5**          |
 
 The working, so it can be checked:
 
@@ -46,24 +46,31 @@ The working, so it can be checked:
   book is overlapped by nothing and draws its full cover → 13.6.
 - `leaning`, one reading: `84.4 + 15 + (m−1)·20.3 + 84.4 ≤ 340.5` → 8.7
   shingled, 9.7 total.
-- `spines`, one reading: `(340.5 − 84.4 − 15) / 26` → 9.3 spines, 10.3 total.
-  Nominal, since real thickness comes from page count and varies.
+- `spines`, none reading: `340.5 / 37` → 9.2.
+- `spines`, one reading: `(340.5 − 84.4 − 15) / 37` → 6.5 spines, 7.5 total.
+
+**A spine is 29–47pt wide, not 26.** `BookMetrics.from` resolves
+`thickness = resolvedWidth * jitter.thicknessFactor` with factors 0.36–0.52, which
+at `bookHeight = 126.6` and height jitter of 0.94–1.06 gives ~29 to ~47pt, mid
+~37. Two earlier drafts of this document used 26 — `BookVertical`'s _default_
+`width`, which the read pile overrides with `metrics.thickness` and which no real
+spine ever uses. The correction matters twice over: it lowers the counts above,
+and it is what makes a spine a viable drag target (see "Edit mode").
 
 These counts are **before** the trailing label reserve (see "Retained, and one
 addition"), which costs roughly one spine's worth.
 
 Three consequences:
 
-- **Both new states roughly triple reachability**, from 3.57 to about 10 on a
-  shelf with one book in progress, or about 13 on one with none. A twelve-book
-  shelf with nothing in progress fits whole; the same shelf with one book in
-  progress shows about ten of its twelve. That is a real improvement and not the
-  total victory an earlier draft of this document claimed — see "An open
-  question".
-- **The two states are within half a book of each other** at every head size, so
-  they are near-equivalent on the functional axis and can be chosen on character
-  alone — the healthiest possible relationship between two options in the same
-  control.
+- **Both new states are a large improvement, and an unequal one.** `leaning`
+  roughly quadruples what a shelf shows and fits a twelve-book shelf whole when
+  nothing on it is in progress; `spines` roughly doubles to triples it. Neither is
+  the total victory an earlier draft claimed — see "An open question".
+- **`leaning` is the denser of the two, by about two books.** So the choice
+  between them is _not_ purely one of character: on the stated tiebreaker
+  `leaning` wins. `spines` earns its place by being the more bookish drawing and
+  the cheaper one, not by fitting more. Say this plainly rather than presenting
+  them as equivalent.
 - **`spines` is the cheaper of the two**, despite looking like the more
   elaborate drawing. A spine's width is `BookMetrics.thickness` from page count,
   so it needs no cover decode to lay out, and spines do not overlap, so paint
@@ -234,13 +241,32 @@ cover type usually starts — was rejected because it puts the _rightmost_ book
 frontmost and fully visible, which is the wrong end of a row whose whole premise
 is that the leading book matters most. That is the tiebreaker firing.
 
-### Why this needs a `Stack`
+### Why this needs a `Stack`, and how hit-testing survives it
 
 `ListView` paints in child order, so a lazy list gives right-on-top — the
 opposite of what is wanted. So the shingle group is a `Stack` inside a
 horizontal `SingleChildScrollView`, children emitted **highest index first**
 with `Positioned(left: i * step)`, so book 0 paints last and lands on top.
 `clipBehavior: Clip.none`.
+
+**Each `Positioned` is `step` wide, and the cover overflows it to the right.** This
+is the part that is easy to get wrong. A `RenderBox` hit-tests its whole rect
+regardless of what is painted there, so a `Positioned` sized to the full cover
+would let book 0 — hit-tested first, being frontmost — claim taps landing on the
+visible strip of book 3, which sits well inside book 0's rect. Sizing the slot to
+the exposed strip makes the hit area exactly the part of the book a reader can see.
+The last book in the group gets a full-cover-width slot, because all of it is
+visible.
+
+So paint order and hit order end up saying the same thing: emitted in reverse, book
+0 paints last and is hit-tested first, and its hit rect is only the strip it
+actually shows.
+
+**A `Stack` can hold draggables**, which is what lets `leaning` keep the
+one-gesture lift the rest of the app has — each `Positioned` child is the same
+`LongPressDraggable` a cover gets in `covers`. The slot it reports is the step, so
+this is the one density needing the `slotExtent` override described under "Edit
+mode".
 
 The `Stack` needs an explicit width, and the last book's true cover width is not
 knowable before decode, so it is computed from `kDefaultCoverAspect` plus
@@ -369,29 +395,70 @@ own rule ("only that book carries the tag"), and it guarantees a flight always
 starts from a cover that is fully on screen rather than from one three-quarters
 hidden behind a neighbour.
 
-### Edit mode always draws face-out
+### Edit mode: spine-native in `spines`, face-out in `leaning`
 
-Regardless of the active density, and with the promoted order. This one sentence
-disposes of three separate problems:
+| density   | edit mode draws       |
+| --------- | --------------------- |
+| `covers`  | covers (unchanged)    |
+| `spines`  | **spines, draggable** |
+| `leaning` | covers                |
 
-- The drag machine derives slot extents from measured `_slotKeys` boxes; a 26pt
-  spine would be a 26pt grab target.
-- Shingled covers overlap, so a tap is ambiguous about which book it hit.
-- `_DeleteBookButton` sits at `top: -22, left: -22` — outside its cover — which
-  in `leaning` would land it squarely on top of the neighbouring book. Fixing
-  that would mean relocating the badge, changing edit mode's appearance in _all_
-  states including today's.
+An earlier draft of this design said "edit mode always draws face-out, regardless
+of the active density", and gave three reasons. **Two of them were wrong about
+`spines` and one was arithmetic on a number that did not exist.** The rule is now
+per-density, because that is where its reasons actually hold.
+
+**Why `spines` edits as spines.**
+
+- **A spine is a real target.** 29–47pt wide on a ~119pt-tall strip — comparable
+  to a list-row drag handle. The earlier objection said "a 26pt spine would be a
+  26pt grab target", which was `BookVertical`'s unused default.
+- **The slot arithmetic becomes self-consistent, and this is the important one.**
+  `ShelfBookDrag.slotExtent` is measured from the rendered slot and is documented
+  as "the width of the gap the receiving shelf has to open for it". If edit mode
+  redrew a lifted spine as a cover, that measured 37pt would be the gap opened for
+  a book needing 84, and the drop preview would lie. **That bug is created purely
+  by changing the drawing on entry to edit mode** — editing spines as spines
+  removes it, with no override and no fabricated width.
+- **Hit-testing is exact**, because spines tile without overlapping.
+- **It is better than editing in covers.** Rearranging a shelf today means seeing
+  3.4 of its books; in `spines` it means seeing about nine. Reordering is the one
+  task where seeing the whole shelf matters most, so the compressed drawing is
+  _more_ useful in edit mode, not less.
+
+**The delete badge, which is the one genuine problem.** `_DeleteBookButton` sits
+at `top: -22, left: -22` — outside its cover — so a 44pt disc on a 37pt spine
+blankets its neighbours, and in `spines` the neighbours are touching. The answer
+is already in this design: **in spine edit mode, delete is reached by tapping a
+spine to turn it out, and the turned-out cover carries the badge.** One book is
+face-out at a time, so one badge exists at a time and nothing can collide. The
+two-step tap does double duty and no new affordance is invented.
+
+**A lifted spine stays a spine.** Its drag feedback is not turned out to a cover:
+it is picked up where it stood, it lands in a spine-width gap, and `_liftScale`
+alone is the cue that it came loose. This keeps `_liftScaled`'s stated promise —
+"the cover's own height, not a larger one… starting at any other size would be the
+jump this is here to avoid" — literally true, and needs no `turnDrive` on the lift
+at all.
+
+**Why `leaning` still falls back to face-out.** Shingled covers overlap, so a tap
+is genuinely ambiguous about which book it hit, and the step is not the book's
+width — so the measured `slotExtent` is wrong in exactly the way described above.
+`leaning` is therefore the **one** place needing an override: on a lift from a
+shingled row, `slotExtent` is computed from the face-out cover width rather than
+measured. Confined to one density, for a reason that does not generalise.
 
 ### Transitions are a cross-fade, not a per-book turn
 
-Switching density, and entering edit mode from a compressed state, is a **180ms
-cross-fade of the row**.
+Switching density is a **180ms cross-fade of the row**. So is entering edit mode
+from `leaning`, which is the one density whose drawing changes on entry;
+`covers` and `spines` do not change drawing at all and so need no transition.
 
 An earlier draft of this design had spines turning to covers per book on entering
-edit mode. That is withdrawn: a per-book turn needs a `BookChassis` per book,
-which is the exact cost rejected when a chassis-based `leaning` variant was
-turned down. Spending it on a transition after refusing to spend it on the
-drawing would be incoherent.
+edit mode. That is withdrawn twice over: `spines` no longer redraws on entry at
+all, and a per-book turn would need a `BookChassis` per book, which is the exact
+cost rejected when a chassis-based `leaning` variant was turned down. Spending it
+on a transition after refusing to spend it on the drawing would be incoherent.
 
 A fade needs no chassis and no decode, still reads as "the same books, drawn
 differently", and keeps the toggle cheap enough to flick back and forth — which
@@ -447,28 +514,38 @@ closest candidates. They need eyeballing at 22pt before being committed to.
 
 ## Decomposition
 
-`shelf_row.dart` is over 1,200 lines and most of it is the drag machine. Three layouts added
-inline would push it further, so the resting row moves out. The file stays where it is — it is
-imported widely — and gets _smaller_.
+`shelf_row.dart` is over 1,200 lines and most of it is the drag machine.
+
+**The seam is not where an earlier draft of this document put it.** That draft
+assumed view mode was a plain `ListView.separated` with no draggables, and proposed
+extracting a separate "resting row". It is not: `_buildBookRow` serves both modes,
+and every book at rest is a `LongPressDraggable`, because a hold at rest is the
+gesture that both enters edit mode and lifts the book — and a `Draggable` that
+appears after the finger is down can never adopt that pointer. There is no resting
+row to extract.
+
+So what moves out is the **drawing**, not the row. The draggable, the slot, the
+shift animation and the drop machinery stay in `shelf_row.dart`, and each density
+supplies the widget that goes inside the slot plus the slot's width.
 
 ```
 lib/providers/shelf_density_provider.dart     enum + persisted Notifier
-lib/ui/widgets/shelf/shelf_books_row.dart     resting row; dispatches on density;
-                                              owns the surfaced-book state
-lib/ui/widgets/shelf/shelf_leaning_row.dart   the Stack cascade
-lib/ui/widgets/shelf/shelf_spines_row.dart    the lazy spine list
-lib/ui/widgets/shelf/shelf_book_tile.dart     today's _buildBookContent, shared
-                                              by the edit path and by `covers`
-lib/ui/widgets/shelf/shelf_edge_fades.dart    _EdgeFades, moved and made public
+lib/ui/widgets/shelf/shelf_book_tile.dart     today's _buildBookContent: cover,
+                                              bookmark, delete badge
+lib/ui/widgets/shelf/shelf_spine_tile.dart    a BookVertical spine, and the slot
+                                              width that goes with it
+lib/ui/widgets/shelf/shelf_lean_metrics.dart  the step, and the Stack cascade's
+                                              offsets and reversed paint order
 lib/ui/widgets/book/turning_book.dart         _turnedBook, shared with the pile
 ```
 
-`shelf_row.dart` keeps the frame, the label, the plank and the drag machine, and
-delegates the resting row to `ShelfBooksRow`.
+`shelf_row.dart` keeps the frame, the label, the plank, the draggable and the drag
+machine. It will grow a little rather than shrink, which the earlier draft had
+wrong; the offset is that three drawings live in three small files instead of
+inline.
 
-`_EdgeFades` moves because `ShelfBooksRow` needs it and it is currently private.
-Its `@visibleForTesting static const double extent` and the test that reads it
-move with it.
+`_EdgeFades` stays private where it is. Nothing outside `shelf_row.dart` needs it
+any more, so moving it would be churn for its own sake.
 
 ## Testing
 

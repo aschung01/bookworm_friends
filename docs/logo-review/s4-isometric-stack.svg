@@ -1,0 +1,22 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- 2.5D layers: each book shows a front face plus a top sliver. Gaps are
+       wider than the sliver depth so every layer stays legible. -->
+  <g transform="translate(512,512) scale(1.19) translate(-527,-530)">
+    <!-- top -->
+    <polygon points="212,292 772,292 830,252 270,252" fill="#ffffff"/>
+    <rect x="212" y="292" width="560" height="132" rx="22" fill="#ffffff"/>
+    <rect x="212" y="286" width="560" height="12" fill="#09BC8A"/>
+    <rect x="272" y="378" width="440" height="14" rx="7" fill="#09BC8A"/>
+    <!-- middle -->
+    <polygon points="236,484 796,484 854,444 294,444" fill="#ffffff"/>
+    <rect x="236" y="484" width="560" height="132" rx="22" fill="#ffffff"/>
+    <rect x="236" y="478" width="560" height="12" fill="#09BC8A"/>
+    <rect x="296" y="570" width="440" height="14" rx="7" fill="#09BC8A"/>
+    <!-- bottom -->
+    <polygon points="200,676 760,676 818,636 258,636" fill="#ffffff"/>
+    <rect x="200" y="676" width="560" height="132" rx="22" fill="#ffffff"/>
+    <rect x="200" y="670" width="560" height="12" fill="#09BC8A"/>
+    <rect x="260" y="762" width="440" height="14" rx="7" fill="#09BC8A"/>
+  </g>
+</svg>

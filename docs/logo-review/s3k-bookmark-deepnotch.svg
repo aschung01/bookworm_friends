@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- Same as s3j, but the ribbon is slightly wider (96 vs 88) and its notch
+       much deeper (64 vs 36) so the V still reads after downscaling. -->
+  <g transform="translate(512,512) scale(1.22) translate(-522,-542)">
+    <g transform="rotate(-14 512 806)">
+      <rect x="334" y="310" width="356" height="480" rx="52" fill="#09BC8A"/>
+      <rect x="354" y="330" width="316" height="440" rx="40" fill="#ffffff"/>
+    </g>
+    <g>
+      <rect x="327" y="294" width="370" height="496" rx="53" fill="#09BC8A"/>
+      <rect x="347" y="314" width="330" height="456" rx="41" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(14 512 806)">
+      <rect x="320" y="278" width="384" height="512" rx="54" fill="#09BC8A"/>
+      <rect x="340" y="298" width="344" height="472" rx="42" fill="#ffffff"/>
+      <path d="M544 266 H640 V568 L592 504 L544 568 Z" fill="#ffffff" stroke="#09BC8A" stroke-width="16" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

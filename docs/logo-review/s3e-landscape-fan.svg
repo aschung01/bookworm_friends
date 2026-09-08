@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- E: landscape layers — the s3 fan applied to s1's lying-flat pile. -->
+  <g transform="translate(512,512) scale(1.15) translate(-512,-512)">
+    <g transform="translate(-24,46) rotate(-8 512 512)">
+      <rect x="218" y="328" width="588" height="368" rx="58" fill="#09BC8A"/>
+      <rect x="232" y="342" width="560" height="340" rx="46" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(-2 512 512)">
+      <rect x="218" y="328" width="588" height="368" rx="58" fill="#09BC8A"/>
+      <rect x="232" y="342" width="560" height="340" rx="46" fill="#ffffff"/>
+    </g>
+    <g transform="translate(24,-46) rotate(5 512 512)">
+      <rect x="218" y="328" width="588" height="368" rx="58" fill="#09BC8A"/>
+      <rect x="232" y="342" width="560" height="340" rx="46" fill="#ffffff"/>
+      <rect x="292" y="608" width="440" height="22" rx="11" fill="#09BC8A"/>
+    </g>
+  </g>
+</svg>

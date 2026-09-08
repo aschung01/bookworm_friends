@@ -1,0 +1,14 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    P3 plus the ribbon: spine band and notch on one book.
+
+    This is the stroke-count test for a single book. The README budget is four
+    verticals before a mark reads as stripes; a lone book spends one on the
+    spine and one on each side of the notch, so this should sit right at the
+    edge of comfortable rather than over it.
+  -->
+  <rect x="224" y="140" width="576" height="744" rx="48" fill="#ffffff"/>
+  <rect x="308" y="140" width="56" height="744" fill="#09BC8A"/>
+  <path d="M620 140 H724 V296 L672 256 L620 296 Z" fill="#09BC8A"/>
+</svg>

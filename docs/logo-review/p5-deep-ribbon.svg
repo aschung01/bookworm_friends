@@ -1,0 +1,14 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    The K3 lesson — "the bookmark finally survives downscaling" — pushed as far
+    as one book allows. The notch is 200 wide and 280 deep, against P2's
+    104 x 156.
+
+    A single book is the only composition with the room for a ribbon this
+    confident, which is the strongest argument for giving up the stack: spend
+    the whole canvas on one object and its one landmark can be huge.
+  -->
+  <rect x="224" y="140" width="576" height="744" rx="48" fill="#ffffff"/>
+  <path d="M560 140 H760 V420 L660 340 L560 420 Z" fill="#09BC8A"/>
+</svg>

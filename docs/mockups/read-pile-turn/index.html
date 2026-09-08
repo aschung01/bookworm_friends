@@ -1,0 +1,3980 @@
+<!doctype html>
+<!--
+  GENERATED. Edit _build/{tokens.css,frame.css,data.js} and run
+    python3 _build/build.py && sh _build/verify.sh
+  Hand edits here are lost on the next build. The output is still fully
+  self-contained: no build step, no server, no network to view it.
+  Open it straight from disk.
+
+  Replace the marked sections in the script below:
+    SECTION 1  TOKENS    - real colours/metrics copied from the codebase
+    SECTION 2  FRAME     - how one screen of THIS product is drawn
+    SECTION 3  DATA      - the screens, flows and elements themselves
+    SECTION 4  VERSIONS  - named variants, git-branch style (optional)
+  Leave SECTION 5 (ENGINE) alone unless you're changing behaviour.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>The read pile &mdash; hashed spines, and turning one out</title>
+        <style>
+            :root {
+/* ---- SECTION 1a: product tokens.
+                   Copied verbatim from AppColors.light in
+                   lib/constants/app_theme.dart. Light only: the read pile is
+                   drawn on the Library tab's white card, and nothing in this
+                   set is a camera preview or a hero, so the dark map would go
+                   unused. ---- */
+--page: #f8f9fa; /* pageBackground — the library behind the card */
+--surface: #ffffff; /* surface — the sheet card and the plank   */
+--variant: #e9ecef; /* surfaceVariant                          */
+--text: #212529; /* primaryText                                */
+--text2: #adb5bd; /* secondaryText — the grab handle           */
+--divider: #e9ecef; /* divider                                 */
+
+/* The spine colour, and the whole reason the pile reads as one
+                   material. `brand` is decoration-only by contract (2.45:1 on
+                   white), which is exactly what a book spine is — until you put
+                   a title on it, which is why a 0.4-opacity spine draws its
+                   title in `primaryText` and a 1.0 one in white. See
+                   book_vertical.dart. */
+--brand: #09bc8a;
+--brandText: #067657; /* brandText == brandFill in light        */
+--sheet: #eff5ef; /* sheetBackground, unused here: LibrarySheet's
+                                     card is `surface`, not the modal tint      */
+
+/* BookChassisColors.of(context) for light, from
+                   lib/ui/widgets/book/book_chassis.dart. These are what make a
+                   turned book read as a bound object rather than a rectangle. */
+--pageEdge: #eaeaea; /* shading where the block meets the cover */
+--pageBase: #ffffff; /* page block, top of the gradient         */
+--pageBaseLow: #fafafa; /* and its low end                      */
+--board: #e3e3e3; /* backBoard, when no cover colour is sampled  */
+--hair: rgba(0, 0, 0, 0.07); /* the cover's hairline border      */
+                /* ---- page chrome (safe to leave) ---- */
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.5;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            mark.hl {
+                background: rgba(79, 125, 243, 0.28);
+                color: inherit;
+                border-radius: 3px;
+                padding: 0 1px;
+            }
+            .gone {
+                display: none;
+            }
+
+            /* ---------- top chrome ---------- */
+            .top {
+                position: sticky;
+                top: 0;
+                z-index: 300;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+            }
+            .top-in {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 11px 22px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+            }
+            .brand span {
+                color: var(--brandText);
+            }
+            .vtabs {
+                display: flex;
+                gap: 2px;
+            }
+            .vtabs button {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--muted);
+                background: none;
+                border: 0;
+                padding: 6px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+            }
+            .vtabs button:hover {
+                color: var(--ink);
+            }
+            .vtabs button.on {
+                color: var(--ink);
+                font-weight: 800;
+                background: #fff;
+                border: 0.5px solid var(--line);
+                box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.1);
+            }
+            .vtabs button::after,
+            .hk::after {
+                content: attr(data-key);
+                position: absolute;
+                top: calc(100% + 7px);
+                left: 50%;
+                transform: translateX(-50%) translateY(3px);
+                background: #26262b;
+                color: #fff;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2.5px 6px;
+                border-radius: 5px;
+                box-shadow: 0 3px 9px rgba(0, 0, 0, 0.28);
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.12s,
+                    transform 0.12s;
+                z-index: 50;
+            }
+            .vtabs button:hover::after,
+            .hk:hover::after {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+                transition-delay: 0.3s;
+            }
+            .sep {
+                width: 1px;
+                height: 20px;
+                background: var(--line);
+            }
+            .count {
+                margin-left: auto;
+                font-size: 12px;
+                color: var(--text2);
+                text-align: right;
+                line-height: 1.4;
+                white-space: nowrap;
+            }
+            .kbd {
+                display: inline-block;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--muted);
+                background: #f4f2ef;
+                border: 1px solid var(--line);
+                border-bottom-width: 2px;
+                border-radius: 4px;
+                padding: 0 4px;
+                line-height: 15px;
+                min-width: 15px;
+                text-align: center;
+            }
+
+            /* ---------- comboboxes (version + filter share the panel styling) ---------- */
+            .cbox {
+                position: relative;
+            }
+            .cbox.hide {
+                display: none;
+            }
+            .cbtn {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--ink);
+                background: #f4f2ef;
+                border: 0.5px solid var(--line);
+                padding: 6px 13px;
+                border-radius: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .cbtn:hover {
+                background: #eeece7;
+            }
+            .cbtn .chev {
+                font-size: 9px;
+                color: var(--muted);
+                transition: transform 0.15s;
+            }
+            .cbox.open .cbtn .chev {
+                transform: rotate(180deg);
+            }
+            .cbtn .badge {
+                font-size: 11px;
+                font-weight: 800;
+                color: #fff;
+                background: var(--brandText);
+                border-radius: 20px;
+                padding: 0 6px;
+                line-height: 16px;
+            }
+            .cbtn .branch {
+                font-size: 12px;
+                opacity: 0.5;
+            }
+            .cbtn.vbtn {
+                background: #eef2fd;
+                border-color: #cddafb;
+                color: #22407f;
+            }
+            .cbtn.vbtn:hover {
+                background: #e3ebfc;
+            }
+            .cpanel {
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                width: 340px;
+                max-height: min(70vh, 520px);
+                display: none;
+                flex-direction: column;
+                background: rgba(38, 38, 41, 0.97);
+                backdrop-filter: blur(20px);
+                border-radius: 15px;
+                box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+                overflow: hidden;
+                z-index: 400;
+            }
+            .cbox.open .cpanel {
+                display: flex;
+            }
+            .csearch {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                padding: 13px 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .csearch svg {
+                flex: 0 0 auto;
+                opacity: 0.5;
+            }
+            .csearch input {
+                flex: 1;
+                font: inherit;
+                font-size: 14.5px;
+                color: #fff;
+                background: none;
+                border: 0;
+                outline: none;
+            }
+            .csearch input::placeholder {
+                color: rgba(255, 255, 255, 0.42);
+            }
+            .clist {
+                overflow-y: auto;
+                padding: 7px 7px 9px;
+                flex: 1 1 auto;
+            }
+            .clist::-webkit-scrollbar {
+                width: 9px;
+            }
+            .clist::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.22);
+                border-radius: 9px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+            .cgrp {
+                font-size: 12px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.45);
+                padding: 9px 11px 4px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .cgrp:hover {
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .copt {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                padding: 8px 11px;
+                border-radius: 9px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .copt:hover,
+            .copt.kb {
+                background: rgba(255, 255, 255, 0.11);
+            }
+            .copt .box {
+                width: 17px;
+                height: 17px;
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.16);
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: #fff;
+            }
+            .copt.sel .box {
+                background: var(--brand);
+                color: #fff;
+                font-weight: 900;
+            }
+            .copt.radio .box {
+                border-radius: 50%;
+            }
+            .copt .lb {
+                font-size: 14.5px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .copt .lb mark.hl {
+                background: rgba(79, 125, 243, 0.5);
+                color: #fff;
+            }
+            .copt .sub {
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+                line-height: 1.45;
+            }
+            .copt .col {
+                flex: 1;
+                min-width: 0;
+            }
+            .copt .tagn {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1px 6px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.14);
+                color: rgba(255, 255, 255, 0.75);
+                white-space: nowrap;
+            }
+            .cfoot {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .cfoot .n {
+                flex: 1;
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .cfoot button {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                color: #fff;
+                background: rgba(255, 255, 255, 0.13);
+                border: 0;
+                border-radius: 7px;
+                padding: 4px 10px;
+                cursor: pointer;
+            }
+            .cfoot button:hover {
+                background: rgba(255, 255, 255, 0.22);
+            }
+            .cempty {
+                color: rgba(255, 255, 255, 0.45);
+                font-size: 13px;
+                padding: 16px 11px;
+            }
+
+            /* ---------- version bar ---------- */
+            .vinfo {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                color: var(--muted);
+                padding: 2px 0 0;
+            }
+            .vinfo .lbl {
+                font-weight: 800;
+                color: var(--brandText);
+                white-space: nowrap;
+            }
+            .vinfo .note {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .vinfo .diffs {
+                white-space: nowrap;
+                font-weight: 700;
+            }
+            .vinfo button {
+                font: inherit;
+                font-size: 11.5px;
+                font-weight: 700;
+                color: var(--brandText);
+                background: #eef2fd;
+                border: 0.5px solid #cddafb;
+                border-radius: 7px;
+                padding: 2px 9px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .vinfo button:hover {
+                background: #e3ebfc;
+            }
+            .vinfo button.off {
+                color: var(--muted);
+                background: #f4f2ef;
+                border-color: var(--line);
+            }
+
+            /* ---------- layout ---------- */
+            .wrap {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 22px 22px 90px;
+            }
+            .view {
+                display: none;
+            }
+            .view.on {
+                display: block;
+            }
+            h1 {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.4px;
+                margin: 6px 0 4px;
+            }
+            .lead {
+                color: var(--muted);
+                font-size: 14px;
+                max-width: 800px;
+                margin: 0 0 22px;
+            }
+            h2.grp {
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #a09c95;
+                margin: 30px 0 12px;
+                padding-bottom: 7px;
+                border-bottom: 1px solid var(--line);
+                scroll-margin-top: 80px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 20px 16px;
+            }
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+            .item .cap {
+                margin-top: 9px;
+            }
+            .item .nm {
+                font-size: 12.5px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .item .ds {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                margin-top: 2px;
+            }
+            .shot {
+                background: #e6e3dd;
+                border-radius: 10px;
+                padding: 14px 0;
+                display: flex;
+                justify-content: center;
+            }
+            .pair {
+                display: flex;
+                gap: 8px;
+            }
+            .pair > div {
+                flex: 1;
+                min-width: 0;
+            }
+            .pair .vl {
+                font-size: 9.5px;
+                font-weight: 800;
+                color: var(--muted);
+                text-align: center;
+                margin-bottom: 5px;
+                letter-spacing: 0.03em;
+            }
+            .pair .vl.b {
+                color: var(--brandText);
+            }
+            .noneleft {
+                color: var(--muted);
+                font-size: 13.5px;
+                padding: 26px 0;
+            }
+            .pend {
+                background: #fdf3f0;
+                border-left: 3px solid #c05746;
+                padding: 9px 13px;
+                border-radius: 0 6px 6px 0;
+                font-size: 12px;
+                line-height: 1.55;
+                margin: 0 0 13px;
+                max-width: 840px;
+            }
+            .tag {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1.5px 7px;
+                border-radius: 20px;
+                white-space: nowrap;
+            }
+            .tag.changed {
+                background: #fff4e0;
+                color: #8a5a10;
+            }
+            .tag.onlyHere {
+                background: #e6f4ee;
+                color: #0b6b4f;
+            }
+            .tag.onlyThere {
+                background: #fdecea;
+                color: #a3302a;
+            }
+            .tag.ver {
+                background: #eef2fd;
+                color: #2f55b8;
+            }
+
+            /* ---------- flows ---------- */
+            /* ghosts: present in the compared version, absent here */
+            .item.ghost .shot,
+            .el.ghost .demo {
+                opacity: 0.5;
+                outline: 1px dashed #c7a9a4;
+                outline-offset: -1px;
+            }
+            .item.ghost .nm,
+            .el.ghost .nm,
+            .flow.ghost .fh {
+                text-decoration: line-through;
+                text-decoration-color: #c7a9a4;
+            }
+            .flowlayout {
+                display: grid;
+                grid-template-columns: 216px 1fr;
+                gap: 26px;
+                align-items: start;
+            }
+            .side {
+                position: sticky;
+                top: 80px;
+            }
+            .sbox {
+                position: relative;
+                margin-bottom: 14px;
+            }
+            .search {
+                width: 100%;
+                font: inherit;
+                font-size: 13px;
+                padding: 9px 40px 9px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #faf9f7;
+                outline: none;
+            }
+            .search:focus {
+                border-color: var(--brandText);
+                background: #fff;
+            }
+            .sbox .hint {
+                position: absolute;
+                display: none;
+                right: 9px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+            .sbox .hint-slash {
+                display: block;
+            }
+            .sbox.focused .hint-slash,
+            .sbox.dirty .hint-slash {
+                display: none;
+            }
+            .sbox.dirty .hint-esc {
+                display: block;
+            }
+            .side a {
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--muted);
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border-left: 2px solid transparent;
+            }
+            .side a:hover {
+                background: #f5f4f1;
+                color: var(--ink);
+            }
+            .side a.cur {
+                color: var(--brandText);
+                background: #eef2fd;
+                font-weight: 800;
+                border-left-color: var(--brandText);
+            }
+            .side .sh {
+                font-size: 10.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                color: #b9b6b0;
+                margin: 16px 0 5px;
+                padding-left: 10px;
+            }
+            .flow {
+                margin-bottom: 38px;
+                scroll-margin-top: 88px;
+            }
+            .flow .fh {
+                font-size: 15.5px;
+                font-weight: 800;
+                margin: 0 0 3px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                flex-wrap: wrap;
+            }
+            .flow .fd {
+                font-size: 12.5px;
+                color: var(--muted);
+                margin: 0 0 13px;
+                max-width: 780px;
+            }
+            .flow .vrow {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--muted);
+                margin: 0 0 5px;
+                letter-spacing: 0.03em;
+            }
+            .flow .vrow.b {
+                color: var(--brandText);
+            }
+            .steps {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            .step {
+                flex: 0 0 auto;
+                width: 170px;
+            }
+            .step .shot {
+                border-radius: 9px;
+                padding: 11px 0;
+            }
+            .step .sn {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--brandText);
+                margin-bottom: 5px;
+            }
+            .step .sc {
+                font-size: 10.5px;
+                color: var(--muted);
+                line-height: 1.45;
+                margin-top: 7px;
+                padding-right: 8px;
+            }
+            .arrow {
+                flex: 0 0 auto;
+                width: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #c9c5be;
+                font-size: 17px;
+                padding-bottom: 40px;
+            }
+
+            /* ---------- elements ---------- */
+            .egrid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+                gap: 16px;
+            }
+            .el {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .el .demo {
+                background: #f2f0ec;
+                padding: 20px 18px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 96px;
+            }
+            .el .body {
+                padding: 12px 15px 14px;
+            }
+            .el .nm {
+                font-size: 13px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .el .ds {
+                font-size: 11.5px;
+                color: var(--muted);
+                line-height: 1.55;
+                margin-top: 3px;
+            }
+            .el .ds b {
+                color: #c05746;
+            }
+
+            /* ================================================================
+SECTION 1b: DEVICE / FRAME STYLES.
+
+   Not a whole phone: a *crop* of the Library tab from the shelves
+   above down to the home indicator, because the unit under review is
+   the collapsed read sheet and it cannot be judged apart from the
+   library it floats over — the whole point of the height question is
+   that 7pt taken by the pile is 7pt the shelves lose.
+
+   The frame is 402px wide and 1px == 1pt, so every number below is
+   the real Flutter value and can be checked against the widget. 402
+   because that is the device `ShellTabBarGeometry` was measured on,
+   and the tab bar's band is what the pile has to clear. Contexts that
+   need it smaller set --z (zoom shrinks the layout box, unlike
+   transform, so the grid still packs correctly).
+   ================================================================ */
+/* Wider columns than the shell's default: a 402pt frame does not fit
+   in a 210px cell. */
+.grid {
+    grid-template-columns: repeat(auto-fill, minmax(424px, 1fr));
+}
+.grid.cmp {
+    grid-template-columns: repeat(auto-fill, minmax(488px, 1fr));
+}
+.grid.cmp .fr {
+    --z: 0.56;
+}
+.step {
+    width: 268px;
+}
+.step .fr {
+    --z: 0.62;
+}
+.shot {
+    align-items: flex-start;
+}
+
+.fr {
+    width: 402px; /* iPhone 17 Pro logical width */
+    height: var(--fh, 430px);
+    zoom: var(--z, 1);
+    background: var(--page);
+    border: 1px solid #d9d6d0;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 0 0 auto;
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    line-height: 1.3;
+}
+
+/* ---------- the library behind the card ----------
+   Only ever a backdrop here. Two shelves' worth of covers on
+   `pageBackground`, dimmed, so the card has an edge to float against
+   and so a 7pt taller card is visibly 7pt of lost shelf. */
+.fr .lib {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    padding: 10px 20px 0;
+}
+.fr .lib .lrow {
+    display: flex;
+    align-items: flex-end;
+    gap: 9px;
+    margin-bottom: 0;
+}
+.fr .lib .lcv {
+    width: 55px;
+    height: 82px;
+    background: var(--c, #c9ccd6);
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+    flex: 0 0 auto;
+}
+/* ShelfWidget: 8pt, surface, shadow offset(0,2) blur 2 black@25%. */
+.fr .lib .lplank {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    margin-bottom: 18px;
+    position: relative;
+    z-index: 1;
+}
+.fr .lib.faded {
+    opacity: 0.55;
+}
+
+/* ---------- the sheet card ----------
+   LibrarySheet at the collapsed detent. `_gutterInset = 14` on each
+   side and below; the corners are concentric with the display's
+   `_displayCornerRadius = 55` at that inset, i.e. 41. The shadow is
+   `blurRadius: 6 + 6 * (1 - expansion)` with `offset(0, -3 * expansion)`
+   — at rest expansion is 0, so 12pt of blur and no offset at all.
+
+   `padding-bottom: 77px` is the reserve, and it is the one number here
+   that is a composition rather than a literal: the sheet is handed
+   `bottomReserve` 57 plus `viewPadding.bottom` 34 and pads by
+   `reserve - lift`, so 57 + 34 - 14. Drawn any shorter and the pile's
+   plank comes out under the floating tab bar, which is the single
+   thing that reserve exists to prevent. */
+.fr .card {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    background: var(--surface);
+    border-radius: 41px;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
+    padding-bottom: 77px;
+    overflow: hidden;
+    z-index: 5;
+}
+/* SheetGrabHandle: 44x5, radius 3, secondaryText, 10pt above and below. */
+.fr .hdl {
+    width: 44px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--text2);
+    margin: 10px auto;
+}
+/* The header row. `_gutter = 25` each side, 6pt below.
+   Height is the collapsed filter control's: `CNPopupMenuButton(height: 36)`.
+   Under the widget-test fallback that control collapses to 26, which is
+   where the familiar "57pt of chrome" in the clearance tests comes from —
+   so the card is `handle 25 + header + 6 + ReadPile.extent`, and the
+   header term is 36 on device and 26 in tests. */
+.fr .hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 25px;
+    height: 36px;
+    margin-bottom: 6px;
+}
+/* LibrarySheetTitle: 18pt bold, count 12pt away in brandText. */
+.fr .hd .lt {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+}
+.fr .hd .lt i {
+    font-style: normal;
+    color: var(--brandText);
+    margin-left: 12px;
+}
+/* ReadFilter(expanded: false): a glass CNPopupMenuButton, label 14pt w500. */
+.fr .hd .pop {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 12px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.65);
+    border: 0.5px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.fr .hd .pop u {
+    text-decoration: none;
+    font-size: 8px;
+    color: var(--text2);
+}
+
+/* ---------- the pile ----------
+   ReadPile.extent = _topGap 14 + _rowExtent 137 + _shelfHeight 8 +
+   _bottomPad 10 = 169, and --pile is that by default. Screens that
+   drag the sheet up raise --pile instead of adding a band below the
+   shelf: the row is `Align(bottomCenter)` inside an `Expanded`, so the
+   extra room opens *above* the books and the plank stays on the card's
+   bottom edge. That is the behaviour the last change shipped, and
+   drawing it any other way would show a state the widget cannot be in. */
+.fr .pile {
+    height: var(--pile, 169px);
+    display: flex;
+    flex-direction: column;
+}
+/* The 137 is 124 of spine plus the 13 a praised spine grows by, so a book
+   that gains praise does not change the pile's height. Nothing here is
+   praised, so those 13 read as part of the top gap. */
+/* The row the spines stand in. `overflow: hidden` matches the horizontal
+   ListView's own clip — but `visible` on the cross axis, so the turned book's
+   stacked shadows are not shaved off flat against the row's edges. */
+.fr .pile .prow {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 25px;
+    overflow-x: hidden;
+    overflow-y: visible;
+}
+.fr .pile .plank {
+    height: 8px;
+    margin: 0 25px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+.fr .pile .ppad {
+    height: 10px;
+}
+/* The empty state, centred in the room above the shelf. */
+.fr .pile .pempty {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--text2);
+    text-align: center;
+}
+
+/* ---------- a spine ----------
+   BookVertical: `brand` at one of bookOpacityList's 0.4 / 0.7 / 1.0,
+   a 12pt title rotated a quarter turn, and a shallow arch across the
+   top edge — a quadratic from (0,5) to (w,5) through (w/2,0), which is
+   two elliptical corners of w/2 by 5 meeting in the middle.
+
+   Width and height come from --sw / --sh so the same rule draws today's
+   uniform 26x124 and every jittered variant. Title colour flips at
+   opacity 0.7: white above it, primaryText at or below, because the
+   pale spines cannot carry white text. */
+.sp {
+    position: relative;
+    flex: 0 0 auto;
+    display: block;
+    width: var(--sw, 26px);
+    height: var(--sh, 124px);
+    /* `brand.withOpacity(op)` is a translucent *fill*, not a translucent
+       widget: the title on a 0.4 spine is fully opaque primaryText. Drawn
+       with element opacity the type faded with the paint, which is a state
+       BookVertical cannot produce. */
+    background: var(--bg, var(--brand));
+    border-radius: 50% 50% 0 0 / 5px 5px 0 0;
+    text-decoration: none; /* these are <s> elements, as the earlier sets' are */
+}
+/* The cover-tinted variant carries no fill of its own. It used to, and that
+   was the bug: a `background` declared on this two-class selector outspecifies
+   the one-class `.sp` rule above, so every tinted spine painted flat `brand`
+   and the six swatches never appeared at all. The fill has exactly one
+   source, --bg, and this class is now only a marker for the strip's caption.
+   `verify.sh` fails if any paint comes back here.
+
+   The inset hairline is not decoration and it is not in the shipped widget.
+   The spines are flush — the horizontal `ListView` has no separator — which
+   is invisible while the whole row is one green graded 0.4/0.7/1.0, and reads
+   as a solid dark slab the moment each spine takes its own cover's tone: a
+   near-black book beside a navy one has no edge between them at all. A 1pt
+   line down the right of each spine is the gap a real shelf has. Only on the
+   tinted variant, because only the tinted variant needs it. */
+.sp.tint {
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.28);
+}
+.sp b {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-weight: 400;
+}
+/* Rotated rather than `writing-mode`, to match RotatedBox(quarterTurns: 1):
+   the glyphs turn with the box. Width is the spine's height less the 15pt
+   padding at each end, which is what the title has to ellipsize inside.
+
+   `flex: 0 0 auto` is load-bearing and its absence was the second bug on
+   this page: a flex item shrinks to its container by default, so the span
+   was being squeezed from 86pt to the spine's ~30pt of *width* before the
+   rotation, and every title ellipsized after three or four characters. */
+.sp b span {
+    display: block;
+    flex: 0 0 auto;
+    width: var(--th, 94px);
+    transform: rotate(90deg);
+    font-size: 12px;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+}
+.sp.pale b span {
+    color: var(--text);
+}
+
+/* ---------- a book being turned out ----------
+   The same composition as BookChassis, in CSS: back board, page block,
+   front cover, plus the spine face this proposal adds. `.in` carries the
+   turn and the faces are its children under preserve-3d.
+
+   **The two conventions are mirror images, and getting this wrong is
+   exactly the bug this drawing had.** `bookParentMatrix` projects with
+   `setEntry(3, 2, k)`, so +z *recedes* there while CSS's +z comes toward
+   the viewer; the handedness of the rotation flips with it. A Flutter turn
+   of `d` is therefore `rotateY(-d)` here. Drawn with the same sign, the
+   book swung its fore-edge through the reader and the spine went behind
+   the cover instead of in front of it &mdash; a book turning inside out.
+
+   So: --turn is the CSS angle, `-d`. At d = -90 the spine is frontal and
+   the cover is edge-on; at 0 the cover is square on; at +16 the fore-edge
+   shows. In between the spine sits left of the hinge and the cover right
+   of it, meeting along the hinge line and never overlapping &mdash; a
+   three-quarter view of a book, which is the thing the whole proposal is
+   for.
+
+   --ox exists because the pivot is the *cover's* left edge, so at rest the
+   spine hangs a thickness to the left of it. The offset puts the drawing's
+   left edge back on the box's. --pw is the projected width,
+   `cover*|cos| + thickness*|sin|`, which is what the neighbours are laid
+   out against and therefore what makes the row open up.
+
+   **Paint order is free here and is not free in Flutter.** `.sf` is a child
+   of the preserve-3d `.in`, and CSS sorts a 3D context's children by their
+   transformed depth, so the spine lands correctly whatever order it is
+   written in. A Flutter Stack does no such sorting, which makes one case
+   load-bearing there and invisible here: past cover-on, at the +16 a held
+   book reaches, the spine crosses to the cover's side of the hinge and
+   projects *inside* the cover's silhouette &mdash; 8.7pt in on a 78pt cover.
+   It has to be occluded, so `BookChassis` paints the spine *under* the
+   cover, which is not where you would first put it. See the paint-order
+   note on that class. */
+.bk {
+    position: relative;
+    flex: 0 0 auto;
+    align-self: flex-end;
+    width: var(--pw);
+    height: var(--sh);
+    /* Air either side, animated with the turn: 0 at rest, --sm at full turn.
+       Flush, the cover sat hard against the spines on both sides — a book
+       wedged in place rather than one taken off the shelf — and the stacked
+       shadows that separate a cover from the plank were clipped away by its
+       neighbours. */
+    margin: 0 var(--sm, 0px);
+    perspective: var(--persp);
+    /* The camera sits on the *hinge*, which is --ox from this box's left edge,
+       not on the cover's centre line. `bookParentMatrix` composes the pivot as
+       `T(p) · projection · Ry · T(-p)` for the same reason, and the reason is
+       measurable: leave the camera off the hinge and a cover swung to -90 is no
+       longer edge-on to it, so it projects as a sliver of squashed artwork
+       beside the spine instead of vanishing. At half a cover width off, that
+       sliver is 6.96pt on a 78pt cover. This drawing had it at cw/2, which is
+       only ~4.7pt off the hinge and so showed a sub-pixel version nobody could
+       have spotted &mdash; the Dart is what made the error legible. */
+    perspective-origin: var(--ox, 0px) 50%;
+}
+.bk .in {
+    position: absolute;
+    left: var(--ox, 0px);
+    bottom: 0;
+    width: var(--cw);
+    height: var(--sh);
+    transform-style: preserve-3d;
+    transform-origin: 0 50%;
+    transform: rotateY(var(--turn, 0deg));
+}
+/* The front cover, in the two kinds the pile actually contains.
+
+   Most books have a real thumbnail. `.art` stands in for one: a flat wash of
+   the colour `_sampleCoverColor` would average out of the artwork, plus a
+   band and a title, deliberately crude so nobody reads it as a rendering of
+   the real cover.
+
+   The rest are coverless, and for those `GeneratedCover` is not artwork with
+   type on it at all: a colour block over a `surface`-toned title half, swatch
+   from `kGeneratedCoverPalette` by `bookHash(isbn) % 6`, title always
+   `primaryText` because it never sits on the colour.
+
+   Radii are asymmetric because a spine is a fold and a page edge is cut:
+   clamp(6*w/196, 2, 6) on the left, clamp(4*w/196, 2, 4) on the right,
+   which at a 78pt cover is 2.4 and 2. */
+.bk .cf {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.4px 2px 2px 2.4px;
+    background: var(--surface);
+    overflow: hidden;
+    /* _lightShadows scaled by clamp(width/196, .35, 1) — 0.4 at 78pt. */
+    box-shadow:
+        0 0.4px 0.4px rgba(0, 0, 0, 0.035),
+        0 1.2px 2.4px rgba(0, 0, 0, 0.045),
+        0 4px 7.2px rgba(0, 0, 0, 0.05),
+        0 8.8px 14.4px rgba(0, 0, 0, 0.055);
+}
+.bk .cf.art {
+    background: var(--c, #2a1c14);
+}
+.bk .cf.art .atit {
+    position: absolute;
+    left: 15%;
+    right: 9%;
+    top: 13%;
+    font-size: var(--fs, 10px);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: #fff;
+    overflow: hidden;
+}
+.bk .cf.art.dk .atit {
+    color: var(--text);
+}
+.bk .cf.art .aband {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 24%;
+    background: rgba(0, 0, 0, 0.2);
+}
+.bk .cf.art.dk .aband {
+    background: rgba(0, 0, 0, 0.08);
+}
+/* Two Expandeds, so exactly half each. */
+.bk .cf .cblk {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 50%;
+    background: var(--c, #09bc8a);
+}
+/* Padding is 14.3% of the width on the left so the type clears the binding
+   band, 6.1% on the other three sides. Type is 13.5% of the width at w600,
+   with the -0.02em tracking the widget applies. */
+.bk .cf .ctit {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50%;
+    padding: 6.1% 6.1% 6.1% 14.3%;
+    font-size: var(--fs, 10px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--text);
+    overflow: hidden;
+}
+/* The binding band: 8.2% of the cover width, `--ds-book-bind` verbatim,
+   under the overlay blend _BlendMask applies. */
+.bk .cf .bind {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 8.2%;
+    mix-blend-mode: overlay;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.26) 0%,
+        rgba(0, 0, 0, 0.07) 34%,
+        rgba(255, 255, 255, 0.3) 78%,
+        rgba(0, 0, 0, 0.11) 100%
+    );
+}
+.bk .cf .hair {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--hair);
+    border-radius: inherit;
+}
+/* The back board, one thickness behind the cover. Its tone is
+   `bookBoardColorFor(coverColour)` — the cover darkened by
+   `0.18 + 0.30 * luminance`, so a pale cover is darkened more, which is what
+   separates the board from the page block beside it. */
+.bk .bb {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.4px 2px 2px 2.4px;
+    background: var(--boardc, var(--board));
+    transform: translateZ(calc(-1 * var(--tk)));
+}
+/* The page block, standing back from the fore-edge. Inset by boardSquare
+   (3/240 of the height) at head and tail and by foreEdgeSquare (6/196 of
+   the width) from the right edge, so the boards overhang it on every side
+   — without that inset the board's outer edge coincides with the pages'
+   and the band is invisible at every angle. */
+.bk .pb {
+    position: absolute;
+    right: var(--fes);
+    top: var(--sq);
+    bottom: var(--sq);
+    width: var(--tk);
+    transform-origin: 100% 50%;
+    transform: rotateY(-90deg);
+    background: linear-gradient(
+        90deg,
+        var(--pageEdge) 0%,
+        var(--pageBase) 22%,
+        var(--pageBaseLow) 100%
+    );
+}
+/* The spine face this proposal adds. It is the plane x = 0 spanning the
+   book's depth, so it is laid out a thickness to the *left* of the cover's
+   edge and hinged on its own right edge — which is the cover's left edge and
+   the pivot. `rotateY(-90deg)` rather than +90: both put the strip in the
+   right place, but only this one leaves its outward face pointing away from
+   the book's interior, and a back-facing plane in CSS renders mirrored, so
+   the +90 version drew every spine title in reverse. */
+.bk .sf {
+    position: absolute;
+    left: calc(-1 * var(--tk));
+    top: 0;
+    height: 100%;
+    width: var(--tk);
+    transform-origin: 100% 50%;
+    transform: rotateY(-90deg);
+}
+
+/* ---------- top-down plan of the turn ----------
+   Because the interesting number is not the angle, it is the width the
+   row has to give the item: thickness*|cos| + cover*|sin|. Drawn looking
+   down on the book, viewer at the bottom. */
+.plan {
+    position: relative;
+    width: 128px;
+    height: 96px;
+    background: var(--page);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    flex: 0 0 auto;
+}
+.plan .hg {
+    position: absolute;
+    left: 46px;
+    top: 30px;
+    width: 5px;
+    height: 5px;
+    margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%;
+    background: var(--text);
+    z-index: 2;
+}
+.plan .cvl,
+.plan .spl {
+    position: absolute;
+    left: 46px;
+    top: 30px;
+    height: 3px;
+    transform-origin: 0 50%;
+    border-radius: 2px;
+}
+.plan .cvl {
+    width: 62px;
+    background: var(--brandText);
+}
+.plan .spl {
+    width: 22px;
+    background: var(--brand);
+}
+.plan .prj {
+    position: absolute;
+    left: 46px;
+    bottom: 16px;
+    height: 1px;
+    background: var(--text2);
+}
+.plan .prj::before,
+.plan .prj::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    width: 1px;
+    height: 9px;
+    background: var(--text2);
+}
+.plan .prj::before {
+    left: 0;
+}
+.plan .prj::after {
+    right: 0;
+}
+.plan .pl {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+}
+.plan .ang {
+    position: absolute;
+    left: 6px;
+    top: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* ---------- the details page, for the last step of the flow ---------- */
+.fr.dtl {
+    background: var(--surface);
+}
+.fr .nav {
+    height: 54px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    background: var(--variant);
+}
+.fr .nav .back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.fr .dhero {
+    background: var(--variant);
+    padding: 0 20px 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+}
+.fr .dhero .drt {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-bottom: 14px;
+}
+.fr .dhero .drt .dt {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+.fr .dhero .drt .da {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 2px;
+}
+.fr .dshelf {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+
+/* The tab body under the hero, so the details step is not a hero floating
+   on white. Capsules are `CapsuleTabs`: the selected one is a raised surface
+   pill, the rest plain text. */
+.fr .dcaps {
+    display: flex;
+    gap: 2px;
+    padding: 14px 20px 0;
+}
+.fr .dcaps s {
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: #8e9196;
+    padding: 6px 13px;
+    border-radius: 20px;
+    line-height: 1;
+}
+.fr .dcaps s.on {
+    background: var(--surface);
+    color: var(--text);
+    border: 0.5px solid var(--variant);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+.fr .dline {
+    height: 9px;
+    border-radius: 5px;
+    background: var(--variant);
+    margin: 0 20px 8px;
+}
+
+/* ---------- the floating tab bar band ----------
+   Context only. `ShellTabBarGeometry.sideInset` is 14, the same margin the
+   card floats at, which is the reason the card uses it. */
+.fr .tbb {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 40px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    z-index: 9;
+}
+.fr .tbb .tp {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.86);
+    border-radius: 22px;
+    padding: 5px 4px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+}
+.fr .tbb .tp s {
+    text-decoration: none;
+    flex: 1 1 auto;
+    text-align: center;
+    font-size: 11px;
+    color: #6c757d;
+    padding: 6px 0;
+    border-radius: 18px;
+}
+.fr .tbb .tp s.on {
+    background: var(--variant);
+    color: var(--brandText);
+    font-weight: 800;
+}
+.fr .tbb .orb {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex: 0 0 auto;
+}
+.fr .ind {
+    position: absolute;
+    left: 50%;
+    bottom: 9px;
+    width: 140px;
+    height: 5px;
+    margin-left: -70px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+/* ---------- a measurement table, for the elements view ---------- */
+.mtbl {
+    border-collapse: collapse;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+}
+.mtbl th,
+.mtbl td {
+    text-align: right;
+    padding: 3px 9px 3px 0;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+.mtbl th {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.mtbl td:first-child,
+.mtbl th:first-child {
+    text-align: left;
+}
+.mtbl td.hi {
+    color: var(--brandText);
+    font-weight: 700;
+}
+/* A caption under a demo, for the numbers that would otherwise be invisible. */
+.cap {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 7px;
+}
+.cap b {
+    color: #c05746;
+}
+.swatchrow {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.onwhite {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-end;
+    flex: 0 0 auto;
+}
+        </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="top-in">
+                <div class="cbox" id="vbox">
+                    <button class="cbtn vbtn hk" id="vbtn" data-key="v">
+                        <span class="branch">&#9095;</span
+                        ><span id="vbtn-label">main</span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="vsearch"
+                                placeholder="Search versions&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="vlist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="vfoot-n"></span
+                            ><button id="vcmp-clear">Stop comparing</button>
+                        </div>
+                    </div>
+                </div>
+                <span class="sep"></span>
+                <span class="brand"
+                    >진벅레 친구들 &mdash; <span>read pile</span></span
+                >
+                <div class="vtabs">
+                    <button data-v="screens" data-key="1" class="on">
+                        Screens
+                    </button>
+                    <button data-v="elements" data-key="2">UI Elements</button>
+                    <button data-v="flows" data-key="3">Flows</button>
+                </div>
+                <span class="sep"></span>
+                <div class="cbox" id="cbox">
+                    <button class="cbtn hk" id="cbtn" data-key="/">
+                        <span id="cbtn-label">Screens</span
+                        ><span class="badge" id="cbtn-badge" hidden></span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="csearch"
+                                placeholder="Search screens&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="clist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="cfoot-n"></span
+                            ><button id="cclear">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="count" id="cnt"></div>
+                <div class="vinfo">
+                    <span class="lbl" id="vinfo-lbl"></span>
+                    <span class="note" id="vinfo-note"></span>
+                    <span class="diffs" id="vinfo-diffs"></span>
+                    <button id="difftoggle" class="off">
+                        Only differences
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="view on" id="v-screens">
+                <h1>The read pile &mdash; hashed spines, and turning one out</h1>
+                <p class="lead">
+                    Two proposals for the collapsed &ldquo;Books read&rdquo;
+                    sheet, drawn at <b>1px&nbsp;=&nbsp;1pt</b> on a 402pt frame
+                    &mdash; that width because
+                    <code>ShellTabBarGeometry</code>'s figures were measured on
+                    it, and the tab bar's band is what the pile has to clear.
+                    Colours are <code>AppColors.light</code> and
+                    <code>BookChassisColors.of</code> verbatim:
+                    <code>surface&nbsp;#FFFFFF</code> for the card and the
+                    plank, <code>brand&nbsp;#09BC8A</code> for the spines,
+                    <code>backBoard&nbsp;#E3E3E3</code> and
+                    <code>pageEdge&nbsp;#EAEAEA</code> for the turned book.
+                    The card floats at <code>_gutterInset&nbsp;=&nbsp;14</code>
+                    with corners concentric with the display's 55, i.e. 41, and
+                    reserves <code>57&nbsp;+&nbsp;34&nbsp;&minus;&nbsp;14</code>
+                    = 77pt below the pile.
+                    <code>ReadPile.extent</code> is
+                    <code>14&nbsp;+&nbsp;137&nbsp;+&nbsp;8&nbsp;+&nbsp;10</code>
+                    = 169.
+                    <b>Every spine width and height here is computed, not
+                    drawn:</b> <code>bookHash</code> and
+                    <code>BookJitter</code> are ported into this page and
+                    checked by <code>_build/verify.sh</code> against the golden
+                    values <code>test/book_geometry_test.dart</code> pins.
+                    Switch proposals with <span class="kbd">v</span>, compare
+                    two with <span class="kbd">&#8679;Enter</span>.
+                </p>
+                <div id="screens"></div>
+                <div class="noneleft gone" id="screens-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-elements">
+                <h1>UI elements</h1>
+                <p class="lead">
+                    The spine, the four faces of the turn, and the measurement
+                    tables behind both. The number worth arguing over is in
+                    <b>Spine &middot; hashed</b>: the base height, which decides
+                    whether <code>ReadPile.extent</code> stays at 169.
+                </p>
+                <div id="elements"></div>
+                <div class="noneleft gone" id="elements-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-flows">
+                <h1>UX flows</h1>
+                <p class="lead">
+                    Two taps to the details page where there is one today, and
+                    what happens when a second book is opened. Every step is a
+                    real state from the Screens tab &mdash; the specs are shared
+                    consts, so a corrected screen cannot leave a flow drawing
+                    the old one. Red callouts are decisions that are genuinely
+                    still open.
+                </p>
+                <div class="flowlayout">
+                    <div class="side">
+                        <div class="sbox" id="sbox">
+                            <input
+                                class="search"
+                                id="fsearch"
+                                placeholder="Search flows&hellip;"
+                                autocomplete="off"
+                            />
+                            <span class="hint hint-slash"
+                                ><span class="kbd">/</span></span
+                            >
+                            <span class="hint hint-esc"
+                                ><span class="kbd">Esc</span></span
+                            >
+                        </div>
+                        <div id="sidenav"></div>
+                    </div>
+                    <div>
+                        <div id="flows"></div>
+                        <div class="noneleft gone" id="flows-none">
+                            No flows match that search.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            /* ==================================================================
+   SECTION 2: FRAME RENDERER — the collapsed read sheet, drawn from data
+   by one function.
+
+   The geometry below is not a redrawing of the app's, it is a *port* of
+   it: `bookHash`, `bookThicknessPositionFromPages` and the two jitter
+   ranges are transcribed from lib/ui/widgets/book/book_geometry.dart, and
+   `_build/assert.js` checks the port against the same golden values
+   test/book_geometry_test.dart pins. So every spine width and height on
+   this page is the number the widget would produce for that ISBN, not an
+   impression of one. If the port drifts, the build fails.
+   ================================================================== */
+            /* ---- BookJitter's ranges, verbatim ---- */
+            const HF0 = 0.94,
+                HF1 = 1.06; /* heightFactor    */
+            const TF0 = 0.36,
+                TF1 = 0.52; /* thicknessFactor */
+
+            /* kDefaultCoverAspect. Every book here uses it, because the pile
+               has no decoded image to take a real ratio from — the spines load
+               no covers at all today, which is one of the costs the proposal
+               has to answer for. */
+            const ASPECT = 2 / 3;
+
+            /* kBookPerspectiveRatio: perspective is 4.6x the cover width, held
+               as a ratio so the effect is identical at every size. */
+            const PERSP = 4.6;
+
+            /* kBookTurnAngle, in degrees. 16 is the angle the reference
+               component rotates to on hover, and the angle a held book
+               reaches on the shelves. */
+            const HOLD = 16;
+
+            /* Air either side of the book that has been turned out, at full
+               turn. Nothing at rest, so the pile's density is unaffected until
+               someone taps. */
+            const kTurnMargin = 8;
+
+            /* kBookBoardSquareRatio (3/240 of the height) and
+               kBookForeEdgeSquareRatio (6/196 of the width). */
+            const BOARD_SQ = 3 / 240,
+                FORE_SQ = 6 / 196;
+
+            /* bookOpacityList, from lib/constants/constants.dart. */
+            const OPS = [0.4, 0.7, 1.0];
+
+            /* kGeneratedCoverPalette, verbatim. Every book in the read pile is
+               drawn with a generated cover, which is the honest choice: these
+               are the app's own six swatches, harmonised with the brand green,
+               and `generatedCoverColor` picks one with `bookHash(isbn) % 6`. */
+            const COVER_PALETTE = [
+                "#09BC8A" /* brand green */,
+                "#0E7C7B" /* deep teal   */,
+                "#2F6690" /* slate blue  */,
+                "#E0644E" /* coral       */,
+                "#F2B544" /* amber       */,
+                "#7C5CBF" /* violet      */,
+            ];
+            function generatedCoverColor(isbn) {
+                if (!isbn) return COVER_PALETTE[0];
+                return COVER_PALETTE[bookHash(isbn) % COVER_PALETTE.length];
+            }
+
+            /* bookBoardColorFor: the cover darkened by `0.18 + 0.30 * luminance`,
+               so a black cover barely needs darkening to separate from paper and
+               a white one needs a lot. Luminance is the sRGB relative luminance
+               Flutter's `Color.computeLuminance` computes, threshold and all. */
+            function hexRgb(h) {
+                return [
+                    parseInt(h.slice(1, 3), 16),
+                    parseInt(h.slice(3, 5), 16),
+                    parseInt(h.slice(5, 7), 16),
+                ];
+            }
+            function lin(v) {
+                v /= 255;
+                return v <= 0.03928
+                    ? v / 12.92
+                    : Math.pow((v + 0.055) / 1.055, 2.4);
+            }
+            function luminance(hex) {
+                const c = hexRgb(hex);
+                return (
+                    0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+                );
+            }
+            function bookBoardColorFor(hex) {
+                const t = 0.18 + 0.3 * luminance(hex);
+                const c = hexRgb(hex).map(function (v) {
+                    return Math.round(v * (1 - t));
+                });
+                return (
+                    "#" +
+                    c
+                        .map(function (v) {
+                            return v.toString(16).padStart(2, "0");
+                        })
+                        .join("")
+                );
+            }
+
+            /* WCAG 1.4.3, so the tinted spines can be measured rather than
+               eyeballed. `brand` is decoration-only by contract precisely
+               because it scores 2.45:1; a spine that carries a title is not
+               decoration, and the same test has to be applied to whatever
+               tone replaces it. */
+            function contrastRatio(a, b) {
+                const l1 = Math.max(luminance(a), luminance(b));
+                const l2 = Math.min(luminance(a), luminance(b));
+                return (l1 + 0.05) / (l2 + 0.05);
+            }
+
+            function hex(c) {
+                return (
+                    "#" +
+                    c
+                        .map(function (v) {
+                            return Math.max(0, Math.min(255, Math.round(v)))
+                                .toString(16)
+                                .padStart(2, "0");
+                        })
+                        .join("")
+                );
+            }
+            function mix(a, b, t) {
+                const x = hexRgb(a),
+                    y = hexRgb(b);
+                return hex([
+                    x[0] + (y[0] - x[0]) * t,
+                    x[1] + (y[1] - x[1]) * t,
+                    x[2] + (y[2] - x[2]) * t,
+                ]);
+            }
+            /* Chroma as a fraction of the brightest channel — HSV saturation.
+               Cheap, and it is the axis that matters here: what makes a tint
+               read as a book rather than as a hole in the shelf is whether it
+               has any colour left at all, not how light it is. */
+            function saturation(h) {
+                const c = hexRgb(h);
+                const mx = Math.max.apply(null, c),
+                    mn = Math.min.apply(null, c);
+                return mx === 0 ? 0 : (mx - mn) / mx;
+            }
+
+            /* The floor under a low-chroma cover's tint.
+
+               These four constants and the function below are a port of
+               `spineTintFor` in lib/ui/widgets/book/book_chassis.dart. Keep them
+               in step: this page is the design record for the shipped function,
+               and a drawing that disagrees with the code is worse than no
+               drawing. */
+            const kTintMinSaturation = 0.18;
+            /* Borrowed from the brand, not invented: a pale cover's tint ends up
+               a desaturated version of the app's own green rather than an
+               arbitrary hue. */
+            const kTintChromaLift = 0.45;
+            /* A hair over AA's 4.5, so rounding cannot leave a tint just short. */
+            const kTintMinContrast = 4.6;
+
+            /* The colour a *spine* is filled with, as against the colour the
+               chassis paints its back board.
+
+               `bookBoardColorFor` alone is not enough here and the rendered row
+               is what showed it. It multiplies toward black, so a cover
+               averaging #DCD8D1 lands on a dead neutral grey: in a row of
+               coloured spines that reads as a gap in the shelf, and it misses
+               AA for the 12pt title it now has to carry. Darkening further fixes
+               the contrast and makes the grey deader.
+
+               So two steps before the board tone, each one a no-op for a cover
+               that does not need it:
+
+                 1. Lift the chroma of a washed-out cover by blending it toward
+                    `brand`. Scaled by how far below `kTintMinSaturation` it sits
+                    *and by its luminance*. The second factor is not decoration:
+                    gated on chroma alone the lift fires on a **black** cover as
+                    hard as on a white one — black has no chroma either — and a
+                    black jacket came out a dark green spine. A pale neutral goes
+                    dead; a dark neutral already reads as a book.
+                 2. Darken until white clears `kTintMinContrast`. A bounded
+                    stepwise walk rather than a closed form, because the target
+                    is a contrast ratio and the ratio is not linear in the mix.
+                    This step fires on some fully saturated covers too — the
+                    amber in `kGeneratedCoverPalette` boards at 4.02:1.
+
+               A board is unaffected by either: nothing is written on it, and it
+               is seen against the cover it came from rather than against type. */
+            function spineTintFor(cover) {
+                const s = saturation(cover);
+                const lift =
+                    Math.max(0, (kTintMinSaturation - s) / kTintMinSaturation) *
+                    luminance(cover) *
+                    kTintChromaLift;
+                let c = bookBoardColorFor(mix(cover, "#09BC8A", lift));
+                for (
+                    let i = 0;
+                    i < 24 && contrastRatio(c, "#FFFFFF") < kTintMinContrast;
+                    i++
+                ) {
+                    c = mix(c, "#000000", 0.06);
+                }
+                return c;
+            }
+
+            /* Today's spine: BookVertical's defaults. */
+            const SPINE_W = 26,
+                SPINE_H = 124;
+
+            /* ReadPile's parts. _rowExtent is 124 + the 13 a praised spine
+               grows by, so praise cannot change the pile's height. */
+            const TOP_GAP = 14,
+                ROW_EXTENT = 137,
+                SHELF_H = 8,
+                BOTTOM_PAD = 10;
+            const PILE_EXTENT = TOP_GAP + ROW_EXTENT + SHELF_H + BOTTOM_PAD;
+
+            /* The proposal's spine-width range. Mapped from the book's
+               *position* in the thickness range rather than from the resolved
+               factor, which is the same move `bookThicknessPositionFromPages`
+               already makes and for the same reason: thicknessFactor is tuned
+               for a 3D fore-edge a few pixels wide, and 0.36-0.52 of the cover
+               is 28-43pt on a flat spine. Centred on 26 so the pile's density
+               is exactly today's. */
+            const NARROW = [21, 31];
+
+            /* ---- bookHash: 32-bit FNV-1a, split so no intermediate exceeds
+               2^53. Written with * and % rather than << and &, because JS
+               bitwise operators coerce to *signed* int32 and `(h & 0xff) << 24`
+               goes negative for any high byte >= 128 — which silently produced
+               a different hash than the Dart for about half of all inputs. ---- */
+            function mulFnvPrime(h) {
+                return ((h & 0xff) * 0x1000000 + h * 403) % 0x100000000;
+            }
+            function bookHash(s) {
+                let h = 0x811c9dc5;
+                for (let i = 0; i < s.length; i++) {
+                    const u = s.charCodeAt(i);
+                    h = mulFnvPrime((h ^ (u & 0xff)) >>> 0);
+                    if (u > 0xff) h = mulFnvPrime((h ^ ((u >> 8) & 0xff)) >>> 0);
+                }
+                return h;
+            }
+
+            /* bookThicknessPositionFromPages. Log-scaled between 100 and 900,
+               so 300 pages — the archetypal trade book — lands mid-range, and
+               a 1,500-page reference book clamps instead of pinning the top.
+               Anything under 20 pages is treated as absent, because Google
+               Books answers `pageCount: 0` rather than omitting the key. */
+            function pagePos(p) {
+                if (p == null || p < 20) return null;
+                const lo = Math.log(100),
+                    hi = Math.log(900);
+                return Math.min(
+                    1,
+                    Math.max(0, (Math.log(p) - lo) / (hi - lo)),
+                );
+            }
+
+            /* BookJitter.fromIsbn, as normalised positions in [0,1].
+               Positions rather than factors for the same reason the golden test
+               pins positions: the ranges are design values that have been
+               retuned three times, the hash is the part that must never move. */
+            function bookPos(isbn, pages) {
+                const fp = pagePos(pages);
+                if (!isbn) {
+                    /* No ISBN means no hash worth taking: bookHash('') is just
+                       the FNV offset basis, identical for every such book. So
+                       height falls back to neutral — factor 1.0, which is
+                       position 0.5 — but a page count is still real data. */
+                    return { h: 0.5, t: fp == null ? 0 : fp, fromPages: fp != null };
+                }
+                const hash = bookHash(isbn);
+                /* Two draws from disjoint 16-bit halves, so height and
+                   thickness do not correlate — otherwise every tall book
+                   would also be a thick one. */
+                return {
+                    h: (hash & 0xffff) / 0xffff,
+                    t: fp == null ? ((hash >>> 16) & 0xffff) / 0xffff : fp,
+                    fromPages: fp != null,
+                };
+            }
+
+            /* Everything needed to draw one book in the pile.
+               opt = { base, wmode, uniform } where base is the pre-jitter spine
+               height, wmode is 'narrow' or 'true', and uniform draws today's
+               fixed 26x124 instead. */
+            function geom(bk, opt, index) {
+                const o = opt || {};
+                const p = bookPos(bk.isbn, bk.pages);
+                const h = o.uniform
+                    ? SPINE_H
+                    : (o.base || 117) * (HF0 + p.h * (HF1 - HF0));
+                const cw = h * ASPECT;
+                const tk = o.uniform
+                    ? SPINE_W
+                    : o.wmode === "true"
+                      ? cw * (TF0 + p.t * (TF1 - TF0))
+                      : NARROW[0] + p.t * (NARROW[1] - NARROW[0]);
+                const op = OPS[index % OPS.length];
+                /* A real thumbnail's average colour where there is one, and the
+                   generated cover's swatch where there is not. `bookBoardColorFor`
+                   of it either way, which is exactly what the chassis does for
+                   its back board. */
+                const cover = bk.avg || generatedCoverColor(bk.isbn);
+                return {
+                    p,
+                    h,
+                    cw,
+                    tk,
+                    op,
+                    cover,
+                    gen: !bk.avg,
+                    /* The chassis's back board: `bookBoardColorFor`, unchanged. */
+                    board: bookBoardColorFor(cover),
+                    /* The spine's fill, which has a title on it and therefore a
+                       floor. Equal to `board` for every cover that needs no
+                       help, which is most of them. */
+                    tintc: spineTintFor(cover),
+                    /* The title's box before RotatedBox turns it: the spine's
+                       height less the 15pt padding at each end. */
+                    th: h - 30,
+                    sq: h * BOARD_SQ,
+                    fes: cw * FORE_SQ,
+                };
+            }
+
+            /* The width the row must give a turning book.
+               cover*|cos| + thickness*|sin|: at 0 it is the cover, at -90 it is
+               the spine, and in between it is what makes the neighbours slide
+               rather than being overlapped. */
+            function projected(g, deg) {
+                const r = (deg * Math.PI) / 180;
+                return (
+                    Math.abs(g.cw * Math.cos(r)) + Math.abs(g.tk * Math.sin(r))
+                );
+            }
+
+            function px(n) {
+                return Math.round(n * 100) / 100 + "px";
+            }
+
+            /* Which way the title on a spine has to go.
+
+               Untinted, this is BookVertical's own rule: white above opacity
+               0.7, `primaryText` at or below, because a 0.4 spine cannot carry
+               white text.
+
+               Tinted, it is always white, and that is a consequence of
+               `spineTintFor` rather than a coincidence: the floor exists so that
+               every tint can carry one colour of type. Choosing per spine was
+               the earlier answer and it left exactly one dark-on-pale label in a
+               row of white ones, which looked like a mistake. */
+            function paleFill(bk, g) {
+                return bk.tint ? false : g.op <= 0.7;
+            }
+
+            /* ---------- a resting spine: today's BookVertical ---------- */
+            function spine(bk, g) {
+                const pale = paleFill(bk, g) ? " pale" : "";
+                /* Tinted spines take `bookBoardColorFor(coverColour)` rather
+                   than the cover colour raw: that is the tone the chassis
+                   already paints its board with, and an untinted swatch beside
+                   the cover it came from reads as two objects. */
+                const bg = bk.tint ? g.tintc : "rgba(9,188,138," + g.op + ")";
+                return (
+                    '<s class="sp' +
+                    pale +
+                    (bk.tint ? " tint" : "") +
+                    '" style="--sw:' +
+                    px(g.tk) +
+                    ";--sh:" +
+                    px(g.h) +
+                    ";--th:" +
+                    px(g.th) +
+                    ";--bg:" +
+                    bg +
+                    ';"><b><span>' +
+                    bk.title +
+                    "</span></b></s>"
+                );
+            }
+
+            /* ---------- a book part-way through the turn ----------
+               Four faces under one rotation, exactly as BookChassis composes
+               three: back board, page block, cover, and the spine face this
+               proposal adds.
+
+               `deg` is the *Flutter* turn, so it reads the same as
+               `kBookTurnAngle` and the same as the widget's own field: -90 is
+               spine-on, 0 is cover-on, +16 is the held book. CSS turns the
+               other way (see frame.css), so the angle handed to the transform
+               is -deg. */
+            function turned(bk, g, deg) {
+                const pale = paleFill(bk, g) ? " pale" : "";
+                const bg = bk.tint ? g.tintc : "rgba(9,188,138," + g.op + ")";
+                const css = -deg;
+                const r = (css * Math.PI) / 180;
+                /* The pivot is the cover's left edge, so at rest the spine hangs
+                   a thickness to the left of it. Shift the drawing back so its
+                   left edge is the box's. Only for a positive CSS angle: past
+                   cover-on the spine is behind the cover and contributes
+                   nothing to the left. */
+                const ox = Math.max(0, g.tk * Math.sin(r));
+                /* Air either side of a book that has been pulled out.
+
+                   Flush was wrong and it took seeing it: the turned cover sat
+                   hard against the spines on both sides, which reads as a book
+                   wedged in place rather than one taken off the shelf — and it
+                   clipped the stacked shadows that are the only thing separating
+                   a cover from the plank. Driven by the same progress as the
+                   turn, so the resting pile is untouched and the gap opens as
+                   the book comes out. */
+                const t = Math.max(0, Math.min(1, (deg + 90) / 90));
+                const sm = kTurnMargin * t;
+                const vars =
+                    "--sh:" +
+                    px(g.h) +
+                    ";--cw:" +
+                    px(g.cw) +
+                    ";--tk:" +
+                    px(g.tk) +
+                    ";--pw:" +
+                    px(projected(g, deg)) +
+                    ";--ox:" +
+                    px(ox) +
+                    ";--sm:" +
+                    px(sm) +
+                    ";--persp:" +
+                    px(g.cw * PERSP) +
+                    ";--sq:" +
+                    px(g.sq) +
+                    ";--fes:" +
+                    px(g.fes) +
+                    ";--fs:" +
+                    px(g.cw * 0.135) +
+                    ";--turn:" +
+                    css +
+                    "deg;--c:" +
+                    g.cover +
+                    ";--boardc:" +
+                    g.board;
+                const coverFace = g.gen
+                    ? '<span class="cf"><span class="cblk"></span>' +
+                      '<span class="ctit">' +
+                      bk.title +
+                      "</span>"
+                    : '<span class="cf art' +
+                      (luminance(g.cover) > 0.45 ? " dk" : "") +
+                      '"><span class="aband"></span>' +
+                      '<span class="atit">' +
+                      bk.title +
+                      "</span>";
+                /* Written in BookChassis's paint order &mdash; board, pages,
+                   spine, cover &mdash; even though CSS sorts a preserve-3d
+                   context by depth and would accept any order. The drawing is
+                   the record of the implementation, and a reader who sees the
+                   spine last here will write it last there, where it is wrong.
+                   See the paint-order note in frame.css. */
+                return (
+                    '<span class="bk" style="' +
+                    vars +
+                    '"><span class="in">' +
+                    '<span class="bb"></span>' +
+                    '<span class="pb"></span>' +
+                    '<span class="sf sp' +
+                    pale +
+                    '" style="--bg:' +
+                    bg +
+                    ";--th:" +
+                    px(g.th) +
+                    '"><b><span>' +
+                    bk.title +
+                    "</span></b></span>" +
+                    coverFace +
+                    '<span class="bind"></span>' +
+                    '<span class="hair"></span></span>' +
+                    "</span></span>"
+                );
+            }
+
+            /* ---------- a top-down plan of the turn ----------
+               Looking down on the book, reader at the bottom of the box. The
+               cover's direction is the +x axis turned by `deg` (clockwise on
+               screen is toward the reader), and the spine is always 90 behind
+               it, so at rest the spine lies along the box and the cover points
+               straight away. The hinge is held fixed here, unlike the drawn
+               item, which is shifted so its left edge is its box's. */
+            function plan(deg, label) {
+                const r = (deg * Math.PI) / 180;
+                const cov = Math.abs(62 * Math.cos(r));
+                const spn = Math.abs(22 * Math.sin(r));
+                return (
+                    '<div class="plan"><span class="ang">' +
+                    (deg > 0 ? "+" : "") +
+                    deg +
+                    "&deg;</span>" +
+                    '<i class="cvl" style="transform:rotateZ(' +
+                    deg +
+                    'deg)"></i>' +
+                    '<i class="spl" style="transform:rotateZ(' +
+                    (deg - 90) +
+                    'deg)"></i>' +
+                    '<i class="hg"></i>' +
+                    '<i class="prj" style="left:' +
+                    px(46 - spn) +
+                    ";width:" +
+                    px(cov + spn) +
+                    '"></i>' +
+                    '<span class="pl">' +
+                    label +
+                    "</span></div>"
+                );
+            }
+
+            /* ---------- the corpus ----------
+               The first six ISBNs are the ones test/book_geometry_test.dart
+               pins goldens for, so their drawn proportions are checkable
+               against the app's own test file. The rest come from that test's
+               own `_syntheticIsbns` generator, `978${1000000000 + i * 7919}`.
+
+               The titles are labels, chosen for legibility on a 26pt spine and
+               to match the corpus the earlier mockup sets use. They are NOT a
+               claim about which book each ISBN identifies — the geometry comes
+               from the ISBN alone, and swapping a title changes nothing here.
+
+               `pages` is set on two of them on purpose. Where a credible page
+               count exists it replaces the hash for thickness, so those two
+               books are the only ones on the page whose width is real data.
+               The measurement table marks them.
+
+               `avg` is the colour `_sampleCoverColor` would average out of the
+               book's artwork — the 1x1 GPU downsample the chassis already does
+               to pick its back board. **Most read books have a real cover**, so
+               most of these carry one, and it is what a tinted spine would be
+               derived from. These particular values are estimates for a cover of
+               that kind, not measurements: measuring needs the artwork, and the
+               artwork is not in this repo. Two books deliberately have no `avg`
+               at all — the coverless case, which falls back to
+               `generatedCoverColor` and the six swatches — and one is
+               deliberately pale, because that is the case where darkening the
+               cover does not produce a tint white type can sit on. */
+            const CORPUS = [
+                {
+                    isbn: "9788936434120",
+                    title: "Shoe Dog",
+                    pages: 224,
+                    avg: "#2A1C14",
+                },
+                { isbn: "9780451524935", title: "Eragon", avg: "#2E4E7A" },
+                {
+                    isbn: "9780141439518",
+                    title: "Brisingr",
+                    pages: 640,
+                    avg: "#8A6A2E",
+                },
+                { isbn: "9791188331796", title: "Eldest", avg: "#8E2F2A" },
+                {
+                    isbn: "9788954682152",
+                    title: "\uc77c\uc744 \uc798 \ub9e1\uae34\ub2e4\ub294 \uac83",
+                    avg: "#1E3A5C",
+                },
+                { isbn: "OL12345W", title: "Start With Why", avg: "#B03A2E" },
+                /* A pale cover. The one that stresses the contrast floor. */
+                { isbn: "9781000000000", title: "The White Book", avg: "#DCD8D1" },
+                { isbn: "9781000007919", title: "Kim Jiyoung", avg: "#4E6EA8" },
+                /* Coverless: no thumbnail, so a generated cover and a palette
+                   swatch. Roughly the proportion the corpus has. */
+                { isbn: "9781000015838", title: "The Hole" },
+                { isbn: "9781000023757", title: "Norwegian Wood", avg: "#20553F" },
+                { isbn: "9781000031676", title: "Tokyo Ueno Station", avg: "#3A3F4B" },
+                { isbn: "9781000039595", title: "Please Look After Mom", avg: "#A8465F" },
+                { isbn: "9781000047514", title: "Convenience Store Woman" },
+            ];
+
+            /* ---------- the pile ----------
+               b = { style, tint, open, turn, h, empty }
+
+               `style` names a set of geometry options rather than spelling them
+               out at every call site. That indirection is what lets a rejected
+               version restate one short field instead of a whole spec, and it
+               is derived from the decided spec rather than copied, so a change
+               to the decided design cannot leave a branch drawing the old one.
+
+               `open` is an index into CORPUS; that book is drawn turning and
+               every other one is a resting spine. One at a time by
+               construction, which is also what keeps the hero tag unique — see
+               the callout on the `turn-out` flow. */
+            const PILE_STYLES = {
+                /* Today, for reference: a fixed 26x124 and the opacity cycle. */
+                shipped: { uniform: true },
+                /* The decided design: real chassis thickness, cover-toned. */
+                decided: { wmode: "true", tint: true },
+                /* Rejected: true widths, brand spines. */
+                green: { wmode: "true" },
+                /* Rejected: widths remapped to 21-31, brand spines. */
+                remap: { wmode: "narrow" },
+            };
+
+            function pileBlock(b) {
+                const style = PILE_STYLES[b.style || "decided"];
+                const opt = {
+                    uniform: !!style.uniform,
+                    base: b.base || 117,
+                    wmode: style.wmode || "narrow",
+                };
+                const tint = style.tint === true;
+                let inner;
+                if (b.empty) {
+                    inner =
+                        '<div class="pempty">' +
+                        (b.year
+                            ? "No books recorded for " + b.year
+                            : "No books read yet &#129394;") +
+                        "</div>";
+                } else {
+                    inner =
+                        '<div class="prow">' +
+                        CORPUS.map(function (bk, i) {
+                            const g = geom(bk, opt, i);
+                            const tinted = tint
+                                ? Object.assign({}, bk, { tint: true })
+                                : bk;
+                            return i === b.open
+                                ? turned(tinted, g, b.turn === undefined ? 0 : b.turn)
+                                : spine(tinted, g);
+                        }).join("") +
+                        "</div>";
+                }
+                return (
+                    '<div class="pile" style="--pile:' +
+                    px(b.h || PILE_EXTENT) +
+                    '">' +
+                    inner +
+                    '<div class="plank"></div><div class="ppad"></div></div>'
+                );
+            }
+
+            function block(b) {
+                switch (b.t) {
+                    case "pile":
+                        return pileBlock(b);
+                    case "text":
+                        return (
+                            '<div class="txt' +
+                            (b.dim ? " dim" : "") +
+                            '">' +
+                            b.v +
+                            "</div>"
+                        );
+                    default:
+                        return "";
+                }
+            }
+            function blocks(list) {
+                return (list || []).map(block).join("");
+            }
+
+            /* The library behind the card. Two shelves, dimmed: a backdrop, and
+               the thing a taller pile takes its 7pt from. */
+            function libBack() {
+                let rows = "";
+                for (let r = 0; r < 2; r++) {
+                    rows +=
+                        '<div class="lrow">' +
+                        CORPUS.slice(r * 5, r * 5 + 5)
+                            .map(function (bk, i) {
+                                return (
+                                    '<i class="lcv" style="--c:' +
+                                    (bk.avg || generatedCoverColor(bk.isbn)) +
+                                    ";height:" +
+                                    (78 + ((i * 5 + r * 3) % 9)) +
+                                    'px"></i>'
+                                );
+                            })
+                            .join("") +
+                        '</div><div class="lplank"></div>';
+                }
+                return '<div class="lib faded">' + rows + "</div>";
+            }
+
+            function tabBar(on) {
+                return (
+                    '<div class="tbb"><div class="tp">' +
+                    ["Library", "Friends", "Card"]
+                        .map(function (t) {
+                            return (
+                                '<s class="' +
+                                (t === (on || "Library") ? "on" : "") +
+                                '">' +
+                                t +
+                                "</s>"
+                            );
+                        })
+                        .join("") +
+                    '</div><div class="orb">&#128269;</div></div><div class="ind"></div>'
+                );
+            }
+
+            /** Draw one screen from its spec. */
+            function frame(s) {
+                if (s.kind === "dtl") return detailsFrame(s);
+                const pile = s.pile || {};
+                /* The frame height is fixed and the card grows *upward* into
+                   the library, which is the whole point of drawing the library
+                   at all: a pile 7pt taller is 7pt the shelves lose. Sizing the
+                   frame to the card instead kept the backdrop constant and hid
+                   the only cost the height question has. */
+                return (
+                    '<div class="fr" style="--fh:' +
+                    px(s.fh || 430) +
+                    '">' +
+                    libBack() +
+                    '<div class="card">' +
+                    '<div class="hdl"></div>' +
+                    '<div class="hd"><span class="lt">Books read <i>' +
+                    (s.count === undefined ? 42 : s.count) +
+                    '</i></span><span class="pop">' +
+                    (s.filter || "All time") +
+                    " <u>&#9660;</u></span></div>" +
+                    pileBlock(pile) +
+                    "</div>" +
+                    tabBar("Library") +
+                    "</div>"
+                );
+            }
+
+            /* The details page, for the last step of the turn-out flow. The
+               cover here is the same `turned()` at 0 degrees and height 180,
+               which is the point: it is the destination of a Hero flight, so
+               the two ends have to be the same object at two sizes. */
+            function detailsFrame(s) {
+                const bk = CORPUS[s.book || 0];
+                const g = geom(bk, { base: 180 / (HF0 + bookPos(bk.isbn, bk.pages).h * (HF1 - HF0)) }, s.book || 0);
+                return (
+                    '<div class="fr dtl" style="--fh:430px">' +
+                    '<div class="nav"><span class="back">&#8249;</span></div>' +
+                    '<div class="dhero">' +
+                    turned(bk, g, 0) +
+                    '<div class="drt"><div class="dt">' +
+                    bk.title +
+                    '</div><div class="da">' +
+                    bk.isbn +
+                    "</div></div></div>" +
+                    '<div class="dshelf"></div>' +
+                    '<div class="dcaps"><s class="on">Book info</s><s>Notes</s></div>' +
+                    '<div style="padding-top:14px"><div class="dline" style="width:56%"></div>' +
+                    '<div class="dline"></div><div class="dline"></div>' +
+                    '<div class="dline" style="width:72%"></div></div>' +
+                    "</div>"
+                );
+            }
+
+            /* ==================================================================
+   SECTION 3: DATA.
+
+   SCREENS  [group, [ [id, name, note, spec], ... ] ]
+   FLOWS    [group, [ [id, name, note, [ [stepName, stepNote, spec], ... ] ] ] ]
+   ELEMENTS [group, [ [id, name, note, demoHTML], ... ] ]
+   ================================================================== */
+            /* Shared specs, so a corrected screen cannot leave a flow drawing
+               the old one. Every pile on the page is one of these, and the
+               rejected versions derive theirs from them with `restyle` below
+               rather than restating them. */
+            const OPEN_AT = 4; /* mid-row, so the slide is visible both ways */
+            const SWITCH_AT = 8; /* the book opened second, in `switch-book`   */
+
+            const TODAY = { t: "pile", style: "shipped" };
+            const EMPTY = { t: "pile", empty: true, year: 2025 };
+            const PILE = { t: "pile" };
+            const PILE_STRETCH = { t: "pile", h: PILE_EXTENT + 40 };
+            const TURN_MID = { t: "pile", open: OPEN_AT, turn: -45 };
+            const TURN_REST = { t: "pile", open: OPEN_AT, turn: 0 };
+            const TURN_HELD = { t: "pile", open: OPEN_AT, turn: HOLD };
+            const SWITCH_MID = { t: "pile", open: SWITCH_AT, turn: -45 };
+            const SWITCH_REST = { t: "pile", open: SWITCH_AT, turn: 0 };
+
+            /* A pile block, restyled into a whole screen spec. Used only by the
+               rejected versions: they differ from the decided design in the
+               pile's style and in nothing else, so this is the whole of their
+               patch, and it is *derived* from the decided block rather than
+               copied — a correction to the decided design cannot leave a branch
+               drawing the old one. */
+            function restyle(pile, style) {
+                return { pile: Object.assign({}, pile, { style }) };
+            }
+
+            /* The same, for the height budget: a different pre-jitter base, and
+               the taller pile a taller row forces. A block that had raised `h`
+               itself keeps the difference, so the stretched screen stays 40pt
+               past its own detent rather than 40pt past the decided one. */
+            function rebase(pile, base, extent) {
+                const out = Object.assign({}, pile, { base });
+                out.h =
+                    pile.h === undefined ? extent : extent + (pile.h - PILE_EXTENT);
+                return { pile: out };
+            }
+
+            const SCREENS = [
+                [
+                    "Decided",
+                    [
+                        [
+                            "pile-jitter",
+                            "Read pile &middot; hashed sizes, cover-toned",
+                            "<b>The decided design.</b> Thirteen books whose height, width and tone all come from what the app already knows about them.<br /><br />Height is base 117 times a factor in [0.94, 1.06], so the tallest book is exactly today's 124 and <code>ReadPile.extent</code> does not move &mdash; <code>bookRowExtent()</code> already says a row must reserve <code>base &times; maxHeightFactor</code>, and 124&nbsp;/&nbsp;1.06 is 117. Width is <code>BookMetrics.thickness</code> itself, 28 to 39pt against today's flat 26, so the spine is as thick as the book it turns into and nothing has to be reconciled between the two states. Two of the thirteen take their thickness from a real page count rather than the hash. Tone is <code>bookBoardColorFor</code> of the book's own cover, from a stored <code>cover_color</code>; the two coverless ones fall back to their generated cover's swatch, which is a colour rather than an absence, so the row still reads as one material.<br /><br />The 1pt line down each spine's right edge is new and not optional: the horizontal <code>ListView</code> has no separator, which is invisible while the row is one green at three opacities and reads as a solid slab once every spine has its own tone.",
+                            { pile: PILE },
+                        ],
+                        [
+                            "pile-stretch",
+                            "Read pile &middot; dragged up 40pt",
+                            "The state between the collapsed detent and the month grid's swap point. The plank stays on the card's bottom edge and the headroom opens above the books, which is what the last change shipped &mdash; drawn here because a taller pile is where a jittered row could have gone wrong and did not: the books are bottom-aligned on the shelf, so a short book gains its headroom at the top like every other one.",
+                            { pile: PILE_STRETCH },
+                        ],
+                    ],
+                ],
+                [
+                    "Turning one out",
+                    [
+                        [
+                            "pile-mid",
+                            "Turning &middot; halfway",
+                            "One tap in, 45&deg; of 90 &mdash; and this is the frame that caught the sign error the first draft shipped with. Turned the other way the book swung its fore-edge through the reader and the spine disappeared behind the cover, which is a book turning inside out. Turned correctly it is a three-quarter view: the spine on the left of the hinge, the cover foreshortened to its right, the two meeting along the hinge line and never overlapping, and the fore-edge never in sight. The hinge is the spine's own edge, so it stays put and the book opens toward the reader &mdash; the motion of pulling one off a shelf. The row gives the item <code>cover&times;|cos| + thickness&times;|sin|</code> of width, so its neighbours slide rather than being painted over.",
+                            { pile: TURN_MID },
+                        ],
+                        [
+                            "pile-open",
+                            "Turned out &middot; at rest",
+                            "The end of the turn: the book's cover, at the same 2:3 and with the same binding band, hairline and stacked shadows as a book on a shelf. Most read books have a real thumbnail, and that is what this is standing in for; the two coverless ones in the row get a <code>GeneratedCover</code> instead &mdash; a swatch block over a <code>surface</code>-toned title half, picked by <code>bookHash(isbn) % 6</code>. The tapped spine's tone and this cover are the same colour family by construction, because one is derived from the other. Note what it costs: this is the first cover the collapsed Library tab has ever had to load, and it loads exactly one.",
+                            { pile: TURN_REST },
+                        ],
+                        [
+                            "pile-hold",
+                            "Turned out &middot; held",
+                            "Stage one of the hold, +16&deg;, the same <code>kBookTurnAngle</code> the shelves use &mdash; and the same 140ms delay, so an ordinary tap produces no rotation at all. The fore-edge appears because the page block stands back from the boards on every side. There is no stage two here: <code>onLongPress</code> enters edit mode on the shelves, and the pile has no edit mode, so the hold is feedback and nothing else.",
+                            { pile: TURN_HELD },
+                        ],
+                    ],
+                ],
+                [
+                    "Unchanged",
+                    [
+                        [
+                            "pile-today",
+                            "Read pile &middot; as shipped",
+                            "<b>Not a proposal &mdash; the baseline.</b> Thirteen identical 26&times;124 spines, flush against each other, the row a solid band of green graded 0.4&thinsp;/&thinsp;0.7&thinsp;/&thinsp;1.0 by index. Kept on the page because every claim above is a claim about a difference from this, and because it is the drawing that shows why the missing separator was never a problem before.",
+                            { pile: TODAY },
+                        ],
+                        [
+                            "pile-empty",
+                            "Read pile &middot; empty",
+                            "Unchanged, and included so it stays visible: the message is centred in the room <i>above the shelf</i>, which is the room that grows when the sheet is dragged. Nothing in this proposal touches it.",
+                            { pile: EMPTY, count: 0, filter: "2025" },
+                        ],
+                    ],
+                ],
+            ];
+
+            const FLOWS = [
+                [
+                    "Reading the pile",
+                    [
+                        [
+                            "turn-out",
+                            "Spine &rarr; cover &rarr; details",
+                            "Two taps to the details page where there is one today. The first tap buys something the pile has never offered: seeing what a book looks like without leaving the tab.",
+                            [
+                                [
+                                    "At rest",
+                                    "Thirteen spines, each the tone of its own cover. The tap target is the full 137pt column, because the horizontal list gives its children tight cross-axis constraints &mdash; already true today.",
+                                    { pile: PILE },
+                                ],
+                                [
+                                    "Turning",
+                                    "-45&deg;. Driven by one <code>AnimationController</code> at <code>kBookTurnDuration</code> 260ms, the same rate a shelf book turns at, so the two motions cannot look like different mechanisms.",
+                                    { pile: TURN_MID },
+                                ],
+                                [
+                                    "Turned out",
+                                    "A cover on the shelf, in the colour family its spine was. Tapping another spine turns this one back &mdash; one open at a time.",
+                                    { pile: TURN_REST },
+                                ],
+                                [
+                                    "Held",
+                                    "+16&deg; after 140ms of contact, then unwinds over 180ms on release. The fore-edge comes into view because the page block stands back from the boards. Release without moving is a tap, and a tap navigates.",
+                                    { pile: TURN_HELD },
+                                ],
+                                [
+                                    "Details",
+                                    "The cover flies. Same <code>book_&lt;isbn&gt;</code> Hero tag the shelves use, same <code>MaterialRectCenterArcTween</code> and <code>FittedBox</code> shuttle, so the aspect ratio holds for the whole flight.",
+                                    { kind: "dtl", book: OPEN_AT },
+                                ],
+                            ],
+                        ],
+                        [
+                            "switch-book",
+                            "Opening a second book",
+                            "Why one at a time is the right rule, and not only for tidiness: the hero tag is <code>book_&lt;isbn&gt;</code>, and about fifteen migrated books have no ISBN at all. Tagging every spine would put several <code>book_</code> heroes in one subtree, which throws. Tagging only the open book makes the tag unique by construction.",
+                            [
+                                [
+                                    "One open",
+                                    "The mid-row book turned out, the rest spines.",
+                                    { pile: TURN_REST },
+                                ],
+                                [
+                                    "Tap another",
+                                    "Both animate at once: the new one out, the old one back. Same controller timings in both directions.",
+                                    { pile: SWITCH_MID },
+                                ],
+                                [
+                                    "Settled",
+                                    "The Hole is out and the first book is a spine again. Filtering by year, dragging past the grid's swap point, or entering edit mode all close it.",
+                                    { pile: SWITCH_REST },
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+
+            /* The measurement table: every drawn number, per book, so the
+               drawing can be checked rather than believed. */
+            function mtable(opt) {
+                const rows = CORPUS.slice(0, 6)
+                    .map(function (bk, i) {
+                        const g = geom(bk, opt, i);
+                        return (
+                            "<tr><td>" +
+                            bk.title +
+                            "</td><td>" +
+                            bk.isbn +
+                            "</td><td>" +
+                            g.p.h.toFixed(4) +
+                            "</td><td>" +
+                            g.h.toFixed(1) +
+                            "</td><td>" +
+                            g.p.t.toFixed(4) +
+                            (g.p.fromPages ? "*" : "") +
+                            '</td><td class="hi">' +
+                            g.tk.toFixed(1) +
+                            "</td></tr>"
+                        );
+                    })
+                    .join("");
+                return (
+                    '<table class="mtbl"><tr><th>Book</th><th>ISBN</th>' +
+                    "<th>height pos</th><th>height</th><th>thick pos</th><th>spine w</th></tr>" +
+                    rows +
+                    "</table>"
+                );
+            }
+
+            function spineStrip(opt, tint) {
+                return (
+                    '<div class="onwhite">' +
+                    CORPUS.slice(0, 6)
+                        .map(function (bk, i) {
+                            const g = geom(bk, opt, i);
+                            return spine(
+                                tint ? Object.assign({}, bk, { tint: true }) : bk,
+                                g,
+                            );
+                        })
+                        .join("") +
+                    "</div>"
+                );
+            }
+
+            /* What a tinted pile actually costs, computed rather than typed so
+               these numbers cannot go stale. Two things worth measuring: how
+               many of the drawn books would need a *decoded image* before their
+               spine had a colour at all, and whether every resulting tint can
+               carry a title. */
+            function tintContrastNote() {
+                const drawn = CORPUS.map(function (bk, i) {
+                    const g = geom(bk, { base: 117 }, i);
+                    return {
+                        title: bk.title,
+                        cover: g.cover,
+                        plain: bookBoardColorFor(g.cover),
+                        tint: g.tintc,
+                        gen: g.gen,
+                        r: contrastRatio(g.tintc, "#FFFFFF"),
+                        was: contrastRatio(bookBoardColorFor(g.cover), "#FFFFFF"),
+                    };
+                });
+                const needsDecode = drawn.filter(function (x) {
+                    return !x.gen;
+                }).length;
+                const worst = drawn.slice().sort(function (a, b) {
+                    return a.r - b.r;
+                })[0];
+                const lifted = drawn.filter(function (x) {
+                    return x.tint !== x.plain;
+                });
+                return (
+                    '<div class="cap"><b>The tint needs a stored colour, and that is the whole of its cost.</b> ' +
+                    needsDecode +
+                    " of these " +
+                    CORPUS.length +
+                    " books have a real thumbnail, so their tone is <code>_sampleCoverColor</code>'s 1x1 downsample of artwork that has to be fetched and decoded. The collapsed pile loads no images today, and worse than the bytes is the timing: until each image resolves the spine has no colour, so a cold start would paint the pile grey and colour it in. <code>book_widget.dart</code> already refuses that bargain for a neighbouring value \u2014 <code>pageCount</code> must come from a stored column, because a count arriving mid-session would make a book visibly change thickness on screen. Hence <code>books.cover_color</code>, read from the row and never from a live decode.</div>" +
+                    '<div class="cap"><b>Every tint clears AA, and ' +
+                    lifted.length +
+                    " of " +
+                    CORPUS.length +
+                    " needed help to.</b> <code>bookBoardColorFor</code> multiplies toward black, so a washed-out cover lands on a dead neutral grey \u2014 <code>" +
+                    (lifted[0] ? lifted[0].cover + "</code> \u2192 <code>" + lifted[0].plain + "</code> at " + lifted[0].was.toFixed(2) + ":1, a colour with no chroma left, which in a row of coloured spines reads as a gap in the shelf rather than as a pale book. <code>spineTintFor</code> lifts the chroma toward <code>brand</code> below " + kTintMinSaturation + " saturation and then darkens until white clears " + kTintMinContrast + ":1, giving <code>" + lifted[0].tint + "</code> at " + lifted[0].r.toFixed(2) + ":1" : "nothing on this row") +
+                    ". Both steps are no-ops for a cover that does not need them, so " +
+                    (CORPUS.length - lifted.length) +
+                    " of the " +
+                    CORPUS.length +
+                    " tints are exactly <code>bookBoardColorFor</code>. The worst on the row is now " +
+                    worst.r.toFixed(2) +
+                    ":1 (" +
+                    worst.title +
+                    "), so every spine carries white type and there is no per-spine text colour to choose.</div>"
+                );
+            }
+
+            const ELEMENTS = [
+                [
+                    "The spine",
+                    [
+                        [
+                            "el-spine-today",
+                            "Spine &middot; as shipped",
+                            "<code>BookVertical</code>: 26&times;124, <code>brand</code> at one of <code>bookOpacityList</code>'s three values, a 12pt title turned a quarter turn, and a shallow arch across the top &mdash; a quadratic from (0,5) to (w,5) through (w/2,0). The title colour flips at 0.7: white above, <code>primaryText</code> at or below, because a 0.4 spine cannot carry white text.",
+                            spineStrip({ uniform: true }) +
+                                '<div class="cap">Six identical spines. The only variation in the pile today is the opacity cycle, which repeats every three books.</div>',
+                        ],
+                        [
+                            "el-spine-jitter",
+                            "Spine &middot; decided",
+                            "The six pinned books at their real chassis thickness, each toned from its own cover. Positions are the values <code>test/book_geometry_test.dart</code> pins, so this table is checkable line by line against that file. Widths are <code>BookMetrics.thickness</code> — 28 to 39pt — and the two rows marked * take theirs from a real page count rather than the hash. The two captions below are what the tone costs; both are computed from the drawn row.",
+                            spineStrip({ base: 117, wmode: "true" }, true) +
+                                '<div class="cap">Base 117, widths 28&ndash;39. About nine of these fit the 324pt row, against twelve and a half today. * marks a thickness from a real page count.</div>' +
+                                tintContrastNote() +
+                                mtable({ base: 117, wmode: "true" }),
+                        ],
+                    ],
+                ],
+                [
+                    "The turn",
+                    [
+                        [
+                            "el-turn-angles",
+                            "One book, five angles",
+                            "Left to right: the resting spine, two thirds and a third of the way out, the cover, and the held book. The leftmost is the spine face alone &mdash; at -90&deg; the cover is edge-on and projects to nothing &mdash; so it is the same drawing <code>spine()</code> makes, give or take the perspective foreshortening that a face sitting a thickness behind the projection plane picks up. That near-identity is what lets the pile keep drawing flat <code>BookVertical</code>s and swap in the chassis only for the book being turned, so twelve of thirteen books still load no image.",
+                            (function () {
+                                const bk = CORPUS[OPEN_AT];
+                                const g = geom(bk, { base: 117 }, OPEN_AT);
+                                return (
+                                    '<div class="onwhite" style="gap:26px">' +
+                                    [-90, -60, -30, 0, HOLD]
+                                        .map(function (d) {
+                                            return turned(bk, g, d);
+                                        })
+                                        .join("") +
+                                    "</div>"
+                                );
+                            })(),
+                        ],
+                        [
+                            "el-plan",
+                            "The turn, from above",
+                            "Why the interesting number is not the angle. Green is the spine, dark green the cover, the dot is the hinge, and the bracket is the width the row has to give the item: <code>cover&times;|cos| + thickness&times;|sin|</code>. <b>It is not monotonic, and the assertions are what found that:</b> it peaks at <code>&minus;atan(thickness/cover)</code> &mdash; 16.4&deg; for this book, within a degree of <code>kBookTurnAngle</code> by coincidence &mdash; at <code>hypot(cover,&nbsp;thickness)</code>, then narrows again as the cover comes square on. So the neighbours slide out about 3pt further than the cover's final width and settle back over the last third of the turn. That is what a real book does, and 3pt over 90ms is well under what reads as a wobble, but it is a fact about the layout rather than an impression of one.",
+                            (function () {
+                                const bk = CORPUS[OPEN_AT];
+                                const g = geom(bk, { base: 117 }, OPEN_AT);
+                                const w = function (d) {
+                                    return projected(g, d).toFixed(1) + "pt";
+                                };
+                                const peak = -(
+                                    (Math.atan(g.tk / g.cw) * 180) /
+                                    Math.PI
+                                );
+                                return (
+                                    '<div class="swatchrow">' +
+                                    plan(-90, "spine on &middot; " + w(-90)) +
+                                    plan(-45, "halfway &middot; " + w(-45)) +
+                                    plan(
+                                        Math.round(peak * 10) / 10,
+                                        "widest &middot; " + w(peak),
+                                    ) +
+                                    plan(0, "cover on &middot; " + w(0)) +
+                                    plan(HOLD, "held &middot; " + w(HOLD)) +
+                                    "</div>" +
+                                    '<div class="cap">Beloved on base 117: a ' +
+                                    g.h.toFixed(1) +
+                                    "pt book, " +
+                                    g.cw.toFixed(1) +
+                                    "pt of cover, " +
+                                    g.tk.toFixed(1) +
+                                    "pt of spine.</div>"
+                                );
+                            })(),
+                        ],
+                        [
+                            "el-faces",
+                            "Four faces, not three",
+                            "<code>BookChassis</code> composes a back board, a fore-edge page block and a front cover. <b>There is no spine face</b>, which is why a spine cannot simply rotate into today's mock book &mdash; there is nothing on that side to rotate from. The addition is small: <code>bookPageLocalMatrix</code> already places a perpendicular strip at the fore-edge, and a spine is its mirror at the left edge. Note the sign: positive turn exposes the fore-edge, so the spine is revealed at <i>negative</i> turn, and the range simply extends from [0, +16&deg;] to [-90&deg;, +16&deg;].<br /><br /><b>The pivot has to move, and that is the second thing the chassis does not do today.</b> <code>_face</code> passes <code>alignment: Alignment.center</code>, so a book turns about its own middle &mdash; invisible at 16&deg;, and at 90&deg; it would slide the book about half a cover width sideways, straight through its neighbour. Drawn here about the spine's left edge instead, so the hinge stays put and the book opens toward the reader: the motion of pulling one off a shelf. That means <code>BookChassis</code> needs the pivot as a parameter, and that the pile's books turn about a different point from the shelves' &mdash; defensibly, since a book on a shelf is being looked at and a book in the pile is being pulled out.",
+                            (function () {
+                                const bk = CORPUS[1];
+                                const g = geom(bk, { base: 117 }, 1);
+                                return (
+                                    '<div class="onwhite" style="gap:28px">' +
+                                    turned(bk, g, -90) +
+                                    turned(bk, g, -55) +
+                                    turned(bk, g, -20) +
+                                    turned(bk, g, HOLD) +
+                                    "</div>" +
+                                    '<div class="cap">The page block appears only at the last of these, once the turn goes positive; at every negative angle the boards hide it, which is correct and is why the fore-edge is not visible while a book is turning out.</div>'
+                                );
+                            })(),
+                        ],
+                    ],
+                ],
+            ];
+
+            /* Mark an id as an unresolved decision; renders inline as a red callout. */
+            const OPEN = {
+                "turn-out":
+                    "<b>Decided, and it reverses a written decision.</b> <code>book_details_tab_view.dart:151</code> says the opposite in as many words: &ldquo;The pile and the month grid fly no book either, for the same reason.&rdquo; That comment changes with this. Two things make it safe now: a finished book is kept off the shelves by <code>withoutFinishedBooks</code>, so there is no second <code>book_&lt;isbn&gt;</code> hero on the library route to collide with; and only the open book carries the tag, which matters because <code>book_&lt;isbn&gt;</code> collides across the fifteen migrated books with no ISBN. One-at-a-time is a correctness argument, not only a tidiness one. The month grid still flies nothing, and the pile's plank still flies nothing — it is shared by every book standing on it.",
+                "el-spine-jitter":
+                    "<b>Resolved &mdash; the tint has a floor, and a stored source.</b> Two things the drawing settled that the numbers alone did not. <i>Where it comes from:</i> a stored nullable <code>books.cover_color</code>, written at insert and filled in for existing rows the first time <code>BookWidget</code> decodes that book anywhere &mdash; the app's own sampler, so a stored colour and a live one cannot disagree. NULL falls back to <code>generatedCoverColor(isbn)</code>, so every spine has a colour on the first frame whatever state the backfill is in, and the pile never reads a live decode. Same argument as <code>books.page_count</code>. <i>What it is:</i> <code>spineTintFor</code> rather than <code>bookBoardColorFor</code> — chroma lifted toward <code>brand</code> below 0.18 saturation, then darkened until white clears 4.6:1. Both steps are no-ops for most covers. Two things this buys beyond the pile: the back board stops popping in after load on every shelf in the app, and a friend's books get a tone without your client decoding their library.",
+                "pile-jitter":
+                    "<b>Decided &mdash; base 117.</b> The tallest jittered book is then exactly today's 124, so <code>ReadPile.extent</code> stays 169, the collapsed sheet does not move, and no test or design-record number changes. Base 124 was the alternative &mdash; it centres the spread on today's height, which is arguably the truer reading of &ldquo;vary the heights&rdquo; &mdash; and it costs 7.4pt of shelf plus four test expectations. Kept browsable as <code>taller-pile</code> rather than deleted, because the 7pt is the only thing the two differ by and it is worth being able to see it.",
+            };
+
+            /* ==================================================================
+   SECTION 4: VERSIONS.
+
+   The root is the **decided design**, so the page's plain data is what
+   was chosen rather than a starting point that has to be patched into
+   the answer. The two width alternatives are kept as rejected branches
+   because each one turned something up that the decision rests on, and
+   a discarded option that is no longer browsable stops being evidence.
+   ================================================================== */
+            const VERSIONS = [
+                [
+                    "decided",
+                    "decided",
+                    "Heights on base 117, widths from BookMetrics.thickness, each spine toned from its own cover through spineTintFor, a 1pt line between them, and 8pt of air either side of a book turned out. Specced at docs/superpowers/specs/2026-08-22-read-pile-spines-design.md.",
+                    null,
+                    {},
+                ],
+
+                [
+                    "green-true",
+                    "green-true",
+                    "Rejected: the same true widths with the pile left brand green. Kept because splitting the width from the tone is what made the decision legible \u2014 the width costs three books of density and nothing else, the tone costs a column and a colour function.",
+                    "decided",
+                    {
+                        screens: {
+                            "pile-jitter": {
+                                name: "Read pile &middot; true widths, brand green",
+                                note: "<b>Rejected.</b> Real chassis thickness, 28 to 39pt, with the spines still <code>brand</code> at 0.4&thinsp;/&thinsp;0.7&thinsp;/&thinsp;1.0. What this version is for: it is the cheapest thing on the page that answers &ldquo;should thick and thin books be distinguishable&rdquo; \u2014 no schema change, no sampled colour, no contrast floor, and the opacity cycle already separates neighbouring spines so it needs no hairline either. Set against the decided design it is also the control that shows how much of that design's character comes from the tone rather than from the size.",
+                                spec: restyle(PILE, "green"),
+                            },
+                            "pile-stretch": { spec: restyle(PILE_STRETCH, "green") },
+                            "pile-mid": { spec: restyle(TURN_MID, "green") },
+                            "pile-open": {
+                                note: "The turn is unaffected by the tone: the spine face takes the brand fill, the cover is the book's own either way. Which is the argument for treating them as two decisions.",
+                                spec: restyle(TURN_REST, "green"),
+                            },
+                            "pile-hold": { spec: restyle(TURN_HELD, "green") },
+                        },
+                        flows: {
+                            "turn-out": {
+                                note: "Identical to the decided flow except for the resting colour, which is the point: none of the interaction depends on the tone.",
+                                steps: [
+                                    [
+                                        "At rest",
+                                        "Thirteen brand-green spines at true thickness. The tap target is the full 137pt column.",
+                                        restyle(PILE, "green"),
+                                    ],
+                                    [
+                                        "Turning",
+                                        "-45&deg;, over <code>kBookTurnDuration</code> 260ms.",
+                                        restyle(TURN_MID, "green"),
+                                    ],
+                                    [
+                                        "Turned out",
+                                        "The cover is the book's own, so this frame is the same in both versions.",
+                                        restyle(TURN_REST, "green"),
+                                    ],
+                                    [
+                                        "Held",
+                                        "+16&deg;, fore-edge showing.",
+                                        restyle(TURN_HELD, "green"),
+                                    ],
+                                    [
+                                        "Details",
+                                        "Same Hero, same tag, same shuttle.",
+                                        { kind: "dtl", book: OPEN_AT },
+                                    ],
+                                ],
+                            },
+                        },
+                        elements: {
+                            "el-spine-jitter": {
+                                name: "Spine &middot; true widths, brand green",
+                                note: "<b>Rejected.</b> The six pinned books at real chassis thickness, still brand green. Same hash, same order as the decided strip \u2014 only the fill differs, so this is the pair to look at if the question is how much the tone is doing.",
+                                demo:
+                                    spineStrip({ base: 117, wmode: "true" }) +
+                                    '<div class="cap">Widths 28&ndash;39. No hairline needed: the opacity cycle separates neighbours by itself, which is exactly why the shipped pile never needed one.</div>' +
+                                    mtable({ base: 117, wmode: "true" }),
+                            },
+                        },
+                        /* No tint, so the tint's unresolved piece does not exist
+                           here. Leaving it would attach a red callout to a
+                           version it cannot apply to. */
+                        open: { "el-spine-jitter": null },
+                    },
+                ],
+
+                [
+                    "green-remap",
+                    "green-remap",
+                    "Rejected: brand green, and widths remapped to 21-31 instead of the real thickness. The most conservative option on the page \u2014 it changes neither the sheet's height nor the pile's density \u2014 and the one that showed the variation was too subtle to be worth the work.",
+                    "green-true",
+                    {
+                        screens: {
+                            "pile-jitter": {
+                                name: "Read pile &middot; remapped widths",
+                                note: "<b>Rejected.</b> Width is the book's <i>position</i> in the thickness range mapped onto 21&ndash;31 rather than the range itself, centred on today's 26 so the row holds the same twelve and a half books. It was the original recommendation, on the grounds that it moved nothing: same sheet height, same density, no new API. What killed it is visible here \u2014 a &plusmn;5pt spread on a 26pt spine barely reads as variation at all, so it paid the whole cost of hashing per-book sizes and collected almost none of the benefit. It also has to make the spine's width and the turned book's thickness agree by fiat, where the real thickness agrees by construction.",
+                                spec: restyle(PILE, "remap"),
+                            },
+                            "pile-stretch": { spec: restyle(PILE_STRETCH, "remap") },
+                            "pile-mid": { spec: restyle(TURN_MID, "remap") },
+                            "pile-open": { spec: restyle(TURN_REST, "remap") },
+                            "pile-hold": { spec: restyle(TURN_HELD, "remap") },
+                        },
+                        elements: {
+                            "el-spine-jitter": {
+                                name: "Spine &middot; remapped widths",
+                                note: "<b>Rejected.</b> The same six books at 21&ndash;31. Compare with <code>green-true</code>: same hash, same order, a third of the spread. This is the strip that settled the width question.",
+                                demo:
+                                    spineStrip({ base: 117, wmode: "narrow" }) +
+                                    '<div class="cap">Widths 21&ndash;31, mean exactly the shipped 26, so the pile holds twelve and a half books as it does now.</div>' +
+                                    mtable({ base: 117, wmode: "narrow" }),
+                            },
+                        },
+                    },
+                ],
+
+                [
+                    "taller-pile",
+                    "taller-pile",
+                    "Open: the decided design with heights on base 124 instead of 117, so today's height becomes the average rather than the ceiling. Costs 7.4pt of shelf and moves ReadPile.extent to 176.4.",
+                    "decided",
+                    {
+                        screens: {
+                            "pile-jitter": {
+                                name: "Read pile &middot; base 124",
+                                note: "Books span 116.6 to 131.4 instead of 110 to 124. The row must then reserve <code>131.4 + 13</code> = 144.4 and <code>ReadPile.extent</code> becomes 176.4, so the collapsed card grows 7.4pt and the library above loses the same &mdash; visible against the shelves at the top of the frame. Set against the decided version: identical distribution, shifted up 7pt. The question is whether the pile should be unchanged in aggregate or visibly a little taller than the one shipped.",
+                                spec: rebase(PILE, 124, 176.4),
+                            },
+                            "pile-stretch": { spec: rebase(PILE_STRETCH, 124, 176.4) },
+                            "pile-mid": { spec: rebase(TURN_MID, 124, 176.4) },
+                            "pile-open": { spec: rebase(TURN_REST, 124, 176.4) },
+                            "pile-hold": { spec: rebase(TURN_HELD, 124, 176.4) },
+                        },
+                        elements: {
+                            "el-spine-jitter": {
+                                note: "Base 124: the spread is centred on today's height, and four tests plus the design record's &ldquo;169pt ReadPile&rdquo; move with it.",
+                                demo:
+                                    spineStrip({ base: 124, wmode: "true" }, true) +
+                                    '<div class="cap">Base 124, tallest book 131.4pt, so the row reserves 144.4 and the pile is 176.4.</div>' +
+                                    tintContrastNote() +
+                                    mtable({ base: 124, wmode: "true" }),
+                            },
+                        },
+                    },
+                ],
+            ];
+            /* ==================================================================
+   SECTION 5: ENGINE — behaviour is load-bearing.
+   See reference/pitfalls.md in this skill before changing it.
+   ================================================================== */
+            function stripTags(s) {
+                return String(s)
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&[a-z]+;/g, " ");
+            }
+            /* Every query term must appear somewhere (order-independent AND), so
+   "cover book" finds "Book cover". Haystack must be pre-lowercased. */
+            function matchWords(haystack, query) {
+                return query
+                    .trim()
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .every((t) => haystack.includes(t));
+            }
+            function escapeReg(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+            function highlightText(text, query) {
+                const terms = query
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(escapeReg);
+                if (!terms.length) return text;
+                return text.replace(
+                    new RegExp(`(${terms.join("|")})`, "gi"),
+                    '<mark class="hl">$1</mark>',
+                );
+            }
+            function flowSearchText(g, nm, ds, steps) {
+                return stripTags(
+                    [
+                        nm,
+                        g,
+                        ds,
+                        steps.map(([sn, sc]) => `${sn} ${sc}`).join(" "),
+                    ].join(" "),
+                )
+                    .toLowerCase()
+                    .replace(/["&<>]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            /* ---- version resolution ---------------------------------------- */
+            const VMAP = new Map(VERSIONS.map((v) => [v[0], v]));
+            const VROOT = VERSIONS[0][0];
+
+            function chainOf(vid) {
+                const out = [];
+                let cur = vid;
+                const seen = new Set();
+                while (cur && VMAP.has(cur) && !seen.has(cur)) {
+                    seen.add(cur);
+                    out.unshift(cur);
+                    cur = VMAP.get(cur)[3];
+                }
+                return out;
+            }
+            /* payload key per view: what a patch entry carries */
+            const PAYLOAD = {
+                screens: "spec",
+                flows: "steps",
+                elements: "demo",
+            };
+
+            /** Resolve one view for a version into [group, [[id,nm,ds,payload],...]]. */
+            function resolveView(vid, kind) {
+                const base =
+                    kind === "screens"
+                        ? SCREENS
+                        : kind === "flows"
+                          ? FLOWS
+                          : ELEMENTS;
+                // flat map of id -> {group,nm,ds,payload}, preserving group order
+                const groups = base.map(([g]) => g);
+                const items = new Map();
+                base.forEach(([g, list]) =>
+                    list.forEach(([id, nm, ds, payload]) =>
+                        items.set(id, { group: g, nm, ds, payload }),
+                    ),
+                );
+
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {})[kind] || {};
+                    for (const [id, val] of Object.entries(patch)) {
+                        if (val === null) {
+                            items.delete(id);
+                            continue;
+                        }
+                        const prev = items.get(id);
+                        const group =
+                            val.group ||
+                            prev?.group ||
+                            `Added in ${VMAP.get(step)[1]}`;
+                        if (!groups.includes(group)) groups.push(group);
+                        items.set(id, {
+                            group,
+                            nm: val.name ?? prev?.nm ?? id,
+                            ds: val.note ?? prev?.ds ?? "",
+                            payload: val[PAYLOAD[kind]] ?? prev?.payload,
+                        });
+                    }
+                }
+                return groups
+                    .map((g) => [
+                        g,
+                        [...items.entries()]
+                            .filter(([, v]) => v.group === g)
+                            .map(([id, v]) => [id, v.nm, v.ds, v.payload]),
+                    ])
+                    .filter(([, l]) => l.length);
+            }
+            function resolveOpen(vid) {
+                let out = { ...OPEN };
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {}).open || {};
+                    for (const [id, val] of Object.entries(patch))
+                        val === null ? delete out[id] : (out[id] = val);
+                }
+                return out;
+            }
+            /** id -> 'changed' | 'onlyHere' | 'onlyThere', reading a against b. */
+            function diffMap(a, b, kind) {
+                const A = new Map(),
+                    B = new Map();
+                resolveView(a, kind).forEach(([, l]) =>
+                    l.forEach((it) => A.set(it[0], it)),
+                );
+                resolveView(b, kind).forEach(([, l]) =>
+                    l.forEach((it) => B.set(it[0], it)),
+                );
+                const out = new Map();
+                for (const [id, it] of A) {
+                    if (!B.has(id)) out.set(id, "onlyHere");
+                    else if (
+                        JSON.stringify(it[3]) !== JSON.stringify(B.get(id)[3])
+                    )
+                        out.set(id, "changed");
+                }
+                for (const id of B.keys())
+                    if (!A.has(id)) out.set(id, "onlyThere");
+                return out;
+            }
+
+            let activeV = VROOT,
+                compareV = null,
+                onlyDiff = false;
+            let view = "screens",
+                cbOpen = false,
+                kbIndex = -1,
+                kbId = null,
+                vbOpen = false,
+                vkbIndex = -1,
+                vkbId = null;
+            const sel = { screens: new Set(), elements: new Set() };
+
+            /**
+             * One list per group of entries to draw, for the active version.
+             *
+             * In compare mode this also emits "ghost" entries for items the
+             * compared version has and the active one doesn't. Without them a
+             * removal is invisible: render only walks the active version, so a
+             * deleted screen just silently isn't there.
+             */
+            function viewModel(kind) {
+                const A = resolveView(activeV, kind);
+                const cmp = compareV && compareV !== activeV;
+                const d = cmp ? diffMap(activeV, compareV, kind) : new Map();
+                const B = cmp ? resolveView(compareV, kind) : [];
+                const bItem = new Map(),
+                    bGroup = new Map();
+                B.forEach(([g, l]) =>
+                    l.forEach((it) => {
+                        bItem.set(it[0], it);
+                        bGroup.set(it[0], g);
+                    }),
+                );
+                const groups = A.map(([g]) => g);
+                if (cmp)
+                    for (const [g] of B)
+                        if (!groups.includes(g)) groups.push(g);
+
+                return groups
+                    .map((g) => {
+                        const own = (A.find(([n]) => n === g)?.[1] || []).map(
+                            ([id, nm, ds, payload]) => ({
+                                id,
+                                nm,
+                                ds,
+                                payload,
+                                diff: d.get(id) || null,
+                                ghost: false,
+                                other: bItem.get(id)?.[3] ?? null,
+                            }),
+                        );
+                        const ghosts = cmp
+                            ? [...d.entries()]
+                                  .filter(
+                                      ([id, k]) =>
+                                          k === "onlyThere" &&
+                                          bGroup.get(id) === g,
+                                  )
+                                  .map(([id]) => {
+                                      const it = bItem.get(id);
+                                      return {
+                                          id,
+                                          nm: it[1],
+                                          ds: it[2],
+                                          payload: it[3],
+                                          diff: "onlyThere",
+                                          ghost: true,
+                                          other: null,
+                                      };
+                                  })
+                            : [];
+                        return [g, own.concat(ghosts)];
+                    })
+                    .filter(([, l]) => l.length);
+            }
+
+            /* ---- render (re-runnable; version changes call this) ------------ */
+            let CB = {},
+                nScreens = 0,
+                nFlows = 0,
+                nEls = 0;
+
+            function render() {
+                const SM = viewModel("screens");
+                const EM = viewModel("elements");
+                const FM = viewModel("flows");
+                const openMap = resolveOpen(activeV);
+                const cmp = compareV && compareV !== activeV;
+                const bLabel = cmp ? VMAP.get(compareV)[1] : "";
+                const aLabel = VMAP.get(activeV)[1];
+
+                // Labels read from the point of view of the version on screen.
+                const TAGTEXT = {
+                    changed: "changed",
+                    onlyHere: "only here",
+                    onlyThere: `only in ${bLabel}`,
+                };
+                const tagFor = (d) =>
+                    d ? `<span class="tag ${d}">${TAGTEXT[d]}</span>` : "";
+                const keep = (e) => !(onlyDiff && cmp && !e.diff);
+
+                const count = (m) =>
+                    m.reduce((a, [, l]) => a + l.filter(keep).length, 0);
+                nScreens = count(SM);
+                nEls = count(EM);
+                nFlows = count(FM);
+
+                document.getElementById("screens").innerHTML = SM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map((e) => {
+                                let shot;
+                                if (cmp && e.diff === "changed")
+                                    shot = `<div class="pair"><div><div class="vl">${aLabel}</div><div class="shot">${frame({ ...e.payload, sm: true })}</div></div><div><div class="vl b">${bLabel}</div><div class="shot">${frame({ ...(e.other || e.payload), sm: true })}</div></div></div>`;
+                                else
+                                    shot = `<div class="shot">${frame(e.payload)}</div>`;
+                                return `<div class="item${e.ghost ? " ghost" : ""}" data-id="${e.id}">${shot}<div class="cap"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`;
+                            })
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="grid${cmp ? " cmp" : ""}">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                document.getElementById("elements").innerHTML = EM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<div class="el${e.ghost ? " ghost" : ""}" data-id="${e.id}"><div class="demo">${e.payload}</div><div class="body"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`,
+                            )
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="egrid">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                const stepRow = (steps) =>
+                    `<div class="steps">${steps
+                        .map(
+                            ([sn, sc, spec], i) =>
+                                (i ? '<div class="arrow">&rarr;</div>' : "") +
+                                `<div class="step"><div class="sn">${String(i + 1).padStart(2, "0")} &middot; ${sn}</div><div class="shot">${frame(spec)}</div><div class="sc">${sc}</div></div>`,
+                        )
+                        .join("")}</div>`;
+
+                document.getElementById("flows").innerHTML = FM.map(
+                    ([g, entries]) =>
+                        entries
+                            .filter(keep)
+                            .map((e) => {
+                                const rows =
+                                    cmp && e.diff === "changed"
+                                        ? `<div class="vrow">${aLabel}</div>${stepRow(e.payload)}<div class="vrow b">${bLabel}</div>${stepRow(e.other || e.payload)}`
+                                        : stepRow(e.payload);
+                                return `<div class="flow${e.ghost ? " ghost" : ""}" id="f-${e.id}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}"><p class="fh">${e.nm}${tagFor(e.diff)}</p><p class="fd">${e.ds}</p>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }${rows}</div>`;
+                            })
+                            .join(""),
+                ).join("");
+
+                document.getElementById("sidenav").innerHTML = FM.map(
+                    ([g, entries]) => {
+                        const links = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<a href="#f-${e.id}" data-id="${e.id}" data-nm="${stripTags(e.nm)}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}">${stripTags(e.nm)}</a>`,
+                            )
+                            .join("");
+                        return links
+                            ? `<div class="sh">${g}</div>${links}`
+                            : "";
+                    },
+                ).join("");
+
+                const cbGroups = (m) =>
+                    m
+                        .map(([g, entries]) => [
+                            g,
+                            entries.filter(keep).map((e) => [e.id, e.nm, e.ds]),
+                        ])
+                        .filter(([, l]) => l.length);
+
+                CB = {
+                    screens: {
+                        label: "Screens",
+                        placeholder: "Search screens…",
+                        container: "screens",
+                        itemSel: ".item",
+                        none: "screens-none",
+                        groups: cbGroups(SM),
+                    },
+                    elements: {
+                        label: "UI Elements",
+                        placeholder: "Search elements…",
+                        container: "elements",
+                        itemSel: ".el",
+                        none: "elements-none",
+                        groups: cbGroups(EM),
+                    },
+                };
+                // drop filter selections for ids this version doesn't have
+                for (const k of ["screens", "elements"]) {
+                    const live = new Set(
+                        CB[k].groups.flatMap(([, l]) => l.map(([id]) => id)),
+                    );
+                    [...sel[k]].forEach((id) => {
+                        if (!live.has(id)) sel[k].delete(id);
+                    });
+                }
+
+                const total = cmp
+                    ? ["screens", "elements", "flows"].reduce(
+                          (a, k) => a + diffMap(activeV, compareV, k).size,
+                          0,
+                      )
+                    : 0;
+                document.getElementById("vinfo-lbl").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document.getElementById("vinfo-note").innerHTML = cmp
+                    ? `${VMAP.get(activeV)[2]}`
+                    : VMAP.get(activeV)[2];
+                document.getElementById("vinfo-diffs").textContent = cmp
+                    ? total
+                        ? `${total} difference${total === 1 ? "" : "s"}`
+                        : "identical"
+                    : "";
+                document
+                    .getElementById("difftoggle")
+                    .classList.toggle("gone", !cmp);
+                document.getElementById("vbtn-label").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document
+                    .getElementById("vcmp-clear")
+                    .classList.toggle("gone", !cmp);
+                if (view !== "flows") applyFilter();
+                else updateCount(0);
+                if (view === "flows" && fsearch.value)
+                    fsearch.dispatchEvent(
+                        new Event("input", { bubbles: true }),
+                    );
+                spy();
+            }
+
+            /* ---- filter combobox ---- */
+            const cbox = document.getElementById("cbox"),
+                cbtn = document.getElementById("cbtn"),
+                cbtnLabel = document.getElementById("cbtn-label"),
+                cbtnBadge = document.getElementById("cbtn-badge"),
+                csearch = document.getElementById("csearch"),
+                clist = document.getElementById("clist"),
+                cfootN = document.getElementById("cfoot-n"),
+                cclear = document.getElementById("cclear");
+
+            function visibleOpts() {
+                const q = csearch.value.trim().toLowerCase();
+                if (!q) return CB[view].groups;
+                return CB[view].groups
+                    .map(([g, items]) => [
+                        g,
+                        // A group's own name pulls in its whole contents (browse by category);
+                        // otherwise an item needs every query word in its name or note.
+                        matchWords(g.toLowerCase(), q)
+                            ? items
+                            : items.filter(([, nm, ds]) =>
+                                  matchWords(
+                                      stripTags(
+                                          `${nm} ${ds || ""}`,
+                                      ).toLowerCase(),
+                                      q,
+                                  ),
+                              ),
+                    ])
+                    .filter(([, items]) => items.length);
+            }
+            function renderList() {
+                const groups = visibleOpts(),
+                    q = csearch.value.trim();
+                if (!groups.length) {
+                    kbIndex = -1;
+                    kbId = null;
+                    clist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                clist.innerHTML = groups
+                    .map(
+                        ([g, items]) =>
+                            `<div class="cgrp" data-group="${g}">${g}</div>` +
+                            items
+                                .map(
+                                    ([id, nm]) =>
+                                        `<div class="copt${sel[view].has(id) ? " sel" : ""}" data-id="${id}"><span class="box">${
+                                            sel[view].has(id) ? "&#10003;" : ""
+                                        }</span><span class="lb">${highlightText(stripTags(nm), q)}</span></div>`,
+                                )
+                                .join(""),
+                    )
+                    .join("");
+                // Keep keyboard focus on the same option across a re-render, so toggling
+                // with Enter doesn't fling focus back to the top.
+                const opts = [...clist.querySelectorAll(".copt")];
+                let idx = kbId
+                    ? opts.findIndex((o) => o.dataset.id === kbId)
+                    : -1;
+                if (idx < 0) idx = 0;
+                if (opts.length) {
+                    kbIndex = idx;
+                    kbId = opts[idx].dataset.id;
+                    opts[idx].classList.add("kb");
+                } else {
+                    kbIndex = -1;
+                    kbId = null;
+                }
+            }
+            function applyFilter() {
+                const cfg = CB[view],
+                    s = sel[view],
+                    root = document.getElementById(cfg.container);
+                let shown = 0;
+                root.querySelectorAll(cfg.itemSel).forEach((el) => {
+                    const on = s.size === 0 || s.has(el.dataset.id);
+                    el.classList.toggle("gone", !on);
+                    if (on) shown++;
+                });
+                root.querySelectorAll(".gsec").forEach((g) =>
+                    g.classList.toggle(
+                        "gone",
+                        !g.querySelector(cfg.itemSel + ":not(.gone)"),
+                    ),
+                );
+                document
+                    .getElementById(cfg.none)
+                    .classList.toggle("gone", shown > 0);
+                const total = view === "screens" ? nScreens : nEls;
+                cbtnBadge.hidden = s.size === 0;
+                cbtnBadge.textContent = s.size;
+                cfootN.textContent =
+                    s.size === 0
+                        ? `Showing all ${total}`
+                        : `Showing ${shown} of ${total}`;
+                updateCount(shown);
+            }
+            function updateCount(shown) {
+                const s = sel[view] ? sel[view].size : 0;
+                document.getElementById("cnt").textContent = [
+                    `${view === "screens" && s ? shown + " of " : ""}${nScreens} screens`,
+                    `${nFlows} flows`,
+                    `${view === "elements" && s ? shown + " of " : ""}${nEls} elements`,
+                ].join(" · ");
+            }
+            function openCB(focus) {
+                if (view === "flows") return;
+                closeVB(); // only one dropdown at a time
+                cbOpen = true;
+                cbox.classList.add("open");
+                kbId = null;
+                renderList();
+                if (focus) csearch.focus();
+            }
+            function closeCB() {
+                cbOpen = false;
+                cbox.classList.remove("open");
+                csearch.blur();
+            }
+
+            cbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                cbOpen ? closeCB() : openCB(true);
+            });
+            csearch.addEventListener("input", () => {
+                clist.scrollTop = 0;
+                renderList();
+            });
+            clist.addEventListener("click", (e) => {
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    // stopPropagation is required: renderList() replaces clist.innerHTML,
+                    // detaching this node before the click finishes bubbling, which would
+                    // make the document listener below see a detached target and close.
+                    e.stopPropagation();
+                    const id = opt.dataset.id;
+                    sel[view].has(id)
+                        ? sel[view].delete(id)
+                        : sel[view].add(id);
+                    renderList();
+                    applyFilter();
+                    return;
+                }
+                const grp = e.target.closest(".cgrp");
+                if (grp) {
+                    e.stopPropagation();
+                    const ids = CB[view].groups
+                        .find(([n]) => n === grp.dataset.group)[1]
+                        .map(([id]) => id);
+                    const allOn = ids.every((id) => sel[view].has(id));
+                    ids.forEach((id) =>
+                        allOn ? sel[view].delete(id) : sel[view].add(id),
+                    );
+                    renderList();
+                    applyFilter();
+                }
+            });
+            cclear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                sel[view].clear();
+                csearch.value = "";
+                renderList();
+                applyFilter();
+            });
+            document.addEventListener("click", (e) => {
+                if (cbOpen && !cbox.contains(e.target)) closeCB();
+                if (vbOpen && !vbox.contains(e.target)) closeVB();
+            });
+
+            /* ---- version combobox (single-select, plus compare) ---- */
+            const vbox = document.getElementById("vbox"),
+                vbtn = document.getElementById("vbtn"),
+                vsearch = document.getElementById("vsearch"),
+                vlist = document.getElementById("vlist"),
+                vfootN = document.getElementById("vfoot-n"),
+                vcmpClear = document.getElementById("vcmp-clear"),
+                diffToggle = document.getElementById("difftoggle");
+
+            function renderVList() {
+                const q = vsearch.value.trim(),
+                    ql = q.toLowerCase();
+                const rows = VERSIONS.filter(
+                    ([id, label, note]) =>
+                        !ql ||
+                        matchWords(
+                            stripTags(`${label} ${note} ${id}`).toLowerCase(),
+                            ql,
+                        ),
+                );
+                if (!rows.length) {
+                    vkbIndex = -1;
+                    vkbId = null;
+                    vlist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                vlist.innerHTML =
+                    `<div class="cgrp" style="cursor:default">Show version</div>` +
+                    rows
+                        .map(
+                            ([id, label, note, parent]) =>
+                                `<div class="copt radio${id === activeV ? " sel" : ""}" data-v="${id}">
+        <span class="box">${id === activeV ? "&#10003;" : ""}</span>
+        <span class="col"><span class="lb">${highlightText(label, q)}</span>${
+            note
+                ? `<div class="sub">${parent ? `from ${VMAP.get(parent)[1]} &middot; ` : ""}${note}</div>`
+                : ""
+        }</span>
+        ${id !== activeV ? `<span class="tagn" data-cmp="${id}">${compareV === id ? "comparing" : "compare"}</span>` : ""}
+      </div>`,
+                        )
+                        .join("");
+                // Keep keyboard focus on the same version across a re-render
+                // (toggling compare re-renders this list), falling back to the
+                // first row only when the focused version is filtered out.
+                const vopts = [...vlist.querySelectorAll(".copt")];
+                let vi = vkbId
+                    ? vopts.findIndex((o) => o.dataset.v === vkbId)
+                    : -1;
+                if (vi < 0) vi = 0;
+                if (vopts.length) {
+                    vkbIndex = vi;
+                    vkbId = vopts[vi].dataset.v;
+                    vopts[vi].classList.add("kb");
+                } else {
+                    vkbIndex = -1;
+                    vkbId = null;
+                }
+
+                const legend = "&#8629; show &middot; &#8679;&#8629; compare";
+                vfootN.innerHTML = compareV
+                    ? `Comparing with ${VMAP.get(compareV)[1]} &middot; ${legend}`
+                    : `${VERSIONS.length} version${VERSIONS.length === 1 ? "" : "s"} &middot; ${legend}`;
+            }
+            function openVB(focus) {
+                closeCB(); // only one dropdown at a time, or they fight over the arrow keys
+                vbOpen = true;
+                vbox.classList.add("open");
+                vkbId = activeV; // open focused on where you already are
+                renderVList();
+                if (focus) vsearch.focus();
+            }
+            function closeVB() {
+                vbOpen = false;
+                vbox.classList.remove("open");
+                vsearch.blur();
+            }
+
+            vbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                vbOpen ? closeVB() : openVB(true);
+            });
+            vsearch.addEventListener("input", () => {
+                vlist.scrollTop = 0;
+                renderVList();
+            });
+            vlist.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const cmpBtn = e.target.closest("[data-cmp]");
+                if (cmpBtn) {
+                    const id = cmpBtn.dataset.cmp;
+                    compareV = compareV === id ? null : id;
+                    renderVList();
+                    render();
+                    return;
+                }
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    activeV = opt.dataset.v;
+                    if (compareV === activeV) compareV = null;
+                    renderVList();
+                    render();
+                    closeVB();
+                }
+            });
+            vcmpClear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                compareV = null;
+                onlyDiff = false;
+                diffToggle.classList.add("off");
+                renderVList();
+                render();
+            });
+            diffToggle.addEventListener("click", () => {
+                onlyDiff = !onlyDiff;
+                diffToggle.classList.toggle("off", !onlyDiff);
+                render();
+            });
+
+            /* ---- view switching ---- */
+            function switchView(v) {
+                const btn = document.querySelector(
+                    `.vtabs button[data-v="${v}"]`,
+                );
+                if (!btn || view === v) return;
+                view = v;
+                document
+                    .querySelectorAll(".vtabs button")
+                    .forEach((x) => x.classList.toggle("on", x === btn));
+                document
+                    .querySelectorAll(".view")
+                    .forEach((el) =>
+                        el.classList.toggle("on", el.id === "v-" + view),
+                    );
+                closeCB();
+                const isFlows = view === "flows";
+                cbox.classList.toggle("hide", isFlows);
+                if (!isFlows) {
+                    cbtnLabel.textContent = CB[view].label;
+                    csearch.placeholder = CB[view].placeholder;
+                    csearch.value = "";
+                    applyFilter();
+                } else updateCount(0);
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }
+            document
+                .querySelectorAll(".vtabs button")
+                .forEach((b) =>
+                    b.addEventListener("click", () => switchView(b.dataset.v)),
+                );
+
+            /* ---- flow search + scroll-spy ---- */
+            const fsearch = document.getElementById("fsearch"),
+                sbox = document.getElementById("sbox");
+            fsearch.addEventListener("focus", () =>
+                sbox.classList.add("focused"),
+            );
+            fsearch.addEventListener("blur", () =>
+                sbox.classList.remove("focused"),
+            );
+            fsearch.addEventListener("input", () => {
+                sbox.classList.toggle("dirty", fsearch.value.length > 0);
+                const q = fsearch.value.trim().toLowerCase();
+                let any = false;
+                document.querySelectorAll(".flow").forEach((f) => {
+                    const show = !q || matchWords(f.dataset.f, q);
+                    f.classList.toggle("gone", !show);
+                    if (show) any = true;
+                });
+                document.querySelectorAll("#sidenav a").forEach((a) => {
+                    a.classList.toggle(
+                        "gone",
+                        !(!q || matchWords(a.dataset.f, q)),
+                    );
+                    a.innerHTML = highlightText(
+                        a.dataset.nm,
+                        fsearch.value.trim(),
+                    );
+                });
+                document.querySelectorAll("#sidenav .sh").forEach((h) => {
+                    let n = h.nextElementSibling,
+                        on = false;
+                    while (n && n.tagName === "A") {
+                        if (!n.classList.contains("gone")) on = true;
+                        n = n.nextElementSibling;
+                    }
+                    h.classList.toggle("gone", !on);
+                });
+                document
+                    .getElementById("flows-none")
+                    .classList.toggle("gone", any);
+                spy();
+            });
+
+            /* Highlights whichever flow is under the header as you scroll, not only on
+   click. Filter-aware, and clamps to the last section at the page bottom. */
+            let spyRAF = null;
+            function spy() {
+                if (spyRAF) return;
+                spyRAF = requestAnimationFrame(() => {
+                    spyRAF = null;
+                    if (view !== "flows") return;
+                    const flows = [
+                        ...document.querySelectorAll(".flow:not(.gone)"),
+                    ];
+                    if (!flows.length) return;
+                    let cur = flows[0];
+                    for (const f of flows)
+                        if (f.getBoundingClientRect().top <= 100) cur = f;
+                    if (
+                        window.innerHeight + window.scrollY >=
+                        document.body.scrollHeight - 4
+                    )
+                        cur = flows[flows.length - 1];
+                    const id = cur.id.replace(/^f-/, "");
+                    document
+                        .querySelectorAll("#sidenav a")
+                        .forEach((a) =>
+                            a.classList.toggle("cur", a.dataset.id === id),
+                        );
+                });
+            }
+            window.addEventListener("scroll", spy, { passive: true });
+            window.addEventListener("resize", spy);
+
+            /* ---- hotkeys: 1/2/3 views, v versions, / search, Esc clear-then-close ---- */
+            function isTyping(el) {
+                return (
+                    el &&
+                    (el.tagName === "INPUT" ||
+                        el.tagName === "TEXTAREA" ||
+                        el.isContentEditable)
+                );
+            }
+            document.addEventListener("keydown", (e) => {
+                const free =
+                    !isTyping(document.activeElement) &&
+                    !e.metaKey &&
+                    !e.ctrlKey;
+                if (["1", "2", "3"].includes(e.key) && free) {
+                    e.preventDefault();
+                    switchView(
+                        { 1: "screens", 2: "elements", 3: "flows" }[e.key],
+                    );
+                    return;
+                }
+                if ((e.key === "v" || e.key === "V") && free) {
+                    e.preventDefault();
+                    vbOpen ? closeVB() : openVB(true);
+                    return;
+                }
+                if (e.key === "/" && free) {
+                    e.preventDefault();
+                    if (view === "flows") {
+                        fsearch.focus();
+                        fsearch.select();
+                    } else openCB(true);
+                    return;
+                }
+                if (e.key === "Escape") {
+                    if (vbOpen) {
+                        if (vsearch.value) {
+                            vsearch.value = "";
+                            renderVList();
+                        } else closeVB();
+                        return;
+                    }
+                    if (cbOpen) {
+                        if (csearch.value) {
+                            csearch.value = "";
+                            renderList();
+                        } else closeCB();
+                        return;
+                    }
+                    if (isTyping(document.activeElement)) {
+                        const el = document.activeElement;
+                        el.value = "";
+                        el.dispatchEvent(new Event("input", { bubbles: true }));
+                        el.blur();
+                    }
+                    return;
+                }
+                if (
+                    vbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const vopts = [...vlist.querySelectorAll(".copt")];
+                    if (!vopts.length) return;
+                    if (e.key === "Enter") {
+                        if (vkbIndex < 0) return;
+                        e.preventDefault();
+                        const id = vopts[vkbIndex].dataset.v;
+                        if (e.shiftKey) {
+                            // Shift+Enter compares instead of switching. A letter
+                            // key can't be used here: the search field has focus,
+                            // so it would just be typed.
+                            if (id !== activeV) {
+                                compareV = compareV === id ? null : id;
+                                renderVList();
+                                render();
+                            }
+                        } else {
+                            activeV = id;
+                            if (compareV === activeV) compareV = null;
+                            renderVList();
+                            render();
+                            closeVB();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    vkbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(vkbIndex + 1, vopts.length - 1)
+                            : Math.max(vkbIndex - 1, 0);
+                    vkbId = vopts[vkbIndex].dataset.v;
+                    vopts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === vkbIndex),
+                    );
+                    vopts[vkbIndex].scrollIntoView({ block: "nearest" });
+                    return;
+                }
+                if (
+                    cbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const opts = [...clist.querySelectorAll(".copt")];
+                    if (!opts.length) return;
+                    if (e.key === "Enter") {
+                        if (kbIndex >= 0) {
+                            e.preventDefault();
+                            opts[kbIndex].click();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    kbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(kbIndex + 1, opts.length - 1)
+                            : Math.max(kbIndex - 1, 0);
+                    kbId = opts[kbIndex].dataset.id;
+                    opts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === kbIndex),
+                    );
+                    opts[kbIndex].scrollIntoView({ block: "nearest" });
+                }
+            });
+
+            /* one version means versioning is unused: hide the selector entirely */
+            if (VERSIONS.length < 2) {
+                vbox.classList.add("hide");
+                document.querySelector(".vinfo").classList.add("gone");
+            }
+            renderVList();
+            render();
+        </script>
+    </body>
+</html>

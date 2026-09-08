@@ -1,0 +1,626 @@
+SECTION 1b: DEVICE / FRAME STYLES.
+
+   Not a phone: a *crop* of the book-details hero, from the back button to
+   the first rows of the tab body. That is the unit under review — the
+   praise controls cannot be judged apart from the status badge, the shelf
+   label and the shelf they share a corner with.
+
+   The frame is 393px wide and 1px == 1pt, so every number below is the
+   real Flutter value and can be checked against the widget. Contexts that
+   need it smaller set --z (zoom shrinks the layout box, unlike transform,
+   so the grid still packs correctly).
+   ================================================================ */
+            /* Wider columns than the shell's default: a 393pt frame does not
+               fit in a 210px cell. */
+            .grid {
+    grid-template-columns: repeat(auto-fill, minmax(415px, 1fr));
+}
+.grid.cmp {
+    grid-template-columns: repeat(auto-fill, minmax(478px, 1fr));
+}
+.grid.cmp .fr {
+    --z: 0.56;
+}
+.step {
+    width: 262px;
+}
+.step .fr {
+    --z: 0.62;
+}
+.shot {
+    align-items: flex-start;
+}
+
+.fr {
+    width: 393px; /* iPhone 15 logical width */
+    zoom: var(--z, 1);
+    background: var(--page);
+    border: 1px solid #d9d6d0;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 0 0 auto;
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    line-height: 1.3;
+}
+
+/* ---------- chrome above the hero ---------- */
+.fr .nav {
+    height: 54px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+}
+.fr .back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ---------- hero: cover, right column, corner, shelf ----------
+               Container(color: surfaceVariant, padding: only(top 20, l/r 20)).
+               No bottom padding, which is what lets the corner's `bottom: 0`
+               land on the shelf. */
+.fr .hero {
+    background: var(--variant);
+    padding: 20px 20px 0;
+    position: relative;
+}
+.fr .hrow {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+/* Positioned(bottom: 0, right: 0) inside the hero's Stack. */
+.fr .corner {
+    position: absolute;
+    right: 20px;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+/* ShelfWidget: 8pt, surface, shadow offset(0,2) blur 2 black@25%. */
+.fr .shelf {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- the book ----------
+               height 180 (BookWidget height: 180), width 120 from
+               kDefaultCoverAspect 2/3. Binding is 8.2% of width with the
+               overlay blend _BlendMask applies. The cover art is a stand-in
+               for the real thumbnail — deliberately crude, so nobody reads it
+               as a rendering of the artwork. */
+.fr .cover {
+    width: 120px;
+    height: 180px;
+    flex: 0 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: #e12a20;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.fr .cover .k1 {
+    position: absolute;
+    left: 13px;
+    top: 24px;
+    right: 10px;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: #fff;
+    line-height: 1.05;
+}
+.fr .cover .k2 {
+    display: none; /* drawn, then cut: at 1:1 a white bar on the
+                      stand-in cover read as a rendering artefact
+                      rather than as cover art. */
+}
+.fr .cover .k3 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 34px;
+    background: rgba(0, 0, 0, 0.2);
+}
+.fr .cover .bind {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 9.84px;
+    mix-blend-mode: overlay;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.26) 0%,
+        rgba(0, 0, 0, 0.07) 34%,
+        rgba(255, 255, 255, 0.3) 78%,
+        rgba(0, 0, 0, 0.11) 100%
+    );
+}
+.fr .cover .hair {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+/* ---------- right column ----------
+               Expanded(Column(crossAxisAlignment: end)). 217pt wide at 393:
+               393 - 40 padding - 120 cover - 16 gap. Every praise treatment
+               has to live inside that. */
+.fr .rcol {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* BookStatusBadge: h10/v4, radius 10, colour@10% fill and @40%
+               border. status 2 uses primaryText, status 1 brandText. */
+.fr .sbadge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.fr .sbadge.read {
+    color: var(--text);
+    background: rgba(33, 37, 41, 0.1);
+    border: 1px solid rgba(33, 37, 41, 0.4);
+}
+.fr .sbadge.reading {
+    color: var(--brandText);
+    background: rgba(6, 118, 87, 0.1);
+    border: 1px solid rgba(6, 118, 87, 0.4);
+}
+/* Status 0, exactly as shipped: secondaryText at 10% fill and 40%
+   border, with the text in secondaryText too. Measured 1.66:1
+   against its own fill and a 1.23:1 border — which is why it looks
+   like a smudge and not like a badge. */
+.fr .sbadge.interested {
+    color: #adb5bd;
+    background: rgba(173, 181, 189, 0.1);
+    border: 1px solid rgba(173, 181, 189, 0.4);
+}
+/* Repaired, and folded into stack-status.
+
+   Text goes to primaryText (13.01:1 on surfaceVariant, 15.43:1 in
+   the white status card). The fill goes away entirely, which is the
+   part that does the real work: the shipped Interested and Read
+   tints composite to #E3E6EA and #D5D8DB, near-identical greys, so
+   they were only ever told apart by a text colour nobody could read.
+   Take the fill off Interested and the three statuses read as a
+   progression of weight — empty outline, green fill, dark fill —
+   which survives being photocopied, dimmed, or seen by someone who
+   cannot separate two pale greys.
+
+   With no fill the border is what identifies the thing as a badge
+   rather than as loose text, so it is held to WCAG 1.4.11's 3:1:
+   primaryText at 55% measures 3.41:1, where the 35% I first drew was
+   2.06:1. */
+.fr .sbadge.interested.fixed {
+    color: var(--text);
+    background: transparent;
+    border: 1px solid rgba(33, 37, 41, 0.55);
+}
+/* ShelfLabel: surface, top radius 3 only, h9/v5, bold 14, max 140. */
+.fr .slab {
+    background: var(--surface);
+    border-radius: 3px 3px 0 0;
+    padding: 5px 9px;
+    font-size: 14px;
+    font-weight: 700;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- the praise pill ----------
+               ElevatedButton.icon: brandFill, white, radius 20, h12/v6,
+               label 13 bold, icon 18 (Icons.celebration) or the emoji at 15. */
+.fr .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--brandText);
+    color: #fff;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+}
+.fr .pill .em {
+    font-size: 15px;
+}
+/* Outlined variant. Padding is reduced by exactly the border width
+               so the box stays 34pt tall — the same trap as Border.all on
+               AvatarCircle, which insets its child by 2pt a side. */
+.fr .pill.out {
+    background: transparent;
+    color: var(--brandText);
+    border: 1.5px solid var(--brandText);
+    padding: 4.5px 10.5px;
+    box-shadow: none;
+}
+
+/* ---------- ComplimentBlock: anonymous chips ----------
+               28pt circle, pageBackground fill, brand@30% hairline, emoji 14,
+               wrap spacing 4, aligned end, 8pt above. */
+.fr .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+.fr .chip {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+/* ---------- attributed praise: the chip, widened ----------
+               Drawn at 1:1 first as a 26pt avatar with the emoji notched into
+               its corner on a 16pt disc. That put the emoji at 9px, which is a
+               smudge rather than a reaction — the badge shape borrowed from
+               iOS reactions assumes the badge is a *marker*, and here the emoji
+               is the content.
+
+               So: the shipped 28pt chip, widened into a capsule that holds the
+               praiser's face beside it. Same material as ComplimentBlock
+               (pageBackground fill, brand@30% hairline), same emoji size class,
+               nothing new to learn. 56pt wide, so three per row in the 217pt
+               column — no book in production has more than two praises. */
+.fr .gifts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+.fr .gift {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    padding: 0 8px 0 2px;
+    flex: 0 0 auto;
+}
+.fr .gift .bdg {
+    font-size: 15px;
+    line-height: 1;
+}
+.fr .av {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--variant);
+    overflow: hidden;
+    flex: 0 0 auto;
+}
+.fr .av.photo {
+    color: #fff;
+    font-weight: 800;
+}
+
+/* ---------- the record as one capped capsule ----------
+   Up to two emoji, then +N. Same material as the chip it replaces
+   (pageBackground fill, brand@30% hairline) so it reads as the same
+   kind of object, but one capsule instead of N loose circles — which
+   is what stops the record widening without limit and what gives it
+   a single tap target.
+
+   No count when N is 0: `+1` is information, a bare `1` is not.
+   secondaryText is not available for the +N (2.0:1 on
+   pageBackground), so it takes primaryText and stays subordinate by
+   size. */
+.fr .caprow {
+    margin-top: 8px;
+}
+/* When the button is hidden the capsule becomes the first thing in
+   the column, and an 8pt gap above nothing reads as misalignment
+   against the cover's top edge. */
+.fr .rcol > .caprow:first-child {
+    margin-top: 0;
+}
+.fr .cap {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    padding: 0 9px;
+    white-space: nowrap;
+}
+.fr .cap .e {
+    font-size: 15px;
+    line-height: 1;
+}
+.fr .cap .n {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
+}
+.fr .cap .chev {
+    font-size: 14px;
+    color: var(--text);
+    margin-left: 1px;
+    margin-right: -2px;
+}
+
+/* "This one is yours", borrowed from the emoji picker's marked cell:
+   brand at 25% with a brandFill border. Deliberately 1pt rather than
+   the grid cell's 2pt — a 30pt capsule does not need the same weight
+   as a 44pt cell, and a 2pt border would inset the contents (the
+   Border.all trap AvatarCircle already hit).
+
+   Measured on surfaceVariant: the two fills are only 1.37:1 apart in
+   luminance, so the hue is doing most of that work — but the border
+   goes from 1.3:1 (brand@30%, effectively invisible) to 3.88:1
+   (solid brandFill), and *that* is the cue that survives a dim
+   screen. +N stays legible in both, 14.63:1 and 10.65:1. */
+.fr .cap.mine {
+    background: rgba(9, 188, 138, 0.25);
+    border-color: var(--brandText);
+}
+
+/* ---------- the status card ----------
+   The reading-period card, with the badge standing in for the
+   "Reading period" label rather than being added beside it. Status,
+   dates and duration are the same class of fact, and the label was
+   doing less work than the badge does. */
+.fr .period.withbadge b {
+    display: none;
+}
+.fr .period .sbadge {
+    margin-right: 2px;
+}
+
+/* ---------- the who-reacted sheet ---------- */
+.fr .rsheet .r {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+}
+.fr .rsheet .r .nm {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fr .rsheet .r .nm i {
+    font-style: normal;
+    color: var(--brandText);
+    font-weight: 700;
+}
+.fr .rsheet .r .em {
+    font-size: 22px;
+    line-height: 1;
+}
+.fr .rsheet .r .chev {
+    font-size: 17px;
+    color: var(--text);
+}
+
+/* ---------- title band ----------
+               surfaceVariant, bottom radius 30, padding fromLTRB(30,8,30,16).
+               Title 20 bold height 1; author 13 with 10 above; period card 12
+               above. */
+.fr .band {
+    background: var(--variant);
+    border-radius: 0 0 30px 30px;
+    padding: 8px 30px 16px;
+}
+.fr .btitle {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+}
+.fr .bauth {
+    font-size: 13px;
+    margin-top: 10px;
+}
+.fr .period {
+    margin-top: 12px;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 8px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: center;
+    font-size: 14px;
+}
+.fr .period b {
+    font-weight: 700;
+}
+.fr .period i {
+    font-style: normal;
+    color: var(--brandText);
+    font-weight: 700;
+}
+
+/* Status in the band with no card around it, for a book with no
+   dates. Same vertical position the card would occupy, so the badge
+   does not appear to move between statuses. */
+.fr .barebadge {
+    margin-top: 12px;
+}
+
+/* ---------- praise as a caption line in the band ---------- */
+.fr .named {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 13px;
+}
+.fr .named .p {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text);
+}
+.fr .named .p em {
+    font-style: normal;
+    font-size: 15px;
+}
+.fr .named .p.mine {
+    color: var(--brandText);
+    font-weight: 700;
+}
+/* Measured, not chosen by eye: secondaryText (#ADB5BD) on
+   surfaceVariant is 1.75:1, which is unusable for a label. The
+   eyebrow takes primaryText (13.01:1) instead and earns its weight
+   from size and tracking rather than from being faint. brandText on
+   the same background measures 4.74:1, matching the figure
+   app_theme.dart claims for it. */
+.fr .named .lbl {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+
+/* ---------- tab strip ---------- */
+.fr .tabs {
+    background: var(--surface);
+    display: flex;
+}
+.fr .tabs s {
+    flex: 1;
+    text-decoration: none;
+    text-align: center;
+    font-size: 14px;
+    padding: 15px 0 13px;
+    position: relative;
+}
+.fr .tabs s.on {
+    font-weight: 700;
+}
+.fr .tabs s.on:after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 62px;
+    height: 2px;
+    background: var(--text);
+}
+.fr .tail {
+    height: 24px;
+    background: var(--surface);
+}
+
+/* ---------- the emoji sheet, for the flows ----------
+               CNBottomSheet: top radius 20, padding 20/24, title 18 bold,
+               search pill radius kSearchPillRadius = 10. Column count is the
+               package's, so the grid below is approximate — flagged in the
+               element note rather than pretended to be exact. */
+.fr .scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+.fr .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    background: var(--sheet);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px;
+    box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.18);
+}
+.fr .sheet .st {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+.fr .sheet .sf {
+    background: var(--variant);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 15px;
+    color: var(--text2);
+    margin-bottom: 10px;
+}
+.fr .egrid2 {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+}
+.fr .egrid2 s {
+    text-decoration: none;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    border-radius: 8px;
+}
+/* emojiRenderer's marked cell: brand@25% on radius 8, 2pt
+               brandFill border. Load-bearing — it is the only thing saying
+               which praise is yours once the sheet is open. */
+.fr .egrid2 s.mine {
+    background: rgba(9, 188, 138, 0.25);
+    border: 2px solid var(--brandText);
+}
+
+/* ---------- element gallery panels ---------- */
+.el .demo {
+    background: var(--variant);
+}
+.demopanel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+.demorow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+}

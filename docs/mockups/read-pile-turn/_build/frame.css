@@ -1,0 +1,794 @@
+SECTION 1b: DEVICE / FRAME STYLES.
+
+   Not a whole phone: a *crop* of the Library tab from the shelves
+   above down to the home indicator, because the unit under review is
+   the collapsed read sheet and it cannot be judged apart from the
+   library it floats over — the whole point of the height question is
+   that 7pt taken by the pile is 7pt the shelves lose.
+
+   The frame is 402px wide and 1px == 1pt, so every number below is
+   the real Flutter value and can be checked against the widget. 402
+   because that is the device `ShellTabBarGeometry` was measured on,
+   and the tab bar's band is what the pile has to clear. Contexts that
+   need it smaller set --z (zoom shrinks the layout box, unlike
+   transform, so the grid still packs correctly).
+   ================================================================ */
+/* Wider columns than the shell's default: a 402pt frame does not fit
+   in a 210px cell. */
+.grid {
+    grid-template-columns: repeat(auto-fill, minmax(424px, 1fr));
+}
+.grid.cmp {
+    grid-template-columns: repeat(auto-fill, minmax(488px, 1fr));
+}
+.grid.cmp .fr {
+    --z: 0.56;
+}
+.step {
+    width: 268px;
+}
+.step .fr {
+    --z: 0.62;
+}
+.shot {
+    align-items: flex-start;
+}
+
+.fr {
+    width: 402px; /* iPhone 17 Pro logical width */
+    height: var(--fh, 430px);
+    zoom: var(--z, 1);
+    background: var(--page);
+    border: 1px solid #d9d6d0;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 0 0 auto;
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    line-height: 1.3;
+}
+
+/* ---------- the library behind the card ----------
+   Only ever a backdrop here. Two shelves' worth of covers on
+   `pageBackground`, dimmed, so the card has an edge to float against
+   and so a 7pt taller card is visibly 7pt of lost shelf. */
+.fr .lib {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    padding: 10px 20px 0;
+}
+.fr .lib .lrow {
+    display: flex;
+    align-items: flex-end;
+    gap: 9px;
+    margin-bottom: 0;
+}
+.fr .lib .lcv {
+    width: 55px;
+    height: 82px;
+    background: var(--c, #c9ccd6);
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+    flex: 0 0 auto;
+}
+/* ShelfWidget: 8pt, surface, shadow offset(0,2) blur 2 black@25%. */
+.fr .lib .lplank {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    margin-bottom: 18px;
+    position: relative;
+    z-index: 1;
+}
+.fr .lib.faded {
+    opacity: 0.55;
+}
+
+/* ---------- the sheet card ----------
+   LibrarySheet at the collapsed detent. `_gutterInset = 14` on each
+   side and below; the corners are concentric with the display's
+   `_displayCornerRadius = 55` at that inset, i.e. 41. The shadow is
+   `blurRadius: 6 + 6 * (1 - expansion)` with `offset(0, -3 * expansion)`
+   — at rest expansion is 0, so 12pt of blur and no offset at all.
+
+   `padding-bottom: 77px` is the reserve, and it is the one number here
+   that is a composition rather than a literal: the sheet is handed
+   `bottomReserve` 57 plus `viewPadding.bottom` 34 and pads by
+   `reserve - lift`, so 57 + 34 - 14. Drawn any shorter and the pile's
+   plank comes out under the floating tab bar, which is the single
+   thing that reserve exists to prevent. */
+.fr .card {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    background: var(--surface);
+    border-radius: 41px;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
+    padding-bottom: 77px;
+    overflow: hidden;
+    z-index: 5;
+}
+/* SheetGrabHandle: 44x5, radius 3, secondaryText, 10pt above and below. */
+.fr .hdl {
+    width: 44px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--text2);
+    margin: 10px auto;
+}
+/* The header row. `_gutter = 25` each side, 6pt below.
+   Height is the collapsed filter control's: `CNPopupMenuButton(height: 36)`.
+   Under the widget-test fallback that control collapses to 26, which is
+   where the familiar "57pt of chrome" in the clearance tests comes from —
+   so the card is `handle 25 + header + 6 + ReadPile.extent`, and the
+   header term is 36 on device and 26 in tests. */
+.fr .hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 25px;
+    height: 36px;
+    margin-bottom: 6px;
+}
+/* LibrarySheetTitle: 18pt bold, count 12pt away in brandText. */
+.fr .hd .lt {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+}
+.fr .hd .lt i {
+    font-style: normal;
+    color: var(--brandText);
+    margin-left: 12px;
+}
+/* ReadFilter(expanded: false): a glass CNPopupMenuButton, label 14pt w500. */
+.fr .hd .pop {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 12px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.65);
+    border: 0.5px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.fr .hd .pop u {
+    text-decoration: none;
+    font-size: 8px;
+    color: var(--text2);
+}
+
+/* ---------- the pile ----------
+   ReadPile.extent = _topGap 14 + _rowExtent 137 + _shelfHeight 8 +
+   _bottomPad 10 = 169, and --pile is that by default. Screens that
+   drag the sheet up raise --pile instead of adding a band below the
+   shelf: the row is `Align(bottomCenter)` inside an `Expanded`, so the
+   extra room opens *above* the books and the plank stays on the card's
+   bottom edge. That is the behaviour the last change shipped, and
+   drawing it any other way would show a state the widget cannot be in. */
+.fr .pile {
+    height: var(--pile, 169px);
+    display: flex;
+    flex-direction: column;
+}
+/* The 137 is 124 of spine plus the 13 a praised spine grows by, so a book
+   that gains praise does not change the pile's height. Nothing here is
+   praised, so those 13 read as part of the top gap. */
+/* The row the spines stand in. `overflow: hidden` matches the horizontal
+   ListView's own clip — but `visible` on the cross axis, so the turned book's
+   stacked shadows are not shaved off flat against the row's edges. */
+.fr .pile .prow {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 25px;
+    overflow-x: hidden;
+    overflow-y: visible;
+}
+.fr .pile .plank {
+    height: 8px;
+    margin: 0 25px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+.fr .pile .ppad {
+    height: 10px;
+}
+/* The empty state, centred in the room above the shelf. */
+.fr .pile .pempty {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--text2);
+    text-align: center;
+}
+
+/* ---------- a spine ----------
+   BookVertical: `brand` at one of bookOpacityList's 0.4 / 0.7 / 1.0,
+   a 12pt title rotated a quarter turn, and a shallow arch across the
+   top edge — a quadratic from (0,5) to (w,5) through (w/2,0), which is
+   two elliptical corners of w/2 by 5 meeting in the middle.
+
+   Width and height come from --sw / --sh so the same rule draws today's
+   uniform 26x124 and every jittered variant. Title colour flips at
+   opacity 0.7: white above it, primaryText at or below, because the
+   pale spines cannot carry white text. */
+.sp {
+    position: relative;
+    flex: 0 0 auto;
+    display: block;
+    width: var(--sw, 26px);
+    height: var(--sh, 124px);
+    /* `brand.withOpacity(op)` is a translucent *fill*, not a translucent
+       widget: the title on a 0.4 spine is fully opaque primaryText. Drawn
+       with element opacity the type faded with the paint, which is a state
+       BookVertical cannot produce. */
+    background: var(--bg, var(--brand));
+    border-radius: 50% 50% 0 0 / 5px 5px 0 0;
+    text-decoration: none; /* these are <s> elements, as the earlier sets' are */
+}
+/* The cover-tinted variant carries no fill of its own. It used to, and that
+   was the bug: a `background` declared on this two-class selector outspecifies
+   the one-class `.sp` rule above, so every tinted spine painted flat `brand`
+   and the six swatches never appeared at all. The fill has exactly one
+   source, --bg, and this class is now only a marker for the strip's caption.
+   `verify.sh` fails if any paint comes back here.
+
+   The inset hairline is not decoration and it is not in the shipped widget.
+   The spines are flush — the horizontal `ListView` has no separator — which
+   is invisible while the whole row is one green graded 0.4/0.7/1.0, and reads
+   as a solid dark slab the moment each spine takes its own cover's tone: a
+   near-black book beside a navy one has no edge between them at all. A 1pt
+   line down the right of each spine is the gap a real shelf has. Only on the
+   tinted variant, because only the tinted variant needs it. */
+.sp.tint {
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.28);
+}
+.sp b {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-weight: 400;
+}
+/* Rotated rather than `writing-mode`, to match RotatedBox(quarterTurns: 1):
+   the glyphs turn with the box. Width is the spine's height less the 15pt
+   padding at each end, which is what the title has to ellipsize inside.
+
+   `flex: 0 0 auto` is load-bearing and its absence was the second bug on
+   this page: a flex item shrinks to its container by default, so the span
+   was being squeezed from 86pt to the spine's ~30pt of *width* before the
+   rotation, and every title ellipsized after three or four characters. */
+.sp b span {
+    display: block;
+    flex: 0 0 auto;
+    width: var(--th, 94px);
+    transform: rotate(90deg);
+    font-size: 12px;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+}
+.sp.pale b span {
+    color: var(--text);
+}
+
+/* ---------- a book being turned out ----------
+   The same composition as BookChassis, in CSS: back board, page block,
+   front cover, plus the spine face this proposal adds. `.in` carries the
+   turn and the faces are its children under preserve-3d.
+
+   **The two conventions are mirror images, and getting this wrong is
+   exactly the bug this drawing had.** `bookParentMatrix` projects with
+   `setEntry(3, 2, k)`, so +z *recedes* there while CSS's +z comes toward
+   the viewer; the handedness of the rotation flips with it. A Flutter turn
+   of `d` is therefore `rotateY(-d)` here. Drawn with the same sign, the
+   book swung its fore-edge through the reader and the spine went behind
+   the cover instead of in front of it &mdash; a book turning inside out.
+
+   So: --turn is the CSS angle, `-d`. At d = -90 the spine is frontal and
+   the cover is edge-on; at 0 the cover is square on; at +16 the fore-edge
+   shows. In between the spine sits left of the hinge and the cover right
+   of it, meeting along the hinge line and never overlapping &mdash; a
+   three-quarter view of a book, which is the thing the whole proposal is
+   for.
+
+   --ox exists because the pivot is the *cover's* left edge, so at rest the
+   spine hangs a thickness to the left of it. The offset puts the drawing's
+   left edge back on the box's. --pw is the projected width,
+   `cover*|cos| + thickness*|sin|`, which is what the neighbours are laid
+   out against and therefore what makes the row open up.
+
+   **Paint order is free here and is not free in Flutter.** `.sf` is a child
+   of the preserve-3d `.in`, and CSS sorts a 3D context's children by their
+   transformed depth, so the spine lands correctly whatever order it is
+   written in. A Flutter Stack does no such sorting, which makes one case
+   load-bearing there and invisible here: past cover-on, at the +16 a held
+   book reaches, the spine crosses to the cover's side of the hinge and
+   projects *inside* the cover's silhouette &mdash; 8.7pt in on a 78pt cover.
+   It has to be occluded, so `BookChassis` paints the spine *under* the
+   cover, which is not where you would first put it. See the paint-order
+   note on that class. */
+.bk {
+    position: relative;
+    flex: 0 0 auto;
+    align-self: flex-end;
+    width: var(--pw);
+    height: var(--sh);
+    /* Air either side, animated with the turn: 0 at rest, --sm at full turn.
+       Flush, the cover sat hard against the spines on both sides — a book
+       wedged in place rather than one taken off the shelf — and the stacked
+       shadows that separate a cover from the plank were clipped away by its
+       neighbours. */
+    margin: 0 var(--sm, 0px);
+    perspective: var(--persp);
+    /* The camera sits on the *hinge*, which is --ox from this box's left edge,
+       not on the cover's centre line. `bookParentMatrix` composes the pivot as
+       `T(p) · projection · Ry · T(-p)` for the same reason, and the reason is
+       measurable: leave the camera off the hinge and a cover swung to -90 is no
+       longer edge-on to it, so it projects as a sliver of squashed artwork
+       beside the spine instead of vanishing. At half a cover width off, that
+       sliver is 6.96pt on a 78pt cover. This drawing had it at cw/2, which is
+       only ~4.7pt off the hinge and so showed a sub-pixel version nobody could
+       have spotted &mdash; the Dart is what made the error legible. */
+    perspective-origin: var(--ox, 0px) 50%;
+}
+.bk .in {
+    position: absolute;
+    left: var(--ox, 0px);
+    bottom: 0;
+    width: var(--cw);
+    height: var(--sh);
+    transform-style: preserve-3d;
+    transform-origin: 0 50%;
+    transform: rotateY(var(--turn, 0deg));
+}
+/* The front cover, in the two kinds the pile actually contains.
+
+   Most books have a real thumbnail. `.art` stands in for one: a flat wash of
+   the colour `_sampleCoverColor` would average out of the artwork, plus a
+   band and a title, deliberately crude so nobody reads it as a rendering of
+   the real cover.
+
+   The rest are coverless, and for those `GeneratedCover` is not artwork with
+   type on it at all: a colour block over a `surface`-toned title half, swatch
+   from `kGeneratedCoverPalette` by `bookHash(isbn) % 6`, title always
+   `primaryText` because it never sits on the colour.
+
+   Radii are asymmetric because a spine is a fold and a page edge is cut:
+   clamp(6*w/196, 2, 6) on the left, clamp(4*w/196, 2, 4) on the right,
+   which at a 78pt cover is 2.4 and 2. */
+.bk .cf {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.4px 2px 2px 2.4px;
+    background: var(--surface);
+    overflow: hidden;
+    /* _lightShadows scaled by clamp(width/196, .35, 1) — 0.4 at 78pt. */
+    box-shadow:
+        0 0.4px 0.4px rgba(0, 0, 0, 0.035),
+        0 1.2px 2.4px rgba(0, 0, 0, 0.045),
+        0 4px 7.2px rgba(0, 0, 0, 0.05),
+        0 8.8px 14.4px rgba(0, 0, 0, 0.055);
+}
+.bk .cf.art {
+    background: var(--c, #2a1c14);
+}
+.bk .cf.art .atit {
+    position: absolute;
+    left: 15%;
+    right: 9%;
+    top: 13%;
+    font-size: var(--fs, 10px);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: #fff;
+    overflow: hidden;
+}
+.bk .cf.art.dk .atit {
+    color: var(--text);
+}
+.bk .cf.art .aband {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 24%;
+    background: rgba(0, 0, 0, 0.2);
+}
+.bk .cf.art.dk .aband {
+    background: rgba(0, 0, 0, 0.08);
+}
+/* Two Expandeds, so exactly half each. */
+.bk .cf .cblk {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 50%;
+    background: var(--c, #09bc8a);
+}
+/* Padding is 14.3% of the width on the left so the type clears the binding
+   band, 6.1% on the other three sides. Type is 13.5% of the width at w600,
+   with the -0.02em tracking the widget applies. */
+.bk .cf .ctit {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50%;
+    padding: 6.1% 6.1% 6.1% 14.3%;
+    font-size: var(--fs, 10px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--text);
+    overflow: hidden;
+}
+/* The binding band: 8.2% of the cover width, `--ds-book-bind` verbatim,
+   under the overlay blend _BlendMask applies. */
+.bk .cf .bind {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 8.2%;
+    mix-blend-mode: overlay;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.26) 0%,
+        rgba(0, 0, 0, 0.07) 34%,
+        rgba(255, 255, 255, 0.3) 78%,
+        rgba(0, 0, 0, 0.11) 100%
+    );
+}
+.bk .cf .hair {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--hair);
+    border-radius: inherit;
+}
+/* The back board, one thickness behind the cover. Its tone is
+   `bookBoardColorFor(coverColour)` — the cover darkened by
+   `0.18 + 0.30 * luminance`, so a pale cover is darkened more, which is what
+   separates the board from the page block beside it. */
+.bk .bb {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.4px 2px 2px 2.4px;
+    background: var(--boardc, var(--board));
+    transform: translateZ(calc(-1 * var(--tk)));
+}
+/* The page block, standing back from the fore-edge. Inset by boardSquare
+   (3/240 of the height) at head and tail and by foreEdgeSquare (6/196 of
+   the width) from the right edge, so the boards overhang it on every side
+   — without that inset the board's outer edge coincides with the pages'
+   and the band is invisible at every angle. */
+.bk .pb {
+    position: absolute;
+    right: var(--fes);
+    top: var(--sq);
+    bottom: var(--sq);
+    width: var(--tk);
+    transform-origin: 100% 50%;
+    transform: rotateY(-90deg);
+    background: linear-gradient(
+        90deg,
+        var(--pageEdge) 0%,
+        var(--pageBase) 22%,
+        var(--pageBaseLow) 100%
+    );
+}
+/* The spine face this proposal adds. It is the plane x = 0 spanning the
+   book's depth, so it is laid out a thickness to the *left* of the cover's
+   edge and hinged on its own right edge — which is the cover's left edge and
+   the pivot. `rotateY(-90deg)` rather than +90: both put the strip in the
+   right place, but only this one leaves its outward face pointing away from
+   the book's interior, and a back-facing plane in CSS renders mirrored, so
+   the +90 version drew every spine title in reverse. */
+.bk .sf {
+    position: absolute;
+    left: calc(-1 * var(--tk));
+    top: 0;
+    height: 100%;
+    width: var(--tk);
+    transform-origin: 100% 50%;
+    transform: rotateY(-90deg);
+}
+
+/* ---------- top-down plan of the turn ----------
+   Because the interesting number is not the angle, it is the width the
+   row has to give the item: thickness*|cos| + cover*|sin|. Drawn looking
+   down on the book, viewer at the bottom. */
+.plan {
+    position: relative;
+    width: 128px;
+    height: 96px;
+    background: var(--page);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    flex: 0 0 auto;
+}
+.plan .hg {
+    position: absolute;
+    left: 46px;
+    top: 30px;
+    width: 5px;
+    height: 5px;
+    margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%;
+    background: var(--text);
+    z-index: 2;
+}
+.plan .cvl,
+.plan .spl {
+    position: absolute;
+    left: 46px;
+    top: 30px;
+    height: 3px;
+    transform-origin: 0 50%;
+    border-radius: 2px;
+}
+.plan .cvl {
+    width: 62px;
+    background: var(--brandText);
+}
+.plan .spl {
+    width: 22px;
+    background: var(--brand);
+}
+.plan .prj {
+    position: absolute;
+    left: 46px;
+    bottom: 16px;
+    height: 1px;
+    background: var(--text2);
+}
+.plan .prj::before,
+.plan .prj::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    width: 1px;
+    height: 9px;
+    background: var(--text2);
+}
+.plan .prj::before {
+    left: 0;
+}
+.plan .prj::after {
+    right: 0;
+}
+.plan .pl {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2px;
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+}
+.plan .ang {
+    position: absolute;
+    left: 6px;
+    top: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* ---------- the details page, for the last step of the flow ---------- */
+.fr.dtl {
+    background: var(--surface);
+}
+.fr .nav {
+    height: 54px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    background: var(--variant);
+}
+.fr .nav .back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.fr .dhero {
+    background: var(--variant);
+    padding: 0 20px 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+}
+.fr .dhero .drt {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-bottom: 14px;
+}
+.fr .dhero .drt .dt {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+.fr .dhero .drt .da {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 2px;
+}
+.fr .dshelf {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+
+/* The tab body under the hero, so the details step is not a hero floating
+   on white. Capsules are `CapsuleTabs`: the selected one is a raised surface
+   pill, the rest plain text. */
+.fr .dcaps {
+    display: flex;
+    gap: 2px;
+    padding: 14px 20px 0;
+}
+.fr .dcaps s {
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: #8e9196;
+    padding: 6px 13px;
+    border-radius: 20px;
+    line-height: 1;
+}
+.fr .dcaps s.on {
+    background: var(--surface);
+    color: var(--text);
+    border: 0.5px solid var(--variant);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+.fr .dline {
+    height: 9px;
+    border-radius: 5px;
+    background: var(--variant);
+    margin: 0 20px 8px;
+}
+
+/* ---------- the floating tab bar band ----------
+   Context only. `ShellTabBarGeometry.sideInset` is 14, the same margin the
+   card floats at, which is the reason the card uses it. */
+.fr .tbb {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 40px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    z-index: 9;
+}
+.fr .tbb .tp {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.86);
+    border-radius: 22px;
+    padding: 5px 4px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+}
+.fr .tbb .tp s {
+    text-decoration: none;
+    flex: 1 1 auto;
+    text-align: center;
+    font-size: 11px;
+    color: #6c757d;
+    padding: 6px 0;
+    border-radius: 18px;
+}
+.fr .tbb .tp s.on {
+    background: var(--variant);
+    color: var(--brandText);
+    font-weight: 800;
+}
+.fr .tbb .orb {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex: 0 0 auto;
+}
+.fr .ind {
+    position: absolute;
+    left: 50%;
+    bottom: 9px;
+    width: 140px;
+    height: 5px;
+    margin-left: -70px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+/* ---------- a measurement table, for the elements view ---------- */
+.mtbl {
+    border-collapse: collapse;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+}
+.mtbl th,
+.mtbl td {
+    text-align: right;
+    padding: 3px 9px 3px 0;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+.mtbl th {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.mtbl td:first-child,
+.mtbl th:first-child {
+    text-align: left;
+}
+.mtbl td.hi {
+    color: var(--brandText);
+    font-weight: 700;
+}
+/* A caption under a demo, for the numbers that would otherwise be invisible. */
+.cap {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 7px;
+}
+.cap b {
+    color: #c05746;
+}
+.swatchrow {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.onwhite {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-end;
+    flex: 0 0 auto;
+}

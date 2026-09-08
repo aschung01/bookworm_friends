@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- one book propped against the stack; the pair also reads as an L -->
+  <g transform="rotate(4 293 588)">
+    <rect x="190" y="142" width="206" height="446" rx="44" fill="#ffffff"/>
+    <rect x="248" y="196" width="20" height="340" rx="10" fill="#09BC8A"/>
+  </g>
+  <rect x="196" y="588" width="640" height="142" rx="36" fill="#ffffff"/>
+  <rect x="256" y="660" width="500" height="16" rx="8" fill="#09BC8A"/>
+  <rect x="236" y="748" width="560" height="142" rx="36" fill="#ffffff"/>
+  <rect x="296" y="820" width="420" height="16" rx="8" fill="#09BC8A"/>
+</svg>

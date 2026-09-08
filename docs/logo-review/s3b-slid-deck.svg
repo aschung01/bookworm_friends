@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- B: one-directional slide instead of a symmetric fan — a deck pushed
+       sideways. More motion, less "hand of cards". -->
+  <g transform="translate(512,512) scale(1.14) translate(-512,-512)">
+    <g transform="translate(-74,32) rotate(6 512 512)">
+      <rect x="329" y="287" width="366" height="496" rx="52" fill="#09BC8A"/>
+      <rect x="342" y="300" width="340" height="470" rx="42" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(13 512 512)">
+      <rect x="329" y="287" width="366" height="496" rx="52" fill="#09BC8A"/>
+      <rect x="342" y="300" width="340" height="470" rx="42" fill="#ffffff"/>
+    </g>
+    <g transform="translate(74,-32) rotate(20 512 512)">
+      <rect x="329" y="287" width="366" height="496" rx="52" fill="#09BC8A"/>
+      <rect x="342" y="300" width="340" height="470" rx="42" fill="#ffffff"/>
+      <rect x="384" y="344" width="22" height="382" rx="11" fill="#09BC8A"/>
+    </g>
+  </g>
+</svg>

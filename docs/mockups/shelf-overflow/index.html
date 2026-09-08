@@ -1,0 +1,3111 @@
+<!doctype html>
+<!--
+  Shelf overflow — what to do when a shelf holds more books than its row can
+  show. Self-contained: no build, no server, no network. Open it from disk.
+
+  Screens are declared as DATA (SECTION 3) and drawn by one `frame()`
+  (SECTION 2), so the packing arithmetic is stated once and every drawing
+  re-packs from it. Colours, type and shelf geometry in SECTION 1 are copied
+  from `lib/constants/app_theme.dart`, `lib/constants/app_text_styles.dart`,
+  `lib/ui/widgets/shelf_row.dart`, `shelf_widget.dart`, `shelf_label.dart` and
+  `lib/ui/widgets/book/book_geometry.dart` — cited inline at each use.
+
+  Four versions (SECTION 4): `main` shows today plus all three options;
+  `signal-only`, `capped-wrap` and `full-wrap` isolate one option each.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Libstack &mdash; shelf overflow</title>
+        <style>
+            :root {
+                /* ---- SECTION 1a: product tokens ----
+                   Verbatim from `lib/constants/app_theme.dart`, AppColors.light
+                   (L98-112). Not approximated: drawing an invented brand green
+                   has cost this project whole review rounds before. */
+                --page: #f8f9fa; /* pageBackground */
+                --surface: #ffffff; /* surface        */
+                --variant: #e9ecef; /* surfaceVariant */
+                --text: #212529; /* primaryText    */
+                --text2: #626a72; /* secondaryText  */
+                --divider: #e9ecef; /* divider        */
+                --brand: #09bc8a; /* brand (decoration only) */
+                --brandText: #067657; /* brandText / brandFill   */
+                --sheetbg: #eff5ef; /* sheetBackground */
+                --danger: #d9433a;
+                --brandwash: #d7efe5; /* brand at ~12%, for fills behind text */
+
+                /* ---- SECTION 1c: type scale ----
+                   The eight tokens from `lib/constants/app_text_styles.dart`,
+                   scaled by 0.615 (a 240px frame standing in for a 390pt
+                   phone). Sizes, weights and letter-spacing all carry across. */
+                --f-display: 28.3px; /* 46 / w800 / -0.92 */
+                --f-figure: 18.5px; /* 30 / w700 / -0.6  */
+                --f-title: 13.5px; /* 22 / w700 / -0.4  serif */
+                --f-subtitle: 10.5px; /* 17 / w600 / -0.2  */
+                --f-body: 9.2px; /* 15 / w400 /  0    */
+                --f-label: 8px; /* 13 / w600 /  0    */
+                --f-caption: 6.8px; /* 11 / w700 / +0.9  */
+                --ls-title: -0.25px;
+                --ls-subtitle: -0.12px;
+                --ls-caption: 0.55px;
+
+                /* Cover stock. The app draws generated covers, not grey
+                   rectangles — see `docs/mockups/generated-cover/`. */
+                --paper1: #e8e2d6;
+                --paper2: #ded6c6;
+                --paper3: #efeae0;
+
+                /* ---- page chrome (safe to leave) ---- */
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+            }
+            /* The app's real faces, loaded off disk from `assets/fonts/`.
+               Subset builds, so a glyph GowunBatang lacks falls through to
+               Pretendard — which is the `fontFamilyFallback` contract in
+               `app_text_styles.dart` and why the serif is never used alone. */
+            @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-Regular.otf")
+                    format("opentype");
+                font-weight: 400;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-SemiBold.otf")
+                    format("opentype");
+                font-weight: 600;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-Bold.otf")
+                    format("opentype");
+                font-weight: 700;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-ExtraBold.otf")
+                    format("opentype");
+                font-weight: 800;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: "GowunBatang";
+                src: url("../../../assets/fonts/GowunBatang-Bold.ttf")
+                    format("truetype");
+                font-weight: 700;
+                font-display: swap;
+            }
+            .wrap h1,
+            .brand {
+                font-family: "GowunBatang", "Pretendard", serif;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.5;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            mark.hl {
+                background: rgba(79, 125, 243, 0.28);
+                color: inherit;
+                border-radius: 3px;
+                padding: 0 1px;
+            }
+            .gone {
+                display: none;
+            }
+
+            /* ---------- top chrome ---------- */
+            .top {
+                position: sticky;
+                top: 0;
+                z-index: 300;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+            }
+            .top-in {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 11px 22px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+            }
+            .brand span {
+                color: var(--brandText);
+            }
+            .vtabs {
+                display: flex;
+                gap: 2px;
+            }
+            .vtabs button {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--muted);
+                background: none;
+                border: 0;
+                padding: 6px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+            }
+            .vtabs button:hover {
+                color: var(--ink);
+            }
+            .vtabs button.on {
+                color: var(--ink);
+                font-weight: 800;
+                background: #fff;
+                border: 0.5px solid var(--line);
+                box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.1);
+            }
+            .vtabs button::after,
+            .hk::after {
+                content: attr(data-key);
+                position: absolute;
+                top: calc(100% + 7px);
+                left: 50%;
+                transform: translateX(-50%) translateY(3px);
+                background: #26262b;
+                color: #fff;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2.5px 6px;
+                border-radius: 5px;
+                box-shadow: 0 3px 9px rgba(0, 0, 0, 0.28);
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.12s,
+                    transform 0.12s;
+                z-index: 50;
+            }
+            .vtabs button:hover::after,
+            .hk:hover::after {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+                transition-delay: 0.3s;
+            }
+            .sep {
+                width: 1px;
+                height: 20px;
+                background: var(--line);
+            }
+            .count {
+                margin-left: auto;
+                font-size: 12px;
+                color: var(--text2);
+                text-align: right;
+                line-height: 1.4;
+                white-space: nowrap;
+            }
+            .kbd {
+                display: inline-block;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--muted);
+                background: #f4f2ef;
+                border: 1px solid var(--line);
+                border-bottom-width: 2px;
+                border-radius: 4px;
+                padding: 0 4px;
+                line-height: 15px;
+                min-width: 15px;
+                text-align: center;
+            }
+
+            /* ---------- comboboxes (version + filter share the panel styling) ---------- */
+            .cbox {
+                position: relative;
+            }
+            .cbox.hide {
+                display: none;
+            }
+            .cbtn {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--ink);
+                background: #f4f2ef;
+                border: 0.5px solid var(--line);
+                padding: 6px 13px;
+                border-radius: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .cbtn:hover {
+                background: #eeece7;
+            }
+            .cbtn .chev {
+                font-size: 9px;
+                color: var(--muted);
+                transition: transform 0.15s;
+            }
+            .cbox.open .cbtn .chev {
+                transform: rotate(180deg);
+            }
+            .cbtn .badge {
+                font-size: 11px;
+                font-weight: 800;
+                color: #fff;
+                background: var(--brandText);
+                border-radius: 20px;
+                padding: 0 6px;
+                line-height: 16px;
+            }
+            .cbtn .branch {
+                font-size: 12px;
+                opacity: 0.5;
+            }
+            .cbtn.vbtn {
+                background: #eef2fd;
+                border-color: #cddafb;
+                color: #22407f;
+            }
+            .cbtn.vbtn:hover {
+                background: #e3ebfc;
+            }
+            .cpanel {
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                width: 340px;
+                max-height: min(70vh, 520px);
+                display: none;
+                flex-direction: column;
+                background: rgba(38, 38, 41, 0.97);
+                backdrop-filter: blur(20px);
+                border-radius: 15px;
+                box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+                overflow: hidden;
+                z-index: 400;
+            }
+            .cbox.open .cpanel {
+                display: flex;
+            }
+            .csearch {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                padding: 13px 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .csearch svg {
+                flex: 0 0 auto;
+                opacity: 0.5;
+            }
+            .csearch input {
+                flex: 1;
+                font: inherit;
+                font-size: 14.5px;
+                color: #fff;
+                background: none;
+                border: 0;
+                outline: none;
+            }
+            .csearch input::placeholder {
+                color: rgba(255, 255, 255, 0.42);
+            }
+            .clist {
+                overflow-y: auto;
+                padding: 7px 7px 9px;
+                flex: 1 1 auto;
+            }
+            .clist::-webkit-scrollbar {
+                width: 9px;
+            }
+            .clist::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.22);
+                border-radius: 9px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+            .cgrp {
+                font-size: 12px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.45);
+                padding: 9px 11px 4px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .cgrp:hover {
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .copt {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                padding: 8px 11px;
+                border-radius: 9px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .copt:hover,
+            .copt.kb {
+                background: rgba(255, 255, 255, 0.11);
+            }
+            .copt .box {
+                width: 17px;
+                height: 17px;
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.16);
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: #fff;
+            }
+            .copt.sel .box {
+                background: var(--brand);
+                color: #fff;
+                font-weight: 900;
+            }
+            .copt.radio .box {
+                border-radius: 50%;
+            }
+            .copt .lb {
+                font-size: 14.5px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .copt .lb mark.hl {
+                background: rgba(79, 125, 243, 0.5);
+                color: #fff;
+            }
+            .copt .sub {
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+                line-height: 1.45;
+            }
+            .copt .col {
+                flex: 1;
+                min-width: 0;
+            }
+            .copt .tagn {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1px 6px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.14);
+                color: rgba(255, 255, 255, 0.75);
+                white-space: nowrap;
+            }
+            .cfoot {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .cfoot .n {
+                flex: 1;
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .cfoot button {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                color: #fff;
+                background: rgba(255, 255, 255, 0.13);
+                border: 0;
+                border-radius: 7px;
+                padding: 4px 10px;
+                cursor: pointer;
+            }
+            .cfoot button:hover {
+                background: rgba(255, 255, 255, 0.22);
+            }
+            .cempty {
+                color: rgba(255, 255, 255, 0.45);
+                font-size: 13px;
+                padding: 16px 11px;
+            }
+
+            /* ---------- version bar ---------- */
+            .vinfo {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                color: var(--muted);
+                padding: 2px 0 0;
+            }
+            .vinfo .lbl {
+                font-weight: 800;
+                color: var(--brandText);
+                white-space: nowrap;
+            }
+            .vinfo .note {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .vinfo .diffs {
+                white-space: nowrap;
+                font-weight: 700;
+            }
+            .vinfo button {
+                font: inherit;
+                font-size: 11.5px;
+                font-weight: 700;
+                color: var(--brandText);
+                background: #eef2fd;
+                border: 0.5px solid #cddafb;
+                border-radius: 7px;
+                padding: 2px 9px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .vinfo button:hover {
+                background: #e3ebfc;
+            }
+            .vinfo button.off {
+                color: var(--muted);
+                background: #f4f2ef;
+                border-color: var(--line);
+            }
+
+            /* ---------- layout ---------- */
+            .wrap {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 22px 22px 90px;
+            }
+            .view {
+                display: none;
+            }
+            .view.on {
+                display: block;
+            }
+            h1 {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.4px;
+                margin: 6px 0 4px;
+            }
+            .lead {
+                color: var(--muted);
+                font-size: 14px;
+                max-width: 800px;
+                margin: 0 0 22px;
+            }
+            h2.grp {
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #a09c95;
+                margin: 30px 0 12px;
+                padding-bottom: 7px;
+                border-bottom: 1px solid var(--line);
+                scroll-margin-top: 80px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 20px 16px;
+            }
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+            .item .cap {
+                margin-top: 9px;
+            }
+            .item .nm {
+                font-size: 12.5px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .item .ds {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                margin-top: 2px;
+            }
+            .shot {
+                background: #e6e3dd;
+                border-radius: 10px;
+                padding: 14px 0;
+                display: flex;
+                justify-content: center;
+            }
+            .pair {
+                display: flex;
+                gap: 8px;
+            }
+            .pair > div {
+                flex: 1;
+                min-width: 0;
+            }
+            .pair .vl {
+                font-size: 9.5px;
+                font-weight: 800;
+                color: var(--muted);
+                text-align: center;
+                margin-bottom: 5px;
+                letter-spacing: 0.03em;
+            }
+            .pair .vl.b {
+                color: var(--brandText);
+            }
+            .noneleft {
+                color: var(--muted);
+                font-size: 13.5px;
+                padding: 26px 0;
+            }
+            .pend {
+                background: #fdf3f0;
+                border-left: 3px solid #c05746;
+                padding: 9px 13px;
+                border-radius: 0 6px 6px 0;
+                font-size: 12px;
+                line-height: 1.55;
+                margin: 0 0 13px;
+                max-width: 840px;
+            }
+            .tag {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1.5px 7px;
+                border-radius: 20px;
+                white-space: nowrap;
+            }
+            .tag.changed {
+                background: #fff4e0;
+                color: #8a5a10;
+            }
+            .tag.onlyHere {
+                background: #e6f4ee;
+                color: #0b6b4f;
+            }
+            .tag.onlyThere {
+                background: #fdecea;
+                color: #a3302a;
+            }
+            .tag.ver {
+                background: #eef2fd;
+                color: #2f55b8;
+            }
+
+            /* ---------- flows ---------- */
+            /* ghosts: present in the compared version, absent here */
+            .item.ghost .shot,
+            .el.ghost .demo {
+                opacity: 0.5;
+                outline: 1px dashed #c7a9a4;
+                outline-offset: -1px;
+            }
+            .item.ghost .nm,
+            .el.ghost .nm,
+            .flow.ghost .fh {
+                text-decoration: line-through;
+                text-decoration-color: #c7a9a4;
+            }
+            .flowlayout {
+                display: grid;
+                grid-template-columns: 216px 1fr;
+                gap: 26px;
+                align-items: start;
+            }
+            .side {
+                position: sticky;
+                top: 80px;
+            }
+            .sbox {
+                position: relative;
+                margin-bottom: 14px;
+            }
+            .search {
+                width: 100%;
+                font: inherit;
+                font-size: 13px;
+                padding: 9px 40px 9px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #faf9f7;
+                outline: none;
+            }
+            .search:focus {
+                border-color: var(--brandText);
+                background: #fff;
+            }
+            .sbox .hint {
+                position: absolute;
+                display: none;
+                right: 9px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+            .sbox .hint-slash {
+                display: block;
+            }
+            .sbox.focused .hint-slash,
+            .sbox.dirty .hint-slash {
+                display: none;
+            }
+            .sbox.dirty .hint-esc {
+                display: block;
+            }
+            .side a {
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--muted);
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border-left: 2px solid transparent;
+            }
+            .side a:hover {
+                background: #f5f4f1;
+                color: var(--ink);
+            }
+            .side a.cur {
+                color: var(--brandText);
+                background: #eef2fd;
+                font-weight: 800;
+                border-left-color: var(--brandText);
+            }
+            .side .sh {
+                font-size: 10.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                color: #b9b6b0;
+                margin: 16px 0 5px;
+                padding-left: 10px;
+            }
+            .flow {
+                margin-bottom: 38px;
+                scroll-margin-top: 88px;
+            }
+            .flow .fh {
+                font-size: 15.5px;
+                font-weight: 800;
+                margin: 0 0 3px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                flex-wrap: wrap;
+            }
+            .flow .fd {
+                font-size: 12.5px;
+                color: var(--muted);
+                margin: 0 0 13px;
+                max-width: 780px;
+            }
+            .flow .vrow {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--muted);
+                margin: 0 0 5px;
+                letter-spacing: 0.03em;
+            }
+            .flow .vrow.b {
+                color: var(--brandText);
+            }
+            .steps {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            .step {
+                flex: 0 0 auto;
+                width: 170px;
+            }
+            .step .shot {
+                border-radius: 9px;
+                padding: 11px 0;
+            }
+            .step .sn {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--brandText);
+                margin-bottom: 5px;
+            }
+            .step .sc {
+                font-size: 10.5px;
+                color: var(--muted);
+                line-height: 1.45;
+                margin-top: 7px;
+                padding-right: 8px;
+            }
+            .arrow {
+                flex: 0 0 auto;
+                width: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #c9c5be;
+                font-size: 17px;
+                padding-bottom: 40px;
+            }
+
+            /* ---------- elements ---------- */
+            .egrid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+                gap: 16px;
+            }
+            .el {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .el .demo {
+                background: #f2f0ec;
+                padding: 20px 18px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 96px;
+            }
+            .el .body {
+                padding: 12px 15px 14px;
+            }
+            .el .nm {
+                font-size: 13px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .el .ds {
+                font-size: 11.5px;
+                color: var(--muted);
+                line-height: 1.55;
+                margin-top: 3px;
+            }
+            .el .ds b {
+                color: #c05746;
+            }
+
+            /* ================================================================
+   SECTION 1b: DEVICE / FRAME STYLES.
+
+   The phone is 240px standing in for a 390x844pt device, so the scale is
+   0.615 throughout. Every shelf number below is derived from the real
+   widgets rather than eyeballed:
+
+     bookHeight  = screenHeight * 0.15          = 126.6   (shelf_row.dart:208)
+     rowExtent   = bookHeight * 1.06            = 134.2   (bookRowExtent, book_widget.dart:518)
+     bookWidth   = bookHeight * kDefaultCoverAspect(2/3)  = 84.4
+     rowWidth    = screenWidth * 0.95           = 370.5   (shelf_row.dart:217)
+     padding     = 15 left / 15 right, 15 separator       (shelf_row.dart:234-237)
+     plank       = 8pt tall, 95% wide, shadow 0 2 2 @25%  (shelf_widget.dart:36-48)
+     row gap     = 26pt below each shelf                  (shelf_row.dart:276)
+
+   That arithmetic is the whole subject of this page: 84.4 + 15 = 99.4pt per
+   book against 340.5pt of usable row is **3.4 books**, which is why a shelf
+   of twelve shows three and a sliver.
+   ================================================================ */
+            .fr {
+                width: 240px;
+                height: 520px;
+                /* Shelf geometry in this frame's pixels, derived once so the
+                   small flow frames can rescale in one place. */
+                --bk-w: 51.9px; /* 84.4 * 0.615 */
+                --bk-h: 77.9px; /* 126.6 * 0.615 */
+                --bk-gap: 9.2px; /* 15 * 0.615 */
+                --bk-pad: 9.2px; /* 15 * 0.615 */
+                --bk-plank: 4.9px; /* 8 * 0.615 */
+                --bk-below: 16px; /* 26 * 0.615 */
+                background: var(--page);
+                border: 3px solid #2a2a2e;
+                border-radius: 30px;
+                position: relative;
+                overflow: hidden;
+                flex: 0 0 auto;
+                display: flex;
+                flex-direction: column;
+            }
+            /* The flow strips, at their own derived scale (0.513 of 390pt).
+               Six steps of a 240px frame do not fit on a row. */
+            .fr.sm {
+                width: 200px;
+                height: 434px;
+                border-radius: 26px;
+                --bk-w: 43.3px;
+                --bk-h: 65px;
+                --bk-gap: 7.7px;
+                --bk-pad: 7.7px;
+                --bk-plank: 4.1px;
+                --bk-below: 13.3px;
+                --f-title: 11.3px;
+                --f-subtitle: 8.7px;
+                --f-body: 8.8px;
+                --f-label: 7.4px;
+                --f-caption: 6.4px;
+            }
+            .fr .status {
+                height: 15px;
+                flex: 0 0 auto;
+            }
+            /* The library bar. `LibraryBar` is surface with a downward shadow;
+               the title is AppTextStyles.title (the serif) on your own library. */
+            .fr .bar {
+                background: var(--surface);
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                padding: 9px 12px;
+                box-shadow: 0 3px 5px rgba(0, 0, 0, 0.12);
+                position: relative;
+                z-index: 3;
+                flex: 0 0 auto;
+            }
+            .fr .bar .t {
+                flex: 1;
+                font-family: "GowunBatang", "Pretendard", serif;
+                font-size: var(--f-title);
+                font-weight: 700;
+                letter-spacing: var(--ls-title);
+                color: var(--text);
+            }
+            .fr .ic {
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                background: var(--variant);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                color: var(--text);
+                flex: 0 0 auto;
+            }
+            /* The library body is `surfaceVariant`, not the page colour —
+               `library_view.dart:246-250`. Getting this wrong makes the whole
+               screen read as the wrong app. */
+            .fr .body {
+                background: var(--variant);
+                padding: 10px 0 0;
+                flex: 1 1 auto;
+                overflow: hidden;
+                min-height: 0;
+            }
+
+            /* ---- the shelf -------------------------------------------------
+               Books stand face-out on a white plank with the name on a tab at
+               the plank's right end. Three things are taken from the code
+               rather than from intuition:
+                 - only the height jitters; the face width follows the cover
+                 - the spine side is the rounder side, not the fore-edge
+                 - the shelf's name is a tab ON the plank, not a caption above  */
+            .fr .shelf {
+                position: relative;
+                margin-bottom: var(--bk-below);
+            }
+            .fr .shelf .bks {
+                display: flex;
+                /* 95% and centred, like the plank: the row lives in a SizedBox of
+                   `screenWidth * 0.95` (shelf_row.dart:217), NOT the full width.
+                   Drawn full-bleed the row fits 3.68 books instead of 3.58, which
+                   would quietly overstate the very number this page is about. */
+                width: 95%;
+                margin: 0 auto;
+                /* `Alignment.bottomCenter` — shelf_row.dart:238-239. */
+                align-items: flex-end;
+                gap: var(--bk-gap);
+                padding: 0 var(--bk-pad);
+                /* `bookRowExtent` reserves the 6% a hashed book may add, or a
+                   tall one clips along its top (shelf_row.dart:209-211). */
+                height: calc(var(--bk-h) * 1.06);
+                /* The row is a horizontal ListView, so the last book is clipped
+                   by the frame edge. That clip is the ONLY affordance today
+                   saying the row scrolls — which is the reported bug. */
+                overflow: hidden;
+            }
+            /* The trailing fade, proposed. Not in the app today. */
+            .fr .shelf.faded .bks {
+                -webkit-mask-image: linear-gradient(
+                    90deg,
+                    #000 0,
+                    #000 78%,
+                    rgba(0, 0, 0, 0.12) 100%
+                );
+                mask-image: linear-gradient(
+                    90deg,
+                    #000 0,
+                    #000 78%,
+                    rgba(0, 0, 0, 0.12) 100%
+                );
+            }
+            .fr .bk {
+                flex: 0 0 auto;
+                width: var(--bk-w);
+                height: calc(var(--bk-h) * var(--hf, 1));
+                position: relative;
+                overflow: hidden;
+                background: var(--surface);
+                display: flex;
+                flex-direction: column;
+                font-style: normal;
+                /* Spine-side corners rounder than the fore-edge: a spine is a
+                   fold, a page edge is cut (book_geometry.dart:321-324). */
+                border-radius: 2.5px 1.5px 1.5px 2.5px;
+                box-shadow: 1px 1.5px 2.5px rgba(0, 0, 0, 0.22);
+            }
+            /* The binding band, 8.2% of the cover's width
+               (book_geometry.dart:340). A gradient so it reads as a fold
+               catching light rather than a drawn line. */
+            .fr .bk::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 8.2%;
+                background: linear-gradient(
+                    90deg,
+                    rgba(0, 0, 0, 0.24),
+                    rgba(0, 0, 0, 0.03)
+                );
+                z-index: 2;
+            }
+            /* A generated cover is a colour block over a title on `surface`,
+               each half the height (generated_cover.dart:82-125) — not a solid
+               swatch. At 84pt the cover is above kGeneratedCoverMinWidth
+               (7 / 0.135 = ~52pt), so it earns its title half. */
+            .fr .bk b {
+                flex: 1;
+                background: var(--c);
+            }
+            .fr .bk em {
+                flex: 1;
+                font-style: normal;
+                /* Left inset wider, so the title clears the binding band. */
+                padding: 6.1% 6.1% 0 14.3%;
+                /* `_kTitleSizeRatio` — 13.5% of the cover's width. */
+                font-size: calc(var(--bk-w) * 0.135);
+                line-height: 1.25;
+                letter-spacing: -0.02em;
+                font-weight: 600;
+                color: var(--text);
+                overflow: hidden;
+            }
+            /* A real photographic cover: a full-bleed tone, no title half. */
+            .fr .bk.photo b {
+                flex: 1 1 100%;
+            }
+            .fr .bk.photo em {
+                display: none;
+            }
+            /* The reading bookmark, `status == 1` (shelf_row.dart:93-118). */
+            .fr .bk i.bm {
+                position: absolute;
+                top: 0;
+                right: 5px;
+                width: 6px;
+                height: 11px;
+                background: var(--danger);
+                clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%);
+                z-index: 4;
+            }
+            .fr .shelf .plank {
+                height: var(--bk-plank);
+                width: 95%;
+                margin: 0 auto;
+                background: var(--surface);
+                box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+            }
+            /* `ShelfLabel` — surface, 3px top radii, 9/5 padding, label token,
+               capped at 140pt and ellipsized (shelf_label.dart:52-75). */
+            .fr .shelf .stab {
+                position: absolute;
+                right: 2.5%;
+                bottom: var(--bk-plank);
+                z-index: 3;
+                background: var(--surface);
+                border-radius: 3px 3px 0 0;
+                padding: 2.5px 5.5px;
+                font-size: var(--f-label);
+                font-weight: 600;
+                color: var(--text);
+                max-width: 86px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            /* The count, proposed. Rendered as a distinct span so it is obvious
+               in review exactly how much the tab grows by. */
+            .fr .shelf .stab u {
+                text-decoration: none;
+                color: var(--text2);
+                font-weight: 700;
+            }
+            /* "+7" overflow chip standing at the end of a capped row. */
+            .fr .bk.more {
+                background: var(--variant);
+                box-shadow: none;
+                border: 1px dashed #c2c8cd;
+                align-items: center;
+                justify-content: center;
+                color: var(--text2);
+                font-size: var(--f-label);
+                font-weight: 700;
+                display: flex;
+            }
+            .fr .bk.more::before {
+                display: none;
+            }
+            /* A continuation plank carries no name tab of its own; the tab
+               belongs to the last plank in the group. This dims nothing — it
+               is a real plank — but the label's absence is the signal that the
+               shelf has not ended yet. */
+            .fr .shelf.cont {
+                margin-bottom: 5px;
+            }
+
+            /* ---- the read sheet -------------------------------------------- */
+            .fr .sheet {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: var(--surface);
+                border-radius: 20px 20px 0 0;
+                box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.15);
+                padding: 5px 9px 32px;
+                z-index: 5;
+            }
+            .fr .hdl {
+                width: 26px;
+                height: 3px;
+                border-radius: 2px;
+                background: var(--text2);
+                margin: 0 auto 6px;
+            }
+            .fr .sh {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                margin-bottom: 5px;
+            }
+            .fr .sh .lt {
+                flex: 1;
+                font-size: var(--f-subtitle);
+                font-weight: 600;
+                letter-spacing: var(--ls-subtitle);
+                color: var(--text);
+            }
+            .fr .sh .lt i {
+                font-style: normal;
+                color: var(--brandText);
+                margin-left: 5px;
+            }
+            /* The collapsed read pile: spines, not covers. Hashed widths and
+               cover-derived tones (read_pile.dart / the read-pile-spines spec). */
+            .fr .pile {
+                display: flex;
+                align-items: flex-end;
+                gap: 0;
+                height: 46px;
+                overflow: hidden;
+            }
+            .fr .pile u {
+                display: block;
+                flex: 0 0 auto;
+                width: var(--w, 9px);
+                height: var(--h, 42px);
+                background: var(--c, var(--paper1));
+                border-right: 1px solid rgba(0, 0, 0, 0.14);
+            }
+
+            /* ---- the floating tab bar --------------------------------------- */
+            .fr .tb {
+                position: absolute;
+                bottom: 8px;
+                left: 6px;
+                right: 6px;
+                display: flex;
+                gap: 5px;
+                align-items: center;
+                z-index: 9;
+            }
+            .fr .tp {
+                flex: 1;
+                display: flex;
+                gap: 1px;
+                background: rgba(255, 255, 255, 0.86);
+                border-radius: 14px;
+                padding: 3px 2px;
+                box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+            }
+            .fr .tp s {
+                text-decoration: none;
+                flex: 1;
+                text-align: center;
+                font-size: var(--f-caption);
+                font-weight: 600;
+                color: #6c757d;
+                padding: 4px 0;
+                border-radius: 11px;
+                line-height: 1.5;
+            }
+            .fr .tp s.on {
+                background: var(--variant);
+                color: var(--brandText);
+                font-weight: 800;
+            }
+            .fr .dim {
+                opacity: 0.4;
+            }
+
+            /* ---- annotation overlay -----------------------------------------
+               A measuring rule drawn ON the frame, so a claim about how many
+               books fit is checkable against the drawing rather than asserted
+               in prose beside it. */
+            .fr .ruler {
+                position: absolute;
+                left: 0;
+                right: 0;
+                z-index: 7;
+                pointer-events: none;
+                display: flex;
+                align-items: center;
+                gap: 3px;
+                font-size: 7px;
+                font-weight: 800;
+                color: #b3261e;
+            }
+            .fr .ruler::before,
+            .fr .ruler::after {
+                content: "";
+                height: 1px;
+                background: #b3261e;
+                flex: 1;
+            }
+            .fr .cut {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 1px;
+                background: repeating-linear-gradient(
+                    180deg,
+                    #b3261e 0 3px,
+                    transparent 3px 6px
+                );
+                z-index: 6;
+                pointer-events: none;
+            }
+
+            /* Every frame sets the app's faces. */
+            .fr,
+            .fr * {
+                font-family: "Pretendard", system-ui, sans-serif;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="top-in">
+                <div class="cbox" id="vbox">
+                    <button class="cbtn vbtn hk" id="vbtn" data-key="v">
+                        <span class="branch">&#9095;</span
+                        ><span id="vbtn-label">main</span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="vsearch"
+                                placeholder="Search versions&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="vlist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="vfoot-n"></span
+                            ><button id="vcmp-clear">Stop comparing</button>
+                        </div>
+                    </div>
+                </div>
+                <span class="sep"></span>
+                <span class="brand"
+                    >Libstack &mdash; <span>shelf overflow</span></span
+                >
+                <div class="vtabs">
+                    <button data-v="screens" data-key="1" class="on">
+                        Screens
+                    </button>
+                    <button data-v="elements" data-key="2">UI Elements</button>
+                    <button data-v="flows" data-key="3">Flows</button>
+                </div>
+                <span class="sep"></span>
+                <div class="cbox" id="cbox">
+                    <button class="cbtn hk" id="cbtn" data-key="/">
+                        <span id="cbtn-label">Screens</span
+                        ><span class="badge" id="cbtn-badge" hidden></span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="csearch"
+                                placeholder="Search screens&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="clist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="cfoot-n"></span
+                            ><button id="cclear">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="count" id="cnt"></div>
+                <div class="vinfo">
+                    <span class="lbl" id="vinfo-lbl"></span>
+                    <span class="note" id="vinfo-note"></span>
+                    <span class="diffs" id="vinfo-diffs"></span>
+                    <button id="difftoggle" class="off">
+                        Only differences
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="view on" id="v-screens">
+                <h1>Shelves that overflow their row</h1>
+                <p class="lead">
+                    A shelf is one horizontal <code>ListView</code>, and on a
+                    390pt phone only <b>3.4 books</b> fit in it &mdash;
+                    <code>bookHeight</code> is
+                    <code>screenHeight&nbsp;*&nbsp;0.15</code>
+                    (126.6), the cover is 2/3 of that (84.4 wide), the row is
+                    <code>screenWidth&nbsp;*&nbsp;0.95</code> less 15pt of
+                    padding each side, and the separator is 15. So a twelve-book
+                    shelf shows three and a sliver, and the only thing saying
+                    otherwise is a clip through the fourth cover. Three options
+                    are drawn below.<br /><br />
+                    Colours are <code>AppColors.light</code> verbatim
+                    (<code>surface&nbsp;#FFFFFF</code>,
+                    <code>surfaceVariant&nbsp;#E9ECEF</code>,
+                    <code>brandText&nbsp;#067657</code>); type is the eight
+                    tokens from <code>app_text_styles.dart</code> at 0.615; the
+                    plank is 8pt of <code>surface</code> with a
+                    <code>0&nbsp;2&nbsp;2</code> shadow at 25%, per
+                    <code>shelf_widget.dart</code>. Switch options with
+                    <span class="kbd">v</span>, filter with
+                    <span class="kbd">/</span>, change view with
+                    <span class="kbd">1</span> <span class="kbd">2</span>
+                    <span class="kbd">3</span>.
+                </p>
+                <div id="screens"></div>
+                <div class="noneleft gone" id="screens-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-elements">
+                <h1>UI elements</h1>
+                <p class="lead">
+                    The components the screens are assembled from, each with the
+                    decision it encodes.
+                </p>
+                <div id="elements"></div>
+                <div class="noneleft gone" id="elements-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-flows">
+                <h1>UX flows</h1>
+                <p class="lead">
+                    Step-by-step journeys. Every step is a real state from the
+                    Screens tab.
+                </p>
+                <div class="flowlayout">
+                    <div class="side">
+                        <div class="sbox" id="sbox">
+                            <input
+                                class="search"
+                                id="fsearch"
+                                placeholder="Search flows&hellip;"
+                                autocomplete="off"
+                            />
+                            <span class="hint hint-slash"
+                                ><span class="kbd">/</span></span
+                            >
+                            <span class="hint hint-esc"
+                                ><span class="kbd">Esc</span></span
+                            >
+                        </div>
+                        <div id="sidenav"></div>
+                    </div>
+                    <div>
+                        <div id="flows"></div>
+                        <div class="noneleft gone" id="flows-none">
+                            No flows match that search.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            /* ==================================================================
+   SECTION 2: FRAME RENDERER — the library, drawn once.
+
+   Every screen below is a data spec; this one function draws it. The
+   packing arithmetic lives HERE rather than in each screen, so a claim
+   like "3.4 books fit" cannot drift between drawings — change the book
+   width in one place and every frame re-packs.
+   ================================================================== */
+            /* Cover tones. Warm paper and print colours so a row reads as books
+               rather than as UI chrome. */
+            const PAL = [
+                "#2E5E4E",
+                "#8C3B2E",
+                "#1F3A5F",
+                "#C9A227",
+                "#6B4A7A",
+                "#3F6E8C",
+                "#A8452F",
+                "#4A5D3A",
+            ];
+
+            /* ---- the packing model -----------------------------------------
+               From `shelf_row.dart` on a 390pt phone:
+                 usable row width = 390*0.95 - 15 - 15 = 340.5
+                 per book         = bookWidth 84.4 + separator 15 = 99.4
+               so floor((340.5 + 15) / 99.4) = 3 whole books, with the 4th
+               showing ~57% of its face. This constant is the page's thesis. */
+            const PER_SHELF = 3.57;
+            const WHOLE = Math.floor(PER_SHELF);
+
+            /* A book's height factor, hashed off its index the way
+               `BookJitter.fromIsbn` hashes off the ISBN: deterministic, in
+               [0.94, 1.06], so the same book is the same height in every
+               drawing on this page. */
+            function hf(i) {
+                const h = (i * 2654435761) % 4294967296;
+                return 0.94 + ((h % 1000) / 1000) * 0.12;
+            }
+
+            /** One face-out book. */
+            function bookHTML(b, i) {
+                const c = b.c || PAL[i % PAL.length];
+                const cls = ["bk"];
+                if (b.photo) cls.push("photo");
+                return `<em class="${cls.join(" ")}" style="--c:${c};--hf:${hf(
+                    b.k === undefined ? i : b.k,
+                ).toFixed(3)}"><b></b><em>${b.t || ""}</em>${
+                    b.reading ? '<i class="bm"></i>' : ""
+                }</em>`;
+            }
+
+            /**
+             * One plank of books.
+             *  books  – array of {t,c,photo,reading}
+             *  label  – the name tab; omit on a continuation plank
+             *  count  – appended to the tab as "· N" (the proposed affordance)
+             *  fade   – trailing gradient mask (the proposed affordance)
+             *  more   – draw a "+N" chip as the final item (the capped-wrap option)
+             *  cont   – tighter bottom margin; this plank continues into the next
+             *  cut    – draw the measuring rule at this fraction of the width
+             */
+            function shelfHTML(s) {
+                const cls = ["shelf"];
+                if (s.fade) cls.push("faded");
+                if (s.cont) cls.push("cont");
+                let items = (s.books || [])
+                    .map((b, i) => bookHTML(b, i))
+                    .join("");
+                if (s.more)
+                    items += `<em class="bk more" style="--hf:1">+${s.more}</em>`;
+                return `<div class="${cls.join(" ")}">${
+                    s.cut !== undefined
+                        ? `<span class="cut" style="left:${s.cut}%"></span>`
+                        : ""
+                }<div class="bks">${items}</div><div class="plank"></div>${
+                    s.label
+                        ? `<span class="stab">${s.label}${
+                              s.count !== undefined ? ` <u>${s.count}</u>` : ""
+                          }</span>`
+                        : ""
+                }</div>`;
+            }
+
+            /** The collapsed read pile inside the sheet. */
+            function pileHTML(n) {
+                return `<div class="pile">${Array.from(
+                    { length: n },
+                    (_, i) => {
+                        const w = 7 + ((i * 37) % 5);
+                        const h = 34 + ((i * 53) % 10);
+                        return `<u style="--w:${w}px;--h:${h}px;--c:${
+                            PAL[(i * 3) % PAL.length]
+                        }"></u>`;
+                    },
+                ).join("")}</div>`;
+            }
+
+            function block(b) {
+                switch (b.t) {
+                    case "shelf":
+                        return shelfHTML(b);
+                    case "text":
+                        return `<div class="txt${b.dim ? " dim" : ""}">${b.v}</div>`;
+                    case "rule":
+                        return `<div class="ruler" style="position:relative">${b.v}</div>`;
+                    default:
+                        return "";
+                }
+            }
+            function blocks(list) {
+                return (list || []).map(block).join("");
+            }
+
+            /** Draw one screen from its spec. */
+            function frame(s) {
+                let h = `<div class="fr${s.sm ? " sm" : ""}"><div class="status"></div>`;
+                if (s.bar !== false)
+                    h += `<div class="bar"><span class="t">${
+                        s.bar?.title || "My Library"
+                    }</span>${(s.bar?.actions || ["&#8593;", "&#9679;"])
+                        .map((a) => `<span class="ic">${a}</span>`)
+                        .join("")}</div>`;
+                if (s.body) h += `<div class="body">${blocks(s.body)}</div>`;
+                if (s.sheet) {
+                    h += `<div class="sheet"><div class="hdl"></div>`;
+                    if (s.sheet.title)
+                        h += `<div class="sh"><span class="lt">${s.sheet.title}${
+                            s.sheet.count !== undefined
+                                ? ` <i>${s.sheet.count}</i>`
+                                : ""
+                        }</span></div>`;
+                    h += pileHTML(s.sheet.pile || 10) + `</div>`;
+                }
+                if (s.tabs !== false)
+                    h += `<div class="tb"><div class="tp${s.dim ? " dim" : ""}">${(
+                        s.tabs || ["Library", "Friends", "Card"]
+                    )
+                        .map(
+                            (t) =>
+                                `<s class="${t === (s.tab || "Library") ? "on" : ""}">${t}</s>`,
+                        )
+                        .join("")}</div></div>`;
+                return h + `</div>`;
+            }
+
+            /* ==================================================================
+   SECTION 3: DATA — the base version (today's behaviour).
+
+   SCREENS  [group, [ [id, name, note, spec], ... ] ]
+   FLOWS    [group, [ [id, name, note, [ [stepName, stepNote, spec], ... ] ] ] ]
+   ELEMENTS [group, [ [id, name, note, demoHTML], ... ] ]
+   ================================================================== */
+
+            /* One fixture, reused everywhere, so no two drawings can disagree
+               about what is on the IT shelf. Titles are the real ones from the
+               reported screenshot. */
+            const IT = [
+                { t: "인공지능, 머신러닝, 딥러닝 입문", c: "#EFE9DC", k: 1 },
+                { t: "이더리움과 솔리디티 입문", c: "#F2EFE6", k: 2 },
+                {
+                    t: "The Zero Marginal Cost Society",
+                    photo: 1,
+                    c: "#141414",
+                    k: 3,
+                },
+                {
+                    t: "세계를 바꾼 테크놀로지 100",
+                    photo: 1,
+                    c: "#C0397A",
+                    k: 4,
+                },
+                { t: "코드", c: "#2E5E4E", k: 5 },
+                { t: "클린 아키텍처", c: "#8C3B2E", k: 6 },
+                { t: "실용주의 프로그래머", c: "#1F3A5F", k: 7 },
+                { t: "리팩터링", c: "#C9A227", k: 8 },
+                { t: "함께 자라기", c: "#4A7C59", k: 9 },
+                { t: "데이터 중심 애플리케이션", c: "#6B4A7A", k: 10 },
+                { t: "SQL 첫걸음", c: "#3F6E8C", k: 11 },
+                { t: "네트워크 기초", c: "#A8452F", k: 12 },
+            ];
+            const STARTUP = [
+                { t: "함께 자라기", c: "#4A7C59", k: 21 },
+                { t: "Start-up Nation", photo: 1, c: "#1F3A5F", k: 22 },
+                { t: "창업국가", c: "#F2EFE6", k: 23 },
+                { t: "일론 머스크", photo: 1, c: "#20242B", k: 24, reading: 1 },
+                { t: "제로 투 원", c: "#C9A227", k: 25 },
+                { t: "린 스타트업", c: "#8C3B2E", k: 26 },
+            ];
+
+            const SCREENS = [
+                [
+                    "Today",
+                    [
+                        [
+                            "today",
+                            "Library &middot; as built",
+                            "<b>The reported bug.</b> Each shelf is one horizontal <code>ListView</code> (shelf_row.dart:231), so a shelf of twelve books renders all twelve — but only 3.4 of them are inside the 340.5pt of usable row width. The dashed rule marks the clip. Nothing else on the row says the books continue: no fade, no count, no arrow. The clip lands mid-cover, which reads as a rendering fault rather than as an invitation to swipe.",
+                            {
+                                bar: { title: "My Library" },
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP,
+                                        label: "스타트업",
+                                        cut: 96,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT,
+                                        label: "IT",
+                                        cut: 96,
+                                    },
+                                ],
+                                sheet: {
+                                    title: "Books read",
+                                    count: 22,
+                                    pile: 11,
+                                },
+                            },
+                        ],
+                        [
+                            "today-short",
+                            "Library &middot; shelf that fits",
+                            "The same widget with three books, which is what the layout was tuned for. Worth keeping beside the others: the design is <em>correct</em> at this size, and every option on this page has to leave this drawing unchanged. Two of the three options do; one does not.",
+                            {
+                                bar: { title: "My Library" },
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP.slice(0, 3),
+                                        label: "스타트업",
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(0, 2),
+                                        label: "IT",
+                                    },
+                                ],
+                                sheet: {
+                                    title: "Books read",
+                                    count: 22,
+                                    pile: 11,
+                                },
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "Option A — signal the scroll",
+                    [
+                        [
+                            "a-signal",
+                            "A &middot; count on the tab + edge fade",
+                            "<b>The cheap fix.</b> Two changes, neither structural. The name tab gains the shelf's count (<code>IT&nbsp;12</code>), so the clip now <em>means</em> something — you can see nine books are off-screen. And the row takes a trailing gradient mask, so the last cover fades out instead of being guillotined.<br /><br />Costs one string in <code>ShelfLabel</code> and one <code>ShaderMask</code> in <code>ShelfRow</code>. Touches no hero tag, no edit mode, no vertical rhythm — the library scrolls exactly as far as it does today.<br /><br /><b>What it does not fix:</b> reaching book #12 is still nine swipes on one row, and the shelf still cannot be read at a glance.",
+                            {
+                                bar: { title: "My Library" },
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP,
+                                        label: "스타트업",
+                                        count: 6,
+                                        fade: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT,
+                                        label: "IT",
+                                        count: 12,
+                                        fade: 1,
+                                    },
+                                ],
+                                sheet: {
+                                    title: "Books read",
+                                    count: 22,
+                                    pile: 11,
+                                },
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "Option B — wrap onto more planks",
+                    [
+                        [
+                            "b-wrap",
+                            "B &middot; unbounded wrap",
+                            "<b>What was asked for, drawn honestly.</b> The shelf keeps spilling onto new planks until every book is face-out. Only the <em>last</em> plank in a group carries the name tab — two tabs would read as two shelves.<br /><br />The frame is the giveaway: twelve IT books need four planks at 162pt each, and the スタートアップ shelf above it has already pushed them off-screen. The library is now a ~1,100pt scroll for two shelves. With eight shelves you cannot see two names at once, and the tab bar's Library button stops meaning \"see my library\".<br /><br /><b>Measured on this drawing:</b> the fourth plank sits <em>behind the read sheet</em> — so on the default screen the shelf visibly runs out of room mid-shelf, with no indication that the missing plank exists. That is strictly worse than the clip it was meant to replace, because a clipped row at least stays on one line.<br /><br /><b>Three costs that only appear on build:</b> (1) <code>shelfHeroTag(shelf.id)</code> becomes N heroes with one tag on one route — Flutter throws; (2) edit mode's horizontal <code>ReorderableListView</code> has no wrapping equivalent; (3) book width depends on the decoded cover aspect, so books visibly hop between planks as images load.",
+                            {
+                                bar: { title: "My Library" },
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP.slice(0, WHOLE),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP.slice(WHOLE),
+                                        label: "스타트업",
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(0, WHOLE),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE, WHOLE * 2),
+                                        cont: 1,
+                                    },
+                                ],
+                                sheet: {
+                                    title: "Books read",
+                                    count: 22,
+                                    pile: 11,
+                                },
+                            },
+                        ],
+                        [
+                            "b-wrap-nosheet",
+                            "B &middot; the same shelf, sheet dismissed",
+                            "The IT shelf alone, with the read sheet out of the way, to show what four planks actually costs. Even with the whole screen given to one shelf, the fourth plank is only just on-screen — and this is a twelve-book shelf. The reported library has a twenty-two-book pile.",
+                            {
+                                bar: { title: "My Library" },
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(0, WHOLE),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE, WHOLE * 2),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE * 2, WHOLE * 3),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE * 3),
+                                        label: "IT",
+                                    },
+                                ],
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "Option C — cap the wrap",
+                    [
+                        [
+                            "c-capped",
+                            "C &middot; two planks, then a chip",
+                            "<b>The compromise, and my recommendation.</b> A shelf wraps to a second plank and stops. Anything beyond becomes a <code>+6</code> chip standing where the next book would be; tapping it — or the name tab — opens the shelf's own page.<br /><br />Why two rather than one: the second plank is what makes the wrap <em>legible</em>. With one plank a reader cannot tell the shelf wraps at all, so the chip looks like a stray control. With two, the rule is visible and the chip is obviously \"and more of the same\".<br /><br />Vertical cost is bounded at 2&times; per shelf, so an eight-shelf library stays a scroll rather than an expedition. The hero problem shrinks to two planks — still needs a row-indexed tag, but a fixed, enumerable one. Edit mode can stay single-row-per-plank.<br /><br /><b>The drawing still found a problem:</b> two shelves at two planks each already put the second shelf's lower plank behind the read sheet. The cap bounds the growth but does not eliminate it, so the read sheet's collapsed height has to be counted as part of the budget — or the first shelf has to be the only one allowed to wrap.",
+                            {
+                                bar: { title: "My Library" },
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP.slice(0, WHOLE),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP.slice(WHOLE),
+                                        label: "스타트업",
+                                        count: 6,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(0, WHOLE),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE, WHOLE * 2),
+                                        label: "IT",
+                                        count: 12,
+                                        more: 6,
+                                    },
+                                ],
+                                sheet: {
+                                    title: "Books read",
+                                    count: 22,
+                                    pile: 11,
+                                },
+                            },
+                        ],
+                        [
+                            "c-shelf-page",
+                            "C &middot; the shelf page behind the chip",
+                            "Where <code>+6</code> and the name tab both lead: one shelf, wrapping freely, with nothing else competing for the height. Unbounded wrap is <em>right</em> here and wrong on the library — the difference is that this page has one subject, so a long scroll is the content rather than an obstacle.<br /><br />This is also the natural home for per-shelf actions that currently have nowhere to live: rename, reorder, delete, and a sort control.",
+                            {
+                                bar: {
+                                    title: "&#8249;&ensp;IT",
+                                    actions: ["&#9776;"],
+                                },
+                                tabs: false,
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(0, WHOLE),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE, WHOLE * 2),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE * 2, WHOLE * 3),
+                                        cont: 1,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(WHOLE * 3),
+                                        label: "IT",
+                                        count: 12,
+                                    },
+                                ],
+                            },
+                        ],
+                        [
+                            "c-fits",
+                            "C &middot; a shelf that already fits",
+                            "The check that matters: with three books nothing wraps, no chip appears, and the drawing is byte-identical to today. An option that changes the short case is an option that redesigns the whole library, which is not what was asked for.",
+                            {
+                                bar: { title: "My Library" },
+                                body: [
+                                    {
+                                        t: "shelf",
+                                        books: STARTUP.slice(0, 3),
+                                        label: "스타트업",
+                                        count: 3,
+                                    },
+                                    {
+                                        t: "shelf",
+                                        books: IT.slice(0, 2),
+                                        label: "IT",
+                                        count: 2,
+                                    },
+                                ],
+                                sheet: {
+                                    title: "Books read",
+                                    count: 22,
+                                    pile: 11,
+                                },
+                            },
+                        ],
+                    ],
+                ],
+            ];
+
+            const FLOWS = [
+                [
+                    "Reaching a buried book",
+                    [
+                        [
+                            "reach-today",
+                            "Today &mdash; find the 12th book on a shelf",
+                            "The path as built. Nothing is broken, but nothing is signposted either: the reader has to guess the row scrolls, and then swipe it nine times with no indication of how far the row goes.",
+                            [
+                                [
+                                    "Library",
+                                    "Three books and a sliver. The sliver is the only hint that more exist.",
+                                    {
+                                        sm: true,
+                                        bar: { title: "My Library" },
+                                        body: [
+                                            {
+                                                t: "shelf",
+                                                books: IT,
+                                                label: "IT",
+                                                cut: 96,
+                                            },
+                                        ],
+                                    },
+                                ],
+                                [
+                                    "Swipe &times;3",
+                                    "Mid-row. No scrollbar, no position indicator — the reader cannot tell if this is halfway or nearly done.",
+                                    {
+                                        sm: true,
+                                        bar: { title: "My Library" },
+                                        body: [
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(4),
+                                                label: "IT",
+                                                cut: 96,
+                                            },
+                                        ],
+                                    },
+                                ],
+                                [
+                                    "End of row",
+                                    "Arrived, after nine swipes. The name tab has been sitting on the plank the whole time, so there is no sense of having travelled.",
+                                    {
+                                        sm: true,
+                                        bar: { title: "My Library" },
+                                        body: [
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(8),
+                                                label: "IT",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            ],
+                        ],
+                        [
+                            "reach-capped",
+                            "Option C &mdash; the same errand",
+                            "Two taps instead of nine swipes, and the reader knows the size of the shelf before committing to it. The count on the tab is doing the work here as much as the chip is.",
+                            [
+                                [
+                                    "Library",
+                                    "Two planks, and a chip that names the remainder. The shelf's size is legible without interacting.",
+                                    {
+                                        sm: true,
+                                        bar: { title: "My Library" },
+                                        body: [
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(0, WHOLE),
+                                                cont: 1,
+                                            },
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(
+                                                    WHOLE,
+                                                    WHOLE * 2,
+                                                ),
+                                                label: "IT",
+                                                count: 12,
+                                                more: 6,
+                                            },
+                                        ],
+                                    },
+                                ],
+                                [
+                                    "Tap +6",
+                                    "The shelf page. Everything face-out, wrapping freely, nothing else on screen.",
+                                    {
+                                        sm: true,
+                                        bar: {
+                                            title: "&#8249;&ensp;IT",
+                                            actions: ["&#9776;"],
+                                        },
+                                        tabs: false,
+                                        body: [
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(0, WHOLE),
+                                                cont: 1,
+                                            },
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(
+                                                    WHOLE,
+                                                    WHOLE * 2,
+                                                ),
+                                                cont: 1,
+                                            },
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(
+                                                    WHOLE * 2,
+                                                    WHOLE * 3,
+                                                ),
+                                                cont: 1,
+                                            },
+                                            {
+                                                t: "shelf",
+                                                books: IT.slice(WHOLE * 3),
+                                                label: "IT",
+                                                count: 12,
+                                            },
+                                        ],
+                                    },
+                                ],
+                                [
+                                    "Tap the book",
+                                    "Details, as today. The plank and its name tab fly in from the shelf page — the existing hero contract, unchanged.",
+                                    {
+                                        sm: true,
+                                        bar: {
+                                            title: "&#8249;",
+                                            actions: ["&#9998;"],
+                                        },
+                                        tabs: false,
+                                        body: [
+                                            {
+                                                t: "shelf",
+                                                books: [IT[11]],
+                                                label: "IT",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+
+            const ELEMENTS = [
+                [
+                    "Shelf furniture",
+                    [
+                        [
+                            "el-tab",
+                            "Name tab &mdash; with and without a count",
+                            "<code>ShelfLabel</code>: surface, 3px top radii, 9/5 padding, <code>AppTextStyles.label</code>, capped at 140pt and ellipsized. The count is the proposed addition — set in <code>secondaryText</code> so the shelf's <em>name</em> stays the emphasis.<br /><br /><b>One real constraint:</b> this tab is a <code>Hero</code>, and its flight contract (shelf_label.dart:26-32) depends on it measuring the same width at both ends. Adding a count to the library end and not the details end would make it ellipsize mid-flight. Both ends must agree.",
+                            `<div class="fr" style="width:auto;height:auto;border:0;background:none;display:flex;flex-direction:row;gap:10px;align-items:flex-end"><span class="stab" style="position:static">IT</span><span class="stab" style="position:static">IT <u>12</u></span><span class="stab" style="position:static">스타트업 <u>6</u></span></div>`,
+                        ],
+                        [
+                            "el-plank",
+                            "Plank",
+                            "<code>ShelfWidget</code>: 8pt tall, 95% of screen width, <code>surface</code> with a <code>0 2 2</code> shadow at 25% black. White with a shadow — <em>not</em> wood-coloured, which earlier mockup rounds got wrong.<br /><br />Its hero tag names the <em>shelf</em>, not the book, because one plank serves every book on it. That is exactly why multiple planks per shelf need the tag re-thought.",
+                            `<div class="fr" style="width:200px;height:auto;border:0;background:var(--variant);padding:10px 0"><div class="shelf" style="margin:0"><div class="plank"></div></div></div>`,
+                        ],
+                        [
+                            "el-more",
+                            "Overflow chip",
+                            "Stands where the next book would, at neutral height so it never competes with a jittered cover. <code>surfaceVariant</code> with a dashed border: it is a gap in the row, and drawing it as a solid tile would make it read as a book.<br /><br />Sized to a book's face rather than to its text, so the row's rhythm is unbroken.",
+                            `<div class="fr" style="width:auto;height:auto;border:0;background:var(--variant);padding:10px"><div class="bks" style="height:auto"><em class="bk" style="--c:#2E5E4E;--hf:1"><b></b><em>코드</em></em><em class="bk more" style="--hf:1">+6</em></div></div>`,
+                        ],
+                        [
+                            "el-fade",
+                            "Trailing fade",
+                            "A <code>ShaderMask</code> over the last ~22% of the row. The cheapest of the three options and the only one that is purely additive — it changes no layout, no hero, no scroll extent.<br /><br />Shown against a hard clip for comparison. The clip is what ships today.",
+                            `<div class="fr" style="width:auto;height:auto;border:0;background:var(--variant);padding:10px;display:flex;gap:10px"><div style="width:110px;overflow:hidden"><div class="bks" style="height:auto;padding:0">${IT.slice(
+                                0,
+                                3,
+                            )
+                                .map((b, i) => bookHTML(b, i))
+                                .join(
+                                    "",
+                                )}</div></div><div class="shelf faded" style="width:110px;margin:0"><div class="bks" style="height:auto;padding:0">${IT.slice(
+                                0,
+                                3,
+                            )
+                                .map((b, i) => bookHTML(b, i))
+                                .join("")}</div></div></div>`,
+                        ],
+                        [
+                            "el-book",
+                            "Face-out book",
+                            "<code>BookWidget</code> via <code>BookMetrics</code>: height is <code>base &times; heightFactor</code> where the factor hashes off the ISBN into [0.94, 1.06]; width follows the decoded cover's own aspect, defaulting to 2/3 until the image lands.<br /><br /><b>That default is a real hazard for any wrapping option.</b> Width is not known until decode, so a wrap computed from measured width reflows as covers arrive. Pack on a fixed slot count derived from <code>kDefaultCoverAspect</code> instead.",
+                            `<div class="fr" style="width:auto;height:auto;border:0;background:var(--variant);padding:10px"><div class="bks" style="height:auto;padding:0">${IT.slice(
+                                0,
+                                4,
+                            )
+                                .map((b, i) => bookHTML(b, i))
+                                .join("")}</div></div>`,
+                        ],
+                    ],
+                ],
+            ];
+
+            /* Mark an id as an unresolved decision; renders inline as a red callout. */
+            const OPEN = {
+                "b-wrap":
+                    "Open: unbounded wrap needs a per-plank hero tag on BOTH ends of the flight (library and book_details_tab_view.dart:322), and book_details only knows book.shelfId — it has no idea which plank the book stood on. Nothing has been decided about how the row index reaches the details route.",
+                "c-capped":
+                    "Open: does the cap belong at two planks, or should it scale with how many shelves the library has? A reader with one shelf can afford four planks; a reader with ten cannot afford two.",
+                "reach-capped":
+                    "Open: tapping the name tab currently means 'rename' in edit mode. If the tab also opens the shelf page in normal mode, that is two meanings for one target — acceptable, since the modes are disjoint, but it should be a deliberate choice rather than a collision.",
+            };
+
+            /* ==================================================================
+   SECTION 4: VERSIONS — named variants, git-branch style.
+
+   `main` is today's behaviour. Each option is a branch off it, so the
+   compare view can show exactly what a given option changes and nothing
+   more. Selecting a version and pressing ⇧Enter compares against it.
+   ================================================================== */
+            const VERSIONS = [
+                [
+                    "main",
+                    "main",
+                    "Today's behaviour plus all three proposals side by side. Browse here; use the branches to see one option in isolation.",
+                    null,
+                    {},
+                ],
+                [
+                    "signal-only",
+                    "signal-only",
+                    "Option A alone: count on the tab, fade at the edge. Ships in an afternoon, touches no structure, and does not fix reachability.",
+                    "main",
+                    {
+                        screens: {
+                            "b-wrap": null,
+                            "b-wrap-nosheet": null,
+                            "c-capped": null,
+                            "c-shelf-page": null,
+                            "c-fits": null,
+                        },
+                        flows: { "reach-capped": null },
+                        elements: { "el-more": null },
+                        open: { "b-wrap": null, "c-capped": null },
+                    },
+                ],
+                [
+                    "capped-wrap",
+                    "capped-wrap",
+                    "Option C alone: two planks then a chip, with a shelf page behind it. The recommended direction — bounded vertical cost, legible wrap, and a home for per-shelf actions.",
+                    "main",
+                    {
+                        screens: { "b-wrap": null, "b-wrap-nosheet": null },
+                        open: { "b-wrap": null },
+                    },
+                ],
+                [
+                    "full-wrap",
+                    "full-wrap",
+                    "Option B alone: wrap until every book is face-out. Drawn so the cost is visible rather than argued about — two shelves fill roughly 1,100pt of scroll.",
+                    "main",
+                    {
+                        screens: {
+                            "c-capped": null,
+                            "c-shelf-page": null,
+                            "c-fits": null,
+                        },
+                        flows: { "reach-capped": null },
+                        elements: { "el-more": null },
+                        open: { "c-capped": null, "reach-capped": null },
+                    },
+                ],
+            ];
+
+            /* ==================================================================
+   SECTION 5: ENGINE — behaviour is load-bearing.
+   See reference/pitfalls.md in this skill before changing it.
+   ================================================================== */
+            function stripTags(s) {
+                return String(s)
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&[a-z]+;/g, " ");
+            }
+            /* Every query term must appear somewhere (order-independent AND), so
+   "cover book" finds "Book cover". Haystack must be pre-lowercased. */
+            function matchWords(haystack, query) {
+                return query
+                    .trim()
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .every((t) => haystack.includes(t));
+            }
+            function escapeReg(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+            function highlightText(text, query) {
+                const terms = query
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(escapeReg);
+                if (!terms.length) return text;
+                return text.replace(
+                    new RegExp(`(${terms.join("|")})`, "gi"),
+                    '<mark class="hl">$1</mark>',
+                );
+            }
+            function flowSearchText(g, nm, ds, steps) {
+                return stripTags(
+                    [
+                        nm,
+                        g,
+                        ds,
+                        steps.map(([sn, sc]) => `${sn} ${sc}`).join(" "),
+                    ].join(" "),
+                )
+                    .toLowerCase()
+                    .replace(/["&<>]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            /* ---- version resolution ---------------------------------------- */
+            const VMAP = new Map(VERSIONS.map((v) => [v[0], v]));
+            const VROOT = VERSIONS[0][0];
+
+            function chainOf(vid) {
+                const out = [];
+                let cur = vid;
+                const seen = new Set();
+                while (cur && VMAP.has(cur) && !seen.has(cur)) {
+                    seen.add(cur);
+                    out.unshift(cur);
+                    cur = VMAP.get(cur)[3];
+                }
+                return out;
+            }
+            /* payload key per view: what a patch entry carries */
+            const PAYLOAD = {
+                screens: "spec",
+                flows: "steps",
+                elements: "demo",
+            };
+
+            /** Resolve one view for a version into [group, [[id,nm,ds,payload],...]]. */
+            function resolveView(vid, kind) {
+                const base =
+                    kind === "screens"
+                        ? SCREENS
+                        : kind === "flows"
+                          ? FLOWS
+                          : ELEMENTS;
+                // flat map of id -> {group,nm,ds,payload}, preserving group order
+                const groups = base.map(([g]) => g);
+                const items = new Map();
+                base.forEach(([g, list]) =>
+                    list.forEach(([id, nm, ds, payload]) =>
+                        items.set(id, { group: g, nm, ds, payload }),
+                    ),
+                );
+
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {})[kind] || {};
+                    for (const [id, val] of Object.entries(patch)) {
+                        if (val === null) {
+                            items.delete(id);
+                            continue;
+                        }
+                        const prev = items.get(id);
+                        const group =
+                            val.group ||
+                            prev?.group ||
+                            `Added in ${VMAP.get(step)[1]}`;
+                        if (!groups.includes(group)) groups.push(group);
+                        items.set(id, {
+                            group,
+                            nm: val.name ?? prev?.nm ?? id,
+                            ds: val.note ?? prev?.ds ?? "",
+                            payload: val[PAYLOAD[kind]] ?? prev?.payload,
+                        });
+                    }
+                }
+                return groups
+                    .map((g) => [
+                        g,
+                        [...items.entries()]
+                            .filter(([, v]) => v.group === g)
+                            .map(([id, v]) => [id, v.nm, v.ds, v.payload]),
+                    ])
+                    .filter(([, l]) => l.length);
+            }
+            function resolveOpen(vid) {
+                let out = { ...OPEN };
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {}).open || {};
+                    for (const [id, val] of Object.entries(patch))
+                        val === null ? delete out[id] : (out[id] = val);
+                }
+                return out;
+            }
+            /** id -> 'changed' | 'onlyHere' | 'onlyThere', reading a against b. */
+            function diffMap(a, b, kind) {
+                const A = new Map(),
+                    B = new Map();
+                resolveView(a, kind).forEach(([, l]) =>
+                    l.forEach((it) => A.set(it[0], it)),
+                );
+                resolveView(b, kind).forEach(([, l]) =>
+                    l.forEach((it) => B.set(it[0], it)),
+                );
+                const out = new Map();
+                for (const [id, it] of A) {
+                    if (!B.has(id)) out.set(id, "onlyHere");
+                    else if (
+                        JSON.stringify(it[3]) !== JSON.stringify(B.get(id)[3])
+                    )
+                        out.set(id, "changed");
+                }
+                for (const id of B.keys())
+                    if (!A.has(id)) out.set(id, "onlyThere");
+                return out;
+            }
+
+            let activeV = VROOT,
+                compareV = null,
+                onlyDiff = false;
+            let view = "screens",
+                cbOpen = false,
+                kbIndex = -1,
+                kbId = null,
+                vbOpen = false,
+                vkbIndex = -1,
+                vkbId = null;
+            const sel = { screens: new Set(), elements: new Set() };
+
+            /**
+             * One list per group of entries to draw, for the active version.
+             *
+             * In compare mode this also emits "ghost" entries for items the
+             * compared version has and the active one doesn't. Without them a
+             * removal is invisible: render only walks the active version, so a
+             * deleted screen just silently isn't there.
+             */
+            function viewModel(kind) {
+                const A = resolveView(activeV, kind);
+                const cmp = compareV && compareV !== activeV;
+                const d = cmp ? diffMap(activeV, compareV, kind) : new Map();
+                const B = cmp ? resolveView(compareV, kind) : [];
+                const bItem = new Map(),
+                    bGroup = new Map();
+                B.forEach(([g, l]) =>
+                    l.forEach((it) => {
+                        bItem.set(it[0], it);
+                        bGroup.set(it[0], g);
+                    }),
+                );
+                const groups = A.map(([g]) => g);
+                if (cmp)
+                    for (const [g] of B)
+                        if (!groups.includes(g)) groups.push(g);
+
+                return groups
+                    .map((g) => {
+                        const own = (A.find(([n]) => n === g)?.[1] || []).map(
+                            ([id, nm, ds, payload]) => ({
+                                id,
+                                nm,
+                                ds,
+                                payload,
+                                diff: d.get(id) || null,
+                                ghost: false,
+                                other: bItem.get(id)?.[3] ?? null,
+                            }),
+                        );
+                        const ghosts = cmp
+                            ? [...d.entries()]
+                                  .filter(
+                                      ([id, k]) =>
+                                          k === "onlyThere" &&
+                                          bGroup.get(id) === g,
+                                  )
+                                  .map(([id]) => {
+                                      const it = bItem.get(id);
+                                      return {
+                                          id,
+                                          nm: it[1],
+                                          ds: it[2],
+                                          payload: it[3],
+                                          diff: "onlyThere",
+                                          ghost: true,
+                                          other: null,
+                                      };
+                                  })
+                            : [];
+                        return [g, own.concat(ghosts)];
+                    })
+                    .filter(([, l]) => l.length);
+            }
+
+            /* ---- render (re-runnable; version changes call this) ------------ */
+            let CB = {},
+                nScreens = 0,
+                nFlows = 0,
+                nEls = 0;
+
+            function render() {
+                const SM = viewModel("screens");
+                const EM = viewModel("elements");
+                const FM = viewModel("flows");
+                const openMap = resolveOpen(activeV);
+                const cmp = compareV && compareV !== activeV;
+                const bLabel = cmp ? VMAP.get(compareV)[1] : "";
+                const aLabel = VMAP.get(activeV)[1];
+
+                // Labels read from the point of view of the version on screen.
+                const TAGTEXT = {
+                    changed: "changed",
+                    onlyHere: "only here",
+                    onlyThere: `only in ${bLabel}`,
+                };
+                const tagFor = (d) =>
+                    d ? `<span class="tag ${d}">${TAGTEXT[d]}</span>` : "";
+                const keep = (e) => !(onlyDiff && cmp && !e.diff);
+
+                const count = (m) =>
+                    m.reduce((a, [, l]) => a + l.filter(keep).length, 0);
+                nScreens = count(SM);
+                nEls = count(EM);
+                nFlows = count(FM);
+
+                document.getElementById("screens").innerHTML = SM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map((e) => {
+                                let shot;
+                                if (cmp && e.diff === "changed")
+                                    shot = `<div class="pair"><div><div class="vl">${aLabel}</div><div class="shot">${frame({ ...e.payload, sm: true })}</div></div><div><div class="vl b">${bLabel}</div><div class="shot">${frame({ ...(e.other || e.payload), sm: true })}</div></div></div>`;
+                                else
+                                    shot = `<div class="shot">${frame(e.payload)}</div>`;
+                                // The OPEN callout renders on a screen as well as
+                                // on a flow. It was flow-only, which meant an
+                                // unresolved decision attached to a screen id was
+                                // silently invisible — the same failure mode as a
+                                // `.gone` rule that misses a class.
+                                return `<div class="item${e.ghost ? " ghost" : ""}" data-id="${e.id}">${shot}<div class="cap"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }</div></div>`;
+                            })
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="grid${cmp ? " cmp" : ""}">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                document.getElementById("elements").innerHTML = EM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<div class="el${e.ghost ? " ghost" : ""}" data-id="${e.id}"><div class="demo">${e.payload}</div><div class="body"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`,
+                            )
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="egrid">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                const stepRow = (steps) =>
+                    `<div class="steps">${steps
+                        .map(
+                            ([sn, sc, spec], i) =>
+                                (i ? '<div class="arrow">&rarr;</div>' : "") +
+                                `<div class="step"><div class="sn">${String(i + 1).padStart(2, "0")} &middot; ${sn}</div><div class="shot">${frame(spec)}</div><div class="sc">${sc}</div></div>`,
+                        )
+                        .join("")}</div>`;
+
+                document.getElementById("flows").innerHTML = FM.map(
+                    ([g, entries]) =>
+                        entries
+                            .filter(keep)
+                            .map((e) => {
+                                const rows =
+                                    cmp && e.diff === "changed"
+                                        ? `<div class="vrow">${aLabel}</div>${stepRow(e.payload)}<div class="vrow b">${bLabel}</div>${stepRow(e.other || e.payload)}`
+                                        : stepRow(e.payload);
+                                return `<div class="flow${e.ghost ? " ghost" : ""}" id="f-${e.id}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}"><p class="fh">${e.nm}${tagFor(e.diff)}</p><p class="fd">${e.ds}</p>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }${rows}</div>`;
+                            })
+                            .join(""),
+                ).join("");
+
+                document.getElementById("sidenav").innerHTML = FM.map(
+                    ([g, entries]) => {
+                        const links = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<a href="#f-${e.id}" data-id="${e.id}" data-nm="${stripTags(e.nm)}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}">${stripTags(e.nm)}</a>`,
+                            )
+                            .join("");
+                        return links
+                            ? `<div class="sh">${g}</div>${links}`
+                            : "";
+                    },
+                ).join("");
+
+                const cbGroups = (m) =>
+                    m
+                        .map(([g, entries]) => [
+                            g,
+                            entries.filter(keep).map((e) => [e.id, e.nm, e.ds]),
+                        ])
+                        .filter(([, l]) => l.length);
+
+                CB = {
+                    screens: {
+                        label: "Screens",
+                        placeholder: "Search screens…",
+                        container: "screens",
+                        itemSel: ".item",
+                        none: "screens-none",
+                        groups: cbGroups(SM),
+                    },
+                    elements: {
+                        label: "UI Elements",
+                        placeholder: "Search elements…",
+                        container: "elements",
+                        itemSel: ".el",
+                        none: "elements-none",
+                        groups: cbGroups(EM),
+                    },
+                };
+                // drop filter selections for ids this version doesn't have
+                for (const k of ["screens", "elements"]) {
+                    const live = new Set(
+                        CB[k].groups.flatMap(([, l]) => l.map(([id]) => id)),
+                    );
+                    [...sel[k]].forEach((id) => {
+                        if (!live.has(id)) sel[k].delete(id);
+                    });
+                }
+
+                const total = cmp
+                    ? ["screens", "elements", "flows"].reduce(
+                          (a, k) => a + diffMap(activeV, compareV, k).size,
+                          0,
+                      )
+                    : 0;
+                document.getElementById("vinfo-lbl").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document.getElementById("vinfo-note").innerHTML = cmp
+                    ? `${VMAP.get(activeV)[2]}`
+                    : VMAP.get(activeV)[2];
+                document.getElementById("vinfo-diffs").textContent = cmp
+                    ? total
+                        ? `${total} difference${total === 1 ? "" : "s"}`
+                        : "identical"
+                    : "";
+                document
+                    .getElementById("difftoggle")
+                    .classList.toggle("gone", !cmp);
+                document.getElementById("vbtn-label").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document
+                    .getElementById("vcmp-clear")
+                    .classList.toggle("gone", !cmp);
+                if (view !== "flows") applyFilter();
+                else updateCount(0);
+                if (view === "flows" && fsearch.value)
+                    fsearch.dispatchEvent(
+                        new Event("input", { bubbles: true }),
+                    );
+                spy();
+            }
+
+            /* ---- filter combobox ---- */
+            const cbox = document.getElementById("cbox"),
+                cbtn = document.getElementById("cbtn"),
+                cbtnLabel = document.getElementById("cbtn-label"),
+                cbtnBadge = document.getElementById("cbtn-badge"),
+                csearch = document.getElementById("csearch"),
+                clist = document.getElementById("clist"),
+                cfootN = document.getElementById("cfoot-n"),
+                cclear = document.getElementById("cclear");
+
+            function visibleOpts() {
+                const q = csearch.value.trim().toLowerCase();
+                if (!q) return CB[view].groups;
+                return CB[view].groups
+                    .map(([g, items]) => [
+                        g,
+                        // A group's own name pulls in its whole contents (browse by category);
+                        // otherwise an item needs every query word in its name or note.
+                        matchWords(g.toLowerCase(), q)
+                            ? items
+                            : items.filter(([, nm, ds]) =>
+                                  matchWords(
+                                      stripTags(
+                                          `${nm} ${ds || ""}`,
+                                      ).toLowerCase(),
+                                      q,
+                                  ),
+                              ),
+                    ])
+                    .filter(([, items]) => items.length);
+            }
+            function renderList() {
+                const groups = visibleOpts(),
+                    q = csearch.value.trim();
+                if (!groups.length) {
+                    kbIndex = -1;
+                    kbId = null;
+                    clist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                clist.innerHTML = groups
+                    .map(
+                        ([g, items]) =>
+                            `<div class="cgrp" data-group="${g}">${g}</div>` +
+                            items
+                                .map(
+                                    ([id, nm]) =>
+                                        `<div class="copt${sel[view].has(id) ? " sel" : ""}" data-id="${id}"><span class="box">${
+                                            sel[view].has(id) ? "&#10003;" : ""
+                                        }</span><span class="lb">${highlightText(stripTags(nm), q)}</span></div>`,
+                                )
+                                .join(""),
+                    )
+                    .join("");
+                // Keep keyboard focus on the same option across a re-render, so toggling
+                // with Enter doesn't fling focus back to the top.
+                const opts = [...clist.querySelectorAll(".copt")];
+                let idx = kbId
+                    ? opts.findIndex((o) => o.dataset.id === kbId)
+                    : -1;
+                if (idx < 0) idx = 0;
+                if (opts.length) {
+                    kbIndex = idx;
+                    kbId = opts[idx].dataset.id;
+                    opts[idx].classList.add("kb");
+                } else {
+                    kbIndex = -1;
+                    kbId = null;
+                }
+            }
+            function applyFilter() {
+                const cfg = CB[view],
+                    s = sel[view],
+                    root = document.getElementById(cfg.container);
+                let shown = 0;
+                root.querySelectorAll(cfg.itemSel).forEach((el) => {
+                    const on = s.size === 0 || s.has(el.dataset.id);
+                    el.classList.toggle("gone", !on);
+                    if (on) shown++;
+                });
+                root.querySelectorAll(".gsec").forEach((g) =>
+                    g.classList.toggle(
+                        "gone",
+                        !g.querySelector(cfg.itemSel + ":not(.gone)"),
+                    ),
+                );
+                document
+                    .getElementById(cfg.none)
+                    .classList.toggle("gone", shown > 0);
+                const total = view === "screens" ? nScreens : nEls;
+                cbtnBadge.hidden = s.size === 0;
+                cbtnBadge.textContent = s.size;
+                cfootN.textContent =
+                    s.size === 0
+                        ? `Showing all ${total}`
+                        : `Showing ${shown} of ${total}`;
+                updateCount(shown);
+            }
+            function updateCount(shown) {
+                const s = sel[view] ? sel[view].size : 0;
+                document.getElementById("cnt").textContent = [
+                    `${view === "screens" && s ? shown + " of " : ""}${nScreens} screens`,
+                    `${nFlows} flows`,
+                    `${view === "elements" && s ? shown + " of " : ""}${nEls} elements`,
+                ].join(" · ");
+            }
+            function openCB(focus) {
+                if (view === "flows") return;
+                closeVB(); // only one dropdown at a time
+                cbOpen = true;
+                cbox.classList.add("open");
+                kbId = null;
+                renderList();
+                if (focus) csearch.focus();
+            }
+            function closeCB() {
+                cbOpen = false;
+                cbox.classList.remove("open");
+                csearch.blur();
+            }
+
+            cbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                cbOpen ? closeCB() : openCB(true);
+            });
+            csearch.addEventListener("input", () => {
+                clist.scrollTop = 0;
+                renderList();
+            });
+            clist.addEventListener("click", (e) => {
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    // stopPropagation is required: renderList() replaces clist.innerHTML,
+                    // detaching this node before the click finishes bubbling, which would
+                    // make the document listener below see a detached target and close.
+                    e.stopPropagation();
+                    const id = opt.dataset.id;
+                    sel[view].has(id)
+                        ? sel[view].delete(id)
+                        : sel[view].add(id);
+                    renderList();
+                    applyFilter();
+                    return;
+                }
+                const grp = e.target.closest(".cgrp");
+                if (grp) {
+                    e.stopPropagation();
+                    const ids = CB[view].groups
+                        .find(([n]) => n === grp.dataset.group)[1]
+                        .map(([id]) => id);
+                    const allOn = ids.every((id) => sel[view].has(id));
+                    ids.forEach((id) =>
+                        allOn ? sel[view].delete(id) : sel[view].add(id),
+                    );
+                    renderList();
+                    applyFilter();
+                }
+            });
+            cclear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                sel[view].clear();
+                csearch.value = "";
+                renderList();
+                applyFilter();
+            });
+            document.addEventListener("click", (e) => {
+                if (cbOpen && !cbox.contains(e.target)) closeCB();
+                if (vbOpen && !vbox.contains(e.target)) closeVB();
+            });
+
+            /* ---- version combobox (single-select, plus compare) ---- */
+            const vbox = document.getElementById("vbox"),
+                vbtn = document.getElementById("vbtn"),
+                vsearch = document.getElementById("vsearch"),
+                vlist = document.getElementById("vlist"),
+                vfootN = document.getElementById("vfoot-n"),
+                vcmpClear = document.getElementById("vcmp-clear"),
+                diffToggle = document.getElementById("difftoggle");
+
+            function renderVList() {
+                const q = vsearch.value.trim(),
+                    ql = q.toLowerCase();
+                const rows = VERSIONS.filter(
+                    ([id, label, note]) =>
+                        !ql ||
+                        matchWords(
+                            stripTags(`${label} ${note} ${id}`).toLowerCase(),
+                            ql,
+                        ),
+                );
+                if (!rows.length) {
+                    vkbIndex = -1;
+                    vkbId = null;
+                    vlist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                vlist.innerHTML =
+                    `<div class="cgrp" style="cursor:default">Show version</div>` +
+                    rows
+                        .map(
+                            ([id, label, note, parent]) =>
+                                `<div class="copt radio${id === activeV ? " sel" : ""}" data-v="${id}">
+        <span class="box">${id === activeV ? "&#10003;" : ""}</span>
+        <span class="col"><span class="lb">${highlightText(label, q)}</span>${
+            note
+                ? `<div class="sub">${parent ? `from ${VMAP.get(parent)[1]} &middot; ` : ""}${note}</div>`
+                : ""
+        }</span>
+        ${id !== activeV ? `<span class="tagn" data-cmp="${id}">${compareV === id ? "comparing" : "compare"}</span>` : ""}
+      </div>`,
+                        )
+                        .join("");
+                // Keep keyboard focus on the same version across a re-render
+                // (toggling compare re-renders this list), falling back to the
+                // first row only when the focused version is filtered out.
+                const vopts = [...vlist.querySelectorAll(".copt")];
+                let vi = vkbId
+                    ? vopts.findIndex((o) => o.dataset.v === vkbId)
+                    : -1;
+                if (vi < 0) vi = 0;
+                if (vopts.length) {
+                    vkbIndex = vi;
+                    vkbId = vopts[vi].dataset.v;
+                    vopts[vi].classList.add("kb");
+                } else {
+                    vkbIndex = -1;
+                    vkbId = null;
+                }
+
+                const legend = "&#8629; show &middot; &#8679;&#8629; compare";
+                vfootN.innerHTML = compareV
+                    ? `Comparing with ${VMAP.get(compareV)[1]} &middot; ${legend}`
+                    : `${VERSIONS.length} version${VERSIONS.length === 1 ? "" : "s"} &middot; ${legend}`;
+            }
+            function openVB(focus) {
+                closeCB(); // only one dropdown at a time, or they fight over the arrow keys
+                vbOpen = true;
+                vbox.classList.add("open");
+                vkbId = activeV; // open focused on where you already are
+                renderVList();
+                if (focus) vsearch.focus();
+            }
+            function closeVB() {
+                vbOpen = false;
+                vbox.classList.remove("open");
+                vsearch.blur();
+            }
+
+            vbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                vbOpen ? closeVB() : openVB(true);
+            });
+            vsearch.addEventListener("input", () => {
+                vlist.scrollTop = 0;
+                renderVList();
+            });
+            vlist.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const cmpBtn = e.target.closest("[data-cmp]");
+                if (cmpBtn) {
+                    const id = cmpBtn.dataset.cmp;
+                    compareV = compareV === id ? null : id;
+                    renderVList();
+                    render();
+                    return;
+                }
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    activeV = opt.dataset.v;
+                    if (compareV === activeV) compareV = null;
+                    renderVList();
+                    render();
+                    closeVB();
+                }
+            });
+            vcmpClear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                compareV = null;
+                onlyDiff = false;
+                diffToggle.classList.add("off");
+                renderVList();
+                render();
+            });
+            diffToggle.addEventListener("click", () => {
+                onlyDiff = !onlyDiff;
+                diffToggle.classList.toggle("off", !onlyDiff);
+                render();
+            });
+
+            /* ---- view switching ---- */
+            function switchView(v) {
+                const btn = document.querySelector(
+                    `.vtabs button[data-v="${v}"]`,
+                );
+                if (!btn || view === v) return;
+                view = v;
+                document
+                    .querySelectorAll(".vtabs button")
+                    .forEach((x) => x.classList.toggle("on", x === btn));
+                document
+                    .querySelectorAll(".view")
+                    .forEach((el) =>
+                        el.classList.toggle("on", el.id === "v-" + view),
+                    );
+                closeCB();
+                const isFlows = view === "flows";
+                cbox.classList.toggle("hide", isFlows);
+                if (!isFlows) {
+                    cbtnLabel.textContent = CB[view].label;
+                    csearch.placeholder = CB[view].placeholder;
+                    csearch.value = "";
+                    applyFilter();
+                } else updateCount(0);
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }
+            document
+                .querySelectorAll(".vtabs button")
+                .forEach((b) =>
+                    b.addEventListener("click", () => switchView(b.dataset.v)),
+                );
+
+            /* ---- flow search + scroll-spy ---- */
+            const fsearch = document.getElementById("fsearch"),
+                sbox = document.getElementById("sbox");
+            fsearch.addEventListener("focus", () =>
+                sbox.classList.add("focused"),
+            );
+            fsearch.addEventListener("blur", () =>
+                sbox.classList.remove("focused"),
+            );
+            fsearch.addEventListener("input", () => {
+                sbox.classList.toggle("dirty", fsearch.value.length > 0);
+                const q = fsearch.value.trim().toLowerCase();
+                let any = false;
+                document.querySelectorAll(".flow").forEach((f) => {
+                    const show = !q || matchWords(f.dataset.f, q);
+                    f.classList.toggle("gone", !show);
+                    if (show) any = true;
+                });
+                document.querySelectorAll("#sidenav a").forEach((a) => {
+                    a.classList.toggle(
+                        "gone",
+                        !(!q || matchWords(a.dataset.f, q)),
+                    );
+                    a.innerHTML = highlightText(
+                        a.dataset.nm,
+                        fsearch.value.trim(),
+                    );
+                });
+                document.querySelectorAll("#sidenav .sh").forEach((h) => {
+                    let n = h.nextElementSibling,
+                        on = false;
+                    while (n && n.tagName === "A") {
+                        if (!n.classList.contains("gone")) on = true;
+                        n = n.nextElementSibling;
+                    }
+                    h.classList.toggle("gone", !on);
+                });
+                document
+                    .getElementById("flows-none")
+                    .classList.toggle("gone", any);
+                spy();
+            });
+
+            /* Highlights whichever flow is under the header as you scroll, not only on
+   click. Filter-aware, and clamps to the last section at the page bottom. */
+            let spyRAF = null;
+            function spy() {
+                if (spyRAF) return;
+                spyRAF = requestAnimationFrame(() => {
+                    spyRAF = null;
+                    if (view !== "flows") return;
+                    const flows = [
+                        ...document.querySelectorAll(".flow:not(.gone)"),
+                    ];
+                    if (!flows.length) return;
+                    let cur = flows[0];
+                    for (const f of flows)
+                        if (f.getBoundingClientRect().top <= 100) cur = f;
+                    if (
+                        window.innerHeight + window.scrollY >=
+                        document.body.scrollHeight - 4
+                    )
+                        cur = flows[flows.length - 1];
+                    const id = cur.id.replace(/^f-/, "");
+                    document
+                        .querySelectorAll("#sidenav a")
+                        .forEach((a) =>
+                            a.classList.toggle("cur", a.dataset.id === id),
+                        );
+                });
+            }
+            window.addEventListener("scroll", spy, { passive: true });
+            window.addEventListener("resize", spy);
+
+            /* ---- hotkeys: 1/2/3 views, v versions, / search, Esc clear-then-close ---- */
+            function isTyping(el) {
+                return (
+                    el &&
+                    (el.tagName === "INPUT" ||
+                        el.tagName === "TEXTAREA" ||
+                        el.isContentEditable)
+                );
+            }
+            document.addEventListener("keydown", (e) => {
+                const free =
+                    !isTyping(document.activeElement) &&
+                    !e.metaKey &&
+                    !e.ctrlKey;
+                if (["1", "2", "3"].includes(e.key) && free) {
+                    e.preventDefault();
+                    switchView(
+                        { 1: "screens", 2: "elements", 3: "flows" }[e.key],
+                    );
+                    return;
+                }
+                if ((e.key === "v" || e.key === "V") && free) {
+                    e.preventDefault();
+                    vbOpen ? closeVB() : openVB(true);
+                    return;
+                }
+                if (e.key === "/" && free) {
+                    e.preventDefault();
+                    if (view === "flows") {
+                        fsearch.focus();
+                        fsearch.select();
+                    } else openCB(true);
+                    return;
+                }
+                if (e.key === "Escape") {
+                    if (vbOpen) {
+                        if (vsearch.value) {
+                            vsearch.value = "";
+                            renderVList();
+                        } else closeVB();
+                        return;
+                    }
+                    if (cbOpen) {
+                        if (csearch.value) {
+                            csearch.value = "";
+                            renderList();
+                        } else closeCB();
+                        return;
+                    }
+                    if (isTyping(document.activeElement)) {
+                        const el = document.activeElement;
+                        el.value = "";
+                        el.dispatchEvent(new Event("input", { bubbles: true }));
+                        el.blur();
+                    }
+                    return;
+                }
+                if (
+                    vbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const vopts = [...vlist.querySelectorAll(".copt")];
+                    if (!vopts.length) return;
+                    if (e.key === "Enter") {
+                        if (vkbIndex < 0) return;
+                        e.preventDefault();
+                        const id = vopts[vkbIndex].dataset.v;
+                        if (e.shiftKey) {
+                            // Shift+Enter compares instead of switching. A letter
+                            // key can't be used here: the search field has focus,
+                            // so it would just be typed.
+                            if (id !== activeV) {
+                                compareV = compareV === id ? null : id;
+                                renderVList();
+                                render();
+                            }
+                        } else {
+                            activeV = id;
+                            if (compareV === activeV) compareV = null;
+                            renderVList();
+                            render();
+                            closeVB();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    vkbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(vkbIndex + 1, vopts.length - 1)
+                            : Math.max(vkbIndex - 1, 0);
+                    vkbId = vopts[vkbIndex].dataset.v;
+                    vopts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === vkbIndex),
+                    );
+                    vopts[vkbIndex].scrollIntoView({ block: "nearest" });
+                    return;
+                }
+                if (
+                    cbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const opts = [...clist.querySelectorAll(".copt")];
+                    if (!opts.length) return;
+                    if (e.key === "Enter") {
+                        if (kbIndex >= 0) {
+                            e.preventDefault();
+                            opts[kbIndex].click();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    kbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(kbIndex + 1, opts.length - 1)
+                            : Math.max(kbIndex - 1, 0);
+                    kbId = opts[kbIndex].dataset.id;
+                    opts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === kbIndex),
+                    );
+                    opts[kbIndex].scrollIntoView({ block: "nearest" });
+                }
+            });
+
+            /* one version means versioning is unused: hide the selector entirely */
+            if (VERSIONS.length < 2) {
+                vbox.classList.add("hide");
+                document.querySelector(".vinfo").classList.add("gone");
+            }
+            renderVList();
+            render();
+        </script>
+    </body>
+</html>

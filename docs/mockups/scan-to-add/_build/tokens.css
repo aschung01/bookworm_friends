@@ -1,0 +1,26 @@
+                /* ---- SECTION 1a: product tokens.
+                   Copied verbatim from AppColors in
+                   lib/constants/app_theme.dart. Both maps are here because
+                   this set needs both: the Add Book sheet is drawn in light
+                   mode, and the scanner is a camera preview, which is dark
+                   whatever the app's theme says. ---- */
+                --page: #f8f9fa; /* light pageBackground   */
+                --surface: #ffffff; /* light surface         */
+                --variant: #e9ecef; /* light surfaceVariant — the search pill */
+                --text: #212529; /* light primaryText       */
+                --text2: #adb5bd; /* light secondaryText    */
+                --divider: #e9ecef; /* light divider        */
+                --brand: #09bc8a; /* both themes; decoration only, 2.45:1 on white */
+                --brandText: #067657; /* light brandText == brandFill */
+                --sheet: #eff5ef; /* light sheetBackground, the pinned mint tint */
+
+                /* Dark map, used only by the scanner. brandText is the vivid
+                   green there (6.8:1 on the dark surface), which is why the
+                   reticle and the shutter label may use it as *text* while the
+                   sheet above may not. */
+                --dpage: #121212; /* dark pageBackground   */
+                --dsurface: #1e1e1e; /* dark surface       */
+                --dvariant: #2c2c2e; /* dark surfaceVariant */
+                --dtext: #f1f3f5; /* dark primaryText      */
+                --dtext2: #8e8e93; /* dark secondaryText   */
+                --dbrandText: #09bc8a; /* dark brandText     */

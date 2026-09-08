@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- fanned from a low pivot, like a hand of cards; green halo behind each
+       layer supplies the separation without a second value -->
+  <g transform="translate(512,512) scale(1.12) translate(-512,-537)">
+    <g transform="rotate(-15 512 806)">
+      <rect x="326" y="284" width="372" height="502" rx="54" fill="#09BC8A"/>
+      <rect x="342" y="300" width="340" height="470" rx="42" fill="#ffffff"/>
+    </g>
+    <g>
+      <rect x="326" y="284" width="372" height="502" rx="54" fill="#09BC8A"/>
+      <rect x="342" y="300" width="340" height="470" rx="42" fill="#ffffff"/>
+    </g>
+    <g transform="rotate(15 512 806)">
+      <rect x="326" y="284" width="372" height="502" rx="54" fill="#09BC8A"/>
+      <rect x="342" y="300" width="340" height="470" rx="42" fill="#ffffff"/>
+      <rect x="384" y="392" width="22" height="286" rx="11" fill="#09BC8A"/>
+    </g>
+  </g>
+</svg>

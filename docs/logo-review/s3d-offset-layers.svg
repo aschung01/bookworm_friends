@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- D: no rotation at all — pure diagonal offset. Crisp and systematic;
+       "layers" rather than "fan". -->
+  <g transform="translate(512,512) scale(1.24) translate(-522,-535)">
+    <g transform="translate(-56,56)">
+      <rect x="338" y="286" width="368" height="498" rx="52" fill="#09BC8A"/>
+      <rect x="352" y="300" width="340" height="470" rx="44" fill="#ffffff"/>
+    </g>
+    <g>
+      <rect x="338" y="286" width="368" height="498" rx="52" fill="#09BC8A"/>
+      <rect x="352" y="300" width="340" height="470" rx="44" fill="#ffffff"/>
+    </g>
+    <g transform="translate(56,-56)">
+      <rect x="338" y="286" width="368" height="498" rx="52" fill="#09BC8A"/>
+      <rect x="352" y="300" width="340" height="470" rx="44" fill="#ffffff"/>
+      <rect x="394" y="344" width="22" height="382" rx="11" fill="#09BC8A"/>
+    </g>
+  </g>
+</svg>

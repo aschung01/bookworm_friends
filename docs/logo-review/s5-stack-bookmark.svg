@@ -1,0 +1,8 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- stack + bookmark: which one you're in -->
+  <rect x="142" y="307" width="700" height="150" rx="38" fill="#ffffff"/>
+  <rect x="142" y="477" width="740" height="150" rx="38" fill="#ffffff"/>
+  <rect x="142" y="647" width="720" height="150" rx="38" fill="#ffffff"/>
+  <path d="M276 227 H396 V777 L336 729 L276 777 Z" fill="#ffffff" stroke="#09BC8A" stroke-width="18" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- worm coiled into a reading-progress ring -->
+  <path d="M677 276 A288 288 0 1 1 347 276" fill="none" stroke="#ffffff" stroke-width="100" stroke-linecap="round"/>
+  <circle cx="343" cy="266" r="80" fill="#ffffff"/>
+  <circle cx="326" cy="242" r="19" fill="#09BC8A"/>
+  <circle cx="376" cy="236" r="19" fill="#09BC8A"/>
+  <!-- open book inside the ring -->
+  <path d="M498 440 L336 412 C328 411 322 416 322 424 L322 568 C322 576 327 582 335 583 L498 612 Z" fill="#ffffff"/>
+  <path d="M526 440 L688 412 C696 411 702 416 702 424 L702 568 C702 576 697 582 689 583 L526 612 Z" fill="#ffffff"/>
+</svg>

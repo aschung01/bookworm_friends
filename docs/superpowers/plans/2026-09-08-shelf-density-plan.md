@@ -29,31 +29,38 @@ that gives an existing read-pile mechanism a second caller.
 
 ## What this changes, stated carefully
 
-**⚠️ `shelf_row.dart` is under active edit by someone else.** Between this plan being drafted and
-being committed the file grew from 1021 to **1282 lines** and `_ShelfRowState` gained
-`TickerProviderStateMixin` (`shelf_row.dart:132`) plus two controllers, `_liftTurn`
-(`shelf_row.dart:206`) and `_liftScale` (`shelf_row.dart:247`) — an in-flight lift animation on the
-drag path. Line citations below were re-derived against that state and **will drift again**.
+**⚠️ The lift animation has landed, and it changed the architecture this plan assumed.**
+`shelf_row.dart` grew from 1021 to 1282 lines; `_ShelfRowState` gained `TickerProviderStateMixin`
+(`shelf_row.dart:132`), `_liftTurn` (`:206`) and `_liftScale` (`:247`). Re-run
+`cite_check.py` before trusting any line number below.
 
-Before starting Task 3 or Task 9, both of which restructure that file: confirm the lift animation
-has landed, and re-run `cite_check.py`. Task 3 moves the resting row out and Task 9 edits
-`_dropIndexFor`; neither touches the lift, but both will conflict textually with an unfinished
-branch. **Do not start those two tasks against a dirty `shelf_row.dart`.** Tasks 1, 2 and 4 are
-unaffected and can proceed regardless.
+**There is no separate resting row to extract.** `_buildBookRow` (`shelf_row.dart:570`) serves both
+modes, and every book at rest is a `LongPressDraggable` (`:623`), because a hold at rest both
+enters edit mode and lifts the book in one gesture (`_onLift`, `:550`) — and per the doc at
+`:557-560`, "a `Draggable` that appears after the finger is down can never adopt that pointer".
+An earlier draft of this plan proposed extracting a resting row and claimed edit mode was
+structurally firewalled from compressed drawings. Both were wrong. What moves out is the
+**drawing**; the row, the draggable and the drag machinery stay put.
+
+**Edit mode is per-density, not always face-out.**
+
+| density   | edit mode draws       | consequence for the drag machine                           |
+| --------- | --------------------- | ---------------------------------------------------------- |
+| `covers`  | covers                | unchanged                                                  |
+| `spines`  | **spines, draggable** | measured `slotExtent` is already correct — nothing to do   |
+| `leaning` | covers                | needs `slotExtent` from cover width, not the measured step |
+
+The `slotExtent` hazard is worth stating once, because it is subtle and it bites silently.
+`ShelfBookDrag.slotExtent` is measured from the rendered slot (`_slotExtentOf`, `:439`) and is
+documented as "the width of the gap the receiving shelf has to open for it". Any density whose
+drawing _changes_ on entering edit mode therefore reports a gap for the wrong-sized book. `spines`
+avoids this by not changing; `leaning` cannot, so Task 9 overrides it there and only there.
 
 **`LibraryPane` must keep reading no shell state.** `library_view.dart:13-21` is explicit that the
 pane "takes everything it draws as parameters and reads no shell state itself", because the shell
 keeps it persistent across tab switches. So `ShelfDensity` is **passed down from `HomePage`**
 exactly as `mode` is (`home_page.dart:480` watches `libraryModeProvider` and threads it through).
 Do not `ref.watch` the density inside `LibraryPane`, `ShelfRow` or `ShelfBooksRow`.
-
-**"Edit mode always draws face-out" is enforced structurally, not by a conditional.**
-`_ShelfRowState.build` (`shelf_row.dart:915`) already branches on `isEditMode` and sends the edit
-path to `_buildEditableBookList`. Thread `ShelfDensity` into **only the non-edit branch**. Then
-there is no code path by which a spine or a shingle can reach the drag machine, the delete badge at
-`top: -22, left: -22` (`shelf_row.dart:1203`) keeps its room, and `_dropIndexFor`
-(`shelf_row.dart:442`) keeps measuring full-width covers. If you find yourself passing density into
-the edit path, stop — the design says you should not be able to.
 
 **Task 1 changes today's view on its own.** Reading-first applies to `covers` too, so the moment
 Task 1 lands, existing shelves reorder. That is intended (design: "Reading first"), but it means
@@ -97,7 +104,7 @@ Pure functions and one call site. No widgets.
       This is a real departure from what `withoutFinishedBooks` boasts at
       `library_provider.dart:36-37`; say so rather than leaving the two docs to contradict each
       other silently.
-- [ ] Compose it in `library_view.dart:110`:
+- [ ] Compose it in `library_view.dart:116`:
       `withReadingFirst(withoutFinishedBooks(shelves))`.
 - [ ] Tests in `test/shelf_reading_first_test.dart`: stability (two reading books keep their
       relative order; two non-reading books likewise), a shelf with no reading books is returned
@@ -137,40 +144,42 @@ Inert — nothing reads it until Task 3.
 
 ---
 
-## Task 3: Cut the seam — extract the resting row
+## Task 3: Thread the density in, and extract the drawing
 
-**Pure refactor. No behaviour change, no new state.** The existing suite staying green _is_ the
-test. Do not add `leaning` or `spines` here.
+**Mostly a refactor. No new density behaviour.** The existing suite staying green _is_ the test for
+the extraction. Do not add `leaning` or `spines` geometry here.
 
-`shelf_row.dart` is 1282 lines and most of it is the drag machine. This moves the resting row out
-so Tasks 5 and 8 have somewhere to land.
+The seam is the **contents of a slot**, not the row. `_buildBook` (`shelf_row.dart:597`) wraps every
+book in a `LongPressDraggable` and hands the drawing to `_buildBookContent` (`:331`) in three
+places — `childWhenDragging` (`:709`), `child` (`:716`), and the drag `feedback` (`:679`). Density
+changes what goes in those, plus the slot's width. Everything else stays.
 
 - [ ] `lib/ui/widgets/shelf/shelf_book_tile.dart` — `ShelfBookTile`, lifted from
       `_buildBookContent` (`shelf_row.dart:331`). Keeps the `Wiggle`, the `BookWidget`, the
-      `ReadingBookmark` at `book.status == 1`, and the delete badge. Used by both call sites
-      (`shelf_row.dart:692` and `:699`).
-- [ ] `lib/ui/widgets/shelf/shelf_edge_fades.dart` — `_EdgeFades` (`shelf_row.dart:1082`) moved and
-      renamed `ShelfEdgeFades`, public because `ShelfBooksRow` needs it. Its
-      `@visibleForTesting static const double extent` and whichever test reads it move too. Keep the
-      entire doc comment — it argues for both ends being conditional, and that argument is not
-      re-derivable from the code.
-- [ ] `lib/ui/widgets/shelf/shelf_books_row.dart` — `ShelfBooksRow`, taking `Shelf`, `bookHeight`
-      and `ShelfDensity`. For now it `switch`es on density and every arm returns today's
-      `ListView.separated`. A `switch` with three identical arms is deliberate scaffolding: Tasks 5
-      and 8 fill two of them, and an `if (density == covers)` would hide which ones are missing.
-- [ ] `_ShelfRowState.build` (`shelf_row.dart:915`) delegates its non-edit branch to
-      `ShelfBooksRow`. The edit branch is **untouched**.
-- [ ] Thread `ShelfDensity` from `HomePage` → `LibraryPane` → `ShelfRow` → `ShelfBooksRow` as a
-      constructor parameter, alongside `mode`. `HomePage` is the only place that `ref.watch`es it.
-      See "What this changes" — `library_view.dart:13-21` forbids the shortcut.
-- [ ] Confirm `shelf_row.dart` got **smaller**. If it did not, the seam was cut in the wrong place.
-- [ ] Run the full suite. `library_clearance_test`, `library_background_regression_test` and
-      `book_hero_flight_test` are the ones most likely to notice an accidental change of box; they
-      must be green without edits.
+      `ReadingBookmark` at `book.status == 1`, the delete badge and the `_liftScaled` tail.
+      It takes what it needs (`landing`, `turnDrive`, callbacks) as parameters rather than reading
+      `_ShelfRowState`, which is what makes it movable at all.
+- [ ] Thread `ShelfDensity` from `HomePage` → `LibraryPane` → `ShelfRow` as a constructor
+      parameter, alongside `mode`. `HomePage` is the only place that `ref.watch`es it. See "What
+      this changes" — `library_view.dart:13-21` forbids the shortcut.
+- [ ] A single private `_drawingFor(book, ...)` on `_ShelfRowState` that `switch`es on the
+      **effective** density and returns the tile. Effective, not active: `covers` in edit mode when
+      the active density is `leaning`, per the table above. Put that resolution in one getter
+      (`_effectiveDensity`) so the rule exists once.
+- [ ] For now every arm of the `switch` returns `ShelfBookTile`. A `switch` with three identical
+      arms is deliberate scaffolding: Tasks 5 and 8 fill two of them, and an
+      `if (density == covers)` would hide which ones are missing.
+- [ ] Run the full suite. `library_clearance_test`, `library_background_regression_test`,
+      `book_hero_flight_test` and `library_delete_book_test` are the ones most likely to notice an
+      accidental change of box; they must be green **without edits to them**.
 
-**Do not** move `shelf_row.dart` itself, and do not move `_DeleteBookButton`
-(`shelf_row.dart:1203`) — it belongs to the edit path, which is staying put. Churn in widely
-imported files buys nothing here.
+**Do not** move `_EdgeFades` (`shelf_row.dart:1082`) or `_DeleteBookButton` (`:1203`). An earlier
+draft had `_EdgeFades` going public for a `ShelfBooksRow` that no longer exists; nothing outside
+this file needs either of them, so moving them is churn.
+
+**Do not** try to make `shelf_row.dart` smaller. It will grow slightly. The earlier draft's
+"confirm the file got smaller" check was predicated on extracting a row that turned out not to
+exist — the win here is three drawings in three small files instead of three inline, not line count.
 
 ---
 
@@ -190,7 +199,7 @@ Extractions plus a doc correction. Still no new UI.
       `spineToneFor(book.coverColor ?? generatedCoverColor(book.isbn))`; `spineToneFor` is at
       `book_chassis.dart:142`.
 - [ ] **Fix the comment at `book_vertical.dart:145-146`.** It claims the `surface` default "is right
-      on a shelf". It is not: `library_view.dart:254` paints the library `surfaceVariant`
+      on a shelf". It is not: `library_view.dart:260` paints the library `surfaceVariant`
       (`#E9ECEF`), not `surface` (`#FFFFFF`). The comment already documents this exact failure mode
       for the read pile's `sheetBackground` and in the same unsafe direction — a fill can clear the
       1.25 threshold against white while having no edge against the surface it is actually on. Say
@@ -209,20 +218,31 @@ shelf-overflow drawing ports them; a changed constant invalidates both.
 ## Task 5: The `spines` state
 
 The cheap state: thickness comes from page count, so no cover decode is needed to lay out, and
-spines do not overlap, so the row stays lazy.
+spines do not overlap, so the row stays a lazy `ListView.builder` — which it already is.
 
-- [ ] `lib/ui/widgets/shelf/shelf_spines_row.dart`. Head block of reading books face-out with 15pt
-      gaps, one 15pt gap, then spines shoulder to shoulder with **no** gaps. Split the row using
-      `readingHeadCount` from Task 1.
-- [ ] `ListView.builder`, not a `Stack`. Per-item width from
-      `spineMetricsFor(book, baseHeight: bookHeight).metrics.thickness`.
-- [ ] Each spine is a `BookVertical` with `fill`/`titleColor` from Task 4's shared tone,
-      `separator: true` (two similar covers otherwise read as one wide block), `arch: true`, and
+- [ ] `lib/ui/widgets/shelf/shelf_spine_tile.dart` — `ShelfSpineTile`, the widget that goes in a
+      slot, plus `shelfSpineWidth(book, baseHeight)` for the slot itself. Not a whole row: the row
+      is `_buildBookRow` and it stays.
+- [ ] Width from `spineMetricsFor(book, baseHeight: bookHeight).metrics.thickness` — **29–47pt**,
+      not `BookVertical`'s 26pt default. Two drafts of the design got this wrong; the default is a
+      value no real spine uses.
+- [ ] `BookVertical` with `fill`/`titleColor` from Task 4's shared tone, `separator: true` (two
+      similar covers otherwise read as one wide block), `arch: true`, and
       **`background: context.colors.surfaceVariant`** per Task 4.
+- [ ] Spines touch: the per-slot `_kSlotMargin` (7.5 each side) is dropped for a spine, and the
+      reading head keeps its 15pt gaps with one 15pt gap before the first spine. Split with
+      `readingHeadCount` from Task 1.
 - [ ] Verify `bookRowExtent(bookHeight)` (`book_widget.dart:518`) still reserves enough. It should,
       because spine heights come from the same `BookJitter` bounded by
       `maxHeightFactor = 1.06` (`book_geometry.dart:214`) — but assert it rather than assume it.
 - [ ] Hero tags on face-out books only. A spine carries none.
+- [ ] **Spines are draggable, and nothing has to be done to make that true.** The slot is already a
+      `LongPressDraggable` and the measured `slotExtent` is already the spine's own width, so the gap
+      a receiving shelf opens is correct by construction. Add a test that pins it — lifting a spine
+      reports a `slotExtent` in the 29–47pt band and not a cover width — because this is the
+      invariant the whole per-density edit rule rests on.
+- [ ] The lifted spine's `feedback` stays a **spine**, not a turned-out cover: picked up where it
+      stood, dropped into a spine-width gap. No `turnDrive` on the lift.
 - [ ] `test/shelf_density_render_preview.dart`, following `library_sheet_render_preview.dart`. This
       is how you look at the state before Task 10 gives you a button.
 - [ ] `test/shelf_spine_background_test.dart`: the pale-spine outline fires for a near-white fill
@@ -231,7 +251,7 @@ spines do not overlap, so the row stays lazy.
 
 ---
 
-## Task 6: `TurningBook`, and the two-step tap in `spines`
+## Task 6: `TurningBook`, the two-step tap, and delete in spine edit mode
 
 - [ ] `lib/ui/widgets/book/turning_book.dart` — `TurningBook`, lifted from `_turnedBook`
       (`read_pile.dart:275`). It owns `kReadSpinePose` (`read_pile.dart:32`), the `_slotWidth`
@@ -239,15 +259,22 @@ spines do not overlap, so the row stays lazy.
       (`read_pile.dart:27`), the `BookChassis` (`book_chassis.dart:332`) driven from
       `kReadSpinePose` to 0, and the `arch: false` rule for a spine that has become a face of a
       solid object.
-- [ ] `ReadPile` uses it. Its on-screen behaviour must not change — `read_pile` tests and any
-      pile render preview are the guard.
-- [ ] `ShelfBooksRow` owns a nullable surfaced book id. First tap on a spine surfaces it via
-      `TurningBook`; second tap opens details. One per row; tapping another surfaces that one
+- [ ] `ReadPile` uses it. Its on-screen behaviour must not change — `read_pile` tests and the pile
+      render preview are the guard.
+- [ ] `_ShelfRowState` gains a nullable surfaced book id. First tap on a compressed book surfaces it
+      via `TurningBook`; second tap opens details. One per row; tapping another surfaces that one
       instead.
 - [ ] The surfaced book gains the hero tag while it is face-out, so the flight to details always
       starts from a fully visible cover — the pile's own rule.
+- [ ] **Delete in spine edit mode rides the same interaction.** `_DeleteBookButton` sits at
+      `top: -22, left: -22` (`shelf_row.dart:1203`), outside its cover, so a 44pt disc on a ~37pt
+      spine would blanket the touching neighbours. So in `spines`, the badge is drawn **only on the
+      surfaced book** — tap a spine to turn it out, and the turned-out cover carries the badge. One
+      book face-out at a time means one badge at a time, so nothing can collide, and no new
+      affordance is invented.
 - [ ] Tests: a spine tap does **not** navigate; a second tap does; surfacing a second book
-      un-surfaces the first.
+      un-surfaces the first; in `spines` edit mode exactly one delete badge exists and it belongs to
+      the surfaced book; in `covers` edit mode every book still has one.
 
 **Do not** let this become a rewrite of the pile. If `ReadPile` needs more than a mechanical
 substitution, the extraction boundary is wrong — fix the boundary, not the pile.
@@ -281,6 +308,14 @@ expensive to get wrong.
 - [ ] Head block as in Task 5, then one 15pt gap, then the shingle group: a `Stack` inside a
       horizontal `SingleChildScrollView`, children emitted **highest index first** with
       `Positioned(left: i * step)`, so book 0 paints last and lands on top. `clipBehavior: Clip.none`.
+- [ ] **Each `Positioned` is `step` wide and the cover overflows it to the right.** A `RenderBox`
+      hit-tests its whole rect regardless of what is painted there, so a slot sized to the full
+      cover would let book 0 — hit-tested first, being frontmost — claim taps landing on the visible
+      strip of book 3, which sits well inside book 0's rect. Sizing the slot to the exposed strip
+      makes the hit area exactly the part a reader can see. The **last** book in the group gets a
+      full-cover-width slot, because all of it is visible.
+- [ ] The `Positioned` children are still `LongPressDraggable`s, so `leaning` keeps the one-gesture
+      lift. A `Stack` holding draggables is fine.
 - [ ] Explicit `Stack` width from `kDefaultCoverAspect` plus trailing slack, because the last
       book's true cover width is unknowable before decode. Doc it as the same approximation
       `readSpineMetrics` already makes and documents (`read_pile.dart:41-47`) — a precedent
@@ -291,14 +326,16 @@ expensive to get wrong.
 - [ ] Hero tags on face-out books only: reading books and the surfaced one.
 - [ ] `test/shelf_leaning_layout_test.dart`: step arithmetic against the design's table; **the
       `Stack`'s child order is reversed** — pin this, because it is the paint-order decision and a
-      future reader will "tidy" it back; a shelf with no reading books starts the group at the row's
-      left padding; a shelf where everything is reading renders identically to `covers`.
+      future reader will "tidy" it back; **a tap on a later book's strip hits that book and not
+      book 0** — pin this too, it is the hit-test decision; a shelf with no reading books starts the
+      group at the row's left padding; a shelf where everything is reading renders identically to
+      `covers`.
 
 ---
 
-## Task 9: The drop-index clamp
+## Task 9: The drop-index clamp, and `leaning`'s slot override
 
-The only change the drag machine needs.
+Two changes to the drag machine, both small and both load-bearing.
 
 - [ ] `_dropIndexFor` (`shelf_row.dart:442`) clamps against `readingHeadCount`: a tail book's index
       cannot fall below it, a head book's cannot rise above it. The gap therefore never opens where
@@ -309,10 +346,17 @@ The only change the drag machine needs.
 - [ ] A cross-shelf drop lands in the arriving book's own zone on the receiving shelf. `_onDrop`
       (around `shelf_row.dart:730`) already distinguishes same-shelf from cross-shelf via
       `ShelfBookDrag.shelfId`.
+- [ ] **`leaning` overrides `slotExtent`.** `_slotExtentOf` (`:439`) measures the rendered slot,
+      which in `leaning` is the 20.3pt step — but edit mode there draws face-out, so the gap a
+      receiving shelf opens must be a cover's width. Override it for `leaning` **only**, and doc
+      why the other two densities need nothing: `covers` measures a cover and draws a cover;
+      `spines` measures a spine and draws a spine. This is the one density whose drawing changes on
+      entering edit mode, and the override is the price of that.
 - [ ] Tests in `test/shelf_drag_zone_clamp_test.dart`: a tail book dragged over the head opens its
       gap at `readingHeadCount` and never before; a head book dragged into the tail stays in the
       head; a cross-shelf drop of a reading book lands in the receiving shelf's head; a shelf with
-      no reading books behaves exactly as today (the clamp is a no-op at 0).
+      no reading books behaves exactly as today (the clamp is a no-op at 0); lifting from `leaning`
+      reports a cover-width `slotExtent` while lifting from `spines` reports a spine-width one.
 - [ ] Confirm `library_delete_book_test.dart` and the existing reorder tests are green. If a reorder
       test now expects a different list, understand why before editing it — it may be catching the
       persisted-promotion consequence, which is intended.
@@ -346,13 +390,12 @@ The only change the drag machine needs.
 
 ## Task 11: Transitions and the label reserve
 
-- [ ] Cross-fade the row on a density change: an `AnimatedSwitcher` around `ShelfBooksRow` keyed by
-      density, 180ms. **Not** a per-book turn — that needs a `BookChassis` per book, which is the
-      cost the design rejected for `leaning` itself, and spending it on a transition after refusing
-      it for the drawing would be incoherent. The design records this as a withdrawn earlier draft;
-      do not reinstate it.
-- [ ] Entering edit mode from a compressed state uses the same cross-fade, for free, because the
-      edit branch already returns a different subtree.
+- [ ] Cross-fade the row on a density change: an `AnimatedSwitcher` around the row keyed by
+      effective density, 180ms. Entering edit mode from `leaning` gets the same fade, because that
+      is the one density whose drawing changes on entry; `covers` and `spines` do not change drawing
+      and need no transition at all. **Not** a per-book turn — that needs a `BookChassis` per book,
+      which is the cost the design rejected for `leaning` itself. The design records this as a
+      withdrawn earlier draft; do not reinstate it.
 - [ ] Trailing room in `leaning` and `spines` equal to `ShelfLabel`'s measured width, reserved
       **unconditionally** in those two states. Not conditional on "does the row fit" — that is a
       post-layout fact, and a reserve that appeared after a decode would shift the row. On an

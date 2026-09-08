@@ -268,6 +268,76 @@ chrome, and the native path had never once been rendered.** All three bugs below
    Worth generalising: **a native platform view's frame is not its drawing.** Positioning by the frame
    is what put the glass in the wrong place, and only the view hierarchy showed the difference.
 
+#### Bug 4 was only half the bug, and the other half was in both axes
+
+Noticed by comparing against Flighty on the same phone: our bar sat higher **and** narrower than every
+system tab bar. Bug 4's fix subtracted the platter's 21pt bottom inset from the offset, but kept
+`viewPadding.bottom` in the formula, and its premise — “the box was pinned at `viewPadding.bottom + gap`
+= 42pt off the screen bottom, which is right” — is the part that was never examined. For a `UITabBar` it
+is not right. **83 is `49 + 34`**: a tab bar plus a home-indicator inset. The 21pt the platter keeps
+below itself _is_ that allowance, with the indicator sitting in the band under the glass. Adding
+`viewPadding.bottom` on top counted the same clearance twice.
+
+The same mistake ran horizontally, and there it was never corrected at all: `sideInset = 14` was applied
+to the **frame**, and iOS insets its platter within the frame on that axis too. `sideInset` was the one
+geometry value that never became path-specific the way `height` did after bug 1 — and it had to, because
+the fallback draws its own pill and genuinely needs 14.
+
+Fixed by deriving everything from **the top edge of the visible glass**
+(`ShellTabBarGeometry.glassTop`), which is the only edge Flutter can actually place: the platter is
+anchored to the top of the frame, so glass-top _is_ box-top, while every other edge involves an inset
+only native code can see. On the native path the frame then goes where a `UITabBar` goes — flush with
+the bottom, full width — and `reserve` is taken from the same edge, so the sheet cannot drift from it.
+
+Measured on an iPhone 17 Pro / iOS 26.4 simulator (402×874pt), the vertical numbers from iOS's own
+accessibility tree via `argent run describe` rather than by eye:
+
+|                    | before  | after                                        |
+| ------------------ | ------- | -------------------------------------------- |
+| bar frame          | inset   | **(0, 791)–(402, 874)**                      |
+| glass, top edge    | 104pt   | **83pt**                                     |
+| glass, bottom edge | 42pt    | **21pt**                                     |
+| side margin        | +14.0pt | **iOS's own (orb 20.9pt in from the right)** |
+
+The tree reports the frame full-width and flush with the screen bottom, and the search orb inside it at
+`bottom-up 21.0..83.0` — so iOS states the 21pt inset and the 62pt platter directly, which is stronger
+evidence than bug 4's screenshot reading and agrees with it.
+
+The side margin is a **delta**, and deliberately so: building it both ways puts the glass 14.0pt further
+in from each edge at `sideInset: 14` than at `0`, which is exactly the amount being added and does not
+depend on judging where a soft glass edge ends. (A first pass quoted 12.3pt and 26.3pt as absolutes;
+those came from a luminance scan thresholded at `<250`, which catches the platter's shadow, not its
+edge. The delta was right, the absolutes were not — the accessibility frame is the authority.)
+
+Files.app on the same device sits in the same vertical band. Its platter is much narrower (47pt margins)
+because the iOS 26 platter is **content-sized** — Files fits three tabs, we fit three plus a detached
+orb — so its side margin is not a target to match.
+
+Four states driven on device afterwards, since `reserve` feeds the expanded cap
+(`maxExtent - bottomReserve - viewPadding.bottom`) and therefore moved with this:
+
+- **Read pile collapsed** — shelf bottom at 96.7pt, glass top 83pt.
+- **Read grid expanded** — last month group ends at `bottom-up 91.8`, i.e. the 8pt gap landed within
+  0.8pt of its target. This is the case the 21pt of newly-available height could have pushed under the
+  bar.
+- **Card collapsed** — the tight one: no `collapsedBody`, so handle + header is all there is. Header
+  bottom ~102pt, clear.
+- **Add Book** — no `Tab Bar` node in the tree at all, so the native bar still auto-hides rather than
+  compositing over Flutter modal content; scrim at 43.7pt = 5%. Closing it returns the bar with Card
+  still lit and the orb untinted, so bug 3 has not regressed either.
+
+Two things this retires. **The un-measurable 21pt inset is no longer load-bearing** — Task 6 worried that
+it could never be verified from Dart, and now no formula contains it; `visualHeight`'s native value is
+descriptive only. And the geometry became **testable on both paths**: `ShellTabBarGeometry` is a pure
+function of (path, indicator inset), so `flutter test` reporting Android no longer hides the native
+numbers. Checked deliberately — restoring the old `glassTop` fails the new native test with
+`Expected: <0> Actual: <21.0>`, which is the bug, measured.
+
+Also worth generalising, on top of bug 4's lesson: **an inset applied to a native view's frame is
+additive with the insets the platform applies inside it.** Bug 4 found that on one axis and fixed one
+half of it; the axis nobody measured stayed wrong for as long as the frame was the thing being
+positioned.
+
 What the run confirmed as correct: the native path renders the design as drawn — a floating glass pill
 with a genuinely detached circular orb, no hand-rolling needed. A tab switch swaps only the sheet; the
 shelves keep their size and position and you simply see more or less of them, which is the "nothing
@@ -411,6 +481,73 @@ second way out rather than a wrong one. Revisit if it reads as an accident on de
 
 ---
 
+## Task 8: The tab bar floats in front of Add Book
+
+Asked for by comparison with Flighty, which keeps its tab bar visible and live over its Add Flight
+sheet. Ours vanished. `decided.html` drew the bar dimmed _behind_ the modal, but that was only ever the
+drawing saying "the bar still exists" — nobody wanted it literally, and it happens to be the one option
+that cannot be built (a platform view under a Flutter modal is exactly the bleed the package prevents).
+
+**The auto-hide was never our decision.** `CNTabBarRouteObserver._isModal` is
+`route.runtimeType.toString().contains('Sheet')`, which `ModalBottomSheetRoute` matches, and `CNTabBar`
+unmounts off a static private notifier. The old comments in `add_book_bottom_sheet.dart` and under Task 4
+read as though we chose it to dodge a rendering bug; we inherited it, and the rationale was the
+package's.
+
+**Settled by a spike before any of it was built** (`lib/main_tabbar_overlay_spike.dart`, since deleted):
+a `CNTabBar` layered over the `Navigator` via `MaterialApp.builder`, on an iPhone 17 Pro / iOS 26.4
+simulator. Paint order works, the Liquid Glass renders cleanly and samples the sheet behind it, taps
+reach the bar while the modal owns the screen, and the sheet still dismisses from its own barrier. The
+prior fear was backwards: the bleed comes from the bar painted _before_ the modal, forcing Flutter to
+composite a sheet over a platform view. Painted last, it is the compositor's cheap direction.
+
+**What it took**, and none of it is the part that looked hard:
+
+- `ShellChrome` in `MaterialApp.builder` hosts the bar above the navigator. `EasyLoading` wraps outside
+  it, so a bottom toast still lands on top of the bar rather than behind it.
+- `ShellRouteObserver` replaces `CNTabBarRouteObserver`, and has to keep the half of it that matters:
+  `anyModalDepth`, which `CNButton` and the native segmented controls use to clip their glass halo. That
+  half is public (`markAnyModalActive` / `markAnyModalInactive`); the tab-bar-hiding half is not.
+- Visibility had to be rebuilt, because **a pushed page used to hide the bar for free** — the page
+  replaced the view and took the bar with it. Above the navigator nothing is free: `shellBarVisibleProvider`
+  compares `HomePage`'s own route against the topmost _page_ route (sheets deliberately do not count),
+  plus the existing edit and visit rules.
+- The bar can no longer depend on page-level ancestors. There is no `Overlay` and no `Material` above the
+  navigator, so the fallback's `IconButton` threw on its tooltip. Its label moved to `Semantics` and the
+  button to a `GestureDetector`, matching `_TabSegment`.
+- A tab tap now dismisses the sheet first. Without it the tab switched _behind_ Add Book and the bar was
+  visible, tappable and apparently inert — the same dishonesty the design hides it for during a visit.
+- The orb ignores a second tap while Add Book is open, or it would stack a second sheet.
+
+### Two wrong turns worth keeping, because both were only visible on device
+
+1. **The search variant hides on the wrong counter.** `CNTabBar` with a `searchItem` listens to
+   `anyModalDepth`, not the narrow `modalDepth` (`tab_bar.dart:341-355`) — the same counter `CNButton`
+   needs. Preserving halo containment therefore killed the bar. The first fix skipped the bump for the
+   Add Book route only, and cost exactly what a lost containment costs: the read filter's glass control
+   bled **a white rectangle through the middle of the sheet**, matched to its own frame
+   (x 281–362pt, 266–300pt up) in the screenshot.
+2. **`CNTabBar` has `autoHideOnModal`** (`tab_bar.dart:116`), which gates the whole mechanism —
+   line 341 does not even attach the listener. So the bar opts out by itself, `anyModalDepth` keeps being
+   driven for everyone else, and the bleed goes away. The per-route hack was deleted.
+
+Verified on device end to end: bar in front of Add Book with the orb correctly lit, no bleed, a tab tap
+dismisses and switches, a pushed book-details page hides the bar, popping brings it back.
+
+**Tests: 338 green**, two new and both checked by deliberate failure — removing the pop leaves
+`SearchTextField` on screen, removing the top-page-route rule leaves the bar over a pushed page.
+
+### Add Book's height, same pass
+
+Measured off Flighty at a ~64pt top inset against our 43.7pt (`95%`). A fraction was the wrong unit:
+5% is 33pt on a 667pt phone, so on every device the sheet's top edge landed _above_ the status bar and
+"Add book" sat level with the clock. It now starts at the safe-area inset — 62pt here — with a 24pt floor
+for surfaces reporting none (landscape, `flutter test`). The inset has to be read from the **calling**
+context: `showModalBottomSheet` wraps its child in `MediaQuery.removePadding(removeTop: true)`, which
+zeroes `viewPadding.top` as well as `padding.top`, so measuring inside the builder silently gives 0.
+
+---
+
 ## Task 6: Fix the 5.8px clearance
 
 - [x] Measure the real bar-to-sheet clearance on a friend screen in a widget test, then fix it — a shorter
@@ -427,6 +564,8 @@ second way out rather than a wrong one. Revisit if it reads as an accident on de
       leave the other (the inset) exactly as hardcoded, while adding a provider and a frame of resize on
       first build. Half a guess removed for a visible cost is a worse trade than a documented constant
       with a device check next to it.
+      **Superseded, and better than decided:** anchoring to the glass's _top_ edge removed the 21pt
+      inset from every formula rather than measuring it. See "Bug 4 was only half the bug" under Task 4.
 
 This is pre-existing, measures the same in every mockup version including `main`, and Phase 1 is the moment
 it gets touched. Do it here rather than discovering it on device.
@@ -475,17 +614,22 @@ mockups would have surfaced this; only laying it out at a size nobody had tried 
       rather than by ceremony:
 
       * **Edit drops the bar / every sheet springs shut** — stashed the three lib files, all four new
-                tests failed, popped. The deliberate check.
-              * **The 2× text header overflow** — the clearance test threw `RenderFlex overflowed by 195 pixels`
-                before the fix. It failed first and passed after, which is the same evidence.
-              * **The Add Book modal's height** — the first version of that test asserted the height within 6% and
-                passed a 98% sheet. Tightened to pin the top edge at 5% ± 2pt, which fails on the old code.
-              * **The long-press latch** — proven by the whole suite: with the pencil gone and no latch, edit mode
-                closed on release and every test that enters an edit failed.
+                                    tests failed, popped. The deliberate check.
+                                  * **The 2× text header overflow** — the clearance test threw `RenderFlex overflowed by 195 pixels`
+                                    before the fix. It failed first and passed after, which is the same evidence.
+                                  * **The Add Book modal's height** — the first version of that test asserted the height within 6% and
+                                    passed a 98% sheet. Tightened to pin the top edge at 5% ± 2pt, which fails on the old code.
+                                  * **The long-press latch** — proven by the whole suite: with the pencil gone and no latch, edit mode
+                                    closed on release and every test that enters an edit failed.
 
-              Not provable by test, and said so rather than pretended: the tab bar's 21pt native inset. The
-              difference between a `UITabBar`'s frame and its platter is not visible to Flutter, so that one rests
-              on the device measurement recorded above.
+                                  Not provable by test, and said so rather than pretended: the tab bar's 21pt native inset. The
+                                  difference between a `UITabBar`'s frame and its platter is not visible to Flutter, so that one rests
+                                  on the device measurement recorded above.
+
+                                  **Since made provable, by removing the need for it.** `ShellTabBarGeometry` is a pure function of
+                                  (path, indicator inset), so both paths' layout is asserted without rendering either — and the
+                                  platter inset no longer appears in any formula. Checked deliberately: restoring the old geometry
+                                  fails the native test with `Expected: <0> Actual: <21.0>`.
 
 - [x] **Run it on a simulator.** Native platform views inside and over scrolling content are the risk this
       phase carries, and no widget test reaches them: the tab bar's glass, the sheet's drag against the
@@ -502,10 +646,10 @@ mockups would have surfaced this; only laying it out at a size nobody had tried 
       answered with the measured Flutter numbers instead of the mockup's 5.8px.
 
       Deliberately **not** redrawn: the Everyone row still shows a reading line and a read count, and the
-              bar still shows share. Those are the intended design and Phase 1 simply has not built them — a
-              drawing that is ahead of the code is not a drawing that is wrong, and flattening it to match would
-              lose the target. Other screens carrying `dimTab` are left alone because this phase never exercised
-              them; correcting drawings on the strength of a guess is what this bullet exists to prevent.
+                                  bar still shows share. Those are the intended design and Phase 1 simply has not built them — a
+                                  drawing that is ahead of the code is not a drawing that is wrong, and flattening it to match would
+                                  lose the target. Other screens carrying `dimTab` are left alone because this phase never exercised
+                                  them; correcting drawings on the strength of a guess is what this bullet exists to prevent.
 
 **How to re-run it.** The simulator has no signed-in session and sign-in is Apple/Google, so verification
 goes through a fixture entrypoint:

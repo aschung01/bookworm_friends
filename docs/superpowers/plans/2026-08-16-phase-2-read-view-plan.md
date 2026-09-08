@@ -177,6 +177,19 @@ other by a test.
 - [x] Expanded: an **iOS 26 capsule row** of `All time / <year> / <year> …` below the header.
       `CNSegmentedControl` already does this natively with a Flutter chip fallback — copy the pattern in
       `status_selector.dart`, including its note about why the selected segment is untinted.
+      **Superseded after review, twice.** The native _segmented control_ was the wrong shape: it spreads
+      equal-width segments across the full width inside a grey track, which is a toolbar, not the short
+      row of content-width pills `decided.html`'s `.caps` draws. The row is laid out by Flutter now, and
+      so is every label — iOS 26 supplies only the _material_, a glass `CNButton` stacked behind the
+      selected label. Giving the native button the text instead wrapped it onto two lines for half a
+      second on every change (`setStyle` drops the attributed title; `setLabelStyle` lands hops later),
+      and `LiquidGlassContainer`'s bare `glassEffect` had no material of its own to show over an opaque
+      sheet. The glass button stays _interactive_ so the selected capsule answers a press the way a glass
+      button should, and the ones Flutter draws **shrink** under the finger instead, as Flighty's do. One
+      label weight throughout, too — the drawing's bolder selected label read as two type sizes in one
+      row, and `decided.html` is corrected rather than the code.
+      `HapticFeedback.selectionClick()` stands in for the haptics the segmented control gave for free. The
+      collapsed popover below is unaffected. See the design record's "Filters".
 - [x] Collapsed: a **glass popover select** in the header, where the filter label sits today.
       `CNPopupMenuButton` with `CNButtonStyle.glass` already does this — copy `shelf_selector.dart`, which
       also shows the checked-item idiom.
@@ -352,8 +365,8 @@ the real profile is still unmeasured. Flagged below rather than claimed.
 - **Fetch-all versus filtered-plus-distinct-years** — fetch-all (Task 3).
 - **Whether `user_library_page.dart` survives** — it stays, because a visit cannot show a non-followed user
   (Task 5).
-- **Whether the capsule row scrolls** when a long-time reader has eight years of history. **It scrolls** in
-  the Flutter fallback (a horizontal `SingleChildScrollView`); the native `CNSegmentedControl` compresses its
-  segments instead, which is the platform's own answer. Not verified past three capsules, because no fixture
-  has eight years — if it ever looks wrong, collapsing to the popover past some count is the fallback the
-  drawings could not decide.
+- **Whether the capsule row scrolls** when a long-time reader has eight years of history. **It scrolls** — a
+  horizontal `SingleChildScrollView`, on every platform now that Flutter lays the row out rather than a
+  single native control. (It used to split: `CNSegmentedControl` compressed its segments instead, which was
+  the platform's own answer.) Not verified past three capsules, because no fixture has eight years — if it
+  ever looks wrong, collapsing to the popover past some count is the fallback the drawings could not decide.

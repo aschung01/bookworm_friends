@@ -1,0 +1,14 @@
+                /* ---- SECTION 1a: product tokens.
+                   Copied verbatim from AppColors.light in
+                   lib/constants/app_theme.dart. Not eyeballed — the pitfall
+                   that wasted three review rounds on the library set was
+                   invented brand colours. ---- */
+                --page: #f8f9fa; /* pageBackground   */
+                --surface: #ffffff; /* surface          */
+                --variant: #e9ecef; /* surfaceVariant — the hero's background */
+                --text: #212529; /* primaryText      */
+                --text2: #adb5bd; /* secondaryText    */
+                --divider: #e9ecef; /* divider          */
+                --brand: #09bc8a; /* decoration only, 2.45:1 on white */
+                --brandText: #067657; /* brandText == brandFill */
+                --sheet: #eff5ef; /* sheetBackground, the pinned mint tint */

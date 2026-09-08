@@ -1,0 +1,14 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!-- existing mascot retained, now perched on the stack -->
+  <path d="M356 400 V300 A170 170 0 0 1 668 300 V400 Z" fill="#ffffff"/>
+  <circle cx="420" cy="276" r="26" fill="#09BC8A"/>
+  <circle cx="604" cy="276" r="26" fill="#09BC8A"/>
+  <path d="M436 322 Q512 368 588 322" fill="none" stroke="#09BC8A" stroke-width="24" stroke-linecap="round"/>
+  <rect x="232" y="377" width="560" height="130" rx="32" fill="#ffffff"/>
+  <rect x="292" y="443" width="440" height="16" rx="8" fill="#09BC8A"/>
+  <rect x="192" y="525" width="640" height="130" rx="32" fill="#ffffff"/>
+  <rect x="252" y="591" width="520" height="16" rx="8" fill="#09BC8A"/>
+  <rect x="222" y="673" width="580" height="130" rx="32" fill="#ffffff"/>
+  <rect x="282" y="739" width="460" height="16" rx="8" fill="#09BC8A"/>
+</svg>

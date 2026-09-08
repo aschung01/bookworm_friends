@@ -1,0 +1,24 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    M4 corrected, like for like. Same composition — portrait book, back board
+    peeking out top-left, ribbon at the top right — with M4's three faults fixed:
+
+      1. Palette. M4's plate sampled #27B98C, a greyer chalkboard green. This is
+         the brand #09BC8A.
+      2. Scale. M4's art filled 47.5% x 61.3% of the canvas. This fills
+         59.4% x 75.8%, on the ~76% target the other rounds hold to.
+      3. The ribbon. M4 drew it white on a white cover, legible only through a
+         chalk hairline — the exact fault M6/N1/N2 fixed. Here it is cut in as
+         a green notch.
+
+    The board offset is 104 with a 44 gap, which leaves a 60-wide strip of back
+    board showing. Those three numbers are linked: the visible strip is
+    offset minus gap, so a 56 offset with the 44 gap the round needs would
+    leave 12 and close up on the first downscale.
+  -->
+  <rect x="208" y="124" width="504" height="672" rx="44" fill="#ffffff"/>
+  <rect x="268" y="184" width="592" height="760" rx="88" fill="#09BC8A"/>
+  <rect x="312" y="228" width="504" height="672" rx="44" fill="#ffffff"/>
+  <path d="M636 228 H740 V378 L688 338 L636 378 Z" fill="#09BC8A"/>
+</svg>

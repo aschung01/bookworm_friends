@@ -1,0 +1,2104 @@
+<!doctype html>
+<!--
+  Typography — candidate faces and the metrics the app inherits.
+
+  Self-contained: the faces are subset and base64'd into `_build/fonts.css` by
+  `build-fonts.py`, so this page answers correctly with no network. That matters
+  more here than on the other sets — offline, a CDN-linked version of this page
+  would not fail loudly, it would render all seven candidates in the same
+  fallback face and quietly answer the question wrongly.
+
+  Data-driven, same as the other sets: the seven options are declared once in
+  `FAMILIES` and the screen is drawn once in `screen()`. There is no second copy
+  of the library bar to forget to update.
+
+  Drawn at 1px = 1pt on a 402x874 frame, the same device as `scan-to-add` — and
+  the device the reference screenshot is from. 721x1568 screenshot / 402x874 =
+  1.7935 and 1.7940, and the search orb lands at x 319..381, which is exactly
+  the frame `ShellTabBarGeometry.glassTop` records from the iOS accessibility
+  tree on a 402pt device. So the reference is a native-tab-bar build on this
+  device, and every figure below is that build's.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Bookworm Friends &mdash; typography</title>
+        <link rel="stylesheet" href="_build/fonts.css" />
+        <style>
+            :root {
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+                --brand: #067657;
+
+                /* The app's light palette, from `AppColors.light`. */
+                --page-bg: #f8f9fa;
+                --surface: #ffffff;
+                --surface-variant: #e9ecef;
+                --primary-text: #212529;
+                --secondary-text: #adb5bd;
+                --secondary-text-fixed: #626a72;
+                --divider: #e9ecef;
+                --brand-vivid: #09bc8a;
+                --brand-text: #067657;
+                --brand-fill: #067657;
+                --sheet-bg: #eff5ef;
+
+                /* What `Text` actually inherits today, via
+                   Material -> textTheme.bodyMedium -> blackCupertino +
+                   englishLike2021. Named so the page can switch it off. */
+                --inherited-tracking: 0.25px;
+                --inherited-leading: 1.43;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                padding: 46px 22px 90px;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.55;
+            }
+            .wrap {
+                max-width: 1180px;
+                margin: 0 auto;
+            }
+            .narrow {
+                max-width: 780px;
+            }
+            h1 {
+                font-size: 26px;
+                letter-spacing: -0.5px;
+                margin: 0 0 6px;
+            }
+            .lead {
+                color: #55555c;
+                font-size: 14px;
+                margin: 0 0 8px;
+            }
+            h2 {
+                font-size: 12px;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin: 46px 0 12px;
+            }
+            h3 {
+                font-size: 15px;
+                margin: 30px 0 6px;
+            }
+            p {
+                font-size: 14px;
+                color: #35353a;
+                margin: 0 0 12px;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f4f3f1;
+                padding: 1px 4px;
+                border-radius: 4px;
+            }
+            .badge {
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 0.4px;
+                text-transform: uppercase;
+                padding: 2.5px 7px;
+                border-radius: 20px;
+                background: #fdeeea;
+                color: #c05746;
+                vertical-align: 3px;
+            }
+            .note {
+                font-size: 13px;
+                color: #55555c;
+                border-left: 3px solid var(--line);
+                padding: 2px 0 2px 14px;
+                margin: 0 0 14px;
+            }
+            .note b {
+                color: var(--ink);
+            }
+            .note.decision {
+                border-left-color: var(--brand);
+                background: #f4fbf7;
+                padding: 10px 0 10px 14px;
+            }
+            .showdec {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 600;
+                border: 0;
+                background: var(--brand);
+                color: #fff;
+                padding: 4px 11px;
+                border-radius: 20px;
+                cursor: pointer;
+                margin: 0 4px;
+                vertical-align: 1px;
+            }
+
+            /* ---- controls ---------------------------------------------- */
+            .controls {
+                position: sticky;
+                top: 0;
+                z-index: 20;
+                background: rgba(255, 255, 255, 0.93);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+                margin: 24px -22px 0;
+                padding: 11px 22px;
+                display: flex;
+                gap: 26px;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .ctl {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
+                color: var(--muted);
+            }
+            .ctl > span.lbl {
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                font-weight: 700;
+                font-size: 10px;
+            }
+            .seg {
+                display: inline-flex;
+                background: #f1f0ee;
+                border-radius: 8px;
+                padding: 2px;
+            }
+            .seg button {
+                font: inherit;
+                font-size: 12px;
+                border: 0;
+                background: none;
+                color: #55555c;
+                padding: 4px 10px;
+                border-radius: 6px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .seg button[aria-pressed="true"] {
+                background: #fff;
+                color: var(--ink);
+                font-weight: 600;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+            }
+            kbd {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                border: 1px solid var(--line);
+                border-bottom-width: 2px;
+                border-radius: 4px;
+                padding: 0 4px;
+                color: var(--muted);
+            }
+            /* Says out loud that picking a display face flips the scale. The
+               alternative is a control that silently changes another control. */
+            .hint {
+                font-size: 10px;
+                color: var(--brand);
+                font-style: italic;
+            }
+
+            /* ---- frame strip ------------------------------------------- */
+            .strip {
+                display: flex;
+                gap: 26px;
+                overflow-x: auto;
+                padding: 18px 22px 26px;
+                margin: 0 -22px;
+                scroll-snap-type: x proximity;
+            }
+            .col {
+                flex: 0 0 auto;
+                scroll-snap-align: center;
+                width: 402px;
+                border-radius: 14px;
+                padding: 10px;
+                margin: -10px;
+            }
+            /* The chosen UI face, so "Show the decision" lands on a frame that
+               is visibly the answer rather than on whichever column is first.
+               A ring rather than a fill: the frame sits on top of the column, so
+               a tint only shows in the 10px gutter and read as nothing. */
+            .col.sel {
+                background: #f0f9f4;
+                box-shadow: inset 0 0 0 2px var(--brand);
+            }
+            .col > .cap {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                margin: 0 0 3px;
+                /* The controls bar is sticky; without this the caption scrolls
+                   under it and you cannot see which frame you are reading. */
+                scroll-margin-top: 60px;
+            }
+            .col > .cap .nm {
+                font-size: 14px;
+                font-weight: 650;
+            }
+            .col > .cap .tag {
+                font-size: 9px;
+                font-weight: 800;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                padding: 2px 6px;
+                border-radius: 20px;
+                background: #f1f0ee;
+                color: var(--muted);
+            }
+            .col > .cap .tag.rec {
+                background: #e7f6ef;
+                color: var(--brand);
+            }
+            .col > .cap .tag.now {
+                background: #fdeeea;
+                color: #c05746;
+            }
+            .col > .sub {
+                font-size: 12px;
+                color: #55555c;
+                min-height: 48px;
+                margin: 0 0 10px;
+                line-height: 1.45;
+            }
+
+            /* ---- the device -------------------------------------------- */
+            .frame {
+                position: relative;
+                width: 402px;
+                height: 874px;
+                border-radius: 55px;
+                background: var(--page-bg);
+                overflow: hidden;
+                box-shadow:
+                    0 0 0 1px rgba(0, 0, 0, 0.07),
+                    0 18px 40px -18px rgba(0, 0, 0, 0.35);
+                /* Every candidate's UI face and display face arrive as these two
+                   properties; nothing below names a family directly. */
+                font-family: var(--ui);
+                color: var(--primary-text);
+            }
+            /* The metrics the app inherits today. Applied to the frame rather
+               than to each element, because that is how it reaches them in the
+               app: one DefaultTextStyle at the top that everything merges onto. */
+            .frame[data-metrics="inherited"] {
+                letter-spacing: var(--inherited-tracking);
+                line-height: var(--inherited-leading);
+            }
+            .frame[data-metrics="inherited"] .display,
+            .frame[data-metrics="inherited"] .figure {
+                /* The point: display sizes get the Text optical face too. */
+                font-family: var(--ui);
+            }
+            .frame[data-metrics="tuned"] {
+                letter-spacing: 0;
+            }
+
+            /* status bar */
+            .status {
+                position: absolute;
+                inset: 0 0 auto;
+                height: 62px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 32px;
+                font-size: 16px;
+                font-weight: 650;
+                letter-spacing: 0;
+                line-height: 1;
+            }
+            .island {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                top: 12px;
+                width: 126px;
+                height: 36px;
+                border-radius: 20px;
+                background: #000;
+            }
+            .status .right {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .dots {
+                display: flex;
+                gap: 2px;
+            }
+            .dots i {
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: #b8b8bd;
+            }
+            .batt {
+                width: 25px;
+                height: 13px;
+                border-radius: 4px;
+                background: #000;
+            }
+
+            /* library bar */
+            .bar {
+                position: absolute;
+                top: 62px;
+                left: 0;
+                right: 0;
+                height: 56px;
+                background: var(--surface);
+                display: flex;
+                align-items: center;
+                padding: 0 15px;
+                gap: 4px;
+                z-index: 3;
+            }
+            .bar .titleslot {
+                flex: 1;
+                min-width: 0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .bar .suffix {
+                font-size: 16px;
+                font-weight: 400;
+            }
+            .tap {
+                width: 44px;
+                height: 44px;
+                display: grid;
+                place-items: center;
+                flex: 0 0 auto;
+            }
+            .avatar {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--surface-variant);
+                display: grid;
+                place-items: center;
+                font-size: 17px;
+                line-height: 1;
+            }
+            .barshadow {
+                position: absolute;
+                top: 118px;
+                left: 0;
+                right: 0;
+                height: 8px;
+                z-index: 2;
+                background: linear-gradient(
+                    rgba(0, 0, 0, 0.11),
+                    rgba(0, 0, 0, 0)
+                );
+            }
+
+            /* shelves */
+            .library {
+                position: absolute;
+                top: 118px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                overflow: hidden;
+            }
+            .shelf {
+                position: relative;
+                height: 156px;
+            }
+            .shelf .plank {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: 5px;
+                background: var(--surface);
+                box-shadow: 0 3px 5px -2px rgba(0, 0, 0, 0.22);
+            }
+            .shelf .books {
+                position: absolute;
+                left: 27px;
+                bottom: 5px;
+                display: flex;
+                align-items: flex-end;
+                gap: 10px;
+            }
+            .cover {
+                position: relative;
+                width: 88px;
+                height: 129px;
+                border-radius: 2px;
+                overflow: hidden;
+                box-shadow: 0 2px 5px -1px rgba(0, 0, 0, 0.3);
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                padding: 12px 9px 10px;
+                color: #fff;
+            }
+            .cover .ct {
+                font-size: 12px;
+                font-weight: 700;
+                line-height: 1.22;
+                /* Clears the bookmark ribbon, which is pinned to the same
+                   corner. Without it the ribbon lands on top of the title. */
+                padding-right: 20px;
+            }
+            .cover .ca {
+                font-size: 9px;
+                font-weight: 400;
+                opacity: 0.9;
+                line-height: 1.2;
+            }
+            .ribbon {
+                position: absolute;
+                top: -1px;
+                right: 12px;
+                width: 14px;
+                height: 30px;
+                background: #fff;
+                clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+            }
+            .shelflabel {
+                position: absolute;
+                right: 0;
+                bottom: 5px;
+                max-width: 140px;
+                background: var(--surface);
+                border-radius: 3px 3px 0 0;
+                padding: 5px 9px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* the sheet */
+            .sheet {
+                position: absolute;
+                left: 14px;
+                right: 14px;
+                bottom: 0;
+                height: 324px;
+                background: var(--sheet-bg);
+                border-radius: 41px 41px 0 0;
+                z-index: 4;
+                box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, 0.22);
+                display: flex;
+                flex-direction: column;
+            }
+            .handle {
+                width: 43px;
+                height: 5px;
+                border-radius: 3px;
+                background: #c7c7cc;
+                margin: 10px auto 0;
+                flex: 0 0 auto;
+            }
+            .sheethead {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 14px 25px 0;
+                flex: 0 0 auto;
+            }
+            .sheettitle {
+                display: flex;
+                align-items: baseline;
+                gap: 12px;
+                min-width: 0;
+            }
+            .sheettitle .t {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .sheettitle .n {
+                color: var(--brand-text);
+                flex: 0 0 auto;
+            }
+            .yearpill {
+                flex: 0 0 auto;
+                height: 34px;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                padding: 0 14px;
+                border-radius: 17px;
+                background: var(--surface);
+                color: var(--brand-text);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            }
+            .sheetbody {
+                flex: 1;
+                display: grid;
+                place-items: center;
+                /* `ShellTabBarGeometry.reserve` — up to the top of the glass,
+                   plus the 8pt gap. Native path: 83 + 8 - 34 = 57. */
+                padding: 0 25px 57px;
+                text-align: center;
+            }
+            .empty {
+                color: var(--secondary-text);
+            }
+            .frame[data-contrast="fixed"] .empty {
+                color: var(--secondary-text-fixed);
+            }
+
+            /* tab bar — native geometry, from ShellTabBarGeometry's docs:
+               the platter band is 21..83pt above the screen bottom, 62 tall,
+               and the search orb is 62 wide and 20.9pt in from the right. */
+            .tabbar {
+                position: absolute;
+                left: 21px;
+                right: 21px;
+                bottom: 21px;
+                height: 62px;
+                z-index: 6;
+                display: flex;
+                gap: 8px;
+                align-items: stretch;
+            }
+            .platter {
+                flex: 1;
+                border-radius: 31px;
+                background: rgba(255, 255, 255, 0.82);
+                backdrop-filter: blur(18px) saturate(180%);
+                -webkit-backdrop-filter: blur(18px) saturate(180%);
+                box-shadow:
+                    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+                    0 6px 18px -6px rgba(0, 0, 0, 0.24);
+                display: flex;
+                padding: 4px;
+            }
+            .orb {
+                flex: 0 0 62px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.82);
+                backdrop-filter: blur(18px) saturate(180%);
+                -webkit-backdrop-filter: blur(18px) saturate(180%);
+                box-shadow:
+                    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+                    0 6px 18px -6px rgba(0, 0, 0, 0.24);
+                display: grid;
+                place-items: center;
+            }
+            .tab {
+                flex: 1;
+                border-radius: 27px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                color: var(--secondary-text);
+            }
+            .tab.on {
+                background: var(--surface-variant);
+                color: var(--brand-text);
+            }
+            .tab .lb {
+                white-space: nowrap;
+            }
+            .frame[data-contrast="fixed"] .tab {
+                color: var(--secondary-text-fixed);
+            }
+            .frame[data-contrast="fixed"] .tab.on {
+                color: var(--brand-text);
+            }
+
+            /* ---- the type scale, as data ------------------------------- */
+            /* Current: what the call sites hardcode today.
+               Proposed: the seven tokens. Both are applied by these classes so
+               the frame markup never mentions a size. */
+            .frame[data-scale="current"] .display {
+                font-size: 46px;
+                font-weight: 800;
+                line-height: 1.05;
+            }
+            .frame[data-scale="current"] .figure {
+                font-size: 30px;
+                font-weight: 800;
+                line-height: 1.05;
+            }
+            .frame[data-scale="current"] .title {
+                font-size: 18px;
+                font-weight: 700;
+            }
+            .frame[data-scale="current"] .subtitle {
+                font-size: 18px;
+                font-weight: 700;
+            }
+            .frame[data-scale="current"] .body {
+                font-size: 14px;
+                font-weight: 400;
+            }
+            .frame[data-scale="current"] .label {
+                font-size: 13px;
+                font-weight: 700;
+            }
+            .frame[data-scale="current"] .label.off {
+                font-weight: 500;
+            }
+            .frame[data-scale="current"] .shelflabel {
+                font-size: 14px;
+                font-weight: 700;
+            }
+            .frame[data-scale="current"] .tab .lb {
+                font-size: 13px;
+            }
+
+            .frame[data-scale="proposed"] .display {
+                font-size: 46px;
+                font-weight: 800;
+                line-height: 1.05;
+                letter-spacing: -0.9px;
+                font-variant-numeric: tabular-nums;
+                font-family: var(--display);
+            }
+            .frame[data-scale="proposed"] .figure {
+                font-size: 30px;
+                font-weight: 700;
+                line-height: 1.05;
+                letter-spacing: -0.6px;
+                font-variant-numeric: tabular-nums;
+                font-family: var(--display);
+            }
+            .frame[data-scale="proposed"] .title {
+                font-size: 22px;
+                font-weight: 600;
+                line-height: 1.15;
+                letter-spacing: -0.4px;
+                font-family: var(--display);
+            }
+            .frame[data-scale="proposed"] .subtitle {
+                font-size: 17px;
+                font-weight: 600;
+                line-height: 1.25;
+                letter-spacing: -0.2px;
+            }
+            .frame[data-scale="proposed"] .body {
+                font-size: 15px;
+                font-weight: 400;
+                line-height: 1.4;
+            }
+            .frame[data-scale="proposed"] .label {
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1.2;
+                font-variant-numeric: tabular-nums;
+            }
+            .frame[data-scale="proposed"] .shelflabel {
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1.2;
+            }
+            .frame[data-scale="proposed"] .tab .lb {
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .frame[data-scale="proposed"] .sheettitle .n {
+                font-variant-numeric: tabular-nums;
+            }
+
+            /* ---- diagnostics ------------------------------------------- */
+            table.diag {
+                border-collapse: collapse;
+                width: 100%;
+                font-size: 13px;
+            }
+            table.diag th {
+                text-align: left;
+                font-size: 10px;
+                letter-spacing: 0.6px;
+                text-transform: uppercase;
+                color: var(--muted);
+                border-bottom: 1px solid var(--line);
+                padding: 0 12px 6px 0;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+            table.diag td {
+                border-bottom: 1px solid #f2f1ef;
+                padding: 12px 12px 12px 0;
+                vertical-align: middle;
+            }
+            table.diag td.fam {
+                font-size: 12px;
+                color: #55555c;
+                white-space: nowrap;
+                width: 1%;
+            }
+            table.diag td.fam b {
+                display: block;
+                color: var(--ink);
+                font-size: 13px;
+            }
+
+            /* Baseline + x-height rules, so a mismatch is measurable rather
+               than a feeling. The Latin and the Hangul sit in one line box; if
+               they come from two faces, the two do not share an x-height. */
+            .rule {
+                position: relative;
+                display: inline-block;
+                padding: 10px 0 14px;
+            }
+            .rule > .txt {
+                position: relative;
+                z-index: 0;
+                font-size: 26px;
+                line-height: 1;
+                white-space: nowrap;
+            }
+            .rule > .txt::after,
+            .rule > .txt::before {
+                content: "";
+                position: absolute;
+                left: -6px;
+                right: -6px;
+                height: 1px;
+                pointer-events: none;
+                /* Behind the glyphs. Painted on top, the x-height guide reads
+                   as a strikethrough rather than as a measurement. */
+                z-index: -1;
+            }
+            /* baseline: the line box floor, which for line-height 1 sits just
+               under the Latin baseline. Hangul has no descender, so where the
+               two scripts disagree is visible against it. */
+            .rule > .txt::after {
+                bottom: 0;
+                background: rgba(192, 87, 70, 0.75);
+            }
+            .rule > .txt::before {
+                bottom: 0.52em;
+                border-top: 1px dashed rgba(6, 118, 87, 0.75);
+                height: 0;
+            }
+
+            /* Same digit count, different digit shapes. That is the comparison:
+               with proportional figures `1` is much narrower than `8`, so equal
+               -length numbers come out different widths and the right edge is
+               ragged. Tabular gives every digit one advance and the edge goes
+               flush. Left-aligned on purpose — right-aligning these would hide
+               the whole effect, which is how the first version of this table
+               managed to show nothing. */
+            .figs {
+                display: inline-flex;
+                flex-direction: column;
+                align-items: flex-start;
+                font-size: 21px;
+                line-height: 1.3;
+                border-right: 2px solid #c05746;
+                padding-right: 4px;
+            }
+            /* Not `.tab`: that is the tab-bar segment class, and it set these
+               figures to `secondaryText` from three hundred lines away. */
+            .figs.tnum {
+                font-variant-numeric: tabular-nums;
+                border-right-color: var(--brand);
+            }
+            td.verdict {
+                font-size: 11px;
+                line-height: 1.4;
+                color: var(--muted);
+                white-space: nowrap;
+            }
+            td.verdict b {
+                display: block;
+                font-size: 13px;
+            }
+            td.verdict.yes b {
+                color: #c05746;
+            }
+            td.verdict.no b {
+                color: var(--brand);
+            }
+
+            /* ---- display-face comparison ------------------------------- */
+            /* Grid, not flex, and `subgrid` on each column: the six rows (cap,
+               sub, hero, title, latin, meta) are the *strip's* rows, so every
+               column's hero sits on the same line by construction. Pinning
+               heights instead meant guessing how each metrics line wraps, and
+               two rounds of that still left one column 17px out. */
+            .dstrip {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: 260px;
+                grid-template-rows: auto 1fr auto auto auto auto;
+                gap: 22px;
+                align-items: start;
+                overflow-x: auto;
+                padding: 16px 22px 22px;
+                margin: 0 -22px;
+            }
+            .dcol {
+                display: grid;
+                grid-template-rows: subgrid;
+                grid-row: span 6;
+                border-radius: 14px;
+                padding: 10px;
+                margin: -10px;
+                transition: background 0.12s ease;
+            }
+            /* The column the frames above are currently using. Without it, `D`
+               changes five frames a long scroll away and nothing here. */
+            .dcol.sel {
+                background: #f0f9f4;
+                box-shadow: inset 0 0 0 2px var(--brand);
+            }
+            .dcol .cap {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                margin: 0 0 3px;
+            }
+            .dcol .cap .nm {
+                font-size: 14px;
+                font-weight: 650;
+            }
+            .dcol .sub {
+                font-size: 12px;
+                color: #55555c;
+                line-height: 1.45;
+                margin: 0 0 12px;
+            }
+            /* StatTile, hero variant, at 1:1. Gradient grades darker from
+               brandFill, never toward the vivid green — see stat_tile.dart. */
+            .hero {
+                border-radius: 18px;
+                padding: 16px 16px 18px;
+                background: linear-gradient(135deg, var(--brand-fill), #044a37);
+                color: #fff;
+            }
+            .hero .hl {
+                font-size: 10.5px;
+                font-weight: 700;
+                letter-spacing: 0.9px;
+                text-transform: uppercase;
+                color: rgba(255, 255, 255, 0.88);
+            }
+            .hero .hf {
+                font-size: 46px;
+                font-weight: 800;
+                line-height: 1.05;
+                letter-spacing: -0.92px;
+                font-variant-numeric: tabular-nums;
+                margin-top: 8px;
+            }
+            .hero .hs {
+                font-size: 12.5px;
+                line-height: 1.3;
+                color: rgba(255, 255, 255, 0.88);
+                margin-top: 7px;
+            }
+            .dcol .dtitle {
+                margin-top: 14px;
+                font-size: 22px;
+                font-weight: 600;
+                line-height: 1.15;
+                letter-spacing: -0.4px;
+                color: var(--primary-text);
+            }
+            .dcol .dmeta {
+                font-size: 11px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                color: var(--muted);
+                margin-top: 4px;
+            }
+            /* Latin quality, which coverage alone does not settle. `stem` is the
+               ink width of `l` per 1000upm — comparable between these serifs
+               because they are built the same way, and deliberately NOT compared
+               to a sans here, whose `l` has no serifs widening its bounds. */
+            .dcol .dlatin {
+                font-size: 11px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                color: var(--ink);
+                margin-top: 6px;
+                line-height: 1.45;
+            }
+
+            /* Three treatments of the Card figure. Same subgrid trick as the
+               display strip, for the same reason. */
+            .fstrip {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: 300px;
+                grid-template-rows: auto 1fr auto auto auto;
+                gap: 22px;
+                align-items: start;
+                overflow-x: auto;
+                padding: 16px 22px 26px;
+                margin: 0 -22px;
+            }
+            .fcol {
+                display: grid;
+                grid-template-rows: subgrid;
+                grid-row: span 5;
+                border-radius: 14px;
+                padding: 10px;
+                margin: -10px;
+            }
+            .fcol.sel {
+                background: #f0f9f4;
+                box-shadow: inset 0 0 0 2px var(--brand);
+            }
+            .fcol .cap {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                margin: 0 0 3px;
+            }
+            .fcol .cap .nm {
+                font-size: 14px;
+                font-weight: 650;
+            }
+            .fcol .sub {
+                font-size: 12px;
+                color: #55555c;
+                line-height: 1.45;
+                margin: 0 0 12px;
+            }
+            .fcol .dtitle {
+                margin-top: 14px;
+                font-size: 22px;
+                font-weight: 600;
+                line-height: 1.15;
+                letter-spacing: -0.4px;
+                color: var(--primary-text);
+            }
+            .fcol .dmeta {
+                font-size: 11px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                color: var(--muted);
+                margin-top: 6px;
+                line-height: 1.5;
+            }
+
+            /* ---- specimen --------------------------------------------- */
+            .specimen {
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                padding: 8px 22px 22px;
+                margin-top: 14px;
+            }
+            .spec-row {
+                display: flex;
+                align-items: baseline;
+                gap: 20px;
+                padding: 16px 0;
+                border-bottom: 1px solid #f4f3f1;
+            }
+            .spec-row:last-child {
+                border-bottom: 0;
+            }
+            .spec-row .meta {
+                flex: 0 0 190px;
+                font-size: 11px;
+                color: var(--muted);
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                line-height: 1.5;
+            }
+            .spec-row .meta b {
+                display: block;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                font-size: 13px;
+                color: var(--ink);
+                letter-spacing: 0;
+            }
+            /* Which of a pairing's two faces this row is set in. Without it, a
+               serif pairing looks broken on the rows that correctly use the UI
+               face. */
+            .spec-row .meta .which {
+                color: var(--brand);
+            }
+            .spec-row .smp {
+                min-width: 0;
+                flex: 1;
+                color: var(--primary-text);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="narrow">
+                <h1>Typography <span class="badge">proposed</span></h1>
+                <p class="lead">
+                    Which face the app should set, and what it is setting today
+                    without having chosen to. Seven options drawn on the Library
+                    screen at <code>1px&nbsp;=&nbsp;1pt</code> on a
+                    402&times;874 frame &mdash; the device the reference
+                    screenshot is from, and the one
+                    <code>ShellTabBarGeometry</code> is measured on.
+                </p>
+                <p class="note decision">
+                    <b
+                        >Decided — Pretendard for UI, Gowun Batang for
+                        display.</b
+                    >
+                    <button class="showdec" id="show-decision">
+                        Show the decision
+                    </button>
+                    Two constraints come with the pair, both recorded under the
+                    display section: Gowun Batang has <b>no w800</b> and a bold
+                    lighter than most serifs' regular, so the Card figure is a
+                    real choice &mdash; see the three treatments under the
+                    display strip, where <b>split face</b> (serif title,
+                    Pretendard w800 figure) is the one recommended. And the
+                    serif is scoped to the fixed titles plus numeric figures,
+                    which is what keeps it at <b>7.2KB per weight</b> rather
+                    than 8MB. than 8MB.
+                </p>
+                <p class="note">
+                    <b>The finding underneath all of this:</b>
+                    <code>AppTheme._build</code> never sets
+                    <code>textTheme</code>. <code>Material</code> seeds
+                    <code>DefaultTextStyle</code> from
+                    <code>theme.textTheme.bodyMedium</code>, so all 88 hardcoded
+                    <code>TextStyle</code>s in the app merge onto Material 3's
+                    <b>Roboto</b> metrics &mdash;
+                    <code>letterSpacing&nbsp;0.25</code>,
+                    <code>height&nbsp;1.43</code>,
+                    <code>color&nbsp;black87</code>, and
+                    <code>CupertinoSystemText</code> (SF Pro <i>Text</i>, the
+                    optical size for &le;19pt) at every size including the
+                    Card's 46pt figure. Leave the two switches below at their
+                    defaults and the first frame is the screenshot. Flip them
+                    and you can see how much of the problem is metrics before
+                    any font has changed.
+                </p>
+            </div>
+
+            <div class="controls">
+                <div class="ctl">
+                    <span class="lbl">Locale</span>
+                    <div class="seg" id="seg-locale">
+                        <button data-v="en" aria-pressed="true">English</button>
+                        <button data-v="ko" aria-pressed="false">한국어</button>
+                    </div>
+                    <kbd>L</kbd>
+                </div>
+                <div class="ctl">
+                    <span class="lbl">Metrics</span>
+                    <div class="seg" id="seg-metrics">
+                        <button data-v="inherited" aria-pressed="true">
+                            Inherited (today)
+                        </button>
+                        <button data-v="tuned" aria-pressed="false">
+                            Tuned
+                        </button>
+                    </div>
+                    <kbd>M</kbd>
+                </div>
+                <div class="ctl">
+                    <span class="lbl">Scale</span>
+                    <div class="seg" id="seg-scale">
+                        <button data-v="current" aria-pressed="true">
+                            Current
+                        </button>
+                        <button data-v="proposed" aria-pressed="false">
+                            Proposed
+                        </button>
+                    </div>
+                    <kbd>S</kbd>
+                </div>
+                <div class="ctl">
+                    <span class="lbl">Display</span>
+                    <div class="seg" id="seg-display"></div>
+                    <kbd>D</kbd>
+                    <span class="hint">sets Proposed</span>
+                </div>
+                <div class="ctl">
+                    <span class="lbl">secondaryText</span>
+                    <div class="seg" id="seg-contrast">
+                        <button data-v="current" aria-pressed="true">
+                            #ADB5BD &middot; 2.07:1
+                        </button>
+                        <button data-v="fixed" aria-pressed="false">
+                            #626A72 &middot; 4.6:1
+                        </button>
+                    </div>
+                    <kbd>C</kbd>
+                </div>
+            </div>
+
+            <div class="strip" id="strip"></div>
+
+            <div class="narrow">
+                <h2>Why Hangul is the deciding constraint</h2>
+                <p>
+                    SF Pro has no Hangul, so today
+                    <code>소설</code> and <code>교재</code> are not set in the
+                    app's font &mdash; they are a <i>fallback</i>, Apple SD
+                    Gothic Neo on iOS and Noto Sans CJK KR on Android. Two faces
+                    in one line box means two x-heights and two weight ramps.
+                    The red rule is the baseline, the green dashed rule is the
+                    Latin x-height; where the Hangul overshoots or falls short
+                    green rule, the pair was never designed together. One row
+                    per distinct <i>face</i>, not per candidate: the two
+                    pairings share Pretendard for UI, so it is their serif that
+                    earns them a row of their own.
+                </p>
+                <table class="diag">
+                    <thead>
+                        <tr>
+                            <th>Face</th>
+                            <th>Latin and Hangul in one line, 26px</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diag-script"></tbody>
+                </table>
+
+                <h2>
+                    Figures: nothing in the app sets <code>fontFeatures</code>
+                </h2>
+                <p>
+                    SF's default figures are proportional, so a number changes
+                    width as it changes value. Every number below has four
+                    digits, so the right edge should be straight &mdash; the
+                    rule marks where it would be. It is not, and that raggedness
+                    is
+                    <code>LibrarySheetTitle</code>'s count nudging the title,
+                    the <code>ReadFilter</code> capsules reflowing per year, and
+                    <code>ReadMonthGrid</code>'s per-month counts failing to
+                    line up down the column. The last column is measured in the
+                    page rather than asserted: three of these faces ship
+                    fixed-width digits already, and for those the fix is a no-op
+                    &mdash; which couples the recommendation to the face.
+                </p>
+                <table class="diag">
+                    <thead>
+                        <tr>
+                            <th>Face</th>
+                            <th>Proportional (today)</th>
+                            <th>
+                                <code>tabularFigures()</code>
+                            </th>
+                            <th>Needed?</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diag-figs"></tbody>
+                </table>
+            </div>
+
+            <div class="narrow">
+                <h2>Display face &mdash; the Library Card hero</h2>
+                <p>
+                    A display face only earns its bundle on the largest type in
+                    the app, so this is the tile it has to justify: the Library
+                    Card hero at 1:1, plus the 22pt page title. All five are
+                    serifs with real Hangul &mdash; a Latin-only serif would
+                    reintroduce the two-face mismatch above, so it is not a
+                    candidate. Switch the frames to this face with
+                    <code>D</code>; it is only visible with the proposed scale
+                    on, because the current scale never sets a display face.
+                </p>
+                <p class="note">
+                    <b
+                        >A display face is far cheaper than it looks, and an
+                        earlier version of this page got that wrong.</b
+                    >
+                    It said Noto Serif KR and Gowun Batang cost 6&times; Hahmlet
+                    &mdash; true of the full face, and irrelevant here. A
+                    display face scoped to <code>display</code>,
+                    <code>figure</code> and <code>title</code> only ever renders
+                    <b>digits and two fixed l10n strings</b>, so subset to that
+                    it is <b>4&ndash;8KB per weight</b> for every serif on this
+                    row, Hanja and all. The unscoped megabytes under each column
+                    are what you pay only if the serif is allowed to set
+                    arbitrary text. Flutter does not subset text fonts &mdash;
+                    only icon fonts, via <code>--tree-shake-icons</code> &mdash;
+                    so the scoping is a build step you add, not something you
+                    get for free.
+                </p>
+                <p class="note">
+                    <b
+                        >Latin quality is a different question from Latin
+                        coverage.</b
+                    >
+                    Gowun Batang has the best coverage of the five &mdash; 100%
+                    of Latin-1 and 99% of Extended-A, against Nanum Myeongjo's
+                    41%/12% and Song&nbsp;Myung's 5%/0% &mdash; and its Latin is
+                    genuinely drawn rather than borrowed. But it is also the
+                    <b>lightest</b>: its <code>w700</code> stem measures 250,
+                    thinner than Hahmlet's and Noto&nbsp;Serif&nbsp;KR's
+                    <code>w400</code> (261 and 266). With no w800 either, a 46pt
+                    figure in it reads refined rather than dominant &mdash;
+                    worth deciding deliberately, since
+                    <code>stat_tile.dart</code> says the figure should be "the
+                    thing you see first".
+                </p>
+                <p class="note">
+                    <b>Which makes one rule load-bearing.</b>
+                    <code>StatTile</code> has a <code>figureIsText</code> mode
+                    that renders an author's <i>name</i> at figure size. A name
+                    is arbitrary text, so it has to stay in the UI face: if the
+                    serif covers that tile, a scoped subset shows tofu on the
+                    first author it has no glyphs for. The serif covers numeric
+                    figures and the fixed titles; <code>figureIsText</code> does
+                    not.
+                </p>
+            </div>
+            <div class="dstrip" id="display-strip"></div>
+
+            <div class="narrow">
+                <h3>The Card figure &mdash; serif or Pretendard?</h3>
+                <p>
+                    The figure is the one place Gowun Batang's lightness fights
+                    the design: its <code>w700</code> is its heaviest, and
+                    <code>stat_tile.dart</code> wants this number to be "the
+                    thing you see first". Three ways out, at 1:1. The title is
+                    serif in all three &mdash; only the figure changes. Weights
+                    are capped at what each face actually has, so nothing here
+                    is faux-bolded.
+                </p>
+            </div>
+            <div class="fstrip" id="figure-strip"></div>
+
+            <div class="narrow">
+                <p>
+                    Thirteen sizes today &mdash; 10.5, 11, 11.5, 12, 12.5, 13,
+                    14, 15, 16, 17, 18, 20, 24, plus 26/30/46 in
+                    <code>StatTile</code> &mdash; and six weight spellings, of
+                    which <code>bold</code> and <code>w700</code> are the same
+                    weight written two ways. Seven tokens and three weights
+                    below. Pick a face to set it in.
+                </p>
+                <div class="ctl" style="margin: 0 0 4px">
+                    <span class="lbl">Specimen face</span>
+                    <div class="seg" id="seg-spec"></div>
+                </div>
+                <div class="specimen" id="specimen"></div>
+
+                <h2>What this page does not settle</h2>
+                <p>
+                    Bundle cost. Pretendard is not on Google Fonts and ships as
+                    a ~1.5&nbsp;MB static per weight or a 6.7&nbsp;MB variable;
+                    the <code>Pretendard-Std</code> subset (2,780 common
+                    syllables) is the version worth measuring, at three weights.
+                    Noto Sans KR, IBM Plex Sans KR, Gothic A1, Hahmlet and Gowun
+                    Batang are all Google Fonts and all OFL, and the two serifs
+                    are only proposed as <i>display</i> faces &mdash; for the
+                    page title and the Library Card figure, which is the
+                    shareable artifact and the app's one keepsake screen.
+                    Keeping the system face for UI and adding an explicit
+                    <code>fontFamilyFallback</code> is the zero-bundle option
+                    and is the second frame.
+                </p>
+                <p class="note">
+                    The faces here are subset to this page's glyphs and inlined
+                    by <code>build-fonts.py</code>, so this page renders the
+                    same offline as on. It is not a licence audit and it is not
+                    a performance measurement.
+                </p>
+            </div>
+        </div>
+
+        <script>
+            // ---- data -------------------------------------------------------
+            // Two independent decisions, so two lists. A candidate's UI face
+            // sets the whole screen; a display face sets only the roles at or
+            // above 22pt, and only under the proposed scale. Collapsing them
+            // into one list of "candidates" is what made three frames render
+            // identically — all three shared Pretendard for UI and differed
+            // only in a face the current scale never reaches.
+            //
+            // `mb` is the real per-weight cost: the upstream file subset to
+            // Latin-1 plus all 11,172 Hangul syllables, which is the smallest
+            // it can be without risking tofu. Flutter does not subset text
+            // fonts — only icon fonts, via `--tree-shake-icons` — so this is
+            // what actually ships. Measured with `pyftsubset`; see the note
+            // under the display table.
+            const SYS =
+                "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif";
+
+            const stack = (fam) => (fam ? `'${fam}', ` : "") + SYS;
+
+            const FAMILIES = [
+                {
+                    id: "today",
+                    nm: "System face",
+                    tag: "today",
+                    tagClass: "now",
+                    ui: SYS,
+                    mb: 0,
+                    sub: "What ships now. SF Pro for Latin, Apple SD Gothic Neo for Hangul — two faces that never met. Zero bundle cost, and the only option that needs no build step.",
+                },
+                {
+                    id: "pretendard",
+                    nm: "Pretendard",
+                    tag: "chosen",
+                    tagClass: "rec",
+                    ui: stack("Pretendard"),
+                    mb: 1.21,
+                    sub: "Inter-derived, Hangul drawn to the Latin metrics, one family for both scripts. Variable 45–920, so w500/w600 stop being synthesised. OFL, not on Google Fonts.",
+                },
+                {
+                    id: "noto",
+                    nm: "Noto Sans KR",
+                    tag: "google fonts",
+                    ui: stack("Noto Sans KR"),
+                    mb: 2.33,
+                    sub: "The safe default, and the most expensive sans here — it carries Hanja nobody in this app needs. Neutral to the point of anonymous; its Latin is the weakest part of the pairing.",
+                },
+                {
+                    id: "plex",
+                    nm: "IBM Plex Sans KR",
+                    tag: "google fonts",
+                    ui: stack("IBM Plex Sans KR"),
+                    mb: 2.15,
+                    sub: "More character than Noto and a genuinely designed Latin/Hangul pair. Slightly wider, so the 22pt title and long shelf names are where to check it.",
+                },
+                {
+                    id: "gothica1",
+                    nm: "Gothic A1",
+                    tag: "google fonts",
+                    ui: stack("Gothic A1"),
+                    mb: 0.92,
+                    sub: "The cheapest unified option, and geometric rather than humanist. Its Latin is the thinnest argument here — check 'Books read' against the Hangul.",
+                },
+            ];
+
+            // Display faces. All serifs with real Hangul: a Latin-only serif
+            // would reintroduce the two-face mismatch this page argues against,
+            // so a face that cannot set 내 서재 is not a candidate.
+            const DISPLAY_FACES = [
+                {
+                    id: "same",
+                    nm: "Same as UI",
+                    face: null,
+                    weights: "—",
+                    mb: 0,
+                    kb: 0,
+                    maxW: 800,
+                    latin: "Latin-1 100% · Ext-A 99% · x-ht 530",
+                    sub: "No display face. One family does everything, which is the simplest thing that can work.",
+                },
+                {
+                    id: "hahmlet",
+                    nm: "Hahmlet",
+                    face: "Hahmlet",
+                    weights: "100–900",
+                    mb: 1.41,
+                    kb: 8.2,
+                    maxW: 800,
+                    latin: "Latin-1 100% · Ext-A 97% · x-ht 492 · bold stem 298",
+                    sub: "Contemporary, slightly condensed, nine weights — the only serif here that can reach w800 without synthesis, and the heaviest bold of the five.",
+                },
+                {
+                    id: "nanum-myeongjo",
+                    nm: "Nanum Myeongjo",
+                    face: "Nanum Myeongjo",
+                    weights: "400 / 700 / 800",
+                    mb: 2.91,
+                    kb: 4.5,
+                    maxW: 800,
+                    latin: "Latin-1 41% · Ext-A 12% · x-ht 471 · bold stem 221",
+                    sub: "The familiar Korean book serif, and the only other one with a real 800. Its Latin is an afterthought — no é, no ü — and the lightest bold here.",
+                },
+                {
+                    id: "song-myung",
+                    nm: "Song Myung",
+                    face: "Song Myung",
+                    weights: "400 only",
+                    mb: 1.94,
+                    kb: 4.4,
+                    maxW: 400,
+                    latin: "Latin-1 5% · Ext-A 0% · x-ht 457 · stem 248 (no bold)",
+                    sub: "The most distinctive, and barely has a Latin at all — 5% of Latin-1, so most accented characters tofu. One weight only.",
+                },
+                {
+                    id: "gowun-batang",
+                    nm: "Gowun Batang",
+                    face: "Gowun Batang",
+                    weights: "400 / 700",
+                    mb: 8.04,
+                    kb: 7.2,
+                    maxW: 700,
+                    chosen: true,
+                    latin: "Latin-1 100% · Ext-A 99% · x-ht 460 · bold stem 250",
+                    sub: "Chosen. The best Latin coverage of the five and a genuinely drawn one — but the lightest x-height and a bold lighter than Hahmlet's regular, so the Card figure reads refined rather than loud.",
+                },
+                {
+                    id: "noto-serif-kr",
+                    nm: "Noto Serif KR",
+                    face: "Noto Serif KR",
+                    weights: "200–900",
+                    mb: 13.4,
+                    kb: 6.4,
+                    maxW: 800,
+                    latin: "Latin-1 100% · Ext-A 23% · x-ht 516 · bold stem 291",
+                    sub: "A full ramp and the largest x-height, so the most robust at small sizes. 13.4MB unscoped because of Hanja, which a scoped display face never sets.",
+                },
+            ].map((d) => ({ ...d, stack: stack(d.face) }));
+
+            // Real copy, from `app_en.arb` and `app_ko.arb`.
+            const COPY = {
+                en: {
+                    myLibrary: "My Library",
+                    finishedBooksTitle: "Books read",
+                    emptyYear: (y) => `No books recorded for ${y}`,
+                    tabs: ["Library", "Friends", "Card"],
+                    shelves: ["Novel", "Textbook"],
+                    books: [
+                        {
+                            t: "Inheritance",
+                            a: "Christopher Paolini",
+                            c: "#0f5c4a",
+                        },
+                        {
+                            t: "The Overstory",
+                            a: "Richard Powers",
+                            c: "#2b3a67",
+                        },
+                        { t: "Cosmos", a: "Carl Sagan", c: "#4a2b52" },
+                    ],
+                    cardLabel: "Books read in 2026",
+                    cardSub: "12 books · 3,418 pages",
+                },
+                ko: {
+                    myLibrary: "내 서재",
+                    finishedBooksTitle: "읽은 책",
+                    emptyYear: (y) => `${y}년에 기록된 책이 없어요`,
+                    tabs: ["서재", "친구", "카드"],
+                    shelves: ["소설", "교재"],
+                    books: [
+                        { t: "사피엔스", a: "유발 하라리", c: "#0f5c4a" },
+                        { t: "소년이 온다", a: "한강", c: "#2b3a67" },
+                        { t: "데미안", a: "헤르만 헤세", c: "#4a2b52" },
+                    ],
+                    cardLabel: "올해 읽은 책",
+                    cardSub: "12권 · 3,418썹",
+                },
+            };
+
+            const state = {
+                locale: "en",
+                metrics: "inherited",
+                scale: "current",
+                contrast: "current",
+                display: "same",
+                spec: "pretendard",
+            };
+
+            const displayFace = () =>
+                DISPLAY_FACES.find((d) => d.id === state.display);
+
+            // The stack the display roles resolve to for a given UI face. With
+            // "Same as UI" selected there is no second face, and the display
+            // roles fall back to the UI stack rather than to a serif nobody
+            // chose.
+            const displayStack = (uiStack) => {
+                const d = displayFace();
+                return d.face ? `'${d.face}', ${uiStack}` : uiStack;
+            };
+
+            // ---- icons ------------------------------------------------------
+            const ic = {
+                share: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m8 7 4-4 4 4"/><path d="M4 13v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/></svg>`,
+                books: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="4" height="14" rx="1"/><rect x="9" y="5" width="4" height="14" rx="1"/><path d="m16.5 6.2 3.2 12.1"/><path d="M15 6.6 18.2 5.7"/></svg>`,
+                friends: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 15.6A4.6 4.6 0 0 1 21 19"/></svg>`,
+                card: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6 14.5h4"/></svg>`,
+                search: `<svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>`,
+            };
+
+            // ---- the screen, declared once ----------------------------------
+            function screen(fam) {
+                const c = COPY[state.locale];
+                const year = 2026;
+                const b = c.books;
+                return `
+<div class="frame"
+     data-metrics="${state.metrics}"
+     data-scale="${state.scale}"
+     data-contrast="${state.contrast}"
+     style="--ui:${fam.ui};--display:${displayStack(fam.ui)}">
+
+  <div class="status">
+    <span>1:00</span>
+    <div class="island"></div>
+    <div class="right">
+      <div class="dots"><i></i><i></i><i></i><i></i></div>
+      <svg width="18" height="13" viewBox="0 0 18 13" fill="#000"><path d="M9 12.5 1 5.2A11.4 11.4 0 0 1 17 5.2Z" opacity=".9"/></svg>
+      <div class="batt"></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="titleslot"><span class="title">${c.myLibrary}</span></div>
+    <div class="tap">${ic.share}</div>
+    <div class="tap"><div class="avatar">🔥</div></div>
+  </div>
+  <div class="barshadow"></div>
+
+  <div class="library">
+    ${shelf(b[0], c.shelves[0])}
+    ${shelf(null, c.shelves[1])}
+    ${shelf(b[1], c.shelves[0])}
+    ${shelf(b[2], c.shelves[1])}
+  </div>
+
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheethead">
+      <div class="sheettitle">
+        <span class="subtitle t">${c.finishedBooksTitle}</span>
+        <span class="subtitle n">0</span>
+      </div>
+      <div class="yearpill">
+        <span class="label">${year}</span>
+        <svg width="11" height="7" viewBox="0 0 11 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m1 1.5 4.5 4 4.5-4"/></svg>
+      </div>
+    </div>
+    <div class="sheetbody">
+      <div class="body empty">${c.emptyYear(year)}</div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="platter">
+      <div class="tab on">${ic.books}<span class="label lb">${c.tabs[0]}</span></div>
+      <div class="tab">${ic.friends}<span class="label off lb">${c.tabs[1]}</span></div>
+      <div class="tab">${ic.card}<span class="label off lb">${c.tabs[2]}</span></div>
+    </div>
+    <div class="orb">${ic.search}</div>
+  </div>
+</div>`;
+            }
+
+            function shelf(book, label) {
+                return `<div class="shelf">
+  ${
+      book
+          ? `<div class="books"><div class="cover" style="background:linear-gradient(150deg,${book.c},${book.c}bb)">
+        <div class="ribbon"></div>
+        <div class="ct">${book.t}</div>
+        <div class="ca">${book.a}</div>
+      </div></div>`
+          : ""
+  }
+  <div class="shelflabel">${label}</div>
+  <div class="plank"></div>
+</div>`;
+            }
+
+            // ---- render -----------------------------------------------------
+            function renderStrip() {
+                document.getElementById("strip").innerHTML = FAMILIES.map(
+                    (f) => `<div class="col${
+                        f.tag === "chosen" ? " sel" : ""
+                    }" data-id="${f.id}">
+  <div class="cap">
+    <span class="nm">${f.nm}</span>
+    <span class="tag ${f.tagClass || ""}">${f.tag}</span>
+  </div>
+  <div class="sub">${f.sub}</div>
+  ${screen(f)}
+</div>`,
+                ).join("");
+            }
+
+            // The diagnostics below compare **faces**, not candidate
+            // configurations. Rendering `f.ui` for all seven candidates drew the
+            // same Pretendard 249.5px line three times — rows 2, 6 and 7 — so a
+            // pairing named "Pretendard + Hahmlet" showed no Hahmlet, and one
+            // `tnum` measurement was reported as three. Derived from `FAMILIES`
+            // rather than hand-listed, so a new candidate cannot be left out,
+            // and de-duplicated by the stack a row actually sets.
+            const faceName = (stack) => {
+                const m = stack.match(/^'([^']+)'/);
+                return m ? m[1] : "System face";
+            };
+
+            const DIAG_FACES = (() => {
+                const by = new Map();
+                const add = (stack, role) => {
+                    const e = by.get(stack) || {
+                        stack,
+                        nm: faceName(stack),
+                        roles: new Set(),
+                    };
+                    e.roles.add(role);
+                    by.set(stack, e);
+                };
+                for (const f of FAMILIES) add(f.ui, "UI");
+                for (const d of DISPLAY_FACES) {
+                    if (d.face) add(d.stack, "display");
+                }
+                return [...by.values()].map((e) => ({
+                    ...e,
+                    role:
+                        e.roles.size === 2
+                            ? "UI and display"
+                            : e.roles.has("UI")
+                              ? "UI face"
+                              : "display face only",
+                }));
+            })();
+
+            function renderDiagnostics() {
+                const pairs = {
+                    en: "My Library 소설 2026",
+                    ko: "내 서재 Books read 2026",
+                };
+                document.getElementById("diag-script").innerHTML =
+                    DIAG_FACES.map(
+                        (f) => `<tr>
+  <td class="fam"><b>${f.nm}</b>${f.role}</td>
+  <td><span class="rule"><span class="txt" style="font-family:${f.stack};font-weight:600">${pairs[state.locale]}</span></span></td>
+</tr>`,
+                    ).join("");
+
+                const counts = ["1111", "1088", "2026", "8888", "1911"];
+
+                // Measured, not assumed. A face whose digits are already one
+                // width does not need `fontFeatures` at all, and it turns out
+                // three of these are — so recommendation and face are coupled.
+                const needsTnum = (fam) => {
+                    const s = document.createElement("span");
+                    s.style.cssText =
+                        "position:absolute;visibility:hidden;white-space:pre;" +
+                        "font-size:40px;font-family:" +
+                        fam;
+                    document.body.appendChild(s);
+                    const w = (t) => {
+                        s.textContent = t;
+                        return s.getBoundingClientRect().width;
+                    };
+                    const d = Math.abs(w("1111") - w("8888"));
+                    s.remove();
+                    return d;
+                };
+
+                document.getElementById("diag-figs").innerHTML = DIAG_FACES.map(
+                    (f) => {
+                        const d = needsTnum(f.stack);
+                        const need = d > 0.5;
+                        return `<tr>
+  <td class="fam"><b>${f.nm}</b>${f.role}</td>
+  <td><span class="figs" style="font-family:${f.stack}">${counts
+      .map((n) => `<span>${n}</span>`)
+      .join("")}</span></td>
+  <td><span class="figs tnum" style="font-family:${f.stack}">${counts
+      .map((n) => `<span>${n}</span>`)
+      .join("")}</span></td>
+  <td class="verdict ${need ? "yes" : "no"}">${
+      need
+          ? `<b>Yes</b>${Math.round(d)}px drift<br>at 40px`
+          : `<b>No</b>digits already<br>one width`
+  }</td>
+</tr>`;
+                    },
+                ).join("");
+            }
+
+            // The seven tokens. Kept here, not in CSS, so the table and the
+            // frames cannot disagree about what "title" means.
+            const TOKENS = [
+                {
+                    nm: "display",
+                    size: 46,
+                    weight: 800,
+                    lh: 1.05,
+                    tr: -0.9,
+                    tnum: true,
+                    disp: true,
+                    use: "Card hero figure",
+                    smp: { en: "12", ko: "12" },
+                },
+                {
+                    nm: "figure",
+                    size: 30,
+                    weight: 700,
+                    lh: 1.05,
+                    tr: -0.6,
+                    tnum: true,
+                    disp: true,
+                    use: "stat figures",
+                    smp: { en: "1,204", ko: "1,204" },
+                },
+                {
+                    nm: "title",
+                    size: 22,
+                    weight: 600,
+                    lh: 1.15,
+                    tr: -0.4,
+                    disp: true,
+                    use: "page title",
+                    smp: { en: "My Library", ko: "내 서재" },
+                },
+                {
+                    nm: "subtitle",
+                    size: 17,
+                    weight: 600,
+                    lh: 1.25,
+                    tr: -0.2,
+                    use: "sheet titles",
+                    smp: { en: "Books read", ko: "읽은 책" },
+                },
+                {
+                    nm: "body",
+                    size: 15,
+                    weight: 400,
+                    lh: 1.4,
+                    tr: 0,
+                    use: "prose, memos",
+                    smp: {
+                        en: "The quick brown fox jumps over the lazy dog",
+                        ko: "다람쥐 헌 쳇바퀴에 타고파",
+                    },
+                },
+                {
+                    nm: "label",
+                    size: 13,
+                    weight: 600,
+                    lh: 1.2,
+                    tr: 0,
+                    tnum: true,
+                    use: "tab labels, shelf tabs, badges",
+                    smp: {
+                        en: "Friends · Card · 2026",
+                        ko: "친구 · 카드 · 2026",
+                    },
+                },
+                {
+                    nm: "caption",
+                    size: 11,
+                    weight: 700,
+                    lh: 1.2,
+                    tr: 0.9,
+                    upper: true,
+                    use: "uppercase stat labels",
+                    smp: { en: "Books read in 2026", ko: "올해 읽은 책" },
+                },
+            ];
+
+            function renderSpecimen() {
+                const f = FAMILIES.find((x) => x.id === state.spec);
+                const disp = displayStack(f.ui);
+                document.getElementById("seg-spec").innerHTML = FAMILIES.map(
+                    (x) =>
+                        `<button data-v="${x.id}" aria-pressed="${
+                            x.id === state.spec
+                        }">${x.nm}</button>`,
+                ).join("");
+                document.getElementById("specimen").innerHTML = TOKENS.map(
+                    (t) => `<div class="spec-row">
+  <div class="meta"><b>${t.nm}</b>${t.size}px · w${t.weight} · lh ${t.lh} · tr ${
+      t.tr > 0 ? "+" : ""
+  }${t.tr}${t.tnum ? " · tnum" : ""}<br>${t.use}<br><span class="which">${
+      t.disp ? "display face" : "UI face"
+  } · ${faceName(t.disp ? disp : f.ui)}</span></div>
+  <div class="smp" style="
+      font-family:${t.disp ? disp : f.ui};
+      font-size:${t.size}px;
+      font-weight:${t.weight};
+      line-height:${t.lh};
+      letter-spacing:${t.tr}px;
+      ${t.tnum ? "font-variant-numeric:tabular-nums;" : ""}
+      ${t.upper ? "text-transform:uppercase;" : ""}
+    ">${t.smp[state.locale]}</div>
+</div>`,
+                ).join("");
+            }
+
+            // ---- the display-face comparison --------------------------------
+            // The Library Card hero tile, which is where a display face earns
+            // its keep: the largest type in the app, on the one screen that is a
+            // shareable keepsake. Drawn at 1:1 from `StatTile`'s own figures —
+            // radius 18, padding 16/16/16/18, label 10.5 w700 tracking 0.9,
+            // figure 46 w800 lh 1.05, sub 12.5 lh 1.3.
+            function renderDisplayFaces() {
+                const c = COPY[state.locale];
+                // Pinned to Pretendard rather than following the specimen
+                // selector, so the serif is the only thing changing across the
+                // row. The label and sub-line stay in the UI face because the
+                // proposed scale only sends `display`, `figure` and `title` to a
+                // display face — `caption` and the sub-line are UI roles, and
+                // setting the whole tile in the serif would overstate the change.
+                const ui = FAMILIES.find((x) => x.id === "pretendard").ui;
+                document.getElementById("display-strip").innerHTML =
+                    DISPLAY_FACES.map((d) => {
+                        const s = d.face ? `'${d.face}', ${ui}` : ui;
+                        return `<div class="dcol${
+                            d.id === state.display ? " sel" : ""
+                        }">
+  <div class="cap">
+    <span class="nm">${d.nm}</span>
+    <span class="tag ${d.chosen ? "rec" : ""}">${
+        d.face ? d.kb.toFixed(1) + " KB" : "no cost"
+    }</span>
+  </div>
+  <div class="sub">${d.sub}</div>
+  <div class="hero" style="font-family:${ui}">
+    <div class="hl">${c.cardLabel}</div>
+    <div class="hf" style="font-family:${s}">12</div>
+    <div class="hs">${c.cardSub}</div>
+  </div>
+  <div class="dtitle" style="font-family:${s}">${c.myLibrary}</div>
+  <div class="dlatin">${d.latin}</div>
+  <div class="dmeta">weights ${d.weights}${
+      d.face ? ` · ${d.kb.toFixed(1)}KB scoped · ${d.mb.toFixed(2)}MB full` : ""
+  }</div>
+</div>`;
+                    }).join("");
+
+                document.getElementById("seg-display").innerHTML =
+                    DISPLAY_FACES.map(
+                        (d) =>
+                            `<button data-v="${d.id}" aria-pressed="${
+                                d.id === state.display
+                            }">${d.nm}</button>`,
+                    ).join("");
+            }
+
+            // ---- the Card figure: three ways to treat it --------------------
+            // The frames are all the Library screen, so none of them draws a
+            // Card hero — which is why this is its own block rather than a switch
+            // in the sticky bar. A control whose effect is a long scroll away is
+            // the mistake `D` already made once.
+            //
+            // The variable is the *figure*, not the face: the title stays serif in
+            // all three. `w` is capped by what the face actually has, so nothing
+            // here is ever faux-bolded — Gowun Batang stops at 700 because that is
+            // its bold, and asking for 800 would synthesise.
+            function renderFigureOptions() {
+                const c = COPY[state.locale];
+                const ui = FAMILIES.find((x) => x.id === "pretendard").ui;
+                const d = displayFace();
+                const serif = d.face ? `'${d.face}', ${ui}` : ui;
+                const nm = d.face || "the UI face";
+
+                const opts = [
+                    {
+                        t: "All serif",
+                        tag: "baseline",
+                        size: 46,
+                        fam: serif,
+                        w: Math.min(d.maxW, 700),
+                        note: `Figure in ${nm} at w${Math.min(
+                            d.maxW,
+                            700,
+                        )} — its heaviest. Consistent, and the lightest of the three.`,
+                    },
+                    {
+                        t: "Split face",
+                        tag: "option 1",
+                        rec: true,
+                        size: 46,
+                        fam: ui,
+                        w: 800,
+                        note: "Figure in Pretendard w800, title still serif. The number is emphatic and the voice stays literary where it reads as words.",
+                    },
+                    {
+                        t: "All serif, larger",
+                        tag: "option 2",
+                        size: 56,
+                        fam: serif,
+                        w: Math.min(d.maxW, 700),
+                        note: "Same serif figure at 56pt instead of 46. Buys presence with size rather than weight, and keeps one face.",
+                    },
+                ];
+
+                document.getElementById("figure-strip").innerHTML = opts
+                    .map(
+                        (o) => `<div class="fcol${o.rec ? " sel" : ""}">
+  <div class="cap">
+    <span class="nm">${o.t}</span>
+    <span class="tag ${o.rec ? "rec" : ""}">${o.tag}</span>
+  </div>
+  <div class="sub">${o.note}</div>
+  <div class="hero" style="font-family:${ui}">
+    <div class="hl">${c.cardLabel}</div>
+    <div class="hf" style="font-family:${o.fam};font-size:${
+        o.size
+    }px;font-weight:${o.w};letter-spacing:${(-0.02 * o.size).toFixed(2)}px">12</div>
+    <div class="hs">${c.cardSub}</div>
+  </div>
+  <div class="dtitle" style="font-family:${serif}">${c.myLibrary}</div>
+  <div class="dmeta">figure ${o.size}pt w${o.w} · ${
+      o.fam === ui ? "Pretendard" : nm
+  }<br>title 22pt w600 · ${nm}</div>
+</div>`,
+                    )
+                    .join("");
+            }
+
+            function renderAll() {
+                renderStrip();
+                renderDiagnostics();
+                renderDisplayFaces();
+                renderFigureOptions();
+                renderSpecimen();
+                for (const [id, key] of [
+                    ["seg-locale", "locale"],
+                    ["seg-metrics", "metrics"],
+                    ["seg-scale", "scale"],
+                    ["seg-contrast", "contrast"],
+                ]) {
+                    syncSeg(id, key);
+                }
+            }
+
+            // Nothing may be measured until the faces are actually resolved.
+            // `font-display: block` plus lazy @font-face loading means a
+            // measurement taken during the first paint silently returns the
+            // *fallback's* answer — which is how the "Needed?" column first came
+            // out reading "Yes, 25px" for three faces whose digits are already
+            // one width. It was measuring SF Pro seven times.
+            async function facesReady() {
+                const fams = [
+                    "Pretendard",
+                    "Noto Sans KR",
+                    "IBM Plex Sans KR",
+                    "Gothic A1",
+                    "Hahmlet",
+                    "Gowun Batang",
+                    "Noto Serif KR",
+                    "Nanum Myeongjo",
+                    "Song Myung",
+                ];
+                await Promise.all(
+                    fams.flatMap((f) =>
+                        [400, 600, 700, 800].map((w) =>
+                            document.fonts
+                                .load(`${w} 40px "${f}"`)
+                                .catch(() => {}),
+                        ),
+                    ),
+                );
+                await document.fonts.ready;
+            }
+
+            // ---- controls ---------------------------------------------------
+            // One place that makes every segment agree with `state`, so a
+            // programmatic change (see `applyDisplay`) cannot leave a segment
+            // showing the wrong thing.
+            function syncSeg(id, key) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                for (const b of el.querySelectorAll("button")) {
+                    b.setAttribute(
+                        "aria-pressed",
+                        String(b.dataset.v === state[key]),
+                    );
+                }
+            }
+
+            // **Choosing a display face implies the proposed scale.** The
+            // current scale has no display role at all — every size it sets
+            // inherits `--ui` — so a display face selected under it changes
+            // nothing on any frame. That made `D` look broken: it moved the
+            // segment, changed the specimen 1200px down the page, and left all
+            // five frames identical. Flipping the scale here is what makes the
+            // control mean something, and the scale segment visibly moves so the
+            // reason is on screen rather than in prose two sections below.
+            function applyDisplay() {
+                if (displayFace().face) state.scale = "proposed";
+            }
+
+            function wire(id, key, after) {
+                const el = document.getElementById(id);
+                el.addEventListener("click", (e) => {
+                    const b = e.target.closest("button");
+                    if (!b) return;
+                    state[key] = b.dataset.v;
+                    if (key === "display") applyDisplay();
+                    (after || renderAll)();
+                });
+            }
+            wire("seg-locale", "locale");
+            wire("seg-metrics", "metrics");
+            wire("seg-scale", "scale");
+            wire("seg-contrast", "contrast");
+            wire("seg-display", "display");
+            document
+                .getElementById("seg-spec")
+                .addEventListener("click", (e) => {
+                    const b = e.target.closest("button");
+                    if (!b) return;
+                    state.spec = b.dataset.v;
+                    renderAll();
+                });
+
+            function toggle(id, key, a, b) {
+                state[key] = state[key] === a ? b : a;
+                renderAll();
+            }
+            addEventListener("keydown", (e) => {
+                if (e.metaKey || e.ctrlKey || e.altKey) return;
+                const k = e.key.toLowerCase();
+                if (k === "l") toggle("seg-locale", "locale", "en", "ko");
+                else if (k === "m")
+                    toggle("seg-metrics", "metrics", "inherited", "tuned");
+                else if (k === "s")
+                    toggle("seg-scale", "scale", "current", "proposed");
+                else if (k === "c")
+                    toggle("seg-contrast", "contrast", "current", "fixed");
+                else if (k === "d") {
+                    // Cycles rather than toggles: there are six display faces,
+                    // and the point of the key is to flip through them on one
+                    // frame without reaching for the mouse.
+                    const i = DISPLAY_FACES.findIndex(
+                        (x) => x.id === state.display,
+                    );
+                    state.display =
+                        DISPLAY_FACES[(i + 1) % DISPLAY_FACES.length].id;
+                    applyDisplay();
+                    renderAll();
+                }
+            });
+
+            // The decided combination, in one place. Sets the metrics and the
+            // scale too, because the decision is not just "these two faces" — a
+            // display face is meaningless without the proposed scale, and the
+            // faces were chosen with the tracking and leading already fixed.
+            document
+                .getElementById("show-decision")
+                .addEventListener("click", () => {
+                    Object.assign(state, {
+                        metrics: "tuned",
+                        scale: "proposed",
+                        contrast: "fixed",
+                        display: "gowun-batang",
+                        spec: "pretendard",
+                    });
+                    renderAll();
+                    const chosen = document.querySelector(".col.sel");
+                    chosen.scrollIntoView({
+                        block: "start",
+                        inline: "center",
+                        behavior: "smooth",
+                    });
+                });
+
+            renderAll();
+            // Second pass once the faces are real, so every measured claim on
+            // this page is a claim about the face it names.
+            facesReady().then(renderAll);
+        </script>
+    </body>
+</html>

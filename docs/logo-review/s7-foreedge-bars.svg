@@ -1,0 +1,20 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    Vector translation of the one idea worth keeping from the AI moodboard
+    (docs/logo-review/ai-moodboard/g4-negative-space.png).
+
+    Horizontal bars read as a hamburger menu (see s1). The fix is to shape the
+    right end of each bar as a page fore-edge: an arc with radius 70 across a
+    108-tall bar, so it bulges ~25px past the body instead of ending in a plain
+    rounded cap. Pure silhouette, no thin interior detail to lose at 48px.
+    Five layers rather than three, for more "stack".
+  -->
+  <g transform="translate(512,512) scale(1.18) translate(-509,-512)" fill="#ffffff">
+    <path d="M252 190 H700 A70 70 0 0 1 700 298 H252 A20 20 0 0 1 232 278 V210 A20 20 0 0 1 252 190 Z"/>
+    <path d="M252 324 H740 A70 70 0 0 1 740 432 H252 A20 20 0 0 1 232 412 V344 A20 20 0 0 1 252 324 Z"/>
+    <path d="M252 458 H720 A70 70 0 0 1 720 566 H252 A20 20 0 0 1 232 546 V478 A20 20 0 0 1 252 458 Z"/>
+    <path d="M252 592 H760 A70 70 0 0 1 760 700 H252 A20 20 0 0 1 232 680 V612 A20 20 0 0 1 252 592 Z"/>
+    <path d="M252 726 H710 A70 70 0 0 1 710 834 H252 A20 20 0 0 1 232 814 V746 A20 20 0 0 1 252 726 Z"/>
+  </g>
+</svg>

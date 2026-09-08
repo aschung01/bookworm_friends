@@ -1,0 +1,15 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    The absolute floor: one shape. An open book as a single thick chevron.
+
+    Nothing here can close up, mush or turn into scratches when downscaled,
+    because there are no interior gaps to lose — the whole mark is one solid
+    run of white 160 tall at the ends.
+
+    The risk is meaning, not legibility: with no covers and no gutter, a
+    chevron this clean can read as a generic swoosh. It is in the round to
+    test whether one shape is enough.
+  -->
+  <path d="M176 372 L512 492 L848 372 L848 532 L512 652 L176 532 Z" fill="#ffffff"/>
+</svg>

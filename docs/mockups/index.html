@@ -6,179 +6,987 @@
   mistake these pages exist to avoid.
 -->
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Bookworm Friends &mdash; design mockups</title>
-    <style>
-      :root {
-        --ink: #1c1c1e;
-        --muted: #8a8a8f;
-        --line: #e6e4e0;
-        --brand: #067657;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        padding: 46px 22px 80px;
-        font-family:
-          system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif;
-        color: var(--ink);
-        background: #fff;
-        -webkit-font-smoothing: antialiased;
-        line-height: 1.55;
-      }
-      .wrap {
-        max-width: 780px;
-        margin: 0 auto;
-      }
-      h1 {
-        font-size: 26px;
-        letter-spacing: -0.5px;
-        margin: 0 0 6px;
-      }
-      .lead {
-        color: var(--muted);
-        font-size: 14px;
-        margin: 0 0 34px;
-      }
-      h2 {
-        font-size: 12px;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin: 34px 0 12px;
-      }
-      code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.86em;
-        background: #f2f1ee;
-        padding: 0.1em 0.35em;
-        border-radius: 4px;
-      }
-      /* The whole row is the link. A title-only <a> inside a big card is
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Libstack &mdash; design mockups</title>
+        <style>
+            :root {
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+                --brand: #067657;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                padding: 46px 22px 80px;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.55;
+            }
+            .wrap {
+                max-width: 780px;
+                margin: 0 auto;
+            }
+            h1 {
+                font-size: 26px;
+                letter-spacing: -0.5px;
+                margin: 0 0 6px;
+            }
+            .lead {
+                color: var(--muted);
+                font-size: 14px;
+                margin: 0 0 34px;
+            }
+            h2 {
+                font-size: 12px;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin: 34px 0 12px;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            /* The whole row is the link. A title-only <a> inside a big card is
                an invisible hit target, which is the pitfall this avoids. */
-      a.row {
-        display: block;
-        text-decoration: none;
-        color: inherit;
-        border: 1px solid var(--line);
-        border-radius: 11px;
-        padding: 16px 18px;
-        margin-bottom: 12px;
-        transition:
-          transform 0.14s ease,
-          box-shadow 0.14s ease,
-          border-color 0.14s ease;
-      }
-      a.row:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
-        border-color: #d6d3cd;
-      }
-      a.row:focus-visible {
-        outline: 2px solid var(--brand);
-        outline-offset: 2px;
-      }
-      a.row .nm {
-        font-size: 15px;
-        font-weight: 800;
-        color: var(--brand);
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        flex-wrap: wrap;
-      }
-      a.row:hover .nm span.t {
-        text-decoration: underline;
-      }
-      a.row .nm .arrow {
-        margin-left: auto;
-        color: var(--muted);
-        font-weight: 500;
-      }
-      a.row .ds {
-        font-size: 13px;
-        color: #55555c;
-        margin-top: 5px;
-      }
-      .badge {
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.4px;
-        text-transform: uppercase;
-        padding: 2.5px 7px;
-        border-radius: 20px;
-        background: #e7f6ef;
-        color: var(--brand);
-      }
-      .badge.open {
-        background: #fdeeea;
-        color: #c05746;
-      }
-      .note {
-        font-size: 13px;
-        color: #55555c;
-        border-left: 3px solid var(--line);
-        padding: 2px 0 2px 14px;
-        margin: 0 0 10px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <h1>Design mockups</h1>
-      <p class="lead">
-        Self-contained pages &mdash; no build, no server, no network. Open any
-        of them straight from disk. Each is data-driven: screens are declared
-        once and drawn by one renderer, so a changed decision cannot leave half
-        the set stale.
-      </p>
+            a.row {
+                display: block;
+                text-decoration: none;
+                color: inherit;
+                border: 1px solid var(--line);
+                border-radius: 11px;
+                padding: 16px 18px;
+                margin-bottom: 12px;
+                transition:
+                    transform 0.14s ease,
+                    box-shadow 0.14s ease,
+                    border-color 0.14s ease;
+            }
+            a.row:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+                border-color: #d6d3cd;
+            }
+            a.row:focus-visible {
+                outline: 2px solid var(--brand);
+                outline-offset: 2px;
+            }
+            a.row .nm {
+                font-size: 15px;
+                font-weight: 800;
+                color: var(--brand);
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                flex-wrap: wrap;
+            }
+            a.row:hover .nm span.t {
+                text-decoration: underline;
+            }
+            a.row .nm .arrow {
+                margin-left: auto;
+                color: var(--muted);
+                font-weight: 500;
+            }
+            a.row .ds {
+                font-size: 13px;
+                color: #55555c;
+                margin-top: 5px;
+            }
+            .badge {
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 0.4px;
+                text-transform: uppercase;
+                padding: 2.5px 7px;
+                border-radius: 20px;
+                background: #e7f6ef;
+                color: var(--brand);
+            }
+            .badge.open {
+                background: #fdeeea;
+                color: #c05746;
+            }
+            .note {
+                font-size: 13px;
+                color: #55555c;
+                border-left: 3px solid var(--line);
+                padding: 2px 0 2px 14px;
+                margin: 0 0 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <h1>Design mockups</h1>
+            <p class="lead">
+                Self-contained pages &mdash; no build, no server, no network.
+                Open any of them straight from disk. Each is data-driven:
+                screens are declared once and drawn by one renderer, so a
+                changed decision cannot leave half the set stale.
+            </p>
 
-      <h2>Open questions</h2>
-      <a class="row" href="generated-cover/index.html">
-        <div class="nm">
-          <span class="t">Generated book cover</span>
-          <span class="badge open">deciding</span>
-          <span class="arrow">&rarr;</span>
-        </div>
-        <div class="ds">
-          Eight treatments for a cover with no thumbnail, each drawn at all
-          three widths the app uses (78pt grid, 84pt shelf, 115pt details) with
-          WCAG contrast measured per swatch. Switch options with
-          <code>v</code> and compare two side by side with
-          <code>&#8679;Enter</code>. Records why the mascot cannot be a 21pt
-          corner mark, why the cover carries no mark at all, and that the
-          <i>solid</i> direction needs a palette revision before it can ship.
-        </div>
-      </a>
+            <h2>Open questions</h2>
+            <a class="row" href="streaks/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Reading streaks &mdash; the bookmark, the card, the
+                        list</span
+                    >
+                    <span class="badge open">superseded in part &middot; ribbon drawn wrong, page_count answered</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>A streak needs a daily signal and the schema has
+                    none.</b>
+                    Books carry a <code>start_date</code> and a
+                    <code>finish_date</code>, memos and praise carry a
+                    <code>created_at</code>, and no row anywhere means &ldquo;I
+                    read today&rdquo;. Worse, the corpus shows the opposite
+                    behaviour: <b>168 of 293 finished books have
+                    <code>start_date == finish_date</code></b>, which is why
+                    <code>bookReadingSpanDays</code> has to treat a same-day
+                    pair as unknown &mdash; people catalogue, they do not track.
+                    So the proposal is not a button but a <b>bookmark you
+                    move</b>, paying for four things with one gesture: the daily
+                    signal, a progress percentage the app cannot currently show
+                    at all, a real reading span, and the first input the
+                    <code>poke_events</code> feed has ever had &mdash; its own
+                    migration defers the feed because there is &ldquo;no
+                    activity to show&rdquo;. Three anatomies, and the axis is
+                    <b>resolution</b>, computed rather than asserted: hanging
+                    from the chrome gives <b>2.5pt of travel per page</b> but
+                    its tail crosses the tab strip and lies over the Notes list;
+                    on the cover, <b>0.56</b>; across the fore-edge,
+                    <b>0.33</b>, the truest metaphor and the only exactly
+                    proportional one, needing 32pt of headroom the hero's 20pt
+                    padding does not have. Drawing it caught the ribbon's tip
+                    landing at 53% of a cover the band beside it labelled 46%
+                    &mdash; two indicators of one fact disagreeing &mdash; and
+                    the 8pt nub is the fix. The streak's record is the
+                    <b>due-date card</b> from a library book's back pocket, not
+                    a flame, which is the visual language
+                    <code>card-seal</code> already established; a missed day is
+                    pale ink and never a red cross, because a second scolding is
+                    what makes people log days they did not read and put fiction
+                    into <code>LibraryCardStats</code>. Friends take Duolingo's
+                    unranked <b>Friend Streaks</b> pattern and explicitly reject
+                    its League: pages are not commensurable between two readers,
+                    so a pages leaderboard pays people to pick easier books,
+                    while days are. Open, and load-bearing:
+                    <code>page_count</code> is nullable and nobody has asked the
+                    corpus how often &mdash; if it is most books, the fallback
+                    button is the feature and the ribbon is a bonus, which
+                    inverts the design; a reader between books has no ribbon to
+                    move and loses a streak having done nothing wrong; a
+                    backwards drag has three readings and no chosen one; and the
+                    friend row's trailing slot is <b>already spoken for</b> by
+                    <code>FriendReading.finishedCount</code>.
+                </div>
+            </a>
+            <a class="row" href="spine-type/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Read pile &mdash; the type on a spine</span
+                    >
+                    <span class="badge open">open &middot; type only, no geometry</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>The most bookish surface in the app is set in a UI
+                    token.</b>
+                    <code>BookVertical</code> uses <code>AppTextStyles.label</code>,
+                    whose own doc says &ldquo;tab labels, shelf tabs, badges, capsules,
+                    buttons&rdquo; &mdash; so in the collapsed Library tab a book title is
+                    the same family and weight as the <code>Library / Friends / Card</code>
+                    labels 40pt below it, and it carries
+                    <code>FontFeature.tabularFigures()</code>, which is right for a count
+                    and wrong for a title. The design record here says &ldquo;the 12pt
+                    rotated title&rdquo; twice; the code ships 13, because the token moved
+                    and the spine came along. Three more findings, each measured off the
+                    drawing rather than asserted: <b>30 of the 110&ndash;124pt spine is
+                    padding</b>, spent clearing an arch 5pt deep, so the measure is
+                    80&ndash;94pt where it could be 93&ndash;107; <b>half the truncation is
+                    not about measure at all</b> but the parenthetical original title a
+                    Korean catalogue supplies as a matter of course
+                    (<code>그로스 해킹(Growth&nbsp;Hacking)</code> fits whole once cut at the
+                    bracket); and <code>Center</code> hides the per-book jitter this
+                    feature was built to add, because it puts every title at the middle of
+                    its <i>own</i> spine. On the face: the serif is
+                    <b>unavailable rather than unchosen</b> &mdash;
+                    <code>AppFonts.serif</code> is subset to <code>app_ko.arb</code>, so 17
+                    syllables across ten real titles fall through and
+                    <code>fontFamilyFallback</code> changes family <i>mid-title</i>; the
+                    page renders both failure modes. And
+                    <code>designhouseOTFLight.otf</code> already ships, carries all 11,172
+                    Hangul syllables, and is <b>referenced nowhere</b> &mdash; 376KB that
+                    never draws a glyph. <b>Five layouts &times; twelve faces
+                    &times; nine sizes</b>, switchable and independent — including
+                    five Korean serifs built as mockup-only subsets, among them
+                    Gowun Batang <i>whole</i>, so you can see what the app&rsquo;s own
+                    serif would look like if it were not cut. Truncation is counted
+                    live off the drawing: 9 of 10 titles at <code>now</code>, 4 of 10
+                    once the measure is fixed.
+                    Renders to PNG via
+                    <code>python3 docs/mockups/spine-type/render.py</code>, which also
+                    prints the serif&rsquo;s per-title coverage.
+                </div>
+            </a>
+            <a class="row" href="card-seal/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Library Card &mdash; the seal behind the shelf</span
+                    >
+                    <span class="badge open">open &middot; caused by the fix above</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>The new two-board shelf stands in front of the embossed seal
+                    &mdash; and the seal is what Candlelight exists to reveal.</b>
+                    <code>sealOpacity</code> is 0.1 in daylight, <i>a shape in the
+                    stock rather than a mark on it</i>, and 1.0 under the flame; it was
+                    drawn faint on purpose so the candle would have something real to
+                    find. So this is not an ornament being covered, it is the card&rsquo;s
+                    one delight feature. The measurement is narrower than it first
+                    looks: <b>nothing reaches the seal while the shelf needs one
+                    board</b>, because a one-board shelf sits at the bottom of the well
+                    &mdash; so the corner is intact to the 17th book overlapping and the
+                    20th as spines, then loses a third of the disc in one step when the
+                    second board fills. Side by side never reaches it at all. Six
+                    placements, each costed: <code>now</code> (books in front),
+                    <code>balance</code> (split the shelf evenly, which fixes the whole
+                    common range for <b>no capacity at all</b> but not a full card),
+                    <code>reserve</code> (hold the corner; the only one that holds at
+                    every count, at &minus;3 overlapping, &minus;4 spines, &minus;1 side
+                    by side, and free below eleven books), <code>body</code> (move it
+                    below the perforation, where an emboss belongs, into slack whose size
+                    depends on how much the reader has read), <code>watermark</code> and
+                    <code>adaptive</code>, the last two kept as the record of why they
+                    were refused. The hatch on each drawing is the actual intersection of
+                    disc and books, not a description of one. Verify with
+                    <code>node docs/mockups/card-seal/verify.js</code>.
+                </div>
+            </a>
+            <a class="row" href="card-cover-crop/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Library Card &mdash; the cover row crop</span
+                    >
+                    <span class="badge open"
+                        >shipped bug &middot; decided &middot; built</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>The cover row crops every jacket it draws, and the
+                    approved drawing could not show it.</b>
+                    <code>_tierFor</code> hands out boxes at 0.36 and 0.50 where
+                    <code>kDefaultCoverAspect</code> is 0.67, and
+                    <code>BoxFit.cover</code> resolves the disagreement by
+                    centre-cropping: at twelve books each cover is 17pt wide in a
+                    31pt jacket, so <b>20.7pt of artwork per cover is discarded</b>,
+                    half off each side. The jitter makes it worse rather than
+                    softer &mdash; it perturbs width and height independently, so
+                    the aspect wanders between 0.30 and 0.49 and every cover is
+                    cropped by a different amount, which is why the row reads as a
+                    rendering fault. It shipped because
+                    <code>artCoverRow</code> in
+                    <code>library-card-share</code> fills each cover with a flat
+                    swatch, and a flat 0.36 rectangle reads as a spine. Ten
+                    options drawn against the real geometry, from a one-line
+                    <code>alignment</code> stopgap upward.
+                    <b>Decided: <code>shelf</code></b> &mdash; two boards, three
+                    fixed sizes, and <b>nothing squeezed</b>. What
+                    <code>boards</code> and <code>phase</code> differed in turned
+                    out to be one choice rather than two designs &mdash; whether a
+                    book you have read is drawn as a cover or as a spine &mdash;
+                    so it was handed to the reader as a setting: a panel at the
+                    card&rsquo;s top right offering <i>Covers</i> or
+                    <i>Spines</i>. Then it was taken back. <b>The card draws
+                    overlapping covers and nothing else</b>: a shelf of spines is
+                    a picture of a different object, and covers are the one asset
+                    a competitor cannot fake, so a setting that hides them is a
+                    setting that gives away the point. The withdrawn modes stay
+                    drawable there as the evidence, relabelled rather than
+                    deleted. A cover is 52.8pt, a spine is 16.6pt
+                    (<code>BookVertical</code>&rsquo;s own proportion at that
+                    height), and a leaning cover advances by 16.6pt &mdash; equal
+                    to the spine width, because a leaning book shows exactly a
+                    spine&rsquo;s worth of itself. Currently-reading books sit at
+                    the front as whole covers with a bookmark and no month stamp.
+                    <b>Past capacity nothing thins or crowds; the shelf prints how
+                    many it is not showing</b> &mdash; so capacity becomes a fact
+                    rather than something to engineer: <b>31 covers, 26 with two
+                    books open, 24 with three</b> &mdash; three fewer than before
+                    the seal&rsquo;s corner was held, with the withdrawn modes
+                    measured beside them at 9 and 31. <b>Three is also as many
+                    books as can be open at the front</b>, because the top board
+                    must still be able to draw a finished one once the seal is
+                    held: that is <code>kCardReadingMax</code>, and it was two
+                    until the rule stopped being a fraction of the board and
+                    became the guarantee. Two boards is also the last layout the
+                    well permits (a third leaves 30.7pt of cover against a 51.9pt
+                    floor). <b>Resolved: the bookmark carries the distinction and
+                    the figure does not move</b> &mdash; the hero keeps counting
+                    <i>finished</i> books, so a card with two open books prints 22
+                    over 24 covers, and the two wearing a bookmark are visibly a
+                    different class of thing. A figure counting both would make
+                    &ldquo;22 books&rdquo; mean &ldquo;20 finished and 2
+                    started&rdquo;, which is a worse number and a claim
+                    <code>library_card_stats.dart</code> does not make.
+                    <b>Resolved: there is no setting</b>, so nothing is baked into
+                    the PNG and there is no preference to store, migrate or
+                    explain &mdash; the panel, its stored preference, the export
+                    field, the analytics dimension and the spine renderer went
+                    with it. <code>boards</code> and <code>phase</code> are kept
+                    browsable as the squeezing they replace. <b>Every cover on the
+                    page carries a title</b>, which is the one thing the original
+                    drawing did not do. Verify with <code>node
+                    docs/mockups/card-cover-crop/verify.js</code>.
+                    <b>Now built:</b> the geometry is a pure function in
+                    <code>card_shelf_plan.dart</code> and
+                    <code>card_cover_row.dart</code> only paints it, guarded by
+                    <code>card_shelf_plan_test.dart</code> (41) and
+                    <code>card_cover_row_test.dart</code> (25) &mdash; the latter
+                    asserting the box aspect directly at every count, because the defect was invisible to a test that
+                    asserted the size the code meant to draw. Render the result
+                    with <code>flutter test
+                    test/card_shelf_render_preview.dart</code>, which draws
+                    jackets with content in them for the same reason this page
+                    does. <b>The panel is built too</b>, in
+                    <code>card_display_panel.dart</code>, and the setting is
+                    stored on the device — <code>card_display_provider.dart</code>,
+                    beside the app&rsquo;s two other display preferences. Not a
+                    <code>profiles</code> column: nobody but the reader ever reads
+                    it, because the card a friend looks at is rendered by
+                    <i>their</i> app. The last cover layout is kept under its own
+                    key so <i>Covers</i> returns the reader to their own layout
+                    across a restart, and <code>destination_row_test.dart</code>
+                    asserts the end of the chain that matters: the setting is in
+                    the <code>CardExportRequest</code>, and therefore in the bytes.
+                </div>
+            </a>
+            <a class="row" href="shelf-overflow/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Shelf overflow &mdash; when a shelf holds more books
+                        than its row can show</span
+                    >
+                    <span class="badge open">3 options &middot; 3 open</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    A shelf is one horizontal <code>ListView</code>, and on a
+                    390pt phone <b>only 3.58 books fit in it</b> &mdash;
+                    measured on the drawing, not asserted:
+                    <code>bookHeight</code> is
+                    <code>screenHeight&nbsp;*&nbsp;0.15</code> (126.6), the cover
+                    is 2/3 of that (84.4), and the row is
+                    <code>screenWidth&nbsp;*&nbsp;0.95</code> less 15pt each side.
+                    So a twelve-book shelf shows three and a sliver, and the only
+                    thing saying otherwise is a clip through the fourth cover
+                    &mdash; which reads as a rendering fault rather than as an
+                    invitation to swipe.
+                    <br /><br />
+                    <b>A</b> signals the scroll (count on the name tab, fade at
+                    the edge): cheap, additive, fixes legibility but not reach.
+                    <b>B</b> wraps onto as many planks as it takes &mdash; drawn
+                    so its cost is visible rather than argued about, at roughly
+                    1,100pt of scroll for two shelves. <b>C</b> caps the wrap at
+                    two planks and sends the remainder to a
+                    <code>+6</code> chip and a shelf page.
+                    <br /><br />
+                    <b>Drawing them surfaced three costs that prose had missed:</b>
+                    wrapping breaks the <code>shelfHeroTag(shelf.id)</code>
+                    contract (N heroes, one tag, one route &mdash; Flutter
+                    throws); edit mode&rsquo;s horizontal
+                    <code>ReorderableListView</code> has no wrapping equivalent;
+                    and book width depends on a decoded cover aspect, so a wrap
+                    computed from measured width reflows as images load. The
+                    frames also caught something argument could not: <b>both</b>
+                    wrap options push a plank behind the read sheet.
+                </div>
+            </a>
+            <a class="row" href="friend-requests/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Friends &amp; invites &mdash; mutual friendship,
+                        invite-only</span
+                    >
+                    <span class="badge open"
+                        >friends-only decided &middot; 2 open</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Replacing the one-directional <code>follows</code> row with
+                    mutual friendship, where
+                    <b>invite links are the only path in</b>. Checked against
+                    Flighty&rsquo;s real flows on Mobbin, which changed the
+                    design twice.
+                    <br /><br />
+                    <b
+                        >There is no request queue and no badge</b
+                    >, because the queue was never created by mutual friendship
+                    &mdash; it was created by handle search, and handle search is
+                    gone. That also deletes <code>status</code>,
+                    <code>requested_by</code>, the <code>UPDATE</code> policy an
+                    accept would need, two RPCs and the four-state button. And
+                    since a link tap needs no delivery, <b
+                        >nothing here is blocked on the FCM v1 migration</b
+                    > &mdash; a request queue would have been.
+                    <br /><br />
+                    Accepting is a full-screen consent moment with
+                    <b>no Decline button</b>: the <code>&#10005;</code> is the
+                    refusal. Its mark is <b>two libraries interleaving</b> rather
+                    than two portraits &mdash; Flighty joins two faces with a
+                    flight path because a flight is what they share, and a
+                    <i>stack</i> is what Libstack shares.
+                    <br /><br />
+                    Looking at Flighty&rsquo;s sheets properly changed two more
+                    things. Their invite sheet shows
+                    <b>no link and no code</b> &mdash; it shows a globe carrying
+                    three friends&rsquo; flights with live status pills, then a
+                    second paragraph that is purely emotional. It sells the
+                    payoff. Ours now shows three shelves with the status this app
+                    reports. And they confirm a new friendship on
+                    <b>its own screen</b>, using that moment to offer per-friend
+                    alerts &mdash; a screen I had missed entirely, and the best
+                    possible introduction to Manage friend.
+                    <br /><br />
+                    Drawn in the app&rsquo;s own materials &mdash; Pretendard and
+                    GowunBatang loaded off disk from <code>assets/fonts/</code>,
+                    every size a real token from
+                    <code>app_text_styles.dart</code> scaled to the frame. Chrome
+                    is post-redesign: the Friends sheet is the switcher, a visit is
+                    <code>&#10005;</code> / title / Poke with no tab bar, and
+                    Manage friend hangs off the long press the deleted
+                    <code>FriendRail</code> used to own.
+                    <br /><br />
+                    <b>Decided:</b> friends-only. <code>public-profiles</code> is
+                    kept as the record of the alternative, and is the only version
+                    where <code>UserLibraryPage</code> still has a way to be
+                    reached &mdash; deleting it is the largest simplification
+                    available here. Thirteen screens, four flows.
+                </div>
+            </a>
+            <a class="row" href="friend-paging/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Friend paging &mdash; the horizontal pager</span
+                    >
+                    <span class="badge open"
+                        >4 branches &middot; <code>switcher-drilldown</code>
+                        built</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Two reported defects in the shell&rsquo;s
+                    <code>PageView</code>, drawn frame by frame, with the fixes
+                    as branches you can diff.
+                    <b
+                        >1. A sideways drag on your own library starts a
+                        visit.</b
+                    >
+                    The pager is the root of <code>home_page.dart</code> and its
+                    <code>physics</code> is gated on
+                    <code>mode == LibraryMode.library</code> alone, so nothing
+                    about the Library or Card tab makes the horizontal axis
+                    dead. It leaks in through <b>three</b> surfaces, all from
+                    one formula:
+                    <code>ScrollPhysics.shouldAcceptUserOffset</code> is
+                    <code>pixels != 0 || min != max</code>, and
+                    <code>applyNewDimensions</code> feeds it to
+                    <code>setCanDrag()</code> &mdash; so a shelf whose books
+                    fit, a read pile that does not overflow, and the whole Card
+                    tab all <i>decline</i> the drag and hand it to the pager.
+                    <b
+                        >2. Tapping a friend three rows down sweeps the two in
+                        between.</b
+                    >
+                    <code>_syncPageToFriend</code> calls
+                    <code>animateToPage</code>, and
+                    <code>onPageChanged</code> is a <i>position</i> report fired
+                    for every page crossed &mdash; so each intermediate
+                    <code>_FriendLibraryPage</code> mounts, fires
+                    <code>userLibraryProvider</code> and
+                    <code>userFinishedBooksProvider</code> (both
+                    <code>autoDispose.family</code>, so both real Supabase round
+                    trips), draws a spinner and unmounts:
+                    <b>2(k&minus;1) queries thrown away</b> to show one friend.
+                    <b>The frame that explains why bug 1 feels broken:</b>
+                    <code>onPageChanged</code> fires at page&nbsp;0.50, not on
+                    settle, so the tab bar is destroyed, the rail&rsquo;s row is
+                    inserted and <code>_barExtent</code> shoves your own shelves
+                    <b>down 56pt while they are still half on screen</b>. The
+                    same mid-flight frame between two <i>friends</i> is fine,
+                    and is drawn beside it &mdash; nothing about the chrome
+                    changes across that boundary, which is the argument for
+                    acting on the self/friend boundary alone.
+                    <b>Four branches, and the last one is the recommendation.</b>
+                    <code>visit-scoped</code> is the smallest and is two
+                    lines: scope the axis to a visit through a
+                    <code>_pagerLive</code> latch, and <code>jumpToPage</code>
+                    for a non-adjacent tap. It has to be a latch, not a read of
+                    <code>selectedFriend</code> &mdash; changing
+                    <code>physics</code> mid-drag rebuilds the
+                    <code>ScrollPosition</code> and would cancel the return
+                    swipe at its midpoint. <code>pager-in-visit</code> is the
+                    structural alternative: friends-only pager, mounted over
+                    your library for the duration of a visit, which makes the
+                    boundary uncrossable rather than gated and is the only shape
+                    that can cross-fade. <code>sheet-switcher</code> goes
+                    further and <b>deletes the rail and the swipe outright</b>,
+                    making the Friends sheet the one switcher and keeping it
+                    reachable inside a visit. <b>Not</b> because of the follow
+                    counts: an earlier draft priced the rail against the
+                    Phase&nbsp;4 audit's <b>37 follow rows</b>, and that
+                    reading is void &mdash; the app was pulled from the store
+                    years ago, so those rows are a dormant corpus, not readers
+                    who declined to follow anybody. What argues for it is the
+                    gesture and the form factor:
+                    <code>friends_sheet.dart</code> already calls a strip of
+                    nameless avatars &ldquo;worse than the list itself&rdquo;
+                    while the shell ships exactly that at the top of the
+                    screen, and a named, scrollable list is what scales when
+                    the relaunch has a real follow graph. It costs the tab
+                    bar coming back inside a visit (answerable:
+                    <code>libraryTabProvider</code> documents tabs as sheet
+                    selectors, not places), a meaning for Card (hers, share
+                    suppressed, three items kept because the native
+                    <code>CNTabBar</code> should not change shape), and a
+                    caching fix that is a prerequisite rather than a follow-up.
+                    Two numbers came out of drawing it rather than out of prose:
+                    the collapsed Friends sheet yields <b>1.6 rows</b> at the
+                    shared 20% floor, so the switcher needs a
+                    <code>collapsedBody</code> like the read sheet's pile; and
+                    header + three named rows + the bar's reserve is
+                    <b>~46% of the screen</b>, against the rail's 48pt &mdash;
+                    names are not free, and the sheet wins on legibility rather
+                    than on area. Bringing the tab bar back into a visit forces
+                    three further answers, and the branch shipped with the first
+                    one wrong until it was drawn. <i>Closing a visit:</i> the
+                    rail's glass &times; moves into the bar's leading slot &mdash;
+                    the exit cannot live in the Friends list's head row, because a
+                    visit has three tabs and that row is on one of them, which left
+                    the Library and Card tabs as states with no visible way out.
+                    <code>_LibraryBar</code> keeps &ldquo;actions out of the slot
+                    where users expect Cancel&rdquo;, which reserves that slot
+                    <i>for</i> a dismissal rather than forbidding one.
+                    <i>Her reading history:</i> restoring the bar's 78pt reserve
+                    takes that off her expanded month grid &mdash;
+                    <code>available = maxExtent &minus; bottomReserve &minus;
+                    viewPadding.bottom</code>, and
+                    <code>_FriendLibraryPage</code> passes <code>0</code> today
+                    &mdash; so roughly one row of covers, which is exactly what
+                    <code>decided.html</code> counted as the thing a visit
+                    <i>buys</i>. <i>What a tab tap does:</i> two answers, drawn as
+                    two branches. <code>sheet-switcher</code> lets Library and Card
+                    re-scope to the friend; <code>switcher-drilldown</code> never
+                    re-scopes any tab, so tapping Library or Card <b>ends</b> the
+                    visit and her reads become a second level of the Friends sheet —
+                    with <b>no back control in it</b>, because a second tap on the
+                    lit Friends tab is what comes back up. The first keeps
+                    one-tap switching and gets her card for free; the second gets a
+                    tab bar that cannot lie and three visible exits, and pays two
+                    taps per switch. <b><code>switcher-drilldown</code> is the one
+                    chosen</b>, on the simpler rule &mdash; and it is also the
+                    cheaper of the two, which this page had backwards at first: it
+                    owes no My&nbsp;Library head row, no Friends
+                    <code>collapsedBody</code> and no friend-facing card, and
+                    replaces them with a single enum provider.
+                    <code>docs/superpowers/plans/2026-08-22-friend-navigation-plan.md</code>
+                    implements it, and is now marked implemented — with the number
+                    the drawings could not give: her band and yours are both 320pt
+                    on a 375&times;667 phone, identical because her read view carries
+                    no chrome yours does not. A <code>&#8249;&nbsp;Friends</code>
+                    label was built for that header first and cut: it cost 16pt of
+                    library and displaced her year filter to fit. Still open across the branches: whether your
+                    library belongs on the axis at all, how the collapsed switcher
+                    gets its height, whether a tab tap is an acceptable way to
+                    leave, and whether the friend read filter should stay shared
+                    across friends now that a live tab bar can make it appear to
+                    change on its own. Chrome, shelves and
+                    sheets are the same renderer
+                    <code>library-shell/decided.html</code> uses, so they cannot
+                    drift from the decided design. Verify with
+                    <code>node docs/mockups/friend-paging/verify.js</code>.
+                </div>
+            </a>
+            <a class="row" href="landing-page/index.html">
+                <div class="nm">
+                    <span class="t">libstack.app &mdash; the web host</span>
+                    <span class="badge open">proposed &middot; 5 open</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    The web side of the product: a <b>landing page</b>, and
+                    <b>a reader&rsquo;s actual library served from the web</b>
+                    at <code>/@handle</code> &mdash; shelves, covers and the
+                    card, with the app taking the URL over when it is installed.
+                    13 screens, 4 flows, 8 UI elements, 4 versions. The share
+                    payload stays an <b>image and nothing else</b>; the printed
+                    strip is the return path, which is why the host has to
+                    answer before 5a ships. Drawn in a messenger&rsquo;s in-app
+                    webview rather than a desktop browser, because that is where
+                    a typed-in <code>LIBSTACK.APP</code> gets opened. The
+                    shelves are the app&rsquo;s own <code>shelf()</code> and the
+                    card is its own <code>artifact()</code>, so neither can
+                    drift from what the phone draws.
+                    <b>The finding that decides the design:</b>
+                    every library RLS policy in
+                    <code>20260505053006_rls_policies.sql</code> was written
+                    with <b>no <code>TO</code> clause</b>, so it resolves for
+                    <code>anon</code> &mdash;
+                    <code>is_profile_visible()</code> collapses to
+                    <code>is_private = false</code> when
+                    <code>auth.uid()</code> is null. A web client holding only
+                    the anon key can <i>already</i> read every public
+                    reader&rsquo;s profile, shelves, books and <b>memos</b>,
+                    with no migration and no RPC. Which makes the open question
+                    a product one rather than a technical one:
+                    <code>is_private = false</code> currently means &ldquo;other
+                    app users can see me&rdquo;, and serving these pages makes
+                    it mean &ldquo;indexed by Google under my display
+                    name&rdquo; for
+                    <b>134 of 152 readers who agreed only to the first</b>. Also
+                    records that Task 9&rsquo;s public <code>cards</code>
+                    bucket, its trigger and its pgTAP file stop being needed
+                    once the web generates its own OG image, and that
+                    <code>GeneratedCover</code> is the one component that has to
+                    exist twice.
+                    <b>The artifact is not on the profile page.</b> It was, and
+                    <code>lib-inline</code> keeps that arrangement with the five
+                    reasons it failed &mdash; chief among them that its
+                    machine-readable strip printed the address the visitor was
+                    already at. The profile now carries the card&rsquo;s figures
+                    as web type plus a link, and the artifact gets its own route
+                    at <code>/@handle/card</code>, where it draws about two and
+                    a half times larger and is the thing an
+                    <code>og:image</code> can point at.
+                    <code>card-hero</code> and <code>card-modal</code> are the
+                    two alternatives, and <code>web-grid</code> discards shelf
+                    structure for a cover grid; compare any of them with
+                    <code>&#8679;Enter</code>. Two layout bugs were invisible to
+                    every mechanical check and caught by screenshotting &mdash;
+                    a footer <code>overflow:hidden</code> had eaten, and a
+                    library page forced to fit a fold it cannot fit &mdash; so
+                    the verifier now asserts that scrolling pages carry a sticky
+                    bar while fold-fitting ones carry a footer, and that the
+                    shelves and the card agree on the book count. Verify with
+                    <code>node docs/mockups/landing-page/verify.js</code>.
+                </div>
+            </a>
+            <a class="row" href="typography/index.html">
+                <div class="nm">
+                    <span class="t">Typography</span>
+                    <span class="badge open">deciding</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Which face the app should set, and what it is setting today
+                    without having chosen to.
+                    <code>AppTheme._build</code> never sets
+                    <code>textTheme</code>, so all 88 hardcoded
+                    <code>TextStyle</code>s merge onto Material&nbsp;3's
+                    <b>Roboto</b> metrics by way of
+                    <code>bodyMedium</code> &mdash;
+                    <code>letterSpacing&nbsp;0.25</code> and
+                    <code>height&nbsp;1.43</code> at every size,
+                    <code>black87</code>/pure white instead of the
+                    <code>primaryText</code> tokens, and
+                    <code>CupertinoSystemText</code> (SF&nbsp;Pro <i>Text</i>,
+                    the optical size for &le;19pt) on the Card's 46pt figure,
+                    which is why <code>StatTile</code> has to hand-tune
+                    <code>letterSpacing:&nbsp;-0.02&nbsp;*&nbsp;figureSize</code
+                    Five UI faces on the Library screen at
+                    <code>1px&nbsp;=&nbsp;1pt</code> on a 402&times;874 frame,
+                    and five serif display faces on the Library Card hero, which
+                    is the only type large enough to justify a second family.
+                    Five switches &mdash; locale, metrics, scale, display face,
+                    <code>secondaryText</code> &mdash; so a face is judged against
+                    the others under identical conditions, and so the metrics
+                    question can be answered before the font question. UI face and
+                    display face are separate lists on purpose: collapsing them
+                    into one list of "candidates" drew three frames identically,
+                    since all three shared Pretendard for UI and differed only in
+                    a face the current scale never reaches.
+                    Records that Hangul is the deciding constraint (SF&nbsp;Pro
+                    has none, so <code>소설</code> is Apple SD Gothic Neo today
+                    &mdash; a second face with a second x-height), that the 18pt
+                    page title and the 18pt sheet title are the same size so the
+                    sheet does not read as the foreground, that
+                    <code>secondaryText</code> is <b>2.07:1</b> on white and so
+                    is why the empty state is nearly invisible, and &mdash;
+                    measured in the page rather than asserted &mdash; that
+                    Noto&nbsp;Sans&nbsp;KR, IBM&nbsp;Plex&nbsp;Sans&nbsp;KR and
+                    Gothic&nbsp;A1 already ship fixed-width digits, so the
+                    <code>tabularFigures()</code> fix is a no-op for three of the
+                    ten faces and the recommendation is coupled to the face. Also
+                    records that <b>a display face is far cheaper than it looks</b>:
+                    scoped to what it actually sets &mdash; digits and two fixed
+                    l10n strings &mdash; every serif here lands at <b>4&ndash;8KB
+                    per weight</b> against 1.4&ndash;13.4MB unscoped, which
+                    dissolved an earlier version's cost argument entirely. And
+                    that Latin <i>coverage</i> and Latin <i>quality</i> disagree:
+                    Gowun Batang has the best coverage of the five serifs
+                    (Latin-1 100%, Ext-A 99%, against Song&nbsp;Myung's 5%/0%) but
+                    the lightest bold &mdash; its <code>w700</code> stem measures
+                    250, thinner than Hahmlet's <code>w400</code> &mdash; so the
+                    Card figure gets its own three-way block, where a <b>split
+                    face</b> (serif title, Pretendard w800 figure) is the
+                    recommendation.
+                    Switch with <code>L</code> <code>M</code> <code>S</code>
+                    <code>D</code> <code>C</code>. The faces are subset to this
+                    page's glyphs
+                    and inlined by <code>build-fonts.py</code>, so it still
+                    opens from disk with no network &mdash; which matters more
+                    here than elsewhere, since offline a CDN version would not
+                    fail, it would draw all seven candidates in one fallback
+                    face and answer wrongly.
+                </div>
+            </a>
+            <a class="row" href="scan-to-add/index.html">
+                <div class="nm">
+                    <span class="t">Scan to add a book</span>
+                    <span class="badge">barcode built</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Whether a camera-driven Add Book is one door or two. 19
+                    screens, 6 flows, 7 UI elements, drawn at
+                    <code>1px&nbsp;=&nbsp;1pt</code> on a 402&times;874 frame
+                    &mdash; that device because
+                    <code>add_book_bottom_sheet.dart</code> reasons in it and
+                    every figure in <code>ShellTabBarGeometry</code> was
+                    measured on it. Three directions: <code>main</code> puts one
+                    scan button in the search row with the shutter visible from
+                    the first frame, <code>two-buttons</code> adds a separate
+                    camera icon beside it, <code>scanner-sheet</code> makes the
+                    scanner a stacked sheet rather than a pushed route. Switch
+                    with <code>v</code>, compare two with
+                    <code>&#8679;Enter</code>. Records that a second button
+                    takes the search pill from 300pt to 248, that both doors
+                    open the same screen once the barcode route escalates on its
+                    own, and that a sheet-hosted camera collapses the framing
+                    room above the scan window from 250pt to 150. Also draws the
+                    states nobody had: camera denied, an unreadable cover, a
+                    clean ISBN that Kakao, Google Books and Open Library all
+                    miss, and &mdash; added while building it &mdash; the
+                    network wait between the lock and the save sheet, plus the
+                    <i>unreachable</i> catalogue, which arrives as the same
+                    <code>null</code> as a missing one and needs the opposite
+                    advice.
+                    <b
+                        ><code>main</code> is built and shipped for the barcode
+                        half</b
+                    >; the cover read is deferred (Gemini Flash chosen, needs an
+                    Edge Function), so the nudge points at typing rather than
+                    the shutter for now, and <i>Add it by hand</i> was cut
+                    &mdash; <code>info-manual</code> is kept as the record of
+                    why. Drawing the focused field found a real bug, now fixed:
+                    the keyboard overlays this sheet and only the results list
+                    compensated, so the empty state's <b>Scan a book</b> action
+                    sat entirely behind it. Drawing the recovery card hid a
+                    worse one &mdash; an outlined secondary spelled the obvious
+                    way is a <i>disabled</i> button, which made the only exit
+                    from the denied card dead. Both are pinned by tests. Draws
+                    the shell from <code>ShelfRow</code> at source values, which
+                    disagrees with <code>typography</code> on the plank height
+                    and the gap between covers.
+                </div>
+            </a>
+            <a class="row" href="generated-cover/index.html">
+                <div class="nm">
+                    <span class="t">Generated book cover</span>
+                    <span class="badge open">deciding</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Eight treatments for a cover with no thumbnail, each drawn
+                    at all three widths the app uses (78pt grid, 84pt shelf,
+                    115pt details) with WCAG contrast measured per swatch.
+                    Switch options with
+                    <code>v</code> and compare two side by side with
+                    <code>&#8679;Enter</code>. Records why the mascot cannot be
+                    a 21pt corner mark, why the cover carries no mark at all,
+                    and that the <i>solid</i> direction needs a palette revision
+                    before it can ship.
+                </div>
+            </a>
+            <a class="row" href="read-pile-turn/index.html">
+                <div class="nm">
+                    <span class="t">The read pile &mdash; hashed spines</span>
+                    <span class="badge">decided &middot; not built</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    The collapsed &ldquo;Books read&rdquo; sheet, which is the one
+                    place in the app where every book is drawn the same size.
+                    <b>Decided:</b> per-book heights and widths from the
+                    existing <code>BookJitter</code>, each spine toned from its
+                    own cover, and <b>a spine that turns into a cover</b> on tap
+                    and then behaves like a book on a shelf — hold to turn it,
+                    tap to fly to the details page. <code>bookHash</code> and the
+                    jitter ranges are ported into the page and checked against
+                    the goldens <code>test/book_geometry_test.dart</code> pins,
+                    so every drawn width is the number the widget would produce
+                    for that ISBN. Covers are the app's own: most read books have
+                    real artwork, so a spine's tone comes from
+                    <code>_sampleCoverColor</code>'s average of it, and the
+                    coverless minority fall back to
+                    <code>generatedCoverColor(isbn)</code> out of
+                    <code>kGeneratedCoverPalette</code> —
+                    <code>bookBoardColorFor</code> of either.
+                    The root version is the decided design;
+                    <code>green-true</code> and <code>green-remap</code> are
+                    kept as <i>rejected</i>, because splitting the width from the
+                    tone is what made the decision legible and because
+                    <code>green-remap</code>'s &plusmn;5pt spread is the drawing
+                    that showed a remap was not worth the work.
+                    <code>taller-pile</code> is the one fork still open: base 124
+                    centres the spread on today's height and grows
+                    <code>ReadPile.extent</code> to 176.4. Records that
+                    <code>BookChassis</code> has <b>no spine face</b>, so a
+                    spine cannot rotate into today's mock book without one;
+                    that the spine is therefore revealed at
+                    <i>negative</i> turn &mdash; and that CSS and Flutter turn
+                    in opposite directions, which the first draft of the drawing
+                    got backwards and rendered as a book turning inside out;
+                    that <code>_face</code> pivots on the
+                    book's centre, so the chassis needs the pivot as a
+                    parameter before it can turn 90&deg; without sliding through
+                    its neighbour; that the row's width peaks 3pt past
+                    the cover at <code>atan(thickness/cover)</code> rather than
+                    rising monotonically, which the assertions found and the
+                    prose had wrong; and that a Hero from the pile reverses the
+                    decision written at
+                    <code>book_details_tab_view.dart:151</code> and is only safe
+                    because one book is open at a time. <b>Every decision on the
+                    page is now made</b> and written up at
+                    <code>docs/superpowers/specs/2026-08-22-read-pile-spines-design.md</code>:
+                    base 117 so <code>ReadPile.extent</code> stays 169; a stored
+                    <code>books.cover_color</code>, for the same reason
+                    <code>books.page_count</code> had to be a column; and a
+                    <code>spineTintFor</code> that lifts a washed-out cover's
+                    chroma toward the brand before darkening, because
+                    <code>bookBoardColorFor</code> turns a near-white cover into
+                    a dead grey that reads as a gap in the shelf — found only by
+                    screenshotting the rendered row.
+                    Verify with
+                    <code>sh docs/mockups/read-pile-turn/_build/verify.sh</code>.
+                </div>
+            </a>
 
-      <h2>Decided</h2>
-      <p class="note">
-        Phases 1 (shell) and 2 (read view) are built. See
-        <code>docs/superpowers/plans/</code> for what shipped, what deviated,
-        and the twelve bugs building it surfaced.
-      </p>
-      <a class="row" href="library-shell/decided.html">
-        <div class="nm">
-          <span class="t">Library shell</span>
-          <span class="badge">current</span>
-          <span class="arrow">&rarr;</span>
+            <h2>Decided</h2>
+            <p class="note">
+                Phases 1 (shell) and 2 (read view) are built. See
+                <code>docs/superpowers/plans/</code> for what shipped, what
+                deviated, and the twelve bugs building it surfaced.
+            </p>
+            <a class="row" href="library-card-share/index.html">
+                <div class="nm">
+                    <span class="t">Library Card &mdash; sharing</span>
+                    <span class="badge">decided &middot; not built</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    What goes between tapping share on the Card tab and the
+                    platform sheet, and what the exported image has to carry if
+                    it is to bring anyone back. Phase 3 ships a card and hands
+                    its PNG straight to the OS with
+                    <b>no link in the message and none in the pixels</b>, so the
+                    artifact is a dead end. Decided: the covers become the
+                    card's signature visual; a
+                    <code>View and share</code> preview sits between the tap and
+                    the platform, with a framing toggle and a
+                    <b>Candlelight</b> reveal that the export carries &mdash; a
+                    flame picks out what is pressed into card stock, where
+                    Flighty's blacklight picks out fluorescent passport ink;
+                    KakaoTalk gets a named slot on Korean-language devices,
+                    which means the card is hosted and therefore
+                    <b>never hosted for a private profile</b>; and identity
+                    moves to a new ASCII <code>handle</code>, because only 9 of
+                    153 live usernames are URL-safe and 72 are machine-made. 17
+                    screens, 4 flows, 14 UI elements, drawn against the reader
+                    the data says is typical &mdash; <b>two finished books</b>,
+                    whose card today is one green rectangle reading
+                    <code>2</code>. One open callout, on migration sequencing.
+                    <code>tile-share</code> is parked; compare it with
+                    <code>&#8679;Enter</code> to see six tiles need 92% of the
+                    screen. The library bar's own share button is out of scope
+                    &mdash; that entry point belongs to My Library. Verify with
+                    <code>node docs/mockups/library-card-share/verify.js</code>.
+                </div>
+            </a>
+            <a class="row" href="library-shell/decided.html">
+                <div class="nm">
+                    <span class="t">Library shell</span>
+                    <span class="badge">current</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    The settled design: floating tab bar over one persistent
+                    library, a per-tab sheet, a friend's library as a visit, and
+                    the read view's two states. 17 screens, 12 flows, 19 UI
+                    elements. Two drawings carry corrections the build proved
+                    &mdash; the tab bar auto-hiding behind modals, and the read
+                    filter's popover opening upward.
+                </div>
+            </a>
+            <a class="row" href="praise-region/index.html">
+                <div class="nm">
+                    <span class="t">Reactions on a book</span>
+                    <span class="badge">built</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Seven directions for the reaction controls on a book's hero,
+                    after a screenshot showed the same emoji twice &mdash; once
+                    on the button's face, once as an anonymous chip below it.
+                    <b><code>stack-tint</code> shipped</b>; see
+                    <code
+                        >docs/superpowers/specs/2026-08-19-reaction-controls-design.md</code
+                    >. Three versions live on one branch (<code>stack</code>
+                    &rarr; <code>stack-status</code> &rarr;
+                    <code>stack-tint</code>, one decision each) and three are
+                    marked <i>rejected</i>, kept for what they turned up. Drawn
+                    at <code>1px&nbsp;=&nbsp;1pt</code> on a 393pt frame across
+                    eleven situations plus the sheet behind the capped record.
+                    Switch direction with <code>v</code>, compare two with
+                    <code>&#8679;Enter</code>. Records that 31 of 35 reacted-to
+                    books hold exactly one reaction, so the duplication was the
+                    ordinary case; that capping the record restores the
+                    withdrawal route a book going back to <i>Reading</i> used to
+                    destroy; that only about 8 of 39 reactions in production are
+                    actually praise, which is the argument for renaming the verb
+                    to <b>React</b>; that the <i>Interested</i> status badge
+                    measured 1.66:1 on 133 books, repaired inside
+                    <code>stack-status</code>; and that moving &quot;you
+                    reacted&quot; from the button's label onto the record
+                    removed the last new string, and with it the last Korean
+                    wording decision. Two ideas were measured and killed in the
+                    drawing: an emoji notched onto an avatar (9px, illegible)
+                    and darkening only the <i>Interested</i> text (which made it
+                    look like <i>Read</i>).
+                </div>
+            </a>
         </div>
-        <div class="ds">
-          The settled design: floating tab bar over one persistent library, a
-          per-tab sheet, a friend's library as a visit, and the read view's two
-          states. 17 screens, 12 flows, 19 UI elements. Two drawings carry
-          corrections the build proved &mdash; the tab bar auto-hiding behind
-          modals, and the read filter's popover opening upward.
-        </div>
-      </a>
-    </div>
-  </body>
+    </body>
 </html>

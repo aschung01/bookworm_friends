@@ -1,0 +1,951 @@
+<!doctype html>
+<!--
+  Logo comparison gallery. Self-contained, no dependencies, no build step.
+  Open directly: open docs/logo-review/index.html
+
+  Every tile shows the mark at full size and at 48px (upscaled 6x, nearest
+  neighbour, so the pixel grid is visible) because 48px is where icons are
+  actually judged. Regenerate the underlying PNGs with ./render.sh
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Libstack — logo comparison</title>
+        <style>
+            :root {
+                --bg: #16181d;
+                --panel: #1e2128;
+                --line: #2e323c;
+                --text: #e8eaed;
+                --dim: #9aa0aa;
+                --brand: #09bc8a;
+                --tile: 200px;
+                --radius: 0px;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+                font:
+                    15px/1.55 ui-sans-serif,
+                    -apple-system,
+                    "Segoe UI",
+                    system-ui,
+                    sans-serif;
+                -webkit-font-smoothing: antialiased;
+            }
+            header {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: rgba(22, 24, 29, 0.92);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+                padding: 18px 28px;
+            }
+            h1 {
+                margin: 0 0 3px;
+                font-size: 19px;
+                letter-spacing: -0.01em;
+            }
+            .sub {
+                color: var(--dim);
+                font-size: 13px;
+            }
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 22px;
+                align-items: center;
+                margin-top: 14px;
+            }
+            .ctl {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                color: var(--dim);
+            }
+            .seg {
+                display: flex;
+                border: 1px solid var(--line);
+                border-radius: 7px;
+                overflow: hidden;
+            }
+            .seg button {
+                background: transparent;
+                color: var(--dim);
+                border: 0;
+                padding: 5px 11px;
+                font: inherit;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .seg button + button {
+                border-left: 1px solid var(--line);
+            }
+            .seg button[aria-pressed="true"] {
+                background: var(--brand);
+                color: #06231a;
+                font-weight: 600;
+            }
+            input[type="range"] {
+                width: 130px;
+                accent-color: var(--brand);
+            }
+
+            main {
+                padding: 28px;
+                max-width: 1600px;
+                margin: 0 auto;
+            }
+            section {
+                margin-bottom: 44px;
+            }
+            h2 {
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.09em;
+                color: var(--dim);
+                font-weight: 600;
+                margin: 0 0 4px;
+                padding-bottom: 9px;
+                border-bottom: 1px solid var(--line);
+            }
+            .lede {
+                color: var(--dim);
+                font-size: 13px;
+                margin: 10px 0 20px;
+                max-width: 68ch;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+                gap: 20px;
+            }
+            .card {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 11px;
+                padding: 15px;
+                display: flex;
+                flex-direction: column;
+                gap: 11px;
+            }
+            .card.win {
+                border-color: var(--brand);
+                box-shadow: 0 0 0 1px var(--brand);
+            }
+            .shots {
+                display: flex;
+                gap: 12px;
+                align-items: flex-end;
+            }
+            .stage {
+                padding: 12px;
+                border-radius: 9px;
+                background: var(--backdrop, #2a2d34);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .stage img {
+                display: block;
+                border-radius: var(--radius);
+            }
+            .big img {
+                width: var(--tile);
+                height: var(--tile);
+            }
+            .small img {
+                width: 72px;
+                height: 72px;
+                image-rendering: pixelated;
+            }
+            .cap {
+                font-size: 10px;
+                color: var(--dim);
+                text-align: center;
+                margin-top: 6px;
+                letter-spacing: 0.04em;
+            }
+            .name {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 12px;
+                color: var(--brand);
+            }
+            .note {
+                font-size: 12.5px;
+                color: var(--dim);
+                margin: 0;
+            }
+            .badge {
+                display: inline-block;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                background: var(--brand);
+                color: #06231a;
+                padding: 2px 7px;
+                border-radius: 20px;
+                text-transform: uppercase;
+            }
+            .warn {
+                color: #e8a33d;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>Libstack — logo comparison</h1>
+            <div class="sub">
+                Every tile shows the mark at full size and at 48&nbsp;px
+                (upscaled, pixel grid visible). 48&nbsp;px is where icons are
+                actually judged.
+            </div>
+            <div class="controls">
+                <div class="ctl">
+                    Backdrop
+                    <div class="seg" id="backdrop">
+                        <button data-v="#2a2d34" aria-pressed="true">
+                            Neutral
+                        </button>
+                        <button data-v="#0b0c0f">Dark</button>
+                        <button data-v="#f2f3f5">Light</button>
+                        <button
+                            data-v="linear-gradient(135deg,#6a89cc,#b8e994 60%,#f6b93b)"
+                        >
+                            Wallpaper
+                        </button>
+                        <button data-v="#09BC8A">Brand</button>
+                    </div>
+                </div>
+                <div class="ctl">
+                    Mask
+                    <div class="seg" id="mask">
+                        <button data-v="0px" aria-pressed="true">Square</button>
+                        <button data-v="22%">Squircle</button>
+                        <button data-v="50%">Circle</button>
+                    </div>
+                </div>
+                <div class="ctl">
+                    <label for="size">Size</label>
+                    <input
+                        type="range"
+                        id="size"
+                        min="96"
+                        max="380"
+                        value="200"
+                    />
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section>
+                <h2>Shipped</h2>
+                <p class="lede">
+                    Built from <code>assets/branding/app_icon_source.png</code>
+                    (M4) and live across iOS, Android, web, macOS and Windows.
+                    The right-hand tile is the real
+                    <code>Icon-App-1024x1024@1x.png</code> out of the asset
+                    catalogue, not the design source.
+                </p>
+                <div class="grid" id="grid-shipped"></div>
+            </section>
+
+            <section>
+                <h2>Fanned-stack variations</h2>
+                <p class="lede">
+                    Iterations on the fan. The through-line: detail that is a
+                    <em>texture</em> dies under downscaling, detail that is a
+                    <em>landmark</em> survives. Spine hairlines became
+                    scratches; the bookmark held.
+                </p>
+                <div class="grid" id="grid-fan"></div>
+            </section>
+
+            <section>
+                <h2>Libstack directions</h2>
+                <p class="lede">
+                    First pass after the rename, built around the stack motif
+                    the name hands you.
+                </p>
+                <div class="grid" id="grid-libstack"></div>
+            </section>
+
+            <section>
+                <h2>Pre-rename (Bookworm Friends)</h2>
+                <p class="lede">
+                    Kept for the record. These lead with the bookworm mascot,
+                    which the rename orphaned.
+                </p>
+                <div class="grid" id="grid-pre"></div>
+            </section>
+
+            <section>
+                <h2>
+                    AI moodboard — round 1
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    <span class="warn">Not shippable.</span> All six baked a
+                    rounded-rect icon shape into the artwork on a white outer
+                    background — so under a real platform mask you get a rounded
+                    rect inside a rounded rect. Switch Mask to Squircle to see
+                    it. Three of six also broke the palette. Useful for the
+                    questions they raise, not as candidates.
+                </p>
+                <div class="grid" id="grid-ai"></div>
+            </section>
+
+            <section>
+                <h2>
+                    AI moodboard — round 2: hand-drawn &amp; isometric
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    Prompts fixed to demand a full-bleed background and heavier
+                    stroke weight. That worked — 7 of 8 dropped the frame and
+                    the palette held on all 8. The 48&nbsp;px column is the
+                    point of this section:
+                    <strong>filled mass survives, outline does not.</strong>
+                    Every hand-drawn style is outline-based, which is why they
+                    all dissolve. Not fixable by thickening — inherent to the
+                    style.
+                </p>
+                <div class="grid" id="grid-ai2"></div>
+            </section>
+
+            <section>
+                <h2>
+                    AI moodboard — round 3: brush, linocut &amp; chalk
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    Eight closer variations based specifically on H1, H2 and H4.
+                    Four test <strong>filled handmade masses</strong>; four test
+                    alternate compositions and print textures. The useful result:
+                    roughness survives only when it lives on the edge of a large
+                    shape. Fine grain inside the mark still turns grey at 48&nbsp;px.
+                </p>
+                <div class="grid" id="grid-ai3"></div>
+            </section>
+
+            <section>
+                <h2>
+                    AI moodboard — round 4: H7 chalk variations
+                    <span class="badge">reference only<</section></h2>/span>
+                </h2>
+                <p class="lede">
+                    Eight variations on H7, changing composition rather than just
+                    texture. The useful split is now visible: outlined chalk feels
+                    warmer, but a <strong>filled chalk mass with broad negative-space
+                    cuts</strong> survives small sizes substantially better.
+                </p>
+                <div class="grid" id="grid-ai4"></div>
+            </section>
+
+            <section>
+                <h2>
+                    AI mood</section>board — round 5: H7 refinements, three books
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    Redone properly. These are <strong>image-to-image edits of H7
+                    itself</strong>, not fresh generations from a text description, so
+                    the chalk medium and warmth carry over instead of being
+                    re-invented. Every one keeps exactly three books, and each changes
+                    a single variable. H7 is included first for direct comparison.
+                </p>
+                <div class="grid" id="grid-ai5"></div>
+            </section>
+
+            <section>
+                <h2>
+                    Round 6: K4 fill correction
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    K4 left green holes in books two and three, where each cover
+                    continues underneath the book resting on it. Three edits of K4,
+                    all filling those regions so every cover is a solid white slab
+                    with only a thin green separation gap between books. Original K4
+                    shown first.
+                </p>
+                <div class="grid" id="grid-ai6"></div>
+            </section>
+
+            <section>
+                <h2>
+                    Round 7: simpler
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    “Simpler” has two readings, so both are here. <strong>M1–M6</strong>
+                    keep the chalk and strip content away — fewer books, no
+                    bookmark, calmer alignment. <strong>N1–N2</strong> keep the
+                    composition and drop the chalk for flat vector shapes. M6 and
+                    both N marks also fix the white-ribbon-on-white-cover problem
+                    the shipped icon still has, by cutting the bookmark in as a
+                    green notch instead of laying it on top.
+                </p>
+                <div class="grid" id="grid-simple"></div>
+            </section>
+
+            <section>
+                <h2>
+                    Round 8: simpler still
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    Eight hand-authored flat marks that each reduce N1/N2 along a
+                    different axis, rather than eight versions of one idea. Shape
+                    count runs from three down to <strong>one</strong>.
+                    <strong>O1</strong> and <strong>O6</strong> are deliberate floors
+                    — included to find where reduction stops paying, and both do.
+                    <strong>O2</strong> drops the bookmark and lets width taper carry
+                    the stack; <strong>O4</strong> inverts the construction to one
+                    white mass with green rules cut through it; <strong>O5</strong>
+                    and <strong>O7</strong> break out of the horizontal-bar family
+                    every other candidate belongs to.
+                </p>
+                <div class="grid" id="grid-simple2"></div>
+            </section>
+
+            <section>
+                <h2>
+                    Round 9: the single book
+                    <span class="badge">reference only</span>
+                </h2>
+                <p class="lede">
+                    Taking <strong>M4</strong> seriously. M4 had three fixable faults
+                    — it sampled <code>#27B98C</code> rather than brand
+                    <code>#09BC8A</code>, its art filled only 47.5%&nbsp;×&nbsp;61.3% of
+                    the canvas against the ~76% target, and its ribbon was white on a
+                    white cover, held together by a chalk hairline.
+                    <strong>P1</strong> fixes all three and changes nothing else, so
+                    the idea can be judged on its merits; <strong>P2</strong>–<strong>P7</strong>
+                    then vary the one book by detail, orientation and form. M4 itself
+                    is shown last for comparison.
+                </p>
+                <p class="lede">
+                    The round also turned up the answer to the obvious objection.
+                    A single book has no stack in it, and the app is called
+                    <strong>Libstack</strong> — but drawing P1 showed that a back
+                    board peeking out from behind a cover is visually
+                    indistinguishable from a second book. M4 was never really one
+                    book. <strong>P8</strong> runs that device once more and gets the
+                    pile back without giving up M4's character.
+                </p>
+                <div class="grid" id="grid-single"></div>
+            </section>
+        </main>
+
+        <script>
+            const OUT = "out/";
+            const sets = {
+                "grid-shipped": [
+                    [
+                        "s3k-bookmark-deepnotch",
+                        "Shipped before the chalk rounds. Superseded by the K4B stack, then by M4.",
+                    ],
+                    [
+                        "_shipped-ios",
+                        "The actual asset in the iOS catalogue. RGB, no alpha — the App Store rejects icons that have it.",
+                        true,
+                    ],
+                ],
+                "grid-fan": [
+                    [
+                        "s3-fanned-stack",
+                        "Original fan. Equal-size cards leave a stray crescent where the middle layer pokes past the front one.",
+                    ],
+                    [
+                        "s3a-spined-fan",
+                        'Spine on every layer. Fixes the "cards not books" read at full size; the three hairlines become scratches at 48px.',
+                    ],
+                    [
+                        "s3b-slid-deck",
+                        "One-directional slide. Clean, but the uniform lean reads as a photo stack.",
+                    ],
+                    [
+                        "s3c-four-layer-fan",
+                        'Four layers, tighter fan. Best pure-geometry answer to "make it feel like a stack".',
+                    ],
+                    [
+                        "s3d-offset-layers",
+                        "Pure diagonal offset, no rotation. Cleanest small-size read of anything here — but reads as documents, not books.",
+                    ],
+                    [
+                        "s3e-landscape-fan",
+                        "Landscape. Kills the book read entirely; portrait is load-bearing.",
+                    ],
+                    [
+                        "s3f-fan-bookmark",
+                        "Bookmark added. One shape converts cards into books, and it survives downscaling.",
+                    ],
+                    [
+                        "s3g-spine-bookmark-right",
+                        "Spine + bookmark right of centre.",
+                    ],
+                    [
+                        "s3h-spine-bookmark-foreedge",
+                        "Spine + bookmark at the fore-edge. Best of the spined set at full size.",
+                    ],
+                    [
+                        "s3i-spineband-bookmark",
+                        "Spine as a 44px band rather than a 20px line, so it survives 48px.",
+                    ],
+                    [
+                        "s3j-bookmark-foreedge",
+                        "Spine removed. Drops from four vertical strokes to three — the striping goes away.",
+                    ],
+                    [
+                        "s3k-bookmark-deepnotch",
+                        "s3j with a wider ribbon and a much deeper notch. Shipped.",
+                        true,
+                    ],
+                ],
+                "grid-libstack": [
+                    [
+                        "s1-leaning-pile",
+                        'Leaning pile. Rotations were meant to break the "list rows" read. At 48px it is a hamburger menu.',
+                    ],
+                    [
+                        "s2-l-monogram-stack",
+                        "Book propped on a stack — also an L. Strong 48px read; upper-right quadrant is empty.",
+                    ],
+                    [
+                        "s3-fanned-stack",
+                        "Fanned stack. The seed for everything above.",
+                    ],
+                    [
+                        "s4-isometric-stack",
+                        "Front face plus top sliver, gaps wider than the sliver depth. Most literal reading of the name.",
+                    ],
+                    [
+                        "s5-stack-bookmark",
+                        "Stack plus bookmark ribbon. Says something about *your* stack.",
+                    ],
+                    [
+                        "s6-worm-on-stack",
+                        "Mascot retained. Collapses to a blob at 48px, and the worm has no naming support now.",
+                    ],
+                    [
+                        "s7-foreedge-bars",
+                        "Vector translation of the AI moodboard idea (page fore-edges on bars). Curl is ~1px at 48px — fails like s1.",
+                    ],
+                    [
+                        "s8-flat-isometric",
+                        "Vector translation of i1. Filled mass survives 48px, but white left faces merge with white covers and it reads as a server rack. Missing the rounded spine hinge.",
+                    ],
+                ],
+                "grid-pre": [
+                    [
+                        "v1-worm-through-page",
+                        "Segmented worm through a page. Outer silhouette is just a rounded rectangle.",
+                    ],
+                    [
+                        "v2-progress-ring-worm",
+                        "Worm as a reading-progress ring. Sharpest concept fit for a tracker; risks reading as a spinner.",
+                    ],
+                    [
+                        "v3-book-stack-worm",
+                        "Book stack with a worm. Reads as a settings list.",
+                    ],
+                    [
+                        "v4-two-friends-fixed",
+                        "Two readers of different size behind a book. Best of the pre-rename set.",
+                    ],
+                    [
+                        "v5-coiled-worm",
+                        "Coiled spiral. Prettiest, weakest identifier — the head vanishes at 48px.",
+                    ],
+                    [
+                        "v6-monogram-b",
+                        "Bold B. Maximum legibility, zero story.",
+                    ],
+                ],
+            };
+            const ai2 = [
+                [
+                    "h1-brush",
+                    "Thick brush strokes. Lovely at full size; dissolves into haze at 48px.",
+                ],
+                [
+                    "h2-linocut",
+                    "Linocut. Best of the hand-drawn set at full size. Still outline — still mush small.",
+                ],
+                [
+                    "h3-minimal-ink",
+                    "Radically simplified ink. Boldest of the four, and still the strokes go to grey.",
+                ],
+                [
+                    "h4-chalk",
+                    "Chalk. The only one of the eight that kept a rounded-rect frame. Lowest contrast of all.",
+                ],
+                [
+                    "i1-flat-iso",
+                    "Flat isometric. The one that holds at 48px — filled mass, hard-edged planes. Note the rounded spine hinges: that is what makes a slab read as a book.",
+                ],
+                [
+                    "i2-iso-two-books",
+                    "Photoreal render. All light values, so no contrast against green — becomes a blob.",
+                ],
+                [
+                    "i3-iso-outline",
+                    "Isometric outline. Parallel page lines destroy it completely at small size.",
+                ],
+                [
+                    "i4-iso-inked",
+                    "Isometric + hand-drawn hybrid. Inherits the outline problem.",
+                ],
+            ];
+            const ai3 = [
+                [
+                    "f1-brush-solid",
+                    "Solid brush-painted books. Strong silhouette and good small-size weight; the page wedges still make it read unmistakably as books.",
+                ],
+                [
+                    "f2-lino-solid",
+                    "Filled linocut. More character than f1, but the distressed interior texture turns slightly dirty at 48px.",
+                ],
+                [
+                    "f3-chalk-solid",
+                    "Filled chalk silhouette. Softest option; the grain lowers edge contrast but the mass still survives.",
+                ],
+                [
+                    "f4-stamp",
+                    "Rubber-stamp silhouette. Best balance of handmade texture and icon clarity in this round.",
+                ],
+                [
+                    "h5-brush-open",
+                    "Open book on a closed stack. Warm and expressive, but too much internal linework for launcher size.",
+                ],
+                [
+                    "h6-lino-bold",
+                    "Two-book linocut. Very clear subject, though the large page block dominates and the bookmark is easy to miss.",
+                ],
+                [
+                    "h7-chalk-warm",
+                    "Warm chalk stack. Better than H4 because it is full-bleed, but still the lowest-contrast treatment.",
+                ],
+                [
+                    "h8-scratchboard",
+                    "Scratchboard stack. Strong book read, but the horizontal scratches become visual noise when reduced.",
+                ],
+            ];
+            const ai4 = [
+                [
+                    "c1-classic-stack",
+                    "Classic three-book chalk stack. Warm and recognizable, but the parallel lines soften heavily at 48px.",
+                ],
+                [
+                    "c2-four-book-lean",
+                    "Four-book leaning stack. More motion and character; also the noisiest silhouette in the set.",
+                ],
+                [
+                    "c3-two-book-chunky",
+                    "Two chunky books. Best literal stack at launcher size because there are fewer edges competing.",
+                ],
+                [
+                    "c4-open-on-stack",
+                    "Open book over a closed stack. Friendly and editorial, but the top pages become a white blob when reduced.",
+                ],
+                [
+                    "c5-isometric-chalk",
+                    "Isometric chalk. Distinctive perspective, though the three parallel cover lines still turn soft at 48px.",
+                ],
+                [
+                    "c6-open-book-only",
+                    "Single open book. Cleanest silhouette and strongest fold, but drops the stack idea from the name.",
+                ],
+                [
+                    "c7-tall-five-stack",
+                    "Tall five-book tower. Expressive, but too many layers; small-size result becomes a striped block.",
+                ],
+                [
+                    "c8-negative-space",
+                    "Filled chalk mass with broad negative-space book cuts. Strongest H7 derivative: handmade edge, robust interior geometry.",
+                ],
+            ];
+            const ai5 = [
+                [
+                    "h7-chalk-warm",
+                    "The original, for reference. Everything below is an edit of this exact image.",
+                ],
+                [
+                    "k1-casual-lean",
+                    "More casual alternating lean. Adds life without disturbing the chalk character; silhouette is slightly busier.",
+                ],
+                [
+                    "k2-heavier-stroke",
+                    "Heavier chalk strokes. Clear small-size gain over H7 while still unmistakably hand-drawn.",
+                ],
+                [
+                    "k3-bigger-bookmark",
+                    "Broader, longer ribbon. The bookmark finally survives downscaling — the landmark lesson from the vector rounds, applied to chalk.",
+                ],
+                [
+                    "k4-filled-covers",
+                    "Covers filled rather than outlined. Strongest 48px read of the set; trades a little of H7's airiness for mass.",
+                ],
+                [
+                    "k5-larger-scale",
+                    "Same drawing, larger in frame. Cheapest real improvement — H7 was sitting too small for a launcher icon.",
+                ],
+                [
+                    "k6-chunkier-books",
+                    "Thicker hardback profiles. Fewer, fatter bands read better at size than many thin ones.",
+                ],
+                [
+                    "k7-simplified",
+                    "Interior marks stripped out. Cleanest of the outlined variants, closest in spirit to H7.",
+                ],
+                [
+                    "k8-spine-hinges",
+                    "Rounded spine hinges added. The detail that stops a slab reading as a plain bar — the fix s8 was missing.",
+                ],
+            ];
+            const simpleVec = [
+                [
+                    "n1-flat-three-slabs",
+                    "Flat vector, three slabs, notched bookmark. Wider green gaps than K4B because thin gaps are the first thing to close up when downscaled.",
+                ],
+                [
+                    "n2-flat-minimal-two",
+                    "Two fat slabs — the fewest that still read as a stack rather than one book. Offset instead of tilted, so the silhouette stays calm.",
+                ],
+            ];
+            const simpleVec2 = [
+                [
+                    "o2-three-slabs-taper",
+                    "Bookmark dropped; widths taper 560/616/672 instead. Fewer shapes than N1 and still unmistakably a stack — the taper does the bookmark's job for free.",
+                ],
+                [
+                    "o4-divided-mass",
+                    "One white mass, two green rules cut through it. Strongest 48px read of the round: the outer outline stays closed, so there is nothing thin to lose.",
+                ],
+                [
+                    "o8-two-slabs-spineband",
+                    "N2's slabs with the bookmark swapped for a 56-wide spine band — the detail s3i proved survives where a laid-on ribbon does not. Reads as books rather than bars.",
+                ],
+                [
+                    "o5-corner-shelf",
+                    "An upright against a flat, at O1's shape count. The only non-striped silhouette here, which is the whole reason it is in the set; the junction reads a little like a T at 48px.",
+                ],
+                [
+                    "o7-spine-out-trio",
+                    "Shelved spine-out. Three verticals, height the only cue. Graduated tops keep it off a bar chart at full size — at 48px it is a near thing, exactly as the stroke-count warning predicts.",
+                ],
+                [
+                    "o3-one-book-notch",
+                    "One book, one bookmark: keeps the reading cue and gives up the stack entirely. The notch is finally big enough to survive 48px, but a slab this wide starts to read as a label.",
+                ],
+                [
+                    "o1-two-slabs-plain",
+                    "The floor for bars: N2 minus the bookmark. Finds its own limit — with no taper, offset or landmark, two equal slabs read as an equals sign at both sizes.",
+                ],
+                [
+                    "o6-chevron-book",
+                    "The floor outright: one shape. Nothing can close up or mush, and it survives 48px perfectly — but with no covers and no gutter it reads closer to a swoosh than a book.",
+                ],
+            ];
+            const singleVec = [
+                [
+                    "p1-m4-corrected",
+                    "M4 like for like, on palette, at 59.2%&nbsp;×&nbsp;75.6%, ribbon cut in as a notch. The idea survives correct execution — and the back board still reads at 48px, which is the whole reason it works.",
+                ],
+                [
+                    "p3-spine-band",
+                    "One book, spine band, no ribbon. Cleanest mark of the round: the band makes it a book by construction, so it needs no second feature to explain itself.",
+                ],
+                [
+                    "p4-spine-and-notch",
+                    "Spine and ribbon together. Strongest <em>book</em> read of anything here, and both details still survive 48px — the stroke-count budget takes two features on a single book comfortably.",
+                ],
+                [
+                    "p8-three-boards",
+                    "M4's own layering device run twice: three offset boards. Reads as one book with depth at a glance and a small pile on a second look, which is the only candidate that answers to the name <strong>Libstack</strong> without losing M4.",
+                ],
+                [
+                    "p5-deep-ribbon",
+                    "The ribbon pushed to 200&nbsp;×&nbsp;280, which only a single book has room for. Excellent 48px read, but the ribbon now dominates — it starts to look like a bookmark-and-save icon rather than a book.",
+                ],
+                [
+                    "p2-single-cover-notch",
+                    "P1 with the back board deleted. Answers its own question: without the board this is a rounded rectangle with a nick in it, so the board was load-bearing, not decoration.",
+                ],
+                [
+                    "p7-landscape-single",
+                    "P2 on its side. One book alone does not survive the rotation — with no pile to sit in, a landscape slab with a tab reads as a folder or a box.",
+                ],
+                [
+                    "p6-open-book",
+                    "Open book, two panels off a 52-wide gutter. Fixes o6's missing gutter and still fails: at 48px the panels separate into two blobs rather than resolving into one object.",
+                ],
+            ];
+            const singleRaster = [
+                [
+                    "m4-single-book",
+                    "The original, for comparison. Off palette, sitting far too small in frame, and the ribbon is white on white — the three things P1 corrects.",
+                ],
+            ];
+            const simpleRaster = [
+                [
+                    "m1-two-books",
+                    "Chalk, reduced to two books. Noticeably calmer; loses a little of the “stack” idea the name leans on.",
+                ],
+                [
+                    "m2-no-bookmark",
+                    "Bookmark removed entirely. Cleanest chalk silhouette of the set, but now it is three bars — nothing says “reading”.",
+                ],
+                [
+                    "m3-level-stack",
+                    "Stack squared up level. Orderly and calm; the lost tilt also costs most of the handmade character.",
+                ],
+                [
+                    "m4-single-book",
+                    "One book only — the simplest of the chalk set, and the strongest 48px read in the whole exploration: cover, spine and bookmark nub all survive. The cost is the name: no stack left in it. <strong>Chosen and shipped.</strong>",
+                    true,
+                ],
+                [
+                    "m5-bolder-slabs",
+                    "Fatter slabs, wider gaps, chalk grain dialled back. Best small-size read of the chalk variants.",
+                ],
+                [
+                    "m6-notch-bookmark",
+                    "Bookmark cut in as a green notch rather than laid on top. Fixes the white-on-white contrast problem the shipped icon has.",
+                ],
+            ];
+            const ai6 = [
+                [
+                    "k4-filled-covers",
+                    "The original, with the fill bug: books two and three show green where their covers pass under the book above.",
+                ],
+                [
+                    "k4a-filled-fix",
+                    "Holes filled, closest to K4's original proportions and tilt. Safest fix if you want K4 unchanged apart from the bug.",
+                ],
+                [
+                    "k4b-filled-fix",
+                    "Each book repainted as one closed slab. Cleanest, most even separation gaps — best small-size read of the three. Shipped until M4 replaced it.",
+                ],
+                [
+                    "k4c-filled-fix",
+                    "Holes filled with the most chalk grain retained. Warmest of the three, slightly softer edges at 48px.",
+                ],
+            ];
+            const ai = [
+                [
+                    "g1-isometric",
+                    "Best executed, on-palette ribbon. But it is a render, not a mark — striations mush at 48px.",
+                ],
+                [
+                    "g2-papercut",
+                    "Off-palette red bookmark, far too much texture.",
+                ],
+                [
+                    "g3-clay",
+                    "Off-palette salmon. Dated style. Useful only as a signal that chunkier forms read better.",
+                ],
+                [
+                    "g4-negative-space",
+                    "The one new idea: page fore-edges on horizontal bars. See s7 for the vector attempt — it does not survive 48px.",
+                ],
+                [
+                    "g5-handdrawn",
+                    "Line weight far too fine for an icon. Would suit in-app empty-state illustration.",
+                ],
+                [
+                    "g6-topdown",
+                    "Ignored the palette entirely, but raises a real question: should the covers be different colours?",
+                ],
+            ];
+
+            function card(name, note, win, big, small) {
+                const el = document.createElement("div");
+                el.className = "card" + (win ? " win" : "");
+                el.innerHTML = `
+    <div class="shots">
+      <div><div class="stage big"><img loading="lazy" alt="${name}" src="${big}"></div><div class="cap">FULL</div></div>
+      <div><div class="stage small"><img loading="lazy" alt="${name} at 48px" src="${small}"></div><div class="cap">48 PX</div></div>
+    </div>
+    <div class="name">${name}${win ? ' <span class="badge">shipped</span>' : ""}</div>
+    <p class="note">${note}</p>`;
+                return el;
+            }
+
+            sets["grid-simple"] = simpleVec;
+            sets["grid-simple2"] = simpleVec2;
+            sets["grid-single"] = singleVec;
+            for (const [gridId, items] of Object.entries(sets)) {
+                const g = document.getElementById(gridId);
+                for (const [name, note, win] of items) {
+                    g.appendChild(
+                        card(
+                            name,
+                            note,
+                            win,
+                            `${OUT}${name}-1024.png`,
+                            `${OUT}${name}-at48px.png`,
+                        ),
+                    );
+                }
+            }
+            for (const [gridId, items] of [
+                ["grid-ai6", ai6],
+                ["grid-single", singleRaster],
+                ["grid-simple", simpleRaster],
+                ["grid-ai", ai],
+                ["grid-ai2", ai2],
+                ["grid-ai3", ai3],
+                ["grid-ai4", ai4],
+                ["grid-ai5", ai5],
+            ]) {
+                const g = document.getElementById(gridId);
+                for (const [name, note, win] of items) {
+                    g.appendChild(
+                        card(
+                            name,
+                            note,
+                            win,
+                            `ai-moodboard/${name}.png`,
+                            `ai-moodboard/${name}-at48px.png`,
+                        ),
+                    );
+                }
+            }
+
+            function wireSeg(id, apply) {
+                const root = document.getElementById(id);
+                root.addEventListener("click", (e) => {
+                    const b = e.target.closest("button");
+                    if (!b) return;
+                    [...root.querySelectorAll("button")].forEach((x) =>
+                        x.setAttribute("aria-pressed", String(x === b)),
+                    );
+                    apply(b.dataset.v);
+                });
+            }
+            wireSeg("backdrop", (v) =>
+                document.documentElement.style.setProperty("--backdrop", v),
+            );
+            wireSeg("mask", (v) =>
+                document.documentElement.style.setProperty("--radius", v),
+            );
+            document.getElementById("size").addEventListener("input", (e) => {
+                document.documentElement.style.setProperty(
+                    "--tile",
+                    e.target.value + "px",
+                );
+            });
+        </script>
+    </body>
+</html>

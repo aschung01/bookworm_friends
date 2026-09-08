@@ -1,0 +1,14 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#09BC8A"/>
+  <!--
+    One book, one bookmark. Two shapes, and the fewest that still say
+    "reading" rather than just "stack".
+
+    The trade is explicit: this is the only mark in the round that keeps the
+    reading cue and gives up the stack entirely. Spending the whole canvas on
+    a single slab means the notch can be large enough to survive 48px, which
+    is the one thing the shipped icon's ribbon never managed.
+  -->
+  <rect x="176" y="352" width="672" height="320" rx="56" fill="#ffffff"/>
+  <path d="M600 352 H704 V492 L652 448 L600 492 Z" fill="#09BC8A"/>
+</svg>

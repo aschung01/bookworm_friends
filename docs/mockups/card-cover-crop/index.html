@@ -1,0 +1,4088 @@
+<!doctype html>
+<!--
+  Design mockup: the library card's cover row, and the crop nobody drew.
+
+  Self-contained. No build, no server, no network -- open it straight from disk.
+  There are deliberately no raster images here: every cover is drawn in the DOM
+  at the app's own 2/3 aspect and then *fitted into the box the shipped code
+  gives it*, which is the one thing the original drawing did not do. See the
+  `WHY THIS PAGE EXISTS` note in SECTION 4.
+
+  Sections, in the order they appear in the script:
+    SECTION 1  TOKENS    - colours and geometry ported from the Dart
+    SECTION 2  HELPERS   - bookHash, colour maths, spineTintFor, the jacket
+    SECTION 3  CORPUS    - 22 books, the count in the reported screenshot
+    SECTION 4  LAYOUTS   - today's row, and seven alternatives
+    SECTION 5  ENGINE    - controls and assembly
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Library Card &mdash; the cover row crop</title>
+        <style>
+            /* ---- SECTION 1a: product tokens (mirrors lib/constants/app_theme.dart) ---- */
+            :root {
+                --page: #f8f9fa;
+                --surface: #ffffff;
+                --text: #212529;
+                --text2: #adb5bd;
+                --brand: #09bc8a;
+                --brandText: #067657;
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+
+                /* The artifact's own stock. Deliberately not theme tokens -- see
+           kCardStock in shareable_library_card.dart for why the card does not
+           follow the reader's light/dark setting. */
+                --stock: #f2ede0;
+                --stockLine: #ddd3bd;
+                --cardInk: #1f2d27;
+                --flame: #f2a93f;
+                --glow: #ffe0a3;
+
+                /* Diagnostic ink. Not a product colour: this is the page talking. */
+                --cut: #d92b2b;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.55;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            .gone {
+                display: none;
+            }
+
+            /* ---------- top chrome ---------- */
+            .top {
+                position: sticky;
+                top: 0;
+                z-index: 300;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+            }
+            .top-in {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 10px 22px;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+            }
+            .brand span {
+                color: var(--brandText);
+            }
+            .ctl {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                color: var(--muted);
+                font-weight: 600;
+            }
+            .seg {
+                display: flex;
+                gap: 2px;
+                background: #f2f1ee;
+                border-radius: 20px;
+                padding: 2px;
+            }
+            .seg button {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--muted);
+                background: none;
+                border: 0;
+                padding: 4px 10px;
+                border-radius: 16px;
+                cursor: pointer;
+            }
+            .seg button:hover {
+                color: var(--ink);
+            }
+            .seg button.on {
+                color: var(--ink);
+                background: #fff;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+            }
+            .chk {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--muted);
+                cursor: pointer;
+                user-select: none;
+            }
+            .chk input {
+                margin: 0;
+                accent-color: var(--brandText);
+            }
+            .chk.on {
+                color: var(--ink);
+            }
+
+            /* ---------- page ---------- */
+            .wrap {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 26px 22px 120px;
+            }
+            h1 {
+                font-size: 26px;
+                line-height: 1.25;
+                letter-spacing: -0.5px;
+                margin: 8px 0 12px;
+            }
+            .lead {
+                font-size: 15px;
+                color: #43434a;
+                max-width: 74ch;
+            }
+            .lead b {
+                color: var(--ink);
+            }
+            h2 {
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.9px;
+                color: var(--muted);
+                margin: 40px 0 10px;
+            }
+            .note {
+                font-size: 13px;
+                color: #5b5b62;
+                max-width: 78ch;
+            }
+
+            /* the diagnosis table */
+            table.diag {
+                border-collapse: collapse;
+                font-size: 13px;
+                margin: 14px 0 6px;
+                width: 100%;
+                max-width: 720px;
+            }
+            table.diag th {
+                text-align: left;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                color: var(--muted);
+                border-bottom: 1px solid var(--line);
+                padding: 6px 10px 6px 0;
+                font-weight: 700;
+            }
+            table.diag td {
+                padding: 7px 10px 7px 0;
+                border-bottom: 1px solid #f1f0ec;
+                font-variant-numeric: tabular-nums;
+            }
+            table.diag tr.bad td {
+                color: var(--cut);
+                font-weight: 700;
+            }
+            table.diag tr.good td {
+                color: var(--brandText);
+            }
+
+            /* ---------- one option ---------- */
+            .opt {
+                display: grid;
+                grid-template-columns: 392px minmax(0, 1fr);
+                gap: 26px;
+                padding: 22px 0 26px;
+                border-top: 1px solid var(--line);
+                align-items: start;
+            }
+            .opt:first-of-type {
+                border-top: 0;
+            }
+            @media (max-width: 900px) {
+                .opt {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .oh {
+                grid-column: 1 / -1;
+                display: flex;
+                align-items: baseline;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .oh .n {
+                font-size: 12px;
+                font-weight: 800;
+                color: var(--text2);
+                font-variant-numeric: tabular-nums;
+            }
+            .oh .t {
+                font-size: 19px;
+                font-weight: 800;
+                letter-spacing: -0.3px;
+            }
+            .badge {
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                padding: 2px 8px;
+                border-radius: 20px;
+                background: #f2f1ee;
+                color: var(--muted);
+            }
+            .badge.bug {
+                background: #fdecec;
+                color: var(--cut);
+            }
+            .badge.pick {
+                background: #e4f7f0;
+                color: var(--brandText);
+            }
+            .badge.cheap {
+                background: #eef2fd;
+                color: #3a5bbf;
+            }
+            .body p {
+                font-size: 13.5px;
+                margin: 0 0 9px;
+                color: #43434a;
+            }
+            .body p b {
+                color: var(--ink);
+            }
+            .body ul {
+                margin: 0 0 9px;
+                padding-left: 18px;
+                font-size: 13.5px;
+                color: #43434a;
+            }
+            .body li {
+                margin-bottom: 4px;
+            }
+            .cost {
+                font-size: 12.5px;
+                background: #faf9f6;
+                border-left: 2px solid var(--line);
+                padding: 8px 12px;
+                margin: 10px 0 0;
+                color: #5b5b62;
+            }
+            .cost b {
+                color: var(--ink);
+            }
+
+            /* metrics strip under a stage */
+            .met {
+                font-size: 11.5px;
+                color: var(--muted);
+                margin-top: 9px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 12px;
+                font-variant-numeric: tabular-nums;
+            }
+            .met b {
+                color: var(--ink);
+                font-weight: 700;
+            }
+            .met .warn {
+                color: var(--cut);
+                font-weight: 700;
+            }
+            .met .fine {
+                color: var(--brandText);
+                font-weight: 700;
+            }
+
+            /* ---------- the artifact ---------- */
+            /* The card is drawn at 1px == 1pt, so every number on this page is the
+         number the 360x450 export actually uses. */
+            .stage {
+                width: 360px;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow:
+                    0 1px 2px rgba(0, 0, 0, 0.1),
+                    0 12px 30px rgba(0, 0, 0, 0.1);
+            }
+            .stage.diag {
+                overflow: visible;
+            }
+            .well {
+                position: relative;
+                width: 360px;
+                overflow: hidden;
+                background: linear-gradient(180deg, #faf6ec, #efe7d6);
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+            }
+            .stage.diag .well {
+                overflow: visible;
+            }
+            .well.cdl {
+                background: linear-gradient(180deg, #35230e, #1b1106);
+            }
+            /* Gilt: fine ruled foil on the stock, at two weights crossing. Barely
+         there in daylight; a flame picks it out, because foil is what catches a
+         raking light. */
+            .well::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                background:
+                    repeating-linear-gradient(
+                        62deg,
+                        rgba(31, 45, 39, 0.07) 0 1.36px,
+                        transparent 1.36px 8.15px
+                    ),
+                    repeating-linear-gradient(
+                        -62deg,
+                        rgba(31, 45, 39, 0.045) 0 1.36px,
+                        transparent 1.36px 10.19px
+                    );
+            }
+            .well.cdl::before {
+                background:
+                    repeating-linear-gradient(
+                        62deg,
+                        rgba(242, 169, 63, 0.32) 0 1.36px,
+                        transparent 1.36px 8.15px
+                    ),
+                    repeating-linear-gradient(
+                        -62deg,
+                        rgba(242, 169, 63, 0.2) 0 1.36px,
+                        transparent 1.36px 10.19px
+                    );
+            }
+            .seal {
+                position: absolute;
+                right: 13.58px;
+                top: 13.58px;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                border: 1px solid rgba(31, 45, 39, 0.14);
+                color: rgba(31, 45, 39, 0.18);
+                font-size: 9px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                letter-spacing: 0.5px;
+            }
+            .well.cdl .seal {
+                border-color: rgba(242, 169, 63, 0.35);
+                color: rgba(242, 169, 63, 0.5);
+            }
+            .inner {
+                position: relative;
+                z-index: 1;
+                /* 4u, 4u, 4u, 0.8u. The bottom inset is `kCardShelfFloorUnits` and not
+                   zero, so the bottom board's shadow has somewhere to fall — without it
+                   the well's `ClipRect` eats that shadow on the bottom board alone. It
+                   is taken out of the well's slack, not out of the covers, so no
+                   capacity on this page moved. */
+                padding: 13.58px 13.58px 2.72px;
+            }
+            /* One shelf: a row of books and the board they stand on.
+
+               **Left-aligned, and every board shares that edge.** Centring each row on
+               its own contents makes a partly-filled second board read as a centred stub
+               floating under the first rather than as books standing at the left-hand end
+               of a shelf -- visible the moment a count lands between capacities, e.g. 25
+               spines, which fills the top board and puts five on the bottom one. It also
+               matches `.row.stack`, which has been left-aligned all along because a lean
+               has a direction; the two were inconsistent until `card_cover_row.dart` drew
+               both from one plan and the difference stopped being invisible. */
+            .row {
+                display: flex;
+                align-items: flex-end;
+                justify-content: flex-start;
+                position: relative;
+            }
+            .row.stack {
+                display: block;
+                position: relative;
+            }
+            .board {
+                height: 5.43px;
+                background: var(--stockLine);
+                margin-top: 4.75px;
+                /* Square ends and a cast shadow, both ported from `ShelfWidget`: an 8pt
+                   plank under `offset (0, 2)`, `blurRadius: 2`, ink at a quarter, and no
+                   radius at all. 1.36px is a quarter of the board. A radius of 1u on a
+                   1.6u bar made it a pill, which is an underline for the row rather than
+                   the furniture the row stands on; the shadow is what makes the books
+                   read as standing on it. */
+                box-shadow: 0 1.36px 1.36px rgba(31, 45, 39, 0.25);
+            }
+            .well.cdl .board {
+                background: #6b4a1f;
+                box-shadow: 0 0 6.8px var(--flame);
+            }
+            .shelf + .shelf {
+                margin-top: 6px;
+            }
+
+            /* ---------- one book ---------- */
+            .bk {
+                position: relative;
+                flex: 0 0 auto;
+                border-radius: 1.7px 3.74px 3.74px 1.7px;
+                box-shadow: 1.7px 1.7px 5.1px rgba(0, 0, 0, 0.28);
+            }
+            .well.cdl .bk {
+                filter: saturate(0.8) brightness(0.74) sepia(0.12);
+                box-shadow: 0 0 8.5px rgba(242, 169, 63, 0.42);
+            }
+            /* The clip. Separate from `.bk` so the diagnostic ghost can escape it --
+         this is the element that stands in for ClipRRect in the Dart. */
+            .bk .cl {
+                position: absolute;
+                inset: 0;
+                overflow: hidden;
+                border-radius: inherit;
+            }
+            /* The binding band: what makes the eye read "a book seen slightly from
+         the side". Align(centerLeft, width: 1.2 * unit) in the Dart. */
+            .bk .bnd {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.18);
+                border-radius: inherit;
+            }
+            .well.cdl .bk .bnd {
+                background: rgba(0, 0, 0, 0.42);
+            }
+
+            /* The jacket: a cover with something printed on it, at the app's own 2/3.
+         Absolutely positioned and sized by JS to whatever BoxFit would produce,
+         so the crop on this page is the crop in the export. */
+            .jk {
+                position: absolute;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .jk b {
+                font-weight: 800;
+                line-height: 1.1;
+                letter-spacing: -0.2px;
+                display: block;
+            }
+            .jk i {
+                font-style: normal;
+                font-weight: 600;
+                line-height: 1.15;
+                opacity: 0.82;
+                display: block;
+            }
+            .jk .rule {
+                display: block;
+                height: 1px;
+                background: currentColor;
+                opacity: 0.5;
+            }
+            /* Three jacket layouts, so the row is not twelve of the same drawing and
+         so the crop is visibly destroying different things in different books. */
+            .jk.s0 {
+                justify-content: flex-start;
+            }
+            .jk.s1 {
+                justify-content: center;
+                text-align: center;
+            }
+            .jk.s2 {
+                justify-content: flex-end;
+            }
+            .jk.s2 .band {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 38%;
+                background: rgba(0, 0, 0, 0.28);
+            }
+            /* GeneratedCover, as generated_cover.dart draws it: colour block, then
+         title lines. Two books in the corpus have no thumbnail. */
+            .jk.gen {
+                justify-content: flex-start;
+            }
+            .jk.gen .blk {
+                display: block;
+                height: 46%;
+                background: rgba(0, 0, 0, 0.18);
+            }
+
+            /* The ghost: the part of the jacket the box throws away. Only in
+         diagnostic mode. */
+            .gh {
+                position: absolute;
+                opacity: 0.3;
+                filter: grayscale(0.2);
+                pointer-events: none;
+            }
+            .cutline {
+                position: absolute;
+                inset: 0;
+                border: 1px dashed var(--cut);
+                border-radius: inherit;
+                pointer-events: none;
+                z-index: 3;
+            }
+
+            /* A spine, for the options that draw one instead of a cropped face. */
+            .sp {
+                position: absolute;
+                inset: 0;
+                overflow: hidden;
+                border-radius: inherit;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .sp .ttl {
+                writing-mode: vertical-rl;
+                text-orientation: mixed;
+                transform: rotate(180deg);
+                white-space: nowrap;
+                overflow: hidden;
+                color: #fff;
+                font-weight: 700;
+                letter-spacing: 0.2px;
+            }
+            .sp .band {
+                position: absolute;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: rgba(255, 255, 255, 0.35);
+            }
+
+            /* A currently-reading book's ribbon.
+
+               Hangs over the head of the cover, so it sticks out above the row. Drawn
+               outside `.cl` deliberately: that is the element standing in for
+               ClipRRect, and a bookmark that a clip swallows is not a bookmark. */
+            .bk .ribbon {
+                position: absolute;
+                z-index: 4;
+                background: #c0392b;
+                border-radius: 1px;
+            }
+            .bk .ribbon::after {
+                content: "";
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: -2px;
+                height: 3px;
+                background: inherit;
+                clip-path: polygon(0 0, 100% 0, 50% 100%);
+            }
+
+            /* The hairline the read pile draws between spines. On a sliver it is the
+               only thing separating one book from the next. */
+            .sp .sep {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                right: 0;
+                width: 1px;
+                background: rgba(0, 0, 0, 0.3);
+            }
+
+            /* The overflow plate, for the option that caps the row. Drawn in the
+         stamp's own style rather than as a new visual language. */
+            .plate {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 3.4px;
+                border: 1px solid var(--stockLine);
+                color: rgba(31, 45, 39, 0.55);
+                font-weight: 800;
+                background: rgba(255, 255, 255, 0.35);
+                font-variant-numeric: tabular-nums;
+            }
+            .well.cdl .plate {
+                border-color: var(--flame);
+                color: var(--glow);
+                background: rgba(0, 0, 0, 0.35);
+            }
+
+            /* The month stamp and the mark it degrades to past six covers. Carried
+         over verbatim so the candlelight reveal can be judged against each
+         option rather than only against today's. */
+            .stamp {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%) rotate(-11deg);
+                white-space: nowrap;
+                font-weight: 800;
+                color: var(--glow);
+                border: 1.7px solid var(--flame);
+                border-radius: 3.4px;
+                padding: 0 4px;
+                background: rgba(0, 0, 0, 0.4);
+                text-shadow: 0 0 6.8px var(--flame);
+                z-index: 2;
+            }
+            .mark {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                width: 5.43px;
+                height: 5.43px;
+                margin: -2.71px 0 0 -2.71px;
+                border-radius: 50%;
+                background: var(--glow);
+                box-shadow: 0 0 6.8px var(--flame);
+                z-index: 2;
+            }
+
+            /* The body of the card under the well, drawn flat and small: the options
+         must be judged against the whole artifact, because the well's height is
+         the budget every one of them is spending. */
+            .cbody {
+                background: var(--stock);
+                padding: 12px 13.58px 14px;
+                color: var(--cardInk);
+                display: flex;
+                flex-direction: column;
+            }
+            .cbody.cdl {
+                background: linear-gradient(180deg, #efe3cc, #d8c9a8);
+            }
+            .cbody .ttl {
+                font-size: 15px;
+                font-weight: 800;
+                color: var(--brandText);
+                letter-spacing: -0.2px;
+            }
+            .cbody .sub {
+                font-size: 7.5px;
+                font-weight: 700;
+                letter-spacing: 0.8px;
+                color: rgba(31, 45, 39, 0.55);
+                margin-bottom: 8px;
+            }
+            .cbody .rec {
+                display: flex;
+                gap: 14px;
+                align-items: flex-start;
+            }
+            .cbody .fig {
+                font-size: 40px;
+                font-weight: 800;
+                line-height: 0.92;
+                letter-spacing: -1.5px;
+            }
+            .cbody .fig s {
+                display: block;
+                font-size: 13px;
+                font-weight: 700;
+                text-decoration: none;
+                color: var(--brandText);
+            }
+            .cbody .rows {
+                font-size: 8.5px;
+                display: grid;
+                grid-template-columns: 68px 1fr;
+                row-gap: 2px;
+                padding-top: 3px;
+            }
+            .cbody .rows i {
+                font-style: normal;
+                color: rgba(31, 45, 39, 0.55);
+            }
+            .cbody .rows b {
+                font-weight: 800;
+            }
+            .cbody .stats {
+                display: flex;
+                gap: 22px;
+                margin-top: 12px;
+                padding-top: 9px;
+                border-top: 1px solid var(--stockLine);
+            }
+            .cbody .stats div {
+                font-size: 8.5px;
+                color: rgba(31, 45, 39, 0.55);
+                line-height: 1.35;
+            }
+            .cbody .stats b {
+                display: block;
+                font-size: 13px;
+                font-weight: 800;
+                color: var(--cardInk);
+            }
+            .cbody .mrz {
+                margin-top: auto;
+                padding-top: 7px;
+                border-top: 1px solid var(--stockLine);
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 7.5px;
+                letter-spacing: 0.4px;
+                color: rgba(31, 45, 39, 0.7);
+                word-break: break-all;
+            }
+
+            /* ---------- the crop callout ---------- */
+            .zoom {
+                margin-top: 12px;
+                padding: 12px 14px 14px;
+                background: #fdf7f7;
+                border: 1px solid #f6dede;
+                border-radius: 8px;
+            }
+            .zh {
+                font-size: 11.5px;
+                font-weight: 700;
+                color: var(--cut);
+                margin-bottom: 10px;
+            }
+            .zrow {
+                display: flex;
+                gap: 14px;
+                align-items: flex-end;
+            }
+            .zc {
+                position: relative;
+            }
+            .zwin {
+                position: absolute;
+                overflow: hidden;
+                outline: 1.5px solid var(--cut);
+                z-index: 2;
+            }
+            .zcap {
+                font-size: 10.5px;
+                color: var(--muted);
+                margin-top: 5px;
+            }
+            .zcap b {
+                color: var(--cut);
+            }
+
+            /* ---------- the display options popover ----------
+
+               Preview chrome, and drawn as chrome on purpose: it must not appear in the
+               PNG. In the app it lives behind the button at the card's top right, beside
+               the framing and Candlelight controls that share_card_page.dart already has. */
+            .stagewrap {
+                position: relative;
+                width: 360px;
+            }
+            .dispbtn {
+                position: absolute;
+                top: -10px;
+                right: -10px;
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                background: #fff;
+                border: 1px solid var(--line);
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                font-weight: 800;
+                color: var(--muted);
+                z-index: 20;
+            }
+            .dispmenu {
+                position: relative;
+                width: 190px;
+                margin: 12px 0 0 auto;
+                background: #fff;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+                padding: 8px;
+                z-index: 21;
+            }
+            /* The caret points back at the button it belongs to. The panel flows below the
+               card rather than floating over it, so that a screenshot shows the shelf and
+               the control it is set by at the same time; in the app it opens downward from
+               the button in the usual way. */
+            .dispmenu::before {
+                content: "";
+                position: absolute;
+                top: -5px;
+                right: 12px;
+                width: 9px;
+                height: 9px;
+                background: #fff;
+                border-left: 1px solid var(--line);
+                border-top: 1px solid var(--line);
+                transform: rotate(45deg);
+            }
+            .dispmenu .dh {
+                font-size: 9.5px;
+                text-transform: uppercase;
+                letter-spacing: 0.7px;
+                font-weight: 800;
+                color: var(--text2);
+                padding: 4px 6px 3px;
+            }
+            .dispmenu button {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                width: 100%;
+                font: inherit;
+                font-size: 11.5px;
+                font-weight: 600;
+                text-align: left;
+                background: none;
+                border: 0;
+                padding: 5px 6px;
+                border-radius: 6px;
+                cursor: pointer;
+                color: var(--ink);
+            }
+            .dispmenu button:hover {
+                background: #f4f3f0;
+            }
+            .dispmenu button::before {
+                content: "";
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                border: 1.5px solid var(--line);
+                flex: 0 0 auto;
+            }
+            .dispmenu button.on {
+                font-weight: 800;
+            }
+            .dispmenu button.on::before {
+                border-color: var(--brandText);
+                background: radial-gradient(
+                    circle,
+                    var(--brandText) 0 3px,
+                    transparent 3px
+                );
+            }
+            .dispmenu button[disabled] {
+                opacity: 0.38;
+                cursor: default;
+            }
+            .dispmenu .dcap {
+                font-size: 9.5px;
+                color: var(--muted);
+                padding: 4px 6px 2px;
+                border-top: 1px solid var(--line);
+                margin-top: 5px;
+                line-height: 1.4;
+            }
+            .chromenote {
+                font-size: 10.5px;
+                color: var(--cut);
+                margin-top: 8px;
+                font-weight: 600;
+            }
+
+            /* ---------- grid view ---------- */
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 22px;
+            }
+            .gcell .gh2 {
+                font-size: 12.5px;
+                font-weight: 800;
+                margin: 0 0 8px;
+                display: flex;
+                gap: 8px;
+                align-items: baseline;
+            }
+            .gcell .gh2 .n {
+                color: var(--text2);
+                font-variant-numeric: tabular-nums;
+            }
+            .gzoom {
+                width: 300px;
+                height: 250px;
+                overflow: hidden;
+            }
+            .gzoom > .stage {
+                transform: scale(0.8333);
+                transform-origin: top left;
+            }
+            .foot {
+                margin-top: 60px;
+                border-top: 1px solid var(--line);
+                padding-top: 18px;
+                font-size: 12.5px;
+                color: var(--muted);
+                max-width: 80ch;
+            }
+            .foot code {
+                font-size: 0.9em;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="top-in">
+                <span class="brand"
+                    >Library Card &mdash; <span>the cover row crop</span></span
+                >
+                <div class="ctl">
+                    <span>books</span>
+                    <div class="seg" id="seg-n"></div>
+                </div>
+                <div class="ctl">
+                    <span>light</span>
+                    <div class="seg" id="seg-light"></div>
+                </div>
+                <div class="ctl">
+                    <span>view</span>
+                    <div class="seg" id="seg-view"></div>
+                </div>
+                <div class="ctl">
+                    <span>reading</span>
+                    <div class="seg" id="seg-reading"></div>
+                </div>
+                <div class="ctl">
+                    <span>lean</span>
+                    <div class="seg" id="seg-lean"></div>
+                </div>
+                <label class="chk" id="lab-diag"
+                    ><input type="checkbox" id="cb-diag" /> show what is
+                    cropped</label
+                >
+                <label class="chk" id="lab-jit"
+                    ><input type="checkbox" id="cb-jit" /> jitter size, not
+                    aspect</label
+                >
+            </div>
+        </div>
+
+        <div class="wrap">
+            <h1 id="h1"></h1>
+            <p class="lead" id="lead"></p>
+            <table class="diag" id="tbl"></table>
+            <p class="note" id="tblnote"></p>
+
+            <h2 id="opts-h">The options</h2>
+            <div id="opts"></div>
+            <div class="grid gone" id="gridv"></div>
+
+            <h2 id="shelf-h">Capacity, with nothing squeezed</h2>
+            <p class="lead" id="shelf-lead"></p>
+            <table class="diag" id="shelf-tbl"></table>
+            <p class="note" id="shelf-note"></p>
+            <div class="grid" id="shelf-grid" style="margin-top: 22px"></div>
+
+            <h2 id="cap-h">How many books two boards can hold</h2>
+            <p class="lead" id="cap-lead"></p>
+            <table class="diag" id="cap-tbl"></table>
+            <p class="note" id="cap-note"></p>
+            <div class="grid" id="cap-grid" style="margin-top: 22px"></div>
+
+            <h2 id="cap2-h">And how many the phase-out can</h2>
+            <p class="lead" id="cap2-lead"></p>
+            <table class="diag" id="cap2-tbl"></table>
+            <p class="note" id="cap2-note"></p>
+            <div class="grid" id="cap2-grid" style="margin-top: 22px"></div>
+
+            <div class="foot" id="foot"></div>
+        </div>
+
+        <script>
+            /* ====================================================================
+            SECTION 1b: geometry, ported from the Dart.
+
+            Every number below is read off a named constant in the codebase. The
+            page draws at 1 CSS px == 1 layout point, so these are the export's own
+            numbers and nothing here is a guess about scale.
+            ==================================================================== */
+
+            /* kShareableCardSize -- portrait 4:5, 1080x1350 at the 3x export. */
+            const CARD_W = 360,
+                CARD_H = 450;
+
+            /* _kWellFraction in shareable_library_card.dart. */
+            const WELL_FRAC = 0.46;
+            const WELL_H = CARD_H * WELL_FRAC; /* 207 */
+
+            /* _u -- the card's drawing unit. The artifact is laid out as 106 * u. */
+            const CARD_UNITS = 106;
+            const U = CARD_W / CARD_UNITS; /* 3.396 */
+
+            /* The well's padding: EdgeInsets.fromLTRB(4u, 4u, 4u, 0). */
+            const PAD = 4 * U;
+
+            /* The width CardCoverRow is actually handed. It is given no `width`, so it
+            measures the well's *inner* box -- and then divides that by 106. So the
+            row's unit is 7.5% smaller than the card's, and every cover is drawn
+            7.5% smaller than `docs/mockups/library-card-share/index.html` drew it,
+            which sizes `.acvr i` off `--u` directly. Faithfully reproduced here
+            rather than quietly corrected: it is a real (small) deviation, and it is
+            the kind of thing this page exists to surface. */
+            const INNER_W = CARD_W - 2 * PAD; /* 332.83 */
+            const ROW_U = INNER_W / CARD_UNITS; /* 3.140 */
+
+            /* _kGapUnits. */
+            const GAP_U = 1.6;
+
+            /* The shelf board and the air above it, from _Well. */
+            const BOARD_U = 1.6,
+                BOARD_GAP_U = 1.4;
+
+            /* kDefaultCoverAspect in book_geometry.dart: width / height. This is the
+            number the tiers are supposed to agree with and mostly do not. */
+            const ASPECT = 2 / 3;
+
+            /* kCardCoverMax, and kCardStampMax. */
+            const COVER_MAX = 12,
+                STAMP_MAX = 6;
+
+            /* kGeneratedCoverMinWidth: 7 / 0.135, the width below which a generated
+            cover stops drawing its title because the title would land under 7pt. */
+            const GEN_MIN_W = 7 / 0.135; /* 51.85 */
+
+            /* How much vertical room the row has, in row-units, once the well's top
+            padding, the board and the air above it are taken. Derived rather than
+            typed, because the whole argument for two shelves is that this number is
+            much larger than anything the row spends today. */
+            const H_BUDGET_U =
+                (WELL_H - PAD - (BOARD_U + BOARD_GAP_U) * U) / ROW_U;
+
+            /* kGeneratedCoverPalette, verbatim from generated_cover.dart. */
+            const COVER_PALETTE = [
+                "#09BC8A" /* brand green */,
+                "#0E7C7B" /* deep teal   */,
+                "#2F6690" /* slate blue  */,
+                "#E0644E" /* coral       */,
+                "#F2B544" /* amber       */,
+                "#7C5CBF" /* violet      */,
+            ];
+
+            /* ====================================================================
+            SECTION 2: helpers
+            ==================================================================== */
+
+            const esc = (s) =>
+                String(s)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+            const r1 = (n) => Math.round(n * 10) / 10;
+            const r2 = (n) => Math.round(n * 100) / 100;
+            const pct = (n) => Math.round(n * 100) + "%";
+
+            /* ---- bookHash, ported from book_geometry.dart ----
+
+            FNV-1a over the UTF-16 code units, low byte first. The Dart splits the
+            prime multiply so no intermediate exceeds 2^53, because this project has
+            a web target where `int` is a double; the same split is used here, plus
+            `>>> 0` after each XOR, because JS bitwise operators produce a *signed*
+            int32 and a negative hash would make `% 3` negative and the jitter
+            asymmetric. Pinned against the Dart's own goldens in verify.js. */
+            function fnvStep(h, byte) {
+                const x = (h ^ byte) >>> 0;
+                return ((x & 0xff) * 16777216 + x * 403) % 4294967296;
+            }
+            function bookHash(s) {
+                let h = 0x811c9dc5;
+                for (let i = 0; i < s.length; i++) {
+                    const u = s.charCodeAt(i);
+                    h = fnvStep(h, u & 0xff);
+                    if (u > 0xff) h = fnvStep(h, (u >> 8) & 0xff);
+                }
+                return h;
+            }
+
+            /* ---- colour maths, ported from book_chassis.dart via
+                 docs/mockups/read-pile-turn. Kept in step with that page: it is the
+                 design record for the shipped spineTintFor, and two drawings that
+                 disagree are worse than one. ---- */
+            function hexRgb(h) {
+                return [
+                    parseInt(h.slice(1, 3), 16),
+                    parseInt(h.slice(3, 5), 16),
+                    parseInt(h.slice(5, 7), 16),
+                ];
+            }
+            function lin(v) {
+                v /= 255;
+                return v <= 0.03928
+                    ? v / 12.92
+                    : Math.pow((v + 0.055) / 1.055, 2.4);
+            }
+            function luminance(h) {
+                const c = hexRgb(h);
+                return (
+                    0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+                );
+            }
+            function contrastRatio(a, b) {
+                const l1 = Math.max(luminance(a), luminance(b));
+                const l2 = Math.min(luminance(a), luminance(b));
+                return (l1 + 0.05) / (l2 + 0.05);
+            }
+            function hexOf(c) {
+                return (
+                    "#" +
+                    c
+                        .map((v) =>
+                            Math.max(0, Math.min(255, Math.round(v)))
+                                .toString(16)
+                                .padStart(2, "0"),
+                        )
+                        .join("")
+                );
+            }
+            function mix(a, b, t) {
+                const x = hexRgb(a),
+                    y = hexRgb(b);
+                return hexOf([
+                    x[0] + (y[0] - x[0]) * t,
+                    x[1] + (y[1] - x[1]) * t,
+                    x[2] + (y[2] - x[2]) * t,
+                ]);
+            }
+            function saturation(h) {
+                const c = hexRgb(h);
+                const mx = Math.max.apply(null, c),
+                    mn = Math.min.apply(null, c);
+                return mx === 0 ? 0 : (mx - mn) / mx;
+            }
+            function bookBoardColorFor(h) {
+                const t = 0.18 + 0.3 * luminance(h);
+                return hexOf(hexRgb(h).map((v) => v * (1 - t)));
+            }
+            const kTintMinSaturation = 0.18,
+                kTintChromaLift = 0.45,
+                kTintMinContrast = 4.6;
+            function spineTintFor(cover) {
+                const s = saturation(cover);
+                const lift =
+                    Math.max(0, (kTintMinSaturation - s) / kTintMinSaturation) *
+                    luminance(cover) *
+                    kTintChromaLift;
+                let c = bookBoardColorFor(mix(cover, "#09BC8A", lift));
+                for (
+                    let i = 0;
+                    i < 24 && contrastRatio(c, "#FFFFFF") < kTintMinContrast;
+                    i++
+                ) {
+                    c = mix(c, "#000000", 0.06);
+                }
+                return c;
+            }
+            function generatedCoverColor(isbn) {
+                if (!isbn) return COVER_PALETTE[0];
+                return COVER_PALETTE[bookHash(isbn) % COVER_PALETTE.length];
+            }
+
+            /* ====================================================================
+            SECTION 3: the corpus
+
+            22 books, because 22 is the count on the card in the report. Mixed
+            Korean and English, in the proportion the live library is in -- which
+            matters more here than it looks: a centre crop takes the middle of a
+            line, and a Korean title set in four wide glyphs loses a different thing
+            than an English one set in twelve narrow ones.
+
+            `c` is the colour books.cover_color stores (the sampled average of the
+            real jacket). The last two carry no thumbnail, so they draw a
+            GeneratedCover and exercise the fallback path in _face().
+
+            Order is finish-date descending, which is the order cardCoverBooks puts
+            them in and the order the row draws: most recently finished leftmost.
+            ==================================================================== */
+            const CORPUS = [
+                ["9780857197689", "Shoe Dog", "Phil Knight", "#C5442E", 0],
+                ["9781444758993", "Red Rising", "Pierce Brown", "#8E1B1B", 2],
+                [
+                    "9781649374042",
+                    "Fourth Wing",
+                    "Rebecca Yarros",
+                    "#6B1220",
+                    1,
+                ],
+                [
+                    "9780375826696",
+                    "Eragon",
+                    "Christopher Paolini",
+                    "#1F5FA0",
+                    1,
+                ],
+                ["9788932473901", "불편한 편의점", "김호연", "#2E7D6B", 0],
+                [
+                    "9780241258767",
+                    "The Art of Statistics",
+                    "D. Spiegelhalter",
+                    "#E8E4D8",
+                    2,
+                ],
+                ["9788954682152", "도둑맞은 집중력", "요한 하리", "#F2F0EA", 0],
+                [
+                    "9788937462788",
+                    "위대한 개츠비",
+                    "F. 스콧 피츠제럴드",
+                    "#12213F",
+                    1,
+                ],
+                ["9781593278748", "Hacking", "Jon Erickson", "#151515", 2],
+                ["9788901260716", "세이노의 가르침", "세이노", "#D9D5C8", 0],
+                ["9780062316110", "Sapiens", "Yuval Noah Harari", "#E4C56B", 1],
+                ["9788936434120", "하얼빈", "김훈", "#1B3A2F", 0],
+                ["9780451524935", "1984", "George Orwell", "#B02418", 2],
+                [
+                    "9788932917245",
+                    "소크라테스 익스프레스",
+                    "에릭 와이너",
+                    "#3A6EA5",
+                    0,
+                ],
+                [
+                    "9780141439518",
+                    "Pride and Prejudice",
+                    "Jane Austen",
+                    "#2F6690",
+                    1,
+                ],
+                ["9788934942467", "원씽", "게리 켈러", "#EFA31D", 2],
+                ["9791188331796", "아몬드", "손원평", "#7C5CBF", 0],
+                ["9780735211292", "Atomic Habits", "James Clear", "#F5E9D0", 1],
+                ["9788954699914", "소년이 온다", "한강", "#8C8577", 0],
+                [
+                    "9780553380163",
+                    "A Brief History of Time",
+                    "S. Hawking",
+                    "#0E1B3A",
+                    2,
+                ],
+                [
+                    "9788937473135",
+                    "트렌드 코리아 2026",
+                    "김난도",
+                    "#E0644E",
+                    1,
+                    false,
+                ],
+                ["OL12345W", "채식주의자", "한강", "#D6D2C4", 0, false],
+            ].map(([isbn, title, author, c, st, thumb]) => ({
+                isbn,
+                title,
+                author,
+                c,
+                st,
+                thumb: thumb !== false,
+                /* The month the flame stamps, from cardStampMonth. Fixed per book rather
+              than from a date, because nothing on this page depends on when it is
+              opened. */
+                m: ["SEP", "AUG", "JUL", "JUN", "MAY", "APR"][
+                    bookHash(isbn) % 6
+                ],
+            }));
+
+            /* The books the reader has open right now.
+
+               Kept out of CORPUS rather than mixed into it, because CORPUS is
+               finish-date-descending and every other option on this page draws from it:
+               a reading book has no `finish_date`, so it has no place in that order and
+               nothing to stamp. Three of them, because three is the front group's cap
+               (`kCardReadingMax`) and a drawing that cannot reach the cap cannot show what
+               it costs -- the `reading` control still opens at two, which is what the median
+               reader has open.
+
+               These are the books the card does not show today at all. Whether they
+               belong on it is the open question in the `phase` option's notes. */
+            const READING = [
+                ["9788954699913", "재팬토필", "이보람", "#1F5F4B", 0],
+                [
+                    "9780593135204",
+                    "Project Hail Mary",
+                    "Andy Weir",
+                    "#2B3A55",
+                    1,
+                ],
+                [
+                    "9780571364909",
+                    "Klara and the Sun",
+                    "Kazuo Ishiguro",
+                    "#E9E4D6",
+                    2,
+                ],
+            ].map(([isbn, title, author, c, st]) => ({
+                isbn,
+                title,
+                author,
+                c,
+                st,
+                thumb: true,
+                reading: true,
+                /* No month: cardStampMonth returns null without a finish_date, and an
+                   unstamped cover in a stamped row is better than a stamp reading a date
+                   nobody recorded. */
+                m: null,
+            }));
+
+            function readingFor(k) {
+                return READING.slice(0, k);
+            }
+
+            /* The corpus, extended past its own length.
+
+               The capacity ladder asks for 60 and 100 books and the drawn corpus is
+               22, so beyond that the list repeats with a suffixed ISBN. The suffix is
+               not cosmetic: every jitter, palette pick and stamp month on this page
+               comes from `bookHash(isbn)`, so a repeat with the same ISBN would draw
+               the same book at the same size and the row would visibly tile. */
+            function booksFor(n) {
+                if (n <= CORPUS.length) return CORPUS.slice(0, n);
+                const out = [];
+                for (let i = 0; i < n; i++) {
+                    const b = CORPUS[i % CORPUS.length];
+                    if (i < CORPUS.length) {
+                        out.push(b);
+                        continue;
+                    }
+                    const isbn = b.isbn + "-" + Math.floor(i / CORPUS.length);
+                    out.push(
+                        Object.assign({}, b, {
+                            isbn,
+                            m: ["SEP", "AUG", "JUL", "JUN", "MAY", "APR"][
+                                bookHash(isbn) % 6
+                            ],
+                        }),
+                    );
+                }
+                return out;
+            }
+
+            /* ====================================================================
+                SECTION 4a: drawing one book
+
+                WHY THIS PAGE EXISTS
+
+                `artCoverRow` in docs/mockups/library-card-share/index.html fills every
+                cover with `PAL[k % PAL.length]` -- a flat colour. At the small tier's
+                0.36 aspect a flat rectangle reads as a *spine*, which is what
+                card_cover_row.dart's own doc comment claims the row is. The build then
+                put a front cover in that spine-shaped hole with `BoxFit.cover`, and a
+                centre crop threw away nearly half of each jacket.
+
+                So every cover here is drawn at ASPECT with something printed on it, and
+                then fitted the way the widget fits it. A flat swatch cannot show this
+                bug and did not.
+                ==================================================================== */
+
+            /* What BoxFit.cover does, in numbers. `ax`/`ay` are the Alignment. */
+            function fitCover(bw, bh, ax, ay) {
+                const sw = Math.max(bw, bh * ASPECT);
+                const sh = sw / ASPECT;
+                return {
+                    sw,
+                    sh,
+                    l: (bw - sw) * ax,
+                    t: (bh - sh) * ay,
+                    vis: (bw * bh) / (sw * sh),
+                };
+            }
+
+            /* The jacket itself: a cover with a title, an author and some furniture on
+                it, at ASPECT. `boxW` is the *box* width rather than the art's, because
+                that is what _fallback() measures against kGeneratedCoverMinWidth. */
+            function jacketSpan(b, f, left, top, cls, boxW) {
+                const pos =
+                    "width:" +
+                    r2(f.sw) +
+                    "px;height:" +
+                    r2(f.sh) +
+                    "px;left:" +
+                    r2(left) +
+                    "px;top:" +
+                    r2(top) +
+                    "px;";
+
+                if (!b.thumb) {
+                    const gen = generatedCoverColor(b.isbn);
+                    /* Below the floor the app draws the colour block alone: the title is
+                    13.5% of the width, so a narrower cover sets it under 7pt and it
+                    reads as a smudge. Phase 4 shipped exactly that. */
+                    if (boxW < GEN_MIN_W) {
+                        return (
+                            '<span class="jk gen ' +
+                            cls +
+                            '" style="' +
+                            pos +
+                            "background:" +
+                            gen +
+                            '"></span>'
+                        );
+                    }
+                    return (
+                        '<span class="jk gen ' +
+                        cls +
+                        '" style="' +
+                        pos +
+                        'background:#efe7d6;color:#1f2d27">' +
+                        '<span class="blk" style="background:' +
+                        gen +
+                        '"></span><b style="font-size:' +
+                        r2(Math.max(2, f.sw * 0.135)) +
+                        "px;padding:" +
+                        r2(f.sw * 0.08) +
+                        "px " +
+                        r2(f.sw * 0.09) +
+                        'px">' +
+                        esc(b.title) +
+                        "</b></span>"
+                    );
+                }
+
+                const ink = luminance(b.c) < 0.45 ? "#ffffff" : "#1a1a12";
+                const pad = f.sw * 0.095;
+                const ts = Math.max(2, f.sw * (b.st === 1 ? 0.165 : 0.142));
+                const as = Math.max(1.4, f.sw * 0.07);
+                const bg =
+                    "linear-gradient(158deg," +
+                    mix(b.c, "#ffffff", 0.12) +
+                    "," +
+                    mix(b.c, "#000000", 0.24) +
+                    ")";
+                let inner;
+                if (b.st === 0) {
+                    inner =
+                        '<b style="font-size:' +
+                        r2(ts) +
+                        'px">' +
+                        esc(b.title) +
+                        '</b><span class="rule" style="margin:' +
+                        r2(pad * 0.55) +
+                        'px 0"></span><i style="font-size:' +
+                        r2(as) +
+                        'px;margin-top:auto">' +
+                        esc(b.author) +
+                        "</i>";
+                } else if (b.st === 1) {
+                    inner =
+                        '<b style="font-size:' +
+                        r2(ts) +
+                        'px">' +
+                        esc(b.title) +
+                        '</b><i style="font-size:' +
+                        r2(as) +
+                        "px;margin-top:" +
+                        r2(pad * 0.6) +
+                        'px">' +
+                        esc(b.author) +
+                        "</i>";
+                } else {
+                    inner =
+                        '<span class="band" style="height:' +
+                        r2(f.sh * 0.05) +
+                        'px"></span><b style="font-size:' +
+                        r2(ts) +
+                        'px">' +
+                        esc(b.title) +
+                        '</b><i style="font-size:' +
+                        r2(as) +
+                        "px;margin-top:" +
+                        r2(pad * 0.35) +
+                        'px">' +
+                        esc(b.author) +
+                        "</i>";
+                }
+                return (
+                    '<span class="jk s' +
+                    b.st +
+                    " " +
+                    cls +
+                    '" style="' +
+                    pos +
+                    "background:" +
+                    bg +
+                    ";color:" +
+                    ink +
+                    ";padding:" +
+                    r2(pad) +
+                    'px">' +
+                    inner +
+                    "</span>"
+                );
+            }
+
+            /* The flame's reveal, carried through every option unchanged so it can be
+                judged against each one: a date at STAMP_MAX covers or fewer, a warm
+                mark past that. FittedBox(scaleDown) in the Dart becomes a min() here. */
+            function flameBits(b, wPt, o) {
+                if (!o.lit) return "";
+                /* A reading book has no finish month to stamp, and cardStampMonth returns
+                   null for exactly that reason. It takes the mark instead. */
+                if (o.stamped && b.m) {
+                    return (
+                        '<span class="stamp" style="font-size:' +
+                        r2(Math.min(2.8 * ROW_U, wPt * 0.4)) +
+                        'px">' +
+                        b.m +
+                        "</span>"
+                    );
+                }
+                return o.marked || (o.stamped && !b.m)
+                    ? '<span class="mark"></span>'
+                    : "";
+            }
+
+            function boxStyle(it, wPt, hPt) {
+                let s = "width:" + r2(wPt) + "px;height:" + r2(hPt) + "px;";
+                /* A face at the front of a pressed row carries its own gap, because the
+                   row itself has none: spines behind it are shelved touching, which is
+                   what books on a shelf do. */
+                if (it.gap) s += "margin-right:" + r2(GAP_U * ROW_U) + "px;";
+                if (it.xU !== undefined) {
+                    s +=
+                        "position:absolute;bottom:0;left:" +
+                        r2(it.xU * ROW_U) +
+                        "px;z-index:" +
+                        it.z +
+                        ";";
+                }
+                return s;
+            }
+
+            /* A cover, face out. */
+            function faceHtml(it, o) {
+                const wPt = it.wU * ROW_U,
+                    hPt = it.hU * ROW_U;
+                const ax = o.ax === undefined ? 0.5 : o.ax;
+                const ay = o.ay === undefined ? 0.5 : o.ay;
+                const f = fitCover(wPt, hPt, ax, ay);
+                const cropped = f.vis < 0.995;
+                /* The bookmark, on a book that is still open. Two thirds of the way
+                   across, hanging 5% of the height over the head. */
+                const ribbon = it.b.reading
+                    ? '<span class="ribbon" style="left:' +
+                      r2(wPt * 0.66) +
+                      "px;width:" +
+                      r2(Math.max(2, wPt * 0.1)) +
+                      "px;top:" +
+                      r2(-hPt * 0.05) +
+                      "px;height:" +
+                      r2(hPt * 0.34) +
+                      'px"></span>'
+                    : "";
+                return (
+                    '<i class="bk" style="' +
+                    boxStyle(it, wPt, hPt) +
+                    '">' +
+                    (o.diag && cropped
+                        ? jacketSpan(it.b, f, f.l, f.t, "gh", wPt)
+                        : "") +
+                    '<span class="cl">' +
+                    jacketSpan(it.b, f, f.l, f.t, "", wPt) +
+                    '</span><span class="bnd" style="width:' +
+                    r2(1.2 * ROW_U) +
+                    'px"></span>' +
+                    ribbon +
+                    flameBits(it.b, wPt, o) +
+                    (o.diag && cropped ? '<span class="cutline"></span>' : "") +
+                    "</i>"
+                );
+            }
+
+            /* A spine. No fit, no crop: the tone is spineTintFor of the stored
+                books.cover_color, which is what the read pile already does. */
+            function spineHtml(it, o) {
+                const wPt = it.wU * ROW_U,
+                    hPt = it.hU * ROW_U;
+                const cover = it.b.thumb
+                    ? it.b.c
+                    : generatedCoverColor(it.b.isbn);
+                const tint = spineTintFor(cover);
+                const titled = it.kind !== "sliver";
+                const fs = Math.min(wPt * SPINE_TITLE_RATIO, 6.5);
+                return (
+                    '<i class="bk" style="' +
+                    boxStyle(it, wPt, hPt) +
+                    "background:" +
+                    tint +
+                    '"><span class="sp">' +
+                    (titled
+                        ? '<span class="band" style="top:' +
+                          r2(hPt * 0.07) +
+                          'px"></span><span class="band" style="bottom:' +
+                          r2(hPt * 0.07) +
+                          'px"></span>' +
+                          '<span class="ttl" style="font-size:' +
+                          r2(fs) +
+                          "px;max-height:" +
+                          r2(hPt * 0.78) +
+                          'px">' +
+                          esc(it.b.title) +
+                          "</span>"
+                        : /* A sliver: tone and a separator, and it stops claiming to say
+                             which book it is. The hairline is the read pile's own. */
+                          '<span class="sep"></span>') +
+                    "</span>" +
+                    (it.b.reading
+                        ? '<span class="ribbon" style="left:' +
+                          r2(wPt * 0.3) +
+                          "px;width:" +
+                          r2(Math.max(1.5, wPt * 0.22)) +
+                          "px;top:" +
+                          r2(-hPt * 0.05) +
+                          "px;height:" +
+                          r2(hPt * 0.3) +
+                          'px"></span>'
+                        : "") +
+                    flameBits(it.b, wPt, o) +
+                    "</i>"
+                );
+            }
+
+            function itemHtml(it, o) {
+                return it.kind === "face" ? faceHtml(it, o) : spineHtml(it, o);
+            }
+
+            /* ====================================================================
+                SECTION 4b: the layouts
+
+                Each returns rows of items measured in *drawing units*, so the width
+                check against CARD_UNITS is the same check the widget makes. Nothing
+                below hard-codes a point size.
+                ==================================================================== */
+
+            /* _tierFor, verbatim. The first tier is the only one that agrees with
+                ASPECT: 20/30 is exactly 2/3. */
+            function tierFor(count) {
+                if (count <= 3) return { w: 20, h: 30 };
+                if (count <= 6) return { w: 11, h: 22 };
+                return { w: 5.4, h: 15 };
+            }
+
+            /* Today's row, jitter included. Two jitter modes:
+
+                `aspect` is the shipped one -- width and height are perturbed
+                independently, so the box aspect wanders and every cover is cropped by a
+                different amount. That is why the row reads as broken rather than as
+                organic.
+
+                `size` scales both together from one hash, so the crop is at least
+                uniform. It does not fix the crop; it fixes only the inconsistency, and
+                seeing that it is not enough is the point of the toggle. */
+            function layoutToday(books, o) {
+                const t = tierFor(books.length);
+                const items = books.map((b) => {
+                    const h = bookHash(b.isbn);
+                    if (o.sizeJitter) {
+                        const s = 1 + ((h % 7) / 7) * 0.2;
+                        return { b, wU: t.w * s, hU: t.h * s, kind: "face" };
+                    }
+                    return {
+                        b,
+                        wU: t.w + (h % 3),
+                        hU: t.h + (Math.floor(h / 3) % 4),
+                        kind: "face",
+                    };
+                });
+                return { rows: [{ items }] };
+            }
+
+            /* Faces at ASPECT, filling a width budget, with the jitter applied as one
+                scale per book so the aspect cannot drift. Height is clamped twice: by
+                `hCapU` -- 30 units, today's full tier, so a two-book card does not
+                become two enormous covers -- and by the well.
+
+                This is the shared primitive behind options 2, 3, 5 and 7. */
+            function fitFaces(books, opt) {
+                const jitter = opt.jitter !== false;
+                const scales = books.map((b) =>
+                    jitter ? 1 + ((bookHash(b.isbn) % 5) / 5) * 0.18 : 1,
+                );
+                const sum = scales.reduce((a, c) => a + c, 0);
+                let unitW = opt.budgetU / sum;
+                const cap = Math.min(
+                    opt.hCapU === undefined ? 30 : opt.hCapU,
+                    H_BUDGET_U,
+                );
+                const maxH = (unitW * Math.max.apply(null, scales)) / ASPECT;
+                if (maxH > cap) unitW *= cap / maxH;
+                return books.map((b, i) => {
+                    const wU = unitW * scales[i];
+                    return { b, wU, hU: wU / ASPECT, kind: "face" };
+                });
+            }
+
+            /* Option 2: honour ASPECT and keep every cover the card draws today. */
+            function layoutAspect(books) {
+                const n = books.length;
+                return {
+                    rows: [
+                        {
+                            items: fitFaces(books, {
+                                budgetU: CARD_UNITS - GAP_U * (n - 1),
+                            }),
+                        },
+                    ],
+                };
+            }
+
+            /* Option 3: cap the row and print the remainder.
+
+                  `CAP` is 8 because that is roughly where a cover at ASPECT stops being
+                  legible, and because the hero figure already states the total -- the row
+                  does not have to be the inventory.
+
+                  There is a real case for 6 instead, and it is not about size: kCardStampMax
+                  is 6, so a row capped at six is a row where the candlelight reveal always
+                  prints a date on every cover instead of degrading to the warm mark. The
+                  cap and the reveal would stop being two independent numbers. */
+            const CAP = 8;
+            const PLATE_U = 7.5;
+            function layoutCap(books, o, total) {
+                const n = Math.min(books.length, CAP);
+                const shown = books.slice(0, n);
+                const rest = total - n;
+                const plate = rest > 0;
+                const gaps = GAP_U * (n - 1 + (plate ? 1 : 0));
+                const items = fitFaces(shown, {
+                    budgetU: CARD_UNITS - gaps - (plate ? PLATE_U : 0),
+                });
+                const tallest = Math.max.apply(
+                    null,
+                    items.map((i) => i.hU),
+                );
+                return {
+                    rows: [{ items }],
+                    plate: plate
+                        ? { wU: PLATE_U, hU: tallest * 0.42, rest }
+                        : null,
+                };
+            }
+
+            /* ---- the shelf budget, hoisted, because three things now read it ----
+
+               `layoutTwoRows`, `boardPlan` and the capacity table have to agree about
+               how tall a cover on a two-board card may be, and a second copy of this
+               arithmetic is how the tiers drifted from ASPECT in the first place. */
+
+            /* One board: today's full tier, 30 units, so a two-book card is not
+               redesigned into two enormous covers. */
+            const CAP1_U = Math.min(30, H_BUDGET_U);
+
+            /* What a second board costs: another board, its air, and the 6pt between
+               shelves. Plus half a unit of slack -- the shareable card's overflow test
+               exists because a row with zero slack passes in CI's fixed-width test
+               font and clips on a phone. */
+            const SHELF_EXTRA_U = BOARD_U + BOARD_GAP_U + 6 / ROW_U;
+
+            /* Air left above the top board.
+
+               Bounded, and tightly. Push this past ~1.7 units and the cover width it
+               leaves drops below MIN_FACE_U, at which point a two-board card is not
+               legal by its own rule. **Two boards of legible covers only just fit in a
+               207pt well** -- see CAP3_W_U below for what that means for a third. */
+            const BOARD_SLACK_U = 1.5;
+            const CAP2_U = (H_BUDGET_U - SHELF_EXTRA_U) / 2 - BOARD_SLACK_U;
+
+            /* The floor under a face-out cover, and it is the app's own number.
+
+               kGeneratedCoverMinWidth is where generated_cover.dart stops drawing a
+               title, because at 13.5% of the width it lands under 7pt. A real jacket
+               sets its own type at similar fractions, so the same width is where a
+               face-out cover stops carrying its title. Below it, add a board. */
+            const MIN_FACE_U = GEN_MIN_W / ROW_U;
+
+            /* The binding band, from _Cover. Load-bearing twice over here: it is the
+               absolute floor under a visible sliver, because a step narrower than this
+               shows black and nothing else. */
+            const BIND_U = 1.2;
+
+            /* The floor under the visible sliver of an overlapped cover.
+
+               Three units: the binding band plus the same again in artwork. It is also
+               roughly what a real shelf shows when a row of hardbacks leans -- a 30mm
+               spine on a 130mm board is 23%, and 3 of 17.5 units is 17%. Below this the
+               row stops being books and becomes a comb, which is a judgement rather
+               than a measurement, so the capacity table prints both this ceiling and
+               the geometric one at BIND_U. */
+            const MIN_STEP_U = 3;
+
+            /* Covers hold at this width once the row starts overlapping: the widest a
+               two-board card can carry, so the step absorbs the count rather than the
+               covers shrinking with it. */
+            const OVERLAP_W_U = CAP2_U * ASPECT;
+
+            /* ---- the three states a book on this shelf can be drawn in ----
+
+               One rule picks between them, and it is `_fallback()`'s rule generalised:
+               **draw the richest thing the width can carry.** That function already
+               does exactly this for one decision -- GeneratedCover above
+               kGeneratedCoverMinWidth, a bare colour block below it -- and applying the
+               same test at two more thresholds is what produces a phase-out without
+               anybody typing a book count.
+
+                 w >= MIN_FACE_U            a face: the jacket, whole
+                 w >= MIN_TITLED_SPINE_U    a spine with its title running up it
+                 else                       a sliver: toned, separated, untitled
+            */
+
+            /* A spine's width at the card's spine height, from BookVertical's own
+               proportions rather than a new number: the read pile draws a spine 26 x 124,
+               so a spine as tall as a cover on a two-board card is 26 * (h / 124) wide. */
+            const SPINE_W_U = (26 / 124) * CAP2_U;
+
+            /* The floor under a *titled* spine. The read pile sets a 12pt title on a 26pt
+               spine -- 46% of the width -- and 5pt is where rotated type stops being
+               readable at arm's length, so a titled spine cannot be narrower than
+               5 / 0.46 points. Below this a spine still has a tone and a separator, but
+               it stops claiming to say which book it is. */
+            const SPINE_TITLE_RATIO = 12 / 26;
+            const MIN_TITLED_SPINE_U = 5 / SPINE_TITLE_RATIO / ROW_U;
+
+            /* The floor under an untitled sliver. Two units: the 1pt hairline the read
+               pile draws between spines, plus about 5pt of tone either side of it, which
+               is enough to read as "another book" rather than as a gradient. Narrower
+               than MIN_STEP_U because a sliver of *spine* has no artwork to lose --
+               that is the whole reason the phase-out reaches further than `boards`. */
+            const MIN_SLIVER_U = 2;
+
+            /* Most faces the front of the shelf will carry, however few books there are
+               past them. Five, because a sixth face pushes the first spine off the top
+               board and the front group stops reading as a group. */
+            const PHASE_FACE_MAX = 5;
+
+            /* Books per board at a given step, and the two ceilings that follow. */
+            const perAtStep = (step) =>
+                1 + Math.floor((CARD_UNITS - OVERLAP_W_U) / step);
+            const MAX_BOOKS = 2 * perAtStep(MIN_STEP_U);
+            const MAX_BOOKS_GEOMETRIC = 2 * perAtStep(BIND_U);
+
+            /* Why the answer is two boards and not three.
+
+               A third board leaves each row this wide, and it is well under
+               MIN_FACE_U -- so a three-board card cannot carry a cover that draws its
+               own title, whatever the count. The ceiling on boards is the well's
+               height, not a design preference, and this is the number that says so. */
+            const CAP3_W_U =
+                ((H_BUDGET_U - 2 * SHELF_EXTRA_U) / 3 - BOARD_SLACK_U) * ASPECT;
+
+            /* Which way a stack leans, and it is not a cosmetic choice.
+
+               A cover is only whole if nothing is painted over it, so whichever end of
+               the stack is on top is the end that shows a complete jacket -- and the
+               other covers show the side that is *not* covered.
+
+                 left  - newest leftmost and whole, z falling to the right. Keeps
+                         `cardCoverBooks`' order and its documented reason (the leftmost
+                         is the one that survives a crop), and reads left-to-right
+                         newest-first. Every other cover shows its fore-edge side.
+                 right - oldest leftmost, newest rightmost and whole. Every other cover
+                         shows its spine side, which is the more informative sliver --
+                         binding band, and where a title starts. Costs the order.
+
+               There is no third option: showing the left of each cover requires the
+               right of each cover to be covered, which is the definition of leaning
+               right. The toggle exists because the trade is real. */
+            function leanItems(list, wU, hU, stepU, lean) {
+                const seq = lean === "right" ? list.slice().reverse() : list;
+                return seq.map((b, i) => {
+                    /* One scale for both dimensions. Jittering them separately is what
+                       broke the shipped row, and it would break this one identically. */
+                    const s = 1 - ((bookHash(b.isbn) % 5) / 5) * 0.1;
+                    return {
+                        b,
+                        wU: wU * s,
+                        hU: hU * s,
+                        kind: "face",
+                        xU: i * stepU,
+                        z: lean === "right" ? i + 1 : seq.length - i,
+                    };
+                });
+            }
+
+            /* Option 4: overlap them.
+
+                Drawn oldest-first left to right, so the newest book is on top of the
+                stack and the one cover shown whole. That reverses today's order, which
+                is a real cost and is called out in the notes -- but the thing being
+                hidden is now *occlusion* rather than a crop, and the eye forgives one
+                and not the other. */
+            function layoutStack(books, o) {
+                const n = books.length;
+                const hU = Math.min(20, H_BUDGET_U);
+                const wU = hU * ASPECT;
+                const stepU = Math.min(
+                    wU * 0.62,
+                    n > 1 ? (CARD_UNITS - wU) / (n - 1) : 0,
+                );
+                return {
+                    rows: [
+                        {
+                            items: leanItems(
+                                books,
+                                wU,
+                                hU,
+                                stepU,
+                                (o && o.lean) || "right",
+                            ),
+                            stack: true,
+                            heightU: hU,
+                        },
+                    ],
+                    stepU,
+                    baseWU: wU,
+                    shown: stepU / wU,
+                };
+            }
+
+            /* Option 5: a second board.
+
+                Past six books the well grows a second shelf. Under six nothing changes,
+                which is deliberate: the low tiers are already correct and the median
+                reader's card should not be redesigned to fix a bug at n=12. */
+            function layoutTwoRows(books) {
+                const n = books.length;
+                if (n <= 6) return layoutAspect(books);
+                const per = Math.ceil(n / 2);
+                /* One extra board, its air, the 6pt between shelves, and half a unit of
+                      slack: the shareable card's overflow test exists because a row with
+                      zero slack passes in CI's fixed-width test font and clips on a phone. */
+                const extraU = SHELF_EXTRA_U;
+                const capU = CAP2_U;
+                const top = books.slice(0, per);
+                const bottom = books.slice(per);
+                const mk = (list) =>
+                    fitFaces(list, {
+                        budgetU: CARD_UNITS - GAP_U * (per - 1),
+                        hCapU: capU,
+                    });
+                /* Both rows are sized off `per` so the two boards carry books of the
+                  same size; a short bottom row is centred, not stretched. */
+                const t = mk(top);
+                const bItems = mk(
+                    bottom.concat(top.slice(bottom.length)),
+                ).slice(0, bottom.length);
+                const b = bottom.map((bk, i) => ({
+                    b: bk,
+                    wU: bItems[i] ? bItems[i].wU : t[0].wU,
+                    hU: bItems[i] ? bItems[i].hU : t[0].hU,
+                    kind: "face",
+                }));
+                return { rows: [{ items: t }, { items: b }] };
+            }
+
+            /* ====================================================================
+               Option 8: two boards, overlapping only when the count demands it.
+
+               The hybrid of 4 and 5, and the one thing neither does alone: it spends
+               the well's unused height *first*, and only starts hiding covers once both
+               boards are full of covers at the app's own legibility floor.
+
+               Three regimes, in order of preference, and the rule is the same each
+               time -- take the cheapest layout whose covers still clear MIN_FACE_U:
+
+                 A  one board, gaps, nothing hidden          n <= 5
+                 B  two boards, gaps, nothing hidden         n <= 10
+                 C  two boards, overlapping                  n >= 11
+
+               In A and B a cover is as large as the width allows; in C it holds at
+               OVERLAP_W_U and the *step* absorbs the count, which is what makes the
+               layout scale without the covers dwindling. A reader who finishes their
+               eleventh book does not watch the other ten shrink.
+               ==================================================================== */
+            function boardPlan(n, reserveU) {
+                reserveU = reserveU || 0;
+                /* A. One board. Never reserved: a one-board shelf stands at the bottom of
+                   the well, below the seal, so holding the corner there would spend
+                   capacity protecting something nothing was covering. */
+                let w1 = (CARD_UNITS - GAP_U * (n - 1)) / n;
+                if (w1 / ASPECT > CAP1_U) w1 = CAP1_U * ASPECT;
+                if (n === 1 || w1 >= MIN_FACE_U) {
+                    return {
+                        mode: "A",
+                        boards: 1,
+                        per: n,
+                        wU: w1,
+                        hU: w1 / ASPECT,
+                        stepU: null,
+                        drawn: n,
+                        rest: 0,
+                    };
+                }
+
+                /* B. Two boards. Both are sized off the fuller row, so a short bottom
+                   board carries books the same size as the top one and is centred
+                   rather than stretched. */
+                const per = Math.ceil(n / 2);
+                let w2 = (CARD_UNITS - reserveU - GAP_U * (per - 1)) / per;
+                if (w2 / ASPECT > CAP2_U) w2 = CAP2_U * ASPECT;
+                if (w2 >= MIN_FACE_U) {
+                    return {
+                        mode: "B",
+                        boards: 2,
+                        per,
+                        wU: w2,
+                        hU: w2 / ASPECT,
+                        stepU: null,
+                        drawn: n,
+                        rest: 0,
+                    };
+                }
+
+                /* C. Two boards, overlapping.
+
+                   The plate has to be paid for out of the same 106 units, and only
+                   once there is something to put on it -- so capacity is computed
+                   twice: once assuming every book fits, and again with the plate's
+                   width reserved if it turns out they do not. The cost is a visible
+                   step down in the drawn count as the ceiling is crossed (the plate
+                   is about two covers' worth of sliver), which is ugly but honest. */
+                const perMax = perAtStep(MIN_STEP_U);
+                const overflows = n > 2 * perMax;
+                const availU = overflows
+                    ? CARD_UNITS - PLATE_U - GAP_U
+                    : CARD_UNITS;
+                const perFit = overflows
+                    ? 1 + Math.floor((availU - OVERLAP_W_U) / MIN_STEP_U)
+                    : perMax;
+                const p = Math.min(Math.ceil(n / 2), perFit);
+                const stepU = p > 1 ? (availU - OVERLAP_W_U) / (p - 1) : 0;
+                const drawn = Math.min(n, 2 * p);
+                return {
+                    mode: "C",
+                    boards: 2,
+                    per: p,
+                    wU: OVERLAP_W_U,
+                    hU: CAP2_U,
+                    stepU,
+                    drawn,
+                    rest: n - drawn,
+                    /* True once the step is at its floor and books are being dropped --
+                       the point past which no geometry helps and the plate is the only
+                       honest answer. */
+                    atCeiling: p === perFit && n > 2 * perFit,
+                };
+            }
+
+            function layoutBoards(books, o) {
+                const plan = boardPlan(books.length);
+                const lean = (o && o.lean) || "left";
+                const shown = books.slice(0, plan.drawn);
+                const topN =
+                    plan.boards === 1 ? plan.drawn : Math.ceil(plan.drawn / 2);
+                const halves = [shown.slice(0, topN), shown.slice(topN)];
+
+                const mkRow = (list) => {
+                    if (plan.stepU === null) {
+                        return {
+                            items: list.map((b) => {
+                                const s =
+                                    1 - ((bookHash(b.isbn) % 5) / 5) * 0.1;
+                                return {
+                                    b,
+                                    wU: plan.wU * s,
+                                    hU: plan.hU * s,
+                                    kind: "face",
+                                };
+                            }),
+                        };
+                    }
+                    return {
+                        items: leanItems(
+                            list,
+                            plan.wU,
+                            plan.hU,
+                            plan.stepU,
+                            lean,
+                        ),
+                        stack: true,
+                        heightU: plan.hU,
+                    };
+                };
+
+                const rows = [mkRow(halves[0])];
+                if (halves[1].length) rows.push(mkRow(halves[1]));
+                return {
+                    rows,
+                    plan,
+                    plate:
+                        plan.rest > 0
+                            ? {
+                                  wU: PLATE_U,
+                                  hU: plan.hU * 0.42,
+                                  rest: plan.rest,
+                              }
+                            : null,
+                    baseWU: plan.wU,
+                    stepU: plan.stepU,
+                    shown:
+                        plan.stepU === null
+                            ? undefined
+                            : Math.min(1, plan.stepU / plan.wU),
+                };
+            }
+
+            /* ====================================================================
+               Option 9: the phase-out.
+
+               A hybrid of 8 and 6, and the thing neither of them has: the front of the
+               shelf is **what the reader has open right now**, and everything behind it
+               is given up gradually rather than at a typed boundary.
+
+               `hybrid` faces out a fixed three and spines the rest, so the cut never
+               moves. `boards` keeps every book a face and pays for the count in
+               occlusion, so past 60 there is nothing left to give. This does neither.
+               It gives up *representation* in order, in three steps, and each step is
+               a renderer this app already ships:
+
+                 face   -> the jacket, whole              (BookWidget)
+                 spine  -> toned, title running up it     (BookVertical + spineTintFor)
+                 sliver -> toned, separated, untitled     (the read pile's dense state)
+
+               Two things fall out of that and both are the point:
+
+                 * **The face count shrinks as the library grows, and the books the
+                   reader is holding are the last thing given up.** F floats from
+                   PHASE_FACE_MAX down to however many books are open, and only then do
+                   the spines start to thin.
+                 * **It reaches much further than `boards`.** A sliver of spine has no
+                   artwork to throw away, so its floor is MIN_SLIVER_U rather than
+                   MIN_STEP_U, and capacity roughly doubles.
+
+               Nothing overlaps. Spines are pressed together, which is what books on a
+               shelf actually do, so the fore-edge/spine-side question the `lean` toggle
+               exists to answer does not arise here.
+               ==================================================================== */
+            function phasePlan(nReading, nFinished) {
+                const n = nReading + nFinished;
+                const faceW = OVERLAP_W_U;
+
+                /* Never fewer faces than there are open books -- that is the promise the
+                   option makes -- but one at minimum, so a reader with nothing open still
+                   gets a face at the front. */
+                const minFaces = Math.max(
+                    1,
+                    Math.min(nReading, PHASE_FACE_MAX),
+                );
+
+                /* A. Everything fits as a face. Then this *is* `boards`, and it says so
+                      rather than reimplementing the two gapped regimes. */
+                const bp = boardPlan(n);
+                if (bp.stepU === null) {
+                    return {
+                        mode: "A",
+                        boards: bp.boards,
+                        faces: n,
+                        spineW: null,
+                        top: bp.per,
+                        faceW: bp.wU,
+                        faceH: bp.hU,
+                        drawn: n,
+                        rest: 0,
+                        counts: { face: n, spine: 0, sliver: 0 },
+                    };
+                }
+
+                /* How many spines a board holds beside F faces, and on its own. Faces
+                   carry a gap each -- between them, and one more before the first spine.
+                   Spines are pressed together and carry none. */
+                const capTop = (F, sw) =>
+                    Math.max(
+                        0,
+                        Math.floor(
+                            (CARD_UNITS - F * faceW - F * GAP_U) / sw + 1e-9,
+                        ),
+                    );
+                const capBot = (sw, plate) =>
+                    Math.max(
+                        0,
+                        Math.floor(
+                            (CARD_UNITS - (plate ? PLATE_U + GAP_U : 0)) / sw +
+                                1e-9,
+                        ),
+                    );
+
+                /* B. Spines at their natural width, and as many faces as will still
+                      leave room for every remaining book. F falls one at a time, so the
+                      front group is as large as the library allows. */
+                for (let F = PHASE_FACE_MAX; F >= minFaces; F--) {
+                    if (F * faceW + F * GAP_U > CARD_UNITS) continue;
+                    if (
+                        F + capTop(F, SPINE_W_U) + capBot(SPINE_W_U, false) >=
+                        n
+                    ) {
+                        return build(F, SPINE_W_U, "B");
+                    }
+                }
+
+                /* C. The front group is down to the open books, so the spines thin.
+
+                   Solved, then walked. The closed form -- both boards' remaining width
+                   over the number of books that need shelving -- is *not* enough on its
+                   own: each board floors its own slot count independently, so a spine
+                   width that fits 58 books' worth of total width can still yield 22 + 35
+                   slots and drop one. The walk gives that fraction of a slot back. */
+                const F = minFaces;
+                const spineRoom = 2 * CARD_UNITS - F * faceW - F * GAP_U;
+                const need = n - F;
+                let sw = Math.min(SPINE_W_U, spineRoom / need);
+                for (
+                    let i = 0;
+                    i < 96 &&
+                    sw > MIN_SLIVER_U &&
+                    capTop(F, sw) + capBot(sw, false) < need;
+                    i++
+                ) {
+                    sw = Math.max(MIN_SLIVER_U, sw * 0.98);
+                }
+                if (capTop(F, sw) + capBot(sw, false) >= need) {
+                    return build(F, sw, "C");
+                }
+
+                /* D. At the sliver floor, with a plate for whatever is left over. */
+                return build(F, MIN_SLIVER_U, "D", true);
+
+                function build(F, sw, mode, plate) {
+                    const top = capTop(F, sw);
+                    const bot = capBot(sw, plate);
+                    const spines = Math.min(n - F, top + bot);
+                    const drawn = F + spines;
+                    const counts = { face: F, spine: 0, sliver: 0 };
+                    /* The renderer is chosen by the width, so the split between titled
+                       spines and slivers is a consequence of `sw`, not a third decision. */
+                    if (sw >= MIN_TITLED_SPINE_U) counts.spine = spines;
+                    else counts.sliver = spines;
+                    return {
+                        mode,
+                        boards: spines > top ? 2 : 1,
+                        faces: F,
+                        spineW: sw,
+                        top: F + Math.min(spines, top),
+                        faceW,
+                        faceH: CAP2_U,
+                        drawn,
+                        rest: n - drawn,
+                        atCeiling: mode === "D",
+                        counts,
+                    };
+                }
+            }
+
+            function layoutPhase(books, o, total) {
+                const nReading = books.filter((b) => b.reading).length;
+                const plan = phasePlan(nReading, books.length - nReading);
+                const shown = books.slice(0, plan.drawn);
+
+                const mk = (b, i) => {
+                    if (i < plan.faces) {
+                        /* The front group. One scale for both dimensions, so the aspect
+                           cannot drift -- the fault this whole page is about. */
+                        const s =
+                            plan.mode === "A"
+                                ? 1 - ((bookHash(b.isbn) % 5) / 5) * 0.1
+                                : 1;
+                        return {
+                            b,
+                            wU: plan.faceW * s,
+                            hU: plan.faceH * s,
+                            kind: "face",
+                            gap: true,
+                        };
+                    }
+                    return {
+                        b,
+                        wU: plan.spineW,
+                        hU:
+                            plan.faceH *
+                            (1 - ((bookHash(b.isbn) % 4) / 4) * 0.06),
+                        kind:
+                            plan.spineW >= MIN_TITLED_SPINE_U
+                                ? "spine"
+                                : "sliver",
+                    };
+                };
+
+                const items = shown.map(mk);
+                const rows = [
+                    { items: items.slice(0, plan.top), pressed: true },
+                ];
+                if (items.length > plan.top) {
+                    rows.push({ items: items.slice(plan.top), pressed: true });
+                }
+                return {
+                    rows,
+                    phase: plan,
+                    plate:
+                        plan.rest > 0
+                            ? {
+                                  wU: PLATE_U,
+                                  hU: plan.faceH * 0.42,
+                                  rest: plan.rest,
+                              }
+                            : null,
+                    plateRow: rows.length - 1,
+                };
+            }
+
+            /* ====================================================================
+               THE SHELF, as decided.
+
+               Two boards, three fixed sizes, and **nothing is ever squeezed**. What
+               `boards` and `phase` differ in turns out to be one choice and not two
+               designs -- are read books drawn as covers or as spines -- so it stops
+               being ours to make and becomes a setting. Everything those two options did
+               to absorb a large library (shrinking the step to 3 units, thinning spines
+               to 6.3pt) is gone: past capacity the shelf says how many it is not
+               showing.
+
+               Sizes, all fixed, none invented:
+
+                 SHELF_FACE_U   the widest cover a two-board card can carry
+                 SHELF_SPINE_U  BookVertical's own proportion at that height
+                 SHELF_STEP_U   equal to the spine width, because a leaning cover shows
+                                exactly a spine's worth of itself -- which is what a
+                                shelf of leaning books actually looks like, and it means
+                                the two cover layouts and the spine layout are all
+                                measured in the same unit
+               ==================================================================== */
+            const SHELF_FACE_U = CAP2_U * ASPECT;
+            const SHELF_SPINE_U = SPINE_W_U;
+            const SHELF_STEP_U = SPINE_W_U;
+
+            /* The seal's disc, and the room the **top board** holds clear for it.
+
+               The seal is 15 units across on the card, whose board is 98 of *those* units
+               while this page's board is `CARD_UNITS` of its own -- the 7.5% deviation this
+               file documents at CAP1_U. Converted rather than retyped, so a change to the
+               seal moves this and not a hardcoded 16.2.
+
+               Why at all: the seal is a blind emboss the candle reveals, and the top board
+               was standing in front of it -- the 18th overlapping book left 38% of the disc
+               showing, a full row of spines 15%. See `docs/mockups/card-seal/`, option
+               `reserve`, which is what shipped. The cost is in the capacity table below:
+               three books overlapping and four as spines. */
+            const SHELF_SEAL_U = 15 * (CARD_UNITS / 98);
+            const SHELF_RESERVE_U = SHELF_SEAL_U + GAP_U;
+
+            /* The three layouts this page costed, of which **two ship**. `overlap` only
+               means anything once a board is full: below that it is identical to `single`,
+               because overlapping is permission to lean, not an instruction to.
+
+               `single` was withdrawn. It is kept here because it is the evidence: the
+               capacity table below is what says it holds 10 where overlapping holds 34, and
+               a setting whose second option hides two thirds of a real library is a
+               question the product should answer itself. `CardCoverDisplay` in
+               `card_shelf_plan.dart` now has two values, and the panel has one group. */
+            const SHELF_MODES = [
+                ["single", "Covers, side by side (withdrawn)"],
+                ["overlap", "Covers, overlapping"],
+                ["spine", "Spines"],
+            ];
+
+            /* How many items of width `w` advancing by `step` fit in `room`. One formula
+               for all three modes: item i occupies [i*step, i*step + w]. */
+            function fitCount(room, w, step) {
+                return room < w ? 0 : 1 + Math.floor((room - w) / step + 1e-9);
+            }
+
+            /* The shelf, solved twice when it needs two boards.
+
+               The reservation is the *top* board's to pay, because the seal is in the well's
+               top-right corner -- but only once it is known that a top board exists, and
+               that is not known until the shelf has been solved. So the bare shelf is solved
+               first and the answer is thrown away if it wants two boards. Ported to
+               `cardShelfPlan`, which does the same thing for the same reason. */
+            function shelfPlan(nReading, nRead, mode) {
+                const bare = shelfPass(nReading, nRead, mode, 0);
+                if (bare.boards <= 1) return bare;
+                return shelfPass(nReading, nRead, mode, SHELF_RESERVE_U);
+            }
+
+            function shelfPass(nReading, nRead, mode, reserveU) {
+                /* The front group is capped by what it must leave behind: **the top board
+                   has to be able to draw at least one finished book**, after the seal's
+                   corner has been held.
+
+                   The books the hero counts have first claim on the shelf; an open book is
+                   context for them. Sizing the front group against the whole board gives
+                   five, and five open covers spend 92 of CARD_UNITS' 106 -- less than one
+                   SHELF_FACE_U left, and nothing at all once SHELF_RESERVE_U is held -- so a
+                   reader with 22 finished books and six on the go saw none of the 22 on the
+                   top board, and none at all in the one-board hero tile, under a figure
+                   reading 22. That was a real reported bug, not a hypothetical.
+
+                   Half a board was the first fix and gave two. It held, but half is a
+                   fraction with no argument behind it, and it missed the third open book by
+                   0.64 of a unit: three covers in a row want 53.64 and half of CARD_UNITS is
+                   53. So the cap is stated as the guarantee instead -- whatever is left of
+                   the top board once SHELF_RESERVE_U and one whole SHELF_FACE_U are set
+                   aside -- which gives three and says why. One whole cover, because that is
+                   the widest a finished book is ever drawn: spines get the guarantee several
+                   times over, which is the right direction to be wrong in.
+
+                   Not through `fitCount`: that charges n-1 gaps because it measures books
+                   standing in a row, and the last open book still needs a gap between it and
+                   the first finished one, so the front group charges n. A plain division is
+                   the right shape here. It comes out at 3.875, nowhere near an integer, so
+                   this one carries no epsilon, unlike `fitCount`'s 1e-9: there is no
+                   tolerance for a later change to hide inside.
+
+                   SHELF_RESERVE_U rather than this pass's `reserveU`: the cap is one number
+                   for every shelf, the way `kCardReadingMax` is a constant, so the one-board
+                   pass that never pays the reserve still caps its front group at three.
+
+                   Ported to `kCardReadingMax` in `card_shelf_plan.dart`. The old bug's
+                   escape hatch went with it: the capacity table below now quotes three open
+                   books alongside nought, one and two, so a cap that starves the top board
+                   shows up as a column instead of hiding past the last one printed. */
+                const r = Math.min(
+                    nReading,
+                    Math.floor(
+                        (CARD_UNITS - SHELF_RESERVE_U - SHELF_FACE_U) /
+                            (SHELF_FACE_U + GAP_U),
+                    ),
+                );
+                const n = r + nRead;
+
+                /* A. Every book on the shelf is a cover and they all fit side by side, so
+                      they grow -- exactly `boards`' first two regimes. Refusing to squeeze
+                      does not mean refusing to fill: a two-book card should still be two
+                      large covers. */
+                if (mode !== "spine" || nRead === 0) {
+                    const bp = boardPlan(n, reserveU);
+                    if (bp.stepU === null) {
+                        return {
+                            mode,
+                            grown: true,
+                            boards: bp.boards,
+                            faceW: bp.wU,
+                            faceH: bp.hU,
+                            readW: bp.wU,
+                            readStep: bp.wU + GAP_U,
+                            readKind: "face",
+                            reading: r,
+                            top: bp.per,
+                            drawn: n,
+                            rest: 0,
+                        };
+                    }
+                }
+
+                /* B. Fixed sizes, two boards, a plate for the remainder. */
+                const readW = mode === "spine" ? SHELF_SPINE_U : SHELF_FACE_U;
+                const readStep =
+                    mode === "spine"
+                        ? SHELF_SPINE_U
+                        : mode === "overlap"
+                          ? SHELF_STEP_U
+                          : SHELF_FACE_U + GAP_U;
+
+                /* The front group: the open books, always whole covers, each carrying its
+                   own gap so the read books start clear of them. */
+                const frontU = r * (SHELF_FACE_U + GAP_U);
+                const topRoom = CARD_UNITS - frontU - reserveU;
+
+                const top = fitCount(topRoom, readW, readStep);
+                let bot = 0;
+                let plate = false;
+                if (top < nRead) {
+                    bot = fitCount(CARD_UNITS, readW, readStep);
+                    if (top + bot < nRead) {
+                        plate = true;
+                        bot = fitCount(
+                            CARD_UNITS - PLATE_U - GAP_U,
+                            readW,
+                            readStep,
+                        );
+                    }
+                }
+                const drawnRead = Math.min(nRead, top + bot);
+                return {
+                    mode,
+                    grown: false,
+                    boards: drawnRead > top ? 2 : 1,
+                    faceW: SHELF_FACE_U,
+                    faceH: CAP2_U,
+                    readW,
+                    readStep,
+                    readKind:
+                        mode === "spine"
+                            ? "spine"
+                            : mode === "overlap"
+                              ? "lean"
+                              : "face",
+                    reading: r,
+                    top: r + Math.min(drawnRead, top),
+                    drawn: r + drawnRead,
+                    rest: nRead - drawnRead,
+                    plate,
+                };
+            }
+
+            /* Capacity per mode, asked rather than solved -- a closed form here would be
+               a second copy of shelfPlan's arithmetic and would eventually disagree with
+               the drawings. */
+            function shelfCapacity(mode, nReading) {
+                let n = nReading;
+                while (
+                    n < 500 &&
+                    shelfPlan(nReading, n - nReading, mode).rest === 0
+                ) {
+                    n++;
+                }
+                return n - 1;
+            }
+            /* Nought through three open books, three because that is the front group's
+               cap: the row for the cap has to exist or the worst the open books can do to
+               capacity is never quoted, which is exactly how a front group of five covers
+               shipped. Indices are read directly in the prose below, so this array is the
+               table and the table is this array. */
+            const SHELF_MAX = {};
+            SHELF_MODES.forEach(([m]) => {
+                SHELF_MAX[m] = [0, 1, 2, 3].map((r) => shelfCapacity(m, r));
+            });
+
+            function layoutShelf(books, o) {
+                const reading = books.filter((b) => b.reading);
+                const read = books.filter((b) => !b.reading);
+                const mode = (o && o.readAs) || "overlap";
+                const plan = shelfPlan(reading.length, read.length, mode);
+
+                const front = reading.slice(0, plan.reading).map((b) => ({
+                    b,
+                    wU: plan.faceW,
+                    hU: plan.faceH,
+                    kind: "face",
+                    gap: true,
+                }));
+                const rest = read
+                    .slice(0, plan.drawn - plan.reading)
+                    .map((b) => {
+                        /* Height jitter only, from one hash, so the aspect cannot drift. */
+                        const j = 1 - ((bookHash(b.isbn) % 4) / 4) * 0.06;
+                        if (plan.readKind === "spine") {
+                            return {
+                                b,
+                                wU: plan.readW,
+                                hU: plan.faceH * j,
+                                kind: "spine",
+                            };
+                        }
+                        /* A cover varies only into the headroom it has above the title
+                           floor, so the jitter can never do the one thing it exists to
+                           avoid. `SHELF_FACE_U` sits 0.2 units over `MIN_FACE_U`, so a
+                           cover already at that width has nowhere to shrink to: 10% off
+                           it lands at 13.9 units, under the width at which a cover stops
+                           carrying its own title. Only the one-board grown sizes have
+                           room, and they keep the full range. Ported to
+                           `card_cover_row.dart`'s `_sizeUnits`. */
+                        const s =
+                            plan.grown && plan.readW > SHELF_FACE_U
+                                ? 1 - ((bookHash(b.isbn) % 5) / 5) * 0.1
+                                : 1;
+                        return {
+                            b,
+                            wU: plan.readW * s,
+                            hU: plan.faceH * s,
+                            kind: "face",
+                            gap: plan.readKind === "face",
+                        };
+                    });
+
+                const items = front.concat(rest);
+                const rows = [];
+                const mkRow = (list, offset) => {
+                    if (plan.readKind !== "lean") {
+                        return { items: list, pressed: true };
+                    }
+                    /* Leaning covers. Newest leftmost and whole, z falling to the right --
+                       the front group leans too, so the shelf reads as one gesture. */
+                    let x = 0;
+                    const placed = list.map((it, i) => {
+                        const at = x;
+                        x += it.gap ? it.wU + GAP_U : plan.readStep;
+                        return Object.assign({}, it, {
+                            xU: at,
+                            z: list.length - i,
+                        });
+                    });
+                    return { items: placed, stack: true, heightU: plan.faceH };
+                };
+
+                rows.push(mkRow(items.slice(0, plan.top), 0));
+                if (items.length > plan.top) {
+                    rows.push(mkRow(items.slice(plan.top), plan.top));
+                }
+                return {
+                    rows,
+                    shelf: plan,
+                    plate:
+                        plan.rest > 0
+                            ? {
+                                  wU: PLATE_U,
+                                  hU: plan.faceH * 0.42,
+                                  rest: plan.rest,
+                              }
+                            : null,
+                    plateRow: rows.length - 1,
+                };
+            }
+
+            /* Option 6: draw the spine the geometry already describes. */
+            function layoutSpines(books, o) {
+                const lay = layoutToday(books, o);
+                lay.rows[0].items.forEach((i) => (i.kind = "spine"));
+                return lay;
+            }
+
+            /* Option 7: face out the newest, spine the rest.
+
+                A bookshop shelf, and the only option that answers both questions at
+                once -- what did they just read, and how much do they read. The spine
+                width is solved for rather than fixed: spines shrink until they hit a
+                legibility floor, and anything that still does not fit goes to the
+                plate. */
+            const FACES = 3;
+            const MIN_SPINE_U = 3.4;
+            function layoutHybrid(books, o, total) {
+                const F = Math.min(FACES, books.length);
+                const faceH = Math.min(19, H_BUDGET_U);
+                const faceW = faceH * ASPECT;
+                const faceTotal = F * faceW;
+                const pool = books.slice(F);
+
+                let k = pool.length,
+                    spineW = MIN_SPINE_U,
+                    avail = 0;
+                for (; k > 0; k--) {
+                    const undrawn = total - F - k;
+                    const plateU = undrawn > 0 ? PLATE_U + GAP_U : 0;
+                    const gaps = GAP_U * (F + k - 1);
+                    avail = CARD_UNITS - faceTotal - gaps - plateU;
+                    if (avail / k >= MIN_SPINE_U) {
+                        spineW = Math.min(6.4, avail / k);
+                        break;
+                    }
+                }
+                const faces = books.slice(0, F).map((b) => ({
+                    b,
+                    wU: faceW,
+                    hU: faceH,
+                    kind: "face",
+                }));
+                const spines = pool.slice(0, k).map((b) => ({
+                    b,
+                    wU: spineW,
+                    hU: 15 + (Math.floor(bookHash(b.isbn) / 3) % 4),
+                    kind: "spine",
+                }));
+                const rest = total - F - spines.length;
+                return {
+                    rows: [{ items: faces.concat(spines) }],
+                    plate:
+                        rest > 0
+                            ? { wU: PLATE_U, hU: faceH * 0.42, rest }
+                            : null,
+                };
+            }
+
+            /* ====================================================================
+                SECTION 5: assembly
+                ==================================================================== */
+
+            function plateHtml(p) {
+                const wPt = p.wU * ROW_U,
+                    hPt = p.hU * ROW_U;
+                return (
+                    '<i class="plate" style="width:' +
+                    r2(wPt) +
+                    "px;height:" +
+                    r2(hPt) +
+                    "px;font-size:" +
+                    r2(Math.min(wPt * 0.42, 11)) +
+                    'px">+' +
+                    p.rest +
+                    "</i>"
+                );
+            }
+
+            /* How far a cover's artwork spills outside its box, per side. Zero when the
+                  box is cover-shaped, which is why the diagnostic view is empty for every
+                  option except the first two. */
+            function overhangOf(it, o) {
+                if (it.kind !== "face") return { l: 0, r: 0 };
+                const wPt = it.wU * ROW_U,
+                    hPt = it.hU * ROW_U;
+                const f = fitCover(
+                    wPt,
+                    hPt,
+                    o.ax === undefined ? 0.5 : o.ax,
+                    o.ay === undefined ? 0.5 : o.ay,
+                );
+                return {
+                    l: Math.max(0, -f.l),
+                    r: Math.max(0, f.sw - wPt + f.l),
+                };
+            }
+
+            function rowHtml(r, ri, lay, o) {
+                if (r.stack) {
+                    const hPt =
+                        Math.max.apply(
+                            null,
+                            r.items.map((i) => i.hU),
+                        ) * ROW_U;
+                    let wPt =
+                        Math.max.apply(
+                            null,
+                            r.items.map((i) => i.xU + i.wU),
+                        ) * ROW_U;
+                    /* The plate sits past the end of the stack on the first board only,
+                       and it is bottom-aligned like everything else standing here. */
+                    let plate = "";
+                    if (
+                        ri ===
+                            (lay.plateRow === undefined ? 0 : lay.plateRow) &&
+                        lay.plate
+                    ) {
+                        const x = wPt + GAP_U * ROW_U;
+                        plate =
+                            '<span style="position:absolute;bottom:0;display:flex;left:' +
+                            r2(x) +
+                            'px;z-index:999">' +
+                            plateHtml(lay.plate) +
+                            "</span>";
+                        wPt = x + lay.plate.wU * ROW_U;
+                    }
+                    return (
+                        '<div class="row stack" style="height:' +
+                        r2(hPt) +
+                        "px;width:" +
+                        r2(wPt) +
+                        'px;margin:0 auto">' +
+                        r.items.map((i) => itemHtml(i, o)).join("") +
+                        plate +
+                        "</div>"
+                    );
+                }
+                const bits = r.items.map((i) => itemHtml(i, o));
+                const plateOn = lay.plateRow === undefined ? 0 : lay.plateRow;
+                if (ri === plateOn && lay.plate)
+                    bits.push(plateHtml(lay.plate));
+                return (
+                    '<div class="row" style="gap:' +
+                    r2(r.pressed ? 0 : GAP_U * ROW_U) +
+                    'px">' +
+                    bits.join("") +
+                    "</div>"
+                );
+            }
+
+            /* The crop, stated exactly.
+
+                    The in-row ghosts show the aggregate, and at twelve covers they overlap
+                    each other into a band -- which is itself true, but not legible. So the
+                    diagnostic also draws the first few jackets at 3x: the whole jacket, with
+                    the window the export actually keeps picked out on it. This is the one
+                    figure on the page that makes the defect unarguable. */
+            const ZOOM = 3;
+            function cropCallout(lay, o) {
+                if (!o.diag) return "";
+                const faces = lay.rows[0].items
+                    .filter((i) => i.kind === "face")
+                    .slice(0, 3);
+                const ax = o.ax === undefined ? 0.5 : o.ax;
+                const ay = o.ay === undefined ? 0.5 : o.ay;
+                const cells = faces
+                    .map((it) => {
+                        const wPt = it.wU * ROW_U * ZOOM,
+                            hPt = it.hU * ROW_U * ZOOM;
+                        const f = fitCover(wPt, hPt, ax, ay);
+                        const keep = f.vis;
+                        return (
+                            '<div class="zcell"><div class="zc" style="width:' +
+                            r2(f.sw) +
+                            "px;height:" +
+                            r2(f.sh) +
+                            'px">' +
+                            jacketSpan(it.b, f, 0, 0, "gh", it.wU * ROW_U) +
+                            '<span class="zwin" style="left:' +
+                            r2(-f.l) +
+                            "px;top:" +
+                            r2(-f.t) +
+                            "px;width:" +
+                            r2(wPt) +
+                            "px;height:" +
+                            r2(hPt) +
+                            'px">' +
+                            jacketSpan(it.b, f, f.l, f.t, "", it.wU * ROW_U) +
+                            "</span></div>" +
+                            '<div class="zcap">keeps <b>' +
+                            pct(keep) +
+                            "</b></div></div>"
+                        );
+                    })
+                    .join("");
+                return (
+                    '<div class="zoom"><div class="zh">The jacket, at 3&times;. Bright is what the export keeps.</div>' +
+                    '<div class="zrow">' +
+                    cells +
+                    "</div></div>"
+                );
+            }
+
+            /* The record under the well. Drawn because the well's height is the budget
+                every option is spending, and an option cannot be judged on a strip of
+                covers with the rest of the card cropped away -- which is, with some
+                irony, the mistake this whole page is about. */
+            function cardBodyHtml(o, total) {
+                return (
+                    '<div class="cbody' +
+                    (o.lit ? " cdl" : "") +
+                    '" style="height:' +
+                    r2(CARD_H - WELL_H) +
+                    'px">' +
+                    '<div class="ttl">MY LIBRARY CARD</div>' +
+                    '<div class="sub">도서관 카드 &middot; LIBRARY &middot; CARD</div>' +
+                    '<div class="rec"><div class="fig">' +
+                    total +
+                    "<s>books</s></div>" +
+                    '<div class="rows"><i>Holder</i><b>독서하는 유니콘</b>' +
+                    "<i>Authority</i><b>책벌레 친구들 &middot; LIBSTACK</b>" +
+                    "<i>Date of issue</i><b>03 SEP 26</b>" +
+                    "<i>Member since</i><b>06 MAY 26</b></div></div>" +
+                    /* The stat row. Drawn because it is the other thing competing for
+                       the card's height, so an option that wants more well has to be
+                       seen against it rather than against empty stock. */
+                    '<div class="stats"><div>Days reading<b>451</b></div>' +
+                    "<div>Pace<b>21d</b></div>" +
+                    "<div>Authors<b>20</b></div>" +
+                    "<div>Shelves<b>8</b></div></div>" +
+                    /* Escaped, and it matters: an unescaped run of `<` filler was the first
+                    bug found on the sharing mockup -- the browser read `<<<<` as a tag
+                    and swallowed the rest of the card, and the markup "worked". */
+                    '<div class="mrz">ALLTIME&lt;&lt;ASCHUNG&lt;&lt;MEMBER06MAY26&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br />ISSUED03SEP26&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;@LIBSTACK.APP</div>' +
+                    "</div>"
+                );
+            }
+
+            /* The control, drawn as it would sit in the share preview: a button at the
+               card's top right, and the panel it opens. Drawn open, because a mockup has
+               to show the affordance rather than describe it.
+
+               `Layout` is disabled under Spines, because a spine has no fore-edge to lean
+               on -- shelved books touch. Disabling it rather than hiding it is the choice
+               `share_card_page.dart` already makes for a destination that is not
+               installed: a control that vanishes teaches nothing. */
+            function displayMenu() {
+                const spines = S.readAs === "spine";
+                /* The two groups answer different questions, so their selected states are
+                   computed differently: `Covers` is on for either cover layout, and picking
+                   it returns to whichever layout was last used rather than resetting one. */
+                const btn = (v, label, on) =>
+                    '<button data-disp="readAs:' +
+                    v +
+                    '" class="' +
+                    (on ? "on" : "") +
+                    '">' +
+                    label +
+                    "</button>";
+                /* Clamped to the capacity table's last row rather than to two, which is
+                   where the table used to stop. This panel is **withdrawn** -- it is kept as
+                   the evidence for the cost note below -- but a withdrawn drawing quoting a
+                   capacity the shelf does not have is worse evidence than none. */
+                const cap =
+                    SHELF_MAX[S.readAs][
+                        Math.min(SHELF_MAX[S.readAs].length - 1, S.reading)
+                    ];
+                return (
+                    '<div class="dispbtn">&hellip;</div><div class="dispmenu">' +
+                    '<div class="dh">Books you have read</div>' +
+                    btn("@cover", "Covers", !spines) +
+                    btn("spine", "Spines", spines) +
+                    '<div class="dh">Layout</div>' +
+                    (spines
+                        ? '<button disabled class="on">Side by side</button>' +
+                          "<button disabled>Overlapping</button>"
+                        : btn("single", "Side by side", S.readAs === "single") +
+                          btn(
+                              "overlap",
+                              "Overlapping",
+                              S.readAs === "overlap",
+                          )) +
+                    '<div class="dcap">' +
+                    (spines
+                        ? "Shelved books touch, so there is nothing to overlap. Holds " +
+                          cap +
+                          "."
+                        : "Holds " + cap + " books this way.") +
+                    "</div></div>"
+                );
+            }
+
+            function stageHtml(lay, o, total) {
+                return (
+                    '<div class="stage' +
+                    (o.diag ? " diag" : "") +
+                    '">' +
+                    '<div class="well' +
+                    (o.lit ? " cdl" : "") +
+                    '" style="height:' +
+                    r2(WELL_H) +
+                    'px"><span class="seal">LS</span><div class="inner">' +
+                    lay.rows
+                        .map(
+                            (r, i) =>
+                                '<div class="shelf">' +
+                                rowHtml(r, i, lay, o) +
+                                '<div class="board"></div></div>',
+                        )
+                        .join("") +
+                    "</div></div>" +
+                    cardBodyHtml(o, total) +
+                    "</div>"
+                );
+            }
+
+            /* ---- metrics, all derived from the layout ---- */
+            function metricsOf(lay, o, total) {
+                const items = lay.rows.reduce((a, r) => a.concat(r.items), []);
+                const faces = items.filter((i) => i.kind === "face");
+                const spines = items.filter((i) => i.kind === "spine");
+
+                let usedU = 0,
+                    hUsed = 0;
+                lay.rows.forEach((r, ri) => {
+                    const plateHere =
+                        ri ===
+                            (lay.plateRow === undefined ? 0 : lay.plateRow) &&
+                        lay.plate;
+                    /* A pressed row's air comes from the faces at its front, one gap each,
+                       rather than from a gap between every pair: the spines behind them
+                       are shelved touching. */
+                    const gaps = r.pressed
+                        ? GAP_U * r.items.filter((i) => i.gap).length
+                        : GAP_U * (r.items.length - 1);
+                    const u = r.stack
+                        ? Math.max.apply(
+                              null,
+                              r.items.map((i) => i.xU + i.wU),
+                          ) + (plateHere ? lay.plate.wU + GAP_U : 0)
+                        : r.items.reduce((a, c) => a + c.wU, 0) +
+                          gaps +
+                          (plateHere ? lay.plate.wU + GAP_U : 0);
+                    usedU = Math.max(usedU, u);
+                    hUsed +=
+                        Math.max.apply(
+                            null,
+                            r.items.map((i) => i.hU),
+                        ) +
+                        BOARD_U +
+                        BOARD_GAP_U +
+                        (ri > 0 ? 6 / ROW_U : 0);
+                });
+
+                const ws = items.map((i) => i.wU * ROW_U);
+                const hs = items.map((i) => i.hU * ROW_U);
+                const asp = faces.map((i) => i.wU / i.hU);
+                const vis = faces.map((i) => {
+                    const a = i.wU / i.hU;
+                    return a < ASPECT ? a / ASPECT : ASPECT / a;
+                });
+
+                const out = [];
+                if (lay.shelf) {
+                    const p = lay.shelf;
+                    const kind =
+                        p.readKind === "spine"
+                            ? "spines"
+                            : p.readKind === "lean"
+                              ? "leaning covers"
+                              : "covers";
+                    out.push(
+                        "<span>read books as <b>" +
+                            kind +
+                            "</b> at <b>" +
+                            r1(p.readW * ROW_U) +
+                            "</b>pt" +
+                            (p.grown ? " (grown to fill)" : " (fixed)") +
+                            "</span>",
+                    );
+                    if (p.reading) {
+                        out.push(
+                            "<span><b>" +
+                                p.reading +
+                                "</b> open, whole, at the front</span>",
+                        );
+                    }
+                    out.push(
+                        "<span><b>" +
+                            p.boards +
+                            "</b> board" +
+                            (p.boards > 1 ? "s" : "") +
+                            (p.rest
+                                ? ', <span class="warn">' +
+                                  p.rest +
+                                  " not shown</span>"
+                                : ', <span class="fine">nothing hidden</span>') +
+                            "</span>",
+                    );
+                }
+                if (lay.phase) {
+                    const c = lay.phase.counts;
+                    const parts = [];
+                    if (c.face) parts.push("<b>" + c.face + "</b> face");
+                    if (c.spine) parts.push("<b>" + c.spine + "</b> spine");
+                    if (c.sliver) parts.push("<b>" + c.sliver + "</b> sliver");
+                    out.push(
+                        "<span>" +
+                            parts.join(" · ") +
+                            " · " +
+                            lay.phase.boards +
+                            " board" +
+                            (lay.phase.boards > 1 ? "s" : "") +
+                            " <code>" +
+                            lay.phase.mode +
+                            "</code></span>",
+                    );
+                    if (lay.phase.spineW) {
+                        out.push(
+                            "<span>spine <b>" +
+                                r1(lay.phase.spineW * ROW_U) +
+                                "</b>pt" +
+                                (lay.phase.spineW >= MIN_TITLED_SPINE_U
+                                    ? ', <span class="fine">titled</span>'
+                                    : ", untitled") +
+                                "</span>",
+                        );
+                    }
+                }
+                if (lay.plan) {
+                    out.push(
+                        "<span><b>" +
+                            lay.plan.boards +
+                            "</b> board" +
+                            (lay.plan.boards > 1 ? "s" : "") +
+                            ", <b>" +
+                            lay.plan.per +
+                            "</b> per board, " +
+                            (lay.plan.stepU === null
+                                ? '<span class="fine">nothing hidden</span>'
+                                : "overlapping") +
+                            " <code>" +
+                            lay.plan.mode +
+                            "</code></span>",
+                    );
+                }
+                out.push(
+                    "<span><b>" +
+                        items.length +
+                        "</b> of " +
+                        total +
+                        " books drawn</span>",
+                );
+                out.push(
+                    "<span>box <b>" +
+                        r1(Math.min.apply(null, ws)) +
+                        "–" +
+                        r1(Math.max.apply(null, ws)) +
+                        "</b> × <b>" +
+                        r1(Math.min.apply(null, hs)) +
+                        "–" +
+                        r1(Math.max.apply(null, hs)) +
+                        "</b> pt</span>",
+                );
+                if (faces.length) {
+                    const worst = Math.min.apply(null, vis);
+                    out.push(
+                        "<span>aspect <b>" +
+                            r2(Math.min.apply(null, asp)) +
+                            (r2(Math.min.apply(null, asp)) ===
+                            r2(Math.max.apply(null, asp))
+                                ? ""
+                                : "–" + r2(Math.max.apply(null, asp))) +
+                            "</b> vs 0.67</span>",
+                    );
+                    out.push(
+                        "<span>jacket kept <span class=" +
+                            (worst > 0.995 ? '"fine"' : '"warn"') +
+                            ">" +
+                            pct(worst) +
+                            "</span></span>",
+                    );
+                }
+                if (spines.length) {
+                    out.push(
+                        "<span><b>" +
+                            spines.length +
+                            "</b> drawn as spines — nothing cropped</span>",
+                    );
+                }
+                if (lay.shown !== undefined) {
+                    out.push(
+                        "<span>each cover <b>" +
+                            pct(Math.min(1, lay.shown)) +
+                            "</b> visible, " +
+                            r1(lay.stepU * ROW_U) +
+                            "pt of sliver</span>",
+                    );
+                }
+                if (lay.plan && lay.plan.atCeiling) {
+                    out.push(
+                        '<span class="warn">at the sliver floor — no geometry left</span>',
+                    );
+                }
+                out.push(
+                    "<span>row <span class=" +
+                        (usedU <= CARD_UNITS + 0.05 ? '"fine"' : '"warn"') +
+                        ">" +
+                        r1(usedU) +
+                        "</span>/" +
+                        CARD_UNITS +
+                        " units</span>",
+                );
+                out.push(
+                    "<span>well <span class=" +
+                        (hUsed * ROW_U <= WELL_H - PAD + 0.5
+                            ? '"fine"'
+                            : '"warn"') +
+                        ">" +
+                        r1(hUsed * ROW_U) +
+                        "</span>/" +
+                        r1(WELL_H - PAD) +
+                        " pt used</span>",
+                );
+                const widest = Math.max.apply(null, ws);
+                if (faces.length) {
+                    out.push(
+                        "<span>generated titles " +
+                            (widest >= GEN_MIN_W
+                                ? '<span class="fine">legible</span>'
+                                : "suppressed") +
+                            "</span>",
+                    );
+                    const ov = faces.map((i) => overhangOf(i, o));
+                    const lost = Math.max.apply(
+                        null,
+                        ov.map((v) => v.l + v.r),
+                    );
+                    if (lost > 0.5) {
+                        out.push(
+                            '<span class="warn">' +
+                                r1(lost) +
+                                "pt of artwork discarded per cover</span>",
+                        );
+                    }
+                }
+                return '<div class="met">' + out.join("") + "</div>";
+            }
+
+            /* ---- the options, in the order they are worth considering ---- */
+            const OPTS = [
+                {
+                    id: "now",
+                    t: "Today's build",
+                    badge: ["bug", "the bug"],
+                    take: (t) => Math.min(t, COVER_MAX),
+                    lay: (b, o) => layoutToday(b, o),
+                    body:
+                        "<p><b>The box is not cover-shaped, and <code>BoxFit.cover</code> resolves the disagreement by throwing artwork away.</b> " +
+                        "Turn on <i>show what is cropped</i> to see what leaves the phone: the ghost either side of each dashed box is the part of the jacket in the export that nobody will ever see.</p>" +
+                        "<p>Two separate faults, and they compound. The tier is 0.36 where a cover is 0.67, so ~46% of every jacket goes; and the jitter perturbs width and height <i>independently</i>, so the box aspect wanders between 0.30 and 0.49 and each cover is cropped by a different amount. " +
+                        "That second one is why the row reads as broken rather than as a row of small books — flip <i>jitter size, not aspect</i> and the row calms down without a single cover being any less cropped.</p>" +
+                        '<div class="cost"><b>Why it shipped:</b> <code>artCoverRow</code> in the sharing mockup fills each cover with a flat colour from <code>PAL</code>. A flat 0.36 rectangle reads as a spine, so the drawing looked right and the geometry was signed off against content that could not show the crop.</div>',
+                },
+                {
+                    id: "align",
+                    t: "Align the crop",
+                    badge: ["cheap", "one line"],
+                    take: (t) => Math.min(t, COVER_MAX),
+                    lay: (b, o) => layoutToday(b, o),
+                    o: { ax: 0, ay: 0 },
+                    body:
+                        "<p><code>alignment: Alignment.topLeft</code> on the <code>Image</code>. Identical geometry, identical 46% loss — but the crop now happens off <i>one</i> edge, so a sliced title reads as running off the page rather than as cut in half twice. Spines and the left-hand start of each title survive, which is where Korean and English titles both begin.</p>" +
+                        '<div class="cost"><b>Cost:</b> nothing. One argument, no test changes, no geometry changes. <b>Buys:</b> the row stops looking like a rendering fault. It is still cropped, so this is a stopgap and should ship behind whichever real fix wins.</div>',
+                },
+                {
+                    id: "aspect",
+                    t: "Honour 2/3, keep twelve",
+                    badge: [null, "smallest change"],
+                    take: (t) => Math.min(t, COVER_MAX),
+                    lay: (b) => layoutAspect(b),
+                    body:
+                        "<p>Set the tier from <code>kDefaultCoverAspect</code> instead of from two typed numbers, and give the jitter one scale per book so it varies <i>size</i> and never aspect. Nothing else moves: twelve covers, one shelf, same silhouette.</p>" +
+                        "<p>The row is now honest and slightly shorter, because at true aspect twelve covers across 106 units cannot be tall. Compare it against <code>now</code> at 12 books: this is what the drawing was always describing.</p>" +
+                        '<div class="cost"><b>Cost:</b> <code>_tierFor</code> returns one dimension and derives the other; the jitter changes shape. Two assertions in <code>card_cover_row_test.dart</code> move. <b>Buys:</b> zero crop at every count, and the aspect can never drift again because it is no longer typed.</div>',
+                },
+                {
+                    id: "cap",
+                    t: "Cap the row, print the rest",
+                    badge: [null, "largest single shelf"],
+                    take: (t) => Math.min(t, CAP),
+                    lay: (b, o, total) => layoutCap(b, o, total),
+                    body:
+                        "<p><b>The row does not have to be the inventory.</b> The hero already prints the total in 40pt type; a twelfth cover 17pt wide adds no information the figure has not given. Drop <code>kCardCoverMax</code> to " +
+                        CAP +
+                        ", draw at true aspect, and end the row with a plate carrying the remainder in the stamp's own visual language.</p>" +
+                        "<p>Covers land around 1.7 times today's width, uncropped, and the newest book — the one the leftmost slot exists to show — is finally big enough to recognise across a chat thread.</p>" +
+                        "<p><b>There is a case for capping at six rather than " +
+                        CAP +
+                        ", and it is not about size.</b> <code>kCardStampMax</code> is 6, so a row capped at six is a row where the candlelight reveal always prints a date on every cover instead of degrading to the warm mark. The cap and the reveal stop being two unrelated numbers. It costs two more books off the row.</p>" +
+                        '<div class="cost"><b>Cost:</b> a new element (the plate) and a card that shows fewer books than the reader owns, stated rather than implied. <b>Buys:</b> the largest covers of any single-shelf option, and a row whose length no longer depends on how much someone reads.</div>',
+                },
+                {
+                    id: "stack",
+                    t: "Overlap them",
+                    badge: [null, "most scalable"],
+                    take: (t) => t,
+                    lay: (b) => layoutStack(b),
+                    body:
+                        "<p>Full covers at true aspect, stepped so each one covers part of the one behind. <b>The hiding becomes occlusion instead of a crop</b>, and the eye forgives occlusion because it is what a stack of books actually does. Nothing is destroyed; the newest is on top and whole.</p>" +
+                        "<p>This is the only option that scales past twelve without a plate: at 22 books the step just tightens. Set <i>books</i> to 22 and compare it against <code>cap</code>.</p>" +
+                        '<div class="cost"><b>Cost:</b> the order flips — oldest leftmost, so the newest can be the one on top — which contradicts the "leftmost survives a crop" argument in <code>cardCoverBooks</code>. Shadows need rework (each cover shadows its neighbour; the uniform drop shadow has to go), and "standing on a shelf, ragged tops" becomes "a leaning stack". <b>Buys:</b> big covers at any count.</div>',
+                },
+                {
+                    id: "rows",
+                    t: "A second board",
+                    badge: [null, "uses the dead space"],
+                    take: (t) => t,
+                    lay: (b) => layoutTwoRows(b),
+                    body:
+                        "<p><b>The well is 207pt tall and today's row spends at most 57 of them.</b> Past six books, grow a second shelf. Twelve covers then sit around three times today's width with nothing cropped, and the well stops being a strip with a gap over it.</p>" +
+                        "<p>Under six books nothing changes at all, which is deliberate: the low tiers are already correct and the median reader's card should not be redesigned to fix a defect at n=12.</p>" +
+                        '<div class="cost"><b>Cost:</b> the biggest departure from the approved drawing — the well becomes a bookcase, and the artifact\'s silhouette changes. <code>_Well</code> gains a row-splitting layout and a second board. <b>Buys:</b> the largest covers on the page, and at 12 books they clear <code>kGeneratedCoverMinWidth</code>, so books with no thumbnail get their titles back.</div>',
+                },
+                {
+                    id: "boards",
+                    t: "Two boards, overlapping when needed",
+                    badge: [null, "parked \u00b7 squeezes"],
+                    take: (t) => t,
+                    lay: (b, o) => layoutBoards(b, o),
+                    body:
+                        "<p><b>Spend the height first, then start overlapping.</b> Three regimes, and the rule is the same each time \u2014 take the cheapest layout whose covers still clear the app's own legibility floor, <code>kGeneratedCoverMinWidth</code>:</p>" +
+                        "<ul><li><b>1\u20135 books</b> \u2014 one board, gaps, nothing hidden. Covers up to " +
+                        r1(CAP1_U * ASPECT * ROW_U) +
+                        "pt wide.</li>" +
+                        "<li><b>6\u201310</b> \u2014 a second board appears. Still gaps, still nothing hidden.</li>" +
+                        "<li><b>11+</b> \u2014 the covers stop shrinking and hold at " +
+                        r1(OVERLAP_W_U * ROW_U) +
+                        "pt; the <i>step</i> absorbs the count instead.</li></ul>" +
+                        "<p>That last line is the point of the hybrid. Option 5 alone keeps shrinking the covers until 22 books are " +
+                        "26pt slivers with gaps between them; option 4 alone starts overlapping at book two, when there is 126pt of " +
+                        "empty well sitting above the row. This does neither. <b>A reader who finishes their eleventh book does not watch the other ten shrink.</b></p>" +
+                        "<p>Use the <i>lean</i> toggle to choose which end of each stack is whole. It is a real trade, not a preference: " +
+                        "<code>left</code> keeps <code>cardCoverBooks</code>' newest-first order and makes the newest cover whole, but every other cover then shows its fore-edge side; " +
+                        "<code>right</code> shows the spine side of each \u2014 binding band, and where a title starts \u2014 at the cost of reversing the row.</p>" +
+                        '<div class="cost"><b>Cost:</b> the most layout code of any option here \u2014 a plan function with three regimes, a stacked row renderer, z-ordering, and a second board. Shadows need rework: each cover shadows its neighbour, so the uniform drop shadow has to go. <b>Buys:</b> nothing cropped at any count, covers that stop shrinking at 11, and a card that still works at ' +
+                        MAX_BOOKS +
+                        " books \u2014 see the capacity ladder below.</div>",
+                },
+                {
+                    id: "phase",
+                    t: "Phase out behind what you are reading",
+                    badge: [null, "parked \u00b7 squeezes"],
+                    take: (t) => t,
+                    reading: true,
+                    lay: (b, o, total) => layoutPhase(b, o, total),
+                    body:
+                        "<p><b>The front of the shelf is what the reader has open right now, and everything behind it is given up gradually rather than at a typed boundary.</b> " +
+                        "Three states, and each is a renderer the app already ships: a <b>face</b> (the jacket, whole), a <b>spine</b> (toned by <code>spineTintFor</code>, title running up it), and a <b>sliver</b> (toned, separated, untitled \u2014 the read pile's dense state).</p>" +
+                        "<p>One rule picks between them, and it is <code>_fallback()</code>'s rule generalised: <b>draw the richest thing the width can carry.</b> That function already chooses a <code>GeneratedCover</code> above " +
+                        r1(GEN_MIN_W) +
+                        "pt and a bare colour block below it; applying the same test at two more thresholds produces the whole phase-out with nobody typing a book count.</p>" +
+                        "<p>Two consequences, and both are the point. <b>The face count shrinks as the library grows, and the books being held are the last thing given up</b> \u2014 " +
+                        "the front group falls from " +
+                        PHASE_FACE_MAX +
+                        " down to however many books are open, and only then do the spines start to thin. And <b>it reaches roughly twice as far as <code>boards</code></b>: a sliver of spine has no artwork to throw away, so its floor is " +
+                        r1(MIN_SLIVER_U * ROW_U) +
+                        "pt rather than " +
+                        r1(MIN_STEP_U * ROW_U) +
+                        "pt. Nothing overlaps \u2014 spines are pressed together, which is what books on a shelf do, so the <i>lean</i> question does not arise here.</p>" +
+                        '<div class="cost"><b>Open question, and it is not a layout one.</b> The card shows <i>finished</i> books today, and the hero counts them. Put a reading book on the shelf and the row contains a cover the figure above it has not counted \u2014 which is the exact disagreement <code>cardCoverBooks</code> warns about in as many words. Either the figure changes, or the reading books have to be legible as a different class: drawn here with a bookmark over the head and no month stamp, because <code>cardStampMonth</code> has no date to print for them. Set <i>reading</i> to 0 to see the card without them. ' +
+                        "<b>Cost:</b> three renderers, a solver, and a content decision. <b>Buys:</b> a card that says what the reader is doing now, not only what they have done.</div>",
+                },
+                {
+                    id: "spines",
+                    t: "Draw the spine it already claims to be",
+                    badge: [null, "already funded"],
+                    take: (t) => Math.min(t, COVER_MAX),
+                    lay: (b, o) => layoutSpines(b, o),
+                    body:
+                        "<p>Keep the geometry exactly and stop pretending a 0.36 rectangle is a face. <code>CardCoverRow</code>'s own doc comment already calls this “a row of cover spines”; this makes it true. At 17pt wide there is no recognisable artwork to lose — the crop is destroying information nobody could read anyway.</p>" +
+                        "<p><b>The expensive part is already built.</b> <code>books.cover_color</code> is a stored column, <code>spineTintFor</code> is shipped in <code>book_chassis.dart</code>, and the read pile draws exactly this. No sampling, no decode, correct on the first frame — and the tint has a contrast floor, so the vertical title is guaranteed legible in white.</p>" +
+                        '<div class="cost"><b>Cost:</b> real cover art disappears from the card at high counts, and covers are the asset the sharing spec calls “impossible for a competitor to fake”. <b>Buys:</b> no crop by construction, no network for the row, and one visual language shared with the read pile.</div>',
+                },
+                {
+                    id: "hybrid",
+                    t: "Face out the newest, spine the rest",
+                    badge: [null, "most work"],
+                    take: (t) => t,
+                    lay: (b, o, total) => layoutHybrid(b, o, total),
+                    body:
+                        "<p>What a bookshop shelf looks like, and the only option that answers both questions at once: <b>what did they just read</b> (three faces, big enough to recognise) and <b>how much do they read</b> (the spines running off to the right).</p>" +
+                        "<p>Spine width is solved for rather than fixed — they shrink until they hit a legibility floor of " +
+                        MIN_SPINE_U +
+                        " units, and anything that still will not fit goes to the plate. Try it at 22.</p>" +
+                        '<div class="cost"><b>Cost:</b> two renderers in one row, a solver instead of a tier table, and the most new test surface. <b>Buys:</b> recognisable recent reads and a legible sense of volume, at every count, with no crop anywhere.</div>',
+                },
+                {
+                    id: "shelf",
+                    t: "The shelf, and the card draws covers",
+                    badge: ["pick", "decided"],
+                    take: (t) => t,
+                    reading: true,
+                    chrome: true,
+                    lay: (b, o) => layoutShelf(b, o),
+                    body:
+                        "<p><b><code>boards</code> and <code>phase</code> differ in exactly one thing that matters: whether a book you have read is drawn as a cover or as a spine.</b> " +
+                        "Everything else about them was machinery for absorbing a large library, and that machinery is now gone.</p>" +
+                        "<p><b>That one thing was handed to the reader as a setting, and then taken back \u2014 which is the only part of this page that has changed since it shipped.</b> The share preview carried a display panel with <i>Covers</i> and <i>Spines</i>, and briefly a <i>Layout</i> group under them offering side by side beside overlapping. All of it is gone. <b>The card draws overlapping covers and nothing else</b>, for a reason the switcher above this text makes obvious once you use it: the card exists to be recognised as the reader\u2019s own shelf, and a shelf of spines is a picture of a different object. Covers are also the asset this whole page is about \u2014 the thing a competitor cannot fake \u2014 so a setting that hides them is a setting that gives away the point.</p>" +
+                        "<p>The two withdrawn modes stay drawable here because they are the evidence, and the capacity table is what they are evidence of: side by side holds " +
+                        SHELF_MAX.single[0] +
+                        " where overlapping holds " +
+                        SHELF_MAX.overlap[0] +
+                        ", and spines hold " +
+                        SHELF_MAX.spine[0] +
+                        " \u2014 so spines were the roomiest and still lost, which is the argument being recorded. Nothing on this page should be read as claiming a reader can pick between them.</p>" +
+                        "<p><b>Nothing is squeezed.</b> Three fixed sizes, none invented: a cover is " +
+                        r1(SHELF_FACE_U * ROW_U) +
+                        "pt (the widest a two-board card carries), a spine is " +
+                        r1(SHELF_SPINE_U * ROW_U) +
+                        "pt (<code>BookVertical</code>'s own proportion at that height), and a leaning cover advances by " +
+                        r1(SHELF_STEP_U * ROW_U) +
+                        "pt \u2014 <b>equal to the spine width, because a leaning book shows exactly a spine's worth of itself.</b> That is the only thing the spine measurement is still used for: <code>kCardSpineUnits</code> is borrowed from <code>BookVertical</code> for the proportion, and the card draws no spines. " +
+                        "Past capacity the shelf does not thin, shrink or crowd: it says how many it is not showing.</p>" +
+                        "<p>Two things follow from refusing to squeeze. <b>Capacity becomes a fact</b> rather than something to be engineered \u2014 " +
+                        SHELF_MAX.overlap[2] +
+                        " with two books open, " +
+                        SHELF_MAX.overlap[3] +
+                        " with three \u2014 which is as many as the shelf ever puts at the front, the cap being whatever leaves the top board room for one finished cover \u2014 and " +
+                        SHELF_MAX.overlap[0] +
+                        " with none. And <b>nothing leans below 9 books</b>, because overlapping is permission to lean rather than an instruction to: the shelf only leans once a board is full. Refusing to squeeze does not mean refusing to fill, so a two-book card is still two large covers.</p>" +
+                        '<div class="cost"><b>Resolved &mdash; the bookmark carries the distinction, and the figure does not move.</b> The hero keeps counting <i>finished</i> books, so a card with two open books on its shelf prints 22 over 24 covers. That is not a disagreement to hide: the two covers wearing a bookmark are visibly a different class of thing, and the count of books you have <i>read</i> is the one number on the card that has to keep meaning exactly what it says. The alternative &mdash; a figure that counts both &mdash; would make \u201c22 books\u201d mean \u201c20 finished and 2 started\u201d, which is a worse number and a claim <code>library_card_stats.dart</code> does not make. So the bookmark and the missing month stamp are load-bearing rather than decorative, and neither can be dropped later for looks.</div>' +
+                        "<div class=\"cost\"><b>Resolved: there is no setting, and the machinery it needed is gone with it.</b> The panel, its stored preference (<code>card_display_provider.dart</code>), the <code>display</code> field on the export request, the <code>display</code> analytics dimension and the spine renderer in <code>card_cover_row.dart</code> have all been removed \u2014 along with the argument that had to be made for each: whether the setting travelled in the PNG, which key it lived under, and what a reader who had chosen spines saw after an update. <b>A choice is a cost even when the code is cheap</b>, and this one was being paid on the one screen whose job is to make the reader proud of what they are about to send. <b>Cost:</b> a reader who preferred spines cannot have them. <b>Buys:</b> one shelf, one renderer, one capacity number, and no preference to store, migrate or explain.</div>",
+                },
+            ];
+
+            /* ---- the diagnosis table: the tiers, measured ---- */
+            function tableHtml() {
+                const head =
+                    "<tr><th>books</th><th>box, units</th><th>aspect</th><th>jacket kept</th><th>with the jitter</th><th>worst</th></tr>";
+                const rows = [
+                    [3, "1–3"],
+                    [6, "4–6"],
+                    [12, "7–12"],
+                ]
+                    .map(([count, label]) => {
+                        const t = tierFor(count);
+                        const a = t.w / t.h;
+                        const keep = a < ASPECT ? a / ASPECT : ASPECT / a;
+                        /* The jitter's own range: width +0..2, height +0..3, independently. */
+                        const lo = t.w / (t.h + 3),
+                            hi = (t.w + 2) / t.h;
+                        const worst = Math.min(
+                            lo < ASPECT ? lo / ASPECT : ASPECT / lo,
+                            hi < ASPECT ? hi / ASPECT : ASPECT / hi,
+                            keep,
+                        );
+                        const cls =
+                            worst > 0.95 ? "good" : worst < 0.7 ? "bad" : "";
+                        return (
+                            '<tr class="' +
+                            cls +
+                            '"><td>' +
+                            label +
+                            "</td><td>" +
+                            t.w +
+                            " × " +
+                            t.h +
+                            "</td><td>" +
+                            r2(a) +
+                            "</td><td>" +
+                            pct(keep) +
+                            "</td><td>" +
+                            r2(lo) +
+                            " – " +
+                            r2(hi) +
+                            "</td><td>" +
+                            pct(worst) +
+                            "</td></tr>"
+                        );
+                    })
+                    .join("");
+                return head + rows;
+            }
+
+            /* The phase-out's own ceiling, found by asking it rather than by solving it
+               a second time: a closed form would be a third copy of the double-floor
+               arithmetic and would eventually disagree with the drawings. Computed once. */
+            function phaseCapacity(nReading) {
+                let n = Math.max(1, nReading) + 1;
+                while (
+                    n < 4000 &&
+                    phasePlan(nReading, n - nReading).rest === 0
+                ) {
+                    n++;
+                }
+                return n - 1;
+            }
+            const PHASE_MAX = [0, 1, 2].map(phaseCapacity);
+
+            /* ---- the capacity ladder: how many books this can actually hold ----
+
+               Every number is read off `boardPlan`, so the table cannot disagree with
+               the drawings beside it. The two ceilings at the bottom are the only
+               numbers not taken from a drawn count: MIN_STEP_U is a judgement about the
+               smallest sliver that still reads as a book, and BIND_U is the point where
+               a sliver is entirely binding band and contains no artwork at all -- the
+               geometric limit, printed so the judgement can be seen against it. */
+            function capacityTable() {
+                const head =
+                    "<tr><th>books</th><th>mode</th><th>boards</th><th>per board</th>" +
+                    "<th>cover, pt</th><th>sliver, pt</th><th>each shown</th><th>drawn</th></tr>";
+                const rows = [
+                    1,
+                    5,
+                    6,
+                    10,
+                    11,
+                    12,
+                    22,
+                    30,
+                    40,
+                    50,
+                    MAX_BOOKS,
+                    MAX_BOOKS + 20,
+                ]
+                    .map((n) => {
+                        const p = boardPlan(n);
+                        const sliver =
+                            p.stepU === null ? null : Math.min(p.stepU, p.wU);
+                        const cls =
+                            p.rest > 0 ? "bad" : p.stepU === null ? "good" : "";
+                        return (
+                            '<tr class="' +
+                            cls +
+                            '"><td>' +
+                            n +
+                            "</td><td><code>" +
+                            p.mode +
+                            "</code></td><td>" +
+                            p.boards +
+                            "</td><td>" +
+                            p.per +
+                            "</td><td>" +
+                            r1(p.wU * ROW_U) +
+                            " × " +
+                            r1(p.hU * ROW_U) +
+                            "</td><td>" +
+                            (sliver === null ? "—" : r1(sliver * ROW_U)) +
+                            "</td><td>" +
+                            (sliver === null
+                                ? "whole"
+                                : pct(Math.min(1, p.stepU / p.wU))) +
+                            "</td><td>" +
+                            p.drawn +
+                            (p.rest > 0 ? " <b>+" + p.rest + "</b>" : "") +
+                            "</td></tr>"
+                        );
+                    })
+                    .join("");
+                return head + rows;
+            }
+
+            /* The phase-out's ladder. Its rungs are further apart because it reaches
+               further: a sliver of spine has no artwork to lose. */
+            function phaseTable() {
+                const head =
+                    "<tr><th>books</th><th>mode</th><th>faces</th><th>spine, pt</th>" +
+                    "<th>state</th><th>boards</th><th>drawn</th></tr>";
+                const rows = [
+                    10,
+                    12,
+                    22,
+                    31,
+                    36,
+                    50,
+                    70,
+                    PHASE_MAX[2],
+                    PHASE_MAX[2] + 30,
+                ]
+                    .map((n) => {
+                        const p = phasePlan(2, Math.max(0, n - 2));
+                        const state =
+                            p.spineW === null
+                                ? "all faces"
+                                : p.spineW >= MIN_TITLED_SPINE_U
+                                  ? "titled spines"
+                                  : "slivers";
+                        const cls =
+                            p.rest > 0
+                                ? "bad"
+                                : p.spineW === null
+                                  ? "good"
+                                  : "";
+                        return (
+                            '<tr class="' +
+                            cls +
+                            '"><td>' +
+                            n +
+                            "</td><td><code>" +
+                            p.mode +
+                            "</code></td><td>" +
+                            p.faces +
+                            "</td><td>" +
+                            (p.spineW === null ? "—" : r1(p.spineW * ROW_U)) +
+                            "</td><td>" +
+                            state +
+                            "</td><td>" +
+                            p.boards +
+                            "</td><td>" +
+                            p.drawn +
+                            (p.rest > 0 ? " <b>+" + p.rest + "</b>" : "") +
+                            "</td></tr>"
+                        );
+                    })
+                    .join("");
+                return head + rows;
+            }
+
+            /* Capacity with nothing squeezed: one number per setting, and the sizes that
+               produce it. This is the table the decision rests on. */
+            function shelfTable() {
+                const head =
+                    "<tr><th>read books as</th><th>drawn width, pt</th><th>advance, pt</th>" +
+                    "<th>per board</th><th>holds, 0 open</th><th>holds, 2 open</th>" +
+                    "<th>holds, 3 open</th></tr>";
+                const rows = SHELF_MODES.map(([m, label]) => {
+                    const p = shelfPlan(0, 200, m);
+                    const perBoard = fitCount(CARD_UNITS, p.readW, p.readStep);
+                    return (
+                        '<tr class="' +
+                        (m === S.readAs ? "good" : "") +
+                        '"><td>' +
+                        label +
+                        "</td><td>" +
+                        r1(p.readW * ROW_U) +
+                        "</td><td>" +
+                        r1(p.readStep * ROW_U) +
+                        "</td><td>" +
+                        perBoard +
+                        "</td><td>" +
+                        SHELF_MAX[m][0] +
+                        "</td><td>" +
+                        SHELF_MAX[m][2] +
+                        "</td><td>" +
+                        SHELF_MAX[m][3] +
+                        "</td></tr>"
+                    );
+                }).join("");
+                return head + rows;
+            }
+
+            /* ---- state and render ---- */
+            const COUNTS = [2, 5, 10, 12, 22, 40, MAX_BOOKS];
+            const CAP_LADDER = [12, 22, 30, 40, MAX_BOOKS, MAX_BOOKS + 20];
+            const S = {
+                n: 22,
+                lit: false,
+                view: "opts",
+                diag: false,
+                sizeJitter: false,
+                lean: "left",
+                reading: 2,
+                readAs: "overlap",
+                coverLayout: "overlap",
+            };
+
+            function optState(opt) {
+                const lit = S.lit;
+                const drawn = opt.take(S.n);
+                return Object.assign(
+                    {
+                        lit,
+                        diag: S.diag,
+                        sizeJitter: S.sizeJitter,
+                        lean: S.lean,
+                        readAs: S.readAs,
+                        stamped: lit && drawn <= STAMP_MAX,
+                        marked: lit && drawn > STAMP_MAX,
+                    },
+                    opt.o || {},
+                );
+            }
+
+            function buildOne(opt) {
+                const o = optState(opt);
+                /* Only the phase-out asks for the open books; every other option draws
+                   from the finished corpus alone, which is what the card shows today. */
+                const reading = opt.reading ? readingFor(S.reading) : [];
+                const books = reading.concat(booksFor(opt.take(S.n)));
+
+                /* Two different totals, and keeping them apart is the whole of the open
+                   question. `total` is what the layout has to account for, open books
+                   included. The card's figure stays at the *finished* count, because that
+                   is what `library_card_stats.dart` counts -- so a card with open books on
+                   its shelf visibly carries more covers than its own number, which is the
+                   disagreement rather than a bug in the drawing. */
+                const total = reading.length + S.n;
+                const lay = opt.lay(books, o, total);
+                return {
+                    o,
+                    lay,
+                    html: stageHtml(lay, o, S.n),
+                    zoom: cropCallout(lay, o),
+                    total,
+                };
+            }
+
+            function render() {
+                document.getElementById("h1").innerHTML =
+                    "The cover row crops every jacket except at one book count, and the jitter crops that one too";
+                document.getElementById("lead").innerHTML =
+                    "<b>Root cause:</b> <code>_tierFor</code> in <code>card_cover_row.dart</code> hands out boxes whose aspect ratio does not match a book cover's, and <code>_face()</code> fills them with " +
+                    "<code>BoxFit.cover</code>, which centre-crops. At twelve books each box is " +
+                    r1(5.4 * ROW_U) +
+                    "pt wide and " +
+                    r1(15 * ROW_U) +
+                    "pt tall in the 360×450 export — an aspect of 0.36 where <code>kDefaultCoverAspect</code> is 0.67 — so a jacket is scaled to " +
+                    r1(15 * ROW_U * ASPECT) +
+                    "pt wide and then " +
+                    r1(15 * ROW_U * ASPECT - 5.4 * ROW_U) +
+                    "pt of it is thrown away, half off each side. " +
+                    "Everything below is drawn at 1px = 1pt, so these are the export's own numbers.";
+                document.getElementById("tbl").innerHTML = tableHtml();
+                document.getElementById("tblnote").innerHTML =
+                    "The first tier is the only one that agrees with the app's own cover aspect — 20/30 is exactly 2/3 — which is good evidence the other two drifted rather than being chosen. " +
+                    "The last two columns are the jitter: because width and height are perturbed <i>independently</i> (<code>+ hash % 3</code> and <code>+ hash ~/ 3 % 4</code>), it moves the aspect as well as the size, and so it crops a further 9% even at the tier that is nominally exact.";
+
+                const opts = document.getElementById("opts");
+                const grid = document.getElementById("gridv");
+                const showGrid = S.view === "grid";
+                opts.classList.toggle("gone", showGrid);
+                grid.classList.toggle("gone", !showGrid);
+                document.getElementById("opts-h").textContent = showGrid
+                    ? "All options at " + S.n + " books"
+                    : "The options";
+
+                if (showGrid) {
+                    grid.innerHTML = OPTS.map((opt, i) => {
+                        const b = buildOne(opt);
+                        return (
+                            '<div class="gcell"><div class="gh2"><span class="n">' +
+                            i +
+                            '</span><span class="t">' +
+                            opt.t +
+                            "</span></div>" +
+                            '<div class="gzoom">' +
+                            b.html +
+                            "</div>" +
+                            metricsOf(b.lay, b.o, b.total) +
+                            "</div>"
+                        );
+                    }).join("");
+                    renderCapacity();
+                    return;
+                }
+
+                opts.innerHTML = OPTS.map((opt, i) => {
+                    const b = buildOne(opt);
+                    const badge = opt.badge
+                        ? '<span class="badge ' +
+                          (opt.badge[0] || "") +
+                          '">' +
+                          opt.badge[1] +
+                          "</span>"
+                        : "";
+                    return (
+                        '<div class="opt" id="o-' +
+                        opt.id +
+                        '"><div class="oh"><span class="n">' +
+                        i +
+                        '</span><span class="t">' +
+                        opt.t +
+                        "</span>" +
+                        badge +
+                        "<code>" +
+                        opt.id +
+                        "</code></div>" +
+                        "<div>" +
+                        (opt.chrome
+                            ? '<div class="stagewrap">' +
+                              b.html +
+                              displayMenu() +
+                              '</div><div class="chromenote">The panel is preview chrome and is not in the exported PNG &mdash; but the choice it makes is, because the payload is an image. See the notes.</div>'
+                            : b.html) +
+                        metricsOf(b.lay, b.o, b.total) +
+                        b.zoom +
+                        "</div>" +
+                        '<div class="body">' +
+                        opt.body +
+                        "</div></div>"
+                    );
+                }).join("");
+                renderCapacity();
+            }
+
+            /* ---- the capacity section ----
+
+               Drawn with the hybrid only, because it is the only option whose answer to
+               "how many" is a number rather than a cap: `now`, `aspect` and `spines`
+               stop at kCardCoverMax, `cap` stops at 8, and `rows` keeps shrinking the
+               covers until they are slivers with gaps between them. */
+            function renderCapacity() {
+                /* ---- the decided answer: fixed sizes, a count for the remainder ---- */
+                document.getElementById("shelf-lead").innerHTML =
+                    "<b>One number per setting, and none of them is negotiable.</b> Nothing thins, nothing shrinks, nothing crowds \u2014 so capacity stops being something to engineer and becomes a fact to state. " +
+                    "The three sizes are the only inputs: a cover at " +
+                    r1(SHELF_FACE_U * ROW_U) +
+                    "pt, a spine at " +
+                    r1(SHELF_SPINE_U * ROW_U) +
+                    "pt, and a leaning cover advancing by a spine's width. " +
+                    "Beyond the number, the shelf prints how many it is not showing.";
+                document.getElementById("shelf-tbl").innerHTML = shelfTable();
+                document.getElementById("shelf-note").innerHTML =
+                    "<b>An open book costs a slot, never the size of anything else.</b> Side by side it costs exactly one \u2014 which is all a read cover would have cost \u2014 so both open-book columns are unchanged at " +
+                    SHELF_MAX.single[0] +
+                    "; overlapping and spines lose " +
+                    (SHELF_MAX.overlap[0] - SHELF_MAX.overlap[2]) +
+                    " and " +
+                    (SHELF_MAX.spine[0] - SHELF_MAX.spine[2]) +
+                    " books at two open, " +
+                    (SHELF_MAX.overlap[0] - SHELF_MAX.overlap[3]) +
+                    " and " +
+                    (SHELF_MAX.spine[0] - SHELF_MAX.spine[3]) +
+                    " at three, because a whole cover displaces several leaning ones or several spines. <b>The last column is the worst case, and it is the one to read:</b> three is the cap, so no reader can push the shelf past it however many books they have on the go. That is the honest price of putting the open books on the card, and it is paid in capacity rather than in squeezed read books.</p><p>" +
+                    "<b>Against the real distribution:</b> the median reader has finished two books and the card in the report shows 22 \u2014 so <i>spines</i> and <i>overlapping covers</i> both clear the realistic range while <i>side by side</i> does not, which makes the default worth arguing about. " +
+                    "The whole migrated corpus holds 293 finished books across every user, so the remainder count is load-bearing at the tail whatever the setting.";
+
+                const so = optState({ take: () => 12, o: {} });
+                document.getElementById("shelf-grid").innerHTML =
+                    SHELF_MODES.map(([m, label]) => {
+                        const o = Object.assign({}, so, {
+                            readAs: m,
+                            diag: false,
+                        });
+                        const books = readingFor(S.reading).concat(
+                            booksFor(S.n),
+                        );
+                        const lay = layoutShelf(books, o);
+                        return (
+                            '<div class="gcell"><div class="gh2"><span class="n">' +
+                            (m === S.readAs ? "●" : "○") +
+                            '</span><span class="t">' +
+                            label +
+                            "</span></div>" +
+                            '<div class="gzoom">' +
+                            stageHtml(lay, o, S.n) +
+                            "</div>" +
+                            metricsOf(lay, o, S.reading + S.n) +
+                            "</div>"
+                        );
+                    }).join("");
+
+                /* The two sections below document the approach that was rejected: both
+                   absorb a large library by making things smaller. Kept browsable rather
+                   than deleted, because the numbers they establish -- what squeezing would
+                   have bought, and what it would have cost -- are the reason the shelf
+                   above refuses to do it. */
+                document.getElementById("cap-h").textContent =
+                    "Parked: what squeezing the covers would have bought";
+                document.getElementById("cap-lead").innerHTML =
+                    "<b>" +
+                    MAX_BOOKS +
+                    " books, and the binding constraint is not the width \u2014 it is how thin a sliver still reads as a book.</b> " +
+                    "Once the row is overlapping, a cover holds at " +
+                    r1(OVERLAP_W_U * ROW_U) +
+                    "pt and only the step shrinks, so capacity is <code>2 \u00d7 (1 + (106 \u2212 " +
+                    r1(OVERLAP_W_U) +
+                    ") / step)</code>. At the " +
+                    r1(MIN_STEP_U * ROW_U) +
+                    "pt floor drawn here \u2014 the binding band plus the same again in artwork \u2014 that is <b>" +
+                    perAtStep(MIN_STEP_U) +
+                    " per board, " +
+                    MAX_BOOKS +
+                    " in total</b>. " +
+                    "The geometric limit is <b>" +
+                    MAX_BOOKS_GEOMETRIC +
+                    "</b>, where the step equals the " +
+                    r1(BIND_U * ROW_U) +
+                    "pt binding band and every sliver is black with no artwork in it at all. " +
+                    "Somewhere between the two the row stops being books and becomes a comb; the ladder below is there to let you put the line where you want it.";
+                document.getElementById("cap-tbl").innerHTML = capacityTable();
+                document.getElementById("cap-note").innerHTML =
+                    "<b>Why two boards and not three.</b> A third board leaves each row " +
+                    r1(CAP3_W_U * ROW_U) +
+                    "pt of cover width, against the " +
+                    r1(GEN_MIN_W) +
+                    "pt floor \u2014 so a three-board card cannot carry a cover that draws its own title, at any count. " +
+                    "Two boards is not a preference, it is the last layout the well's height permits: at " +
+                    r1(BOARD_SLACK_U) +
+                    " units of air above the top board the covers are " +
+                    r1(OVERLAP_W_U * ROW_U) +
+                    "pt wide, only " +
+                    r1((OVERLAP_W_U - MIN_FACE_U) * ROW_U) +
+                    "pt clear of the floor.</p><p>" +
+                    "<b>Against the real distribution:</b> the median reader has finished <b>two</b> books, the card in the report shows <b>22</b>, and the whole migrated corpus holds <b>293</b> finished books across every user. " +
+                    "So " +
+                    MAX_BOOKS +
+                    " covers all but the extreme tail \u2014 and it does not cover the tail, which is the finding: <b>no geometry does.</b> " +
+                    "A library of 293 needs a plate whatever the layout, so the overflow indicator from <code>cap</code> is not an alternative to this option, it is a component of it. " +
+                    "The rows below that drop books are marked in red.";
+
+                const o = Object.assign(optState({ take: () => 12, o: {} }), {
+                    diag: false,
+                });
+                document.getElementById("cap-grid").innerHTML = CAP_LADDER.map(
+                    (n) => {
+                        const lay = layoutBoards(booksFor(n), o);
+                        const p = lay.plan;
+                        return (
+                            '<div class="gcell"><div class="gh2"><span class="n">' +
+                            n +
+                            '</span><span class="t">' +
+                            (p.rest > 0
+                                ? p.drawn +
+                                  " drawn, " +
+                                  p.rest +
+                                  " on the plate"
+                                : p.per + " per board") +
+                            "</span></div>" +
+                            '<div class="gzoom">' +
+                            stageHtml(lay, o, n) +
+                            "</div>" +
+                            metricsOf(lay, o, n) +
+                            "</div>"
+                        );
+                    },
+                ).join("");
+
+                /* ---- and the phase-out's ---- */
+                document.getElementById("cap2-h").textContent =
+                    "Parked: what thinning the spines would have bought";
+                document.getElementById("cap2-lead").innerHTML =
+                    "<b>" +
+                    PHASE_MAX[2] +
+                    " books with two open, against " +
+                    MAX_BOOKS +
+                    " for <code>boards</code> \u2014 and the reason is that it gives up something different.</b> " +
+                    "<code>boards</code> keeps every book a face and pays for the count in occlusion, so its floor is the " +
+                    r1(MIN_STEP_U * ROW_U) +
+                    "pt sliver of <i>jacket</i> that still reads as a book. The phase-out gives up the jacket first, and a sliver of <i>spine</i> has no artwork to lose \u2014 so its floor is " +
+                    r1(MIN_SLIVER_U * ROW_U) +
+                    "pt, the read pile's hairline plus tone either side of it.";
+                document.getElementById("cap2-tbl").innerHTML = phaseTable();
+                document.getElementById("cap2-note").innerHTML =
+                    "Read the <code>faces</code> column downward: <b>" +
+                    PHASE_FACE_MAX +
+                    " \u2192 4 \u2192 3 \u2192 2, and then it stops</b>, because two is what the reader has open. " +
+                    "Only after that do the spines start to thin, and only after <i>that</i> do they stop carrying titles. " +
+                    "Nothing is dropped until " +
+                    PHASE_MAX[2] +
+                    ". With one book open the ceiling is " +
+                    PHASE_MAX[1] +
+                    ", and with none it is " +
+                    PHASE_MAX[0] +
+                    " \u2014 the front group is the only thing the count is spent on.";
+
+                const po = Object.assign({}, o, { lit: S.lit });
+                document.getElementById("cap2-grid").innerHTML = [
+                    22,
+                    50,
+                    PHASE_MAX[2],
+                    PHASE_MAX[2] + 30,
+                ]
+                    .map((n) => {
+                        const books = readingFor(2).concat(booksFor(n - 2));
+                        const lay = layoutPhase(books, po, n);
+                        const p = lay.phase;
+                        return (
+                            '<div class="gcell"><div class="gh2"><span class="n">' +
+                            n +
+                            '</span><span class="t">' +
+                            p.faces +
+                            " face" +
+                            (p.faces > 1 ? "s" : "") +
+                            (p.spineW
+                                ? ", " +
+                                  r1(p.spineW * ROW_U) +
+                                  "pt " +
+                                  (p.spineW >= MIN_TITLED_SPINE_U
+                                      ? "spines"
+                                      : "slivers")
+                                : "") +
+                            (p.rest ? ", " + p.rest + " on the plate" : "") +
+                            "</span></div>" +
+                            '<div class="gzoom">' +
+                            stageHtml(lay, po, n - 2) +
+                            "</div>" +
+                            metricsOf(lay, po, n) +
+                            "</div>"
+                        );
+                    })
+                    .join("");
+            }
+
+            /* ---- controls ---- */
+            function seg(el, values, get, set) {
+                el.innerHTML = values
+                    .map(
+                        (v) =>
+                            '<button data-v="' +
+                            v[0] +
+                            '" class="' +
+                            (get() === v[0] ? "on" : "") +
+                            '">' +
+                            v[1] +
+                            "</button>",
+                    )
+                    .join("");
+                el.querySelectorAll("button").forEach((btn) =>
+                    btn.addEventListener("click", () => {
+                        const raw = btn.dataset.v;
+                        set(isNaN(Number(raw)) ? raw : Number(raw));
+                        paint();
+                    }),
+                );
+            }
+
+            function paint() {
+                seg(
+                    document.getElementById("seg-n"),
+                    COUNTS.map((c) => [c, String(c)]),
+                    () => S.n,
+                    (v) => (S.n = v),
+                );
+                seg(
+                    document.getElementById("seg-light"),
+                    [
+                        ["day", "Daylight"],
+                        ["cdl", "Candlelight"],
+                    ],
+                    () => (S.lit ? "cdl" : "day"),
+                    (v) => (S.lit = v === "cdl"),
+                );
+                seg(
+                    document.getElementById("seg-view"),
+                    [
+                        ["opts", "Detail"],
+                        ["grid", "All at once"],
+                    ],
+                    () => S.view,
+                    (v) => (S.view = v),
+                );
+                seg(
+                    document.getElementById("seg-lean"),
+                    [
+                        ["left", "Newest whole"],
+                        ["right", "Spines shown"],
+                    ],
+                    () => S.lean,
+                    (v) => (S.lean = v),
+                );
+                /* Nought to three, three being the front group's cap. It stopped at two,
+                   and that is half of why a front group that ate the whole top board was
+                   never once on screen: the drawing could not be asked for it. */
+                seg(
+                    document.getElementById("seg-reading"),
+                    [
+                        [0, "0"],
+                        [1, "1"],
+                        [2, "2"],
+                        [3, "3"],
+                    ],
+                    () => S.reading,
+                    (v) => (S.reading = v),
+                );
+                document.getElementById("cb-diag").checked = S.diag;
+                document.getElementById("cb-jit").checked = S.sizeJitter;
+                document
+                    .getElementById("lab-diag")
+                    .classList.toggle("on", S.diag);
+                document
+                    .getElementById("lab-jit")
+                    .classList.toggle("on", S.sizeJitter);
+                render();
+            }
+
+            /* The display panel's buttons survive a re-render because the listener is on
+               the document, not on them: `render()` replaces the whole options list, which
+               would strip anything bound directly to a button inside it. */
+            document.addEventListener("click", (e) => {
+                const t =
+                    e.target && e.target.closest
+                        ? e.target.closest("[data-disp]")
+                        : null;
+                if (!t) return;
+                const parts = t.dataset.disp.split(":");
+                let v = parts[1];
+                /* `Covers` returns to the layout last chosen rather than resetting it. */
+                if (v === "@cover") v = S.coverLayout || "overlap";
+                S[parts[0]] = v;
+                if (parts[0] === "readAs" && v !== "spine") S.coverLayout = v;
+                paint();
+            });
+
+            document
+                .getElementById("cb-diag")
+                .addEventListener("change", (e) => {
+                    S.diag = e.target.checked;
+                    paint();
+                });
+            document
+                .getElementById("cb-jit")
+                .addEventListener("change", (e) => {
+                    S.sizeJitter = e.target.checked;
+                    paint();
+                });
+
+            document.getElementById("foot").innerHTML =
+                "<p><b>What this page cannot tell you.</b> It draws invented jackets, not the reader's. A real corpus is more uniform than this one — more dark spines, more small type — so the <i>character</i> of each option will differ from what is drawn here even though the geometry will not. " +
+                "And it draws in a browser: <code>BoxFit</code> and CSS agree on the arithmetic, but Flutter's <code>ClipRRect</code>, shadow and <code>ColorFiltered</code> are not these. The numbers are trustworthy; the texture is indicative.</p>" +
+                "<p><b>Not drawn, and it applies to every option:</b> real covers are not all 2/3. Google Books thumbnails run about 0.60 to 0.75, so a row could take each box's aspect from the decoded image and get its raggedness from the data instead of from a hash. The export already resolves every image before capture (<code>cardCoverProviders</code>), so the dimensions are available — it costs a resolve-then-layout pass and a fallback for the first frame.</p>" +
+                "<p>Verify with <code>node docs/mockups/card-cover-crop/verify.js</code>. " +
+                "Geometry ported from <code>lib/ui/widgets/library_card/card_cover_row.dart</code>, <code>shareable_library_card.dart</code> and <code>book_geometry.dart</code>; " +
+                "<code>spineTintFor</code> from <code>book_chassis.dart</code> via <code>docs/mockups/read-pile-turn</code>.</p>";
+
+            paint();
+        </script>
+    </body>
+</html>
