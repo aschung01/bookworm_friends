@@ -369,6 +369,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           mode: mode,
           username: selectedFriend?.username ?? '',
           me: me,
+          density: ref.watch(shelfDensityProvider),
+          onDensityPressed: () =>
+              ref.read(shelfDensityProvider.notifier).cycle(),
           onDonePressed: () {
             ref.read(libraryModeProvider.notifier).state = LibraryMode.library;
           },
@@ -864,6 +867,10 @@ class _LoadingChip extends StatelessWidget {
 /// Edit and `+` are gone. Long-pressing a book is how an edit starts (`ShelfRow`
 /// already does it), and the tab bar's search button is how a book is added, so
 /// both were duplicate entry points sitting in the most valuable row on screen.
+///
+/// The one control added back is [_ShelfDensityButton], which earns its width by
+/// changing what every shelf on screen is: nothing else can reach it, and the
+/// alternative was a three-glyph segmented pill costing 110–130pt of this row.
 class _LibraryBar extends StatelessWidget {
   final bool isSelf;
   final LibraryMode mode;
@@ -882,6 +889,18 @@ class _LibraryBar extends StatelessWidget {
 
   final VoidCallback onManageShelvesPressed;
   final VoidCallback onProfilePressed;
+
+  /// The density the shelves behind this bar are drawn at, and the tap that moves to
+  /// the next one.
+  ///
+  /// The button shows **the state you are in**, not the one you would get. It is a
+  /// mode indicator, and with three states a full cycle is two taps, so "what am I
+  /// looking at" is the more useful thing for it to answer. The effect is unmissable
+  /// — the whole library redraws — so the feedback does the work a "next state" glyph
+  /// would have to do.
+  final ShelfDensity density;
+  final VoidCallback onDensityPressed;
+
   final VoidCallback? onPokePressed;
 
   /// Opens `ManageFriendPage`. Null when [isSelf], for the same reason
@@ -897,6 +916,8 @@ class _LibraryBar extends StatelessWidget {
     required this.onEndVisitPressed,
     required this.onManageShelvesPressed,
     required this.onProfilePressed,
+    required this.density,
+    required this.onDensityPressed,
     this.onPokePressed,
     this.onManageFriendPressed,
   });
@@ -1038,6 +1059,11 @@ class _LibraryBar extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    _ShelfDensityButton(
+                      density: density,
+                      onPressed: onDensityPressed,
+                    ),
+                    const AdaptiveIconButtonGap(),
                     // **The avatar is a glass disc.** This band was bare icons for
                     // as long as its two states were judged together, on a finding
                     // recorded against *edit mode*: a glass capsule there "made the
@@ -1101,6 +1127,14 @@ class _LibraryBar extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // The density applies to a friend's shelves too — an unfamiliar
+                    // library is where seeing all of a shelf helps most, not least —
+                    // so the control travels into a visit.
+                    _ShelfDensityButton(
+                      density: density,
+                      onPressed: onDensityPressed,
+                    ),
+                    const AdaptiveIconButtonGap(),
                     // **The gear, inboard of Poke.** Managing a friend was reachable
                     // only by long-pressing their row in the Friends sheet — a real
                     // gesture, inherited from the deleted rail, and one that nothing
@@ -1153,6 +1187,64 @@ class _LibraryBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Cycles the shelves through the three [ShelfDensity] states.
+///
+/// **One button, not three.** At three states a full cycle costs at most two taps,
+/// and the feedback is unmissable because the whole library redraws — so the effect
+/// is the affordance in a way it would not be for eight states. A segmented pill
+/// would advertise the states better and cost 110–130pt of a row whose own doc calls
+/// it "the most valuable row on screen".
+///
+/// **It shows the state you are in, not the one you would get.** This is a mode
+/// indicator; with a two-tap cycle, "what am I looking at" is the more useful
+/// question for it to answer. The semantic label names the current state for the same
+/// reason, so the cycle is announced rather than silent.
+///
+/// SF Symbols and Material glyphs rather than bundled SVGs: the catalog has marks for
+/// all three, so there is no reason to take on the raster/mask trap documented at
+/// `kStretchHorizontalIconNativeAsset`.
+class _ShelfDensityButton extends StatelessWidget {
+  const _ShelfDensityButton({required this.density, required this.onPressed});
+
+  final ShelfDensity density;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // One record per state, so the glyph, the fallback and the label cannot drift
+    // apart from each other.
+    final (symbol, icon, label) = switch (density) {
+      // A single upright cover.
+      ShelfDensity.covers => (
+        'rectangle.portrait',
+        Icons.crop_portrait,
+        l10n.shelfDensityCovers,
+      ),
+      // Overlapping cards, which is what the cascade is.
+      ShelfDensity.leaning => (
+        'square.stack',
+        Icons.filter_none,
+        l10n.shelfDensityLeaning,
+      ),
+      // Upright bars: books seen along their spines.
+      ShelfDensity.spines => (
+        'books.vertical',
+        Icons.view_week,
+        l10n.shelfDensitySpines,
+      ),
+    };
+
+    return AdaptiveIconButton(
+      symbol: symbol,
+      icon: icon,
+      diameter: 44,
+      semanticLabel: label,
+      onPressed: onPressed,
     );
   }
 }
