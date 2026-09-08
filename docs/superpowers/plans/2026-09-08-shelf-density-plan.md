@@ -23,39 +23,53 @@ shelf in every state.
 
 ## Progress
 
-| task                                              | state                     | commit    |
-| ------------------------------------------------- | ------------------------- | --------- |
-| 0 Housekeeping                                    | done                      | `7d041aa` |
-| 1 Reading first                                   | **done**                  | `1a057c7` |
-| 2 `ShelfDensity` + provider                       | **done**                  | `1a057c7` |
-| 3 Thread density in, extract the drawing          | **done**                  | `9384720` |
-| 4 Spine plumbing + the inherited bug              | **done**                  | `12451ce` |
-| 5 The `spines` state                              | **done**                  | `cf85ca5` |
-| 6 `TurningBook`, two-step tap, spine delete badge | not started               |           |
-| 7 GATE — measure `leaning`, settle the step       | **blocked on a decision** |           |
-| 8 The `leaning` state                             | not started               |           |
-| 9 Drop-index clamp                                | **done**                  | `4832d63` |
-| 10 The control                                    | not started               |           |
-| 11 Transitions + label reserve                    | not started               |           |
-| 12 Close the loop                                 | not started               |           |
+| task                                              | state                | commit    |
+| ------------------------------------------------- | -------------------- | --------- |
+| 0 Housekeeping                                    | done                 | `7d041aa` |
+| 1 Reading first                                   | **done**             | `1a057c7` |
+| 2 `ShelfDensity` + provider                       | **done**             | `1a057c7` |
+| 3 Thread density in, extract the drawing          | **done**             | `9384720` |
+| 4 Spine plumbing + the inherited bug              | **done**             | `12451ce` |
+| 5 The `spines` state                              | **done**             | `cf85ca5` |
+| 6 `TurningBook`, two-step tap, spine delete badge | **not started**      |           |
+| 7 GATE — measure `leaning`, settle the step       | **done** — step 0.16 |           |
+| 8 The `leaning` state                             | **done**             | `2d2f9d4` |
+| 9 Drop-index clamp                                | **done**             | `4832d63` |
+| 10 The control                                    | **done**             | `d10e7a9` |
+| 11 Transitions + label reserve                    | **not started**      |           |
+| 12 Close the loop                                 | **not started**      |           |
 
-Baseline was 1072 passing / 3 failing and 14 analyzer issues. At Task 9: **1121 passing / 3
+**Task 7's measurement, recorded so it is not rediscovered.** On a sixty-book shelf, `covers`
+builds **11** tiles and `leaning` builds **60** — a `Stack` has no laziness. Pinned by
+`test/shelf_leaning_layout_test.dart`. Accepted: the density exists for shelves that fit, and a
+shelf that fits would have built all its tiles anyway. The step was settled at **0.16** (20.3pt,
+24% of a cover); 0.124 was declined because 24% is the figure the "colour, not type" argument was
+made about.
+
+Baseline was 1072 passing / 3 failing and 14 analyzer issues. At Task 10: **1139 passing / 3
 failing** — the same three pre-existing `library_read_books_test.dart` failures, which are about
 `BookVertical` not rendering in the read _pile_ under test and are unrelated — and **15 analyzer
 issues**, the extra one being an `info` in `test/_left_band_probe.dart`, a file this work never
 touched.
 
-**`spines` is not reachable from the UI yet.** Task 10 builds the button. Until then, use
-`test/shelf_spines_row_test.dart` or seed `shelf_density` in `SharedPreferences`.
+**What is left is refinement, not reach.** All three densities render, the button cycles them, the
+preference persists, and a drag cannot cross the reading boundary. Task 6 is the two-step tap — today
+a tap on a compressed book goes straight to details, which works but makes a ~20pt strip a
+navigation target — plus the spine-mode delete badge. Task 11 is the cross-fade and the trailing
+label reserve.
 
-**Two notes for whoever continues.**
+**Three notes for whoever continues.**
 
-1. `lib/l10n/app_localizations*.dart` is **gitignored** (`.gitignore:79`) and goes stale. When a
-   test fails to load with "getter isn't defined for the type 'AppLocalizations'", run
+1. `lib/l10n/app_localizations*.dart` is **gitignored** (`.gitignore:79`) and goes stale. When
+   analysis or a test fails with "getter isn't defined for the type 'AppLocalizations'", run
    `flutter gen-l10n`. Do not run it _during_ a suite run — doing so raced the compile and produced
    two spurious load failures.
 2. Stage precisely. `git add -A lib test` in this repo sweeps up a very large pre-existing
    uncommitted working tree; commit `9384720` did exactly that and carries 200 files it should not.
+3. `enterEditMode` in `test/support/home_page_harness.dart` holds a `BookWidget`, so it cannot reach
+   a shelf drawn entirely as spines. Give such a fixture one book in progress. The gesture itself
+   works on a spine — the draggable wraps whatever the density drew — it is only the helper that
+   looks for a cover.
 
 **What is genuinely new:** one persisted enum, one shingled `Stack` layout, and a drop-index clamp.
 Everything else is either a pure display transform of data the app already has, or an extraction
