@@ -14,6 +14,7 @@ import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shelf/shelf_book_tile.dart';
+import 'package:bookworm_friends/ui/widgets/shelf/shelf_lean_metrics.dart';
 import 'package:bookworm_friends/ui/widgets/shelf/shelf_spine_tile.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
@@ -499,21 +500,39 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// width of the gap that shelf has to open, so a wrong answer here is a drop
   /// preview that lies rather than a drawing that looks off.
   double _slotExtentOf(String bookId, double bookHeight) {
+    final book = widget.shelf.books.firstWhere(
+      (b) => b.id == bookId,
+      orElse: () => widget.shelf.books.first,
+    );
+    final coverEstimate = bookHeight * kDefaultCoverAspect + 2 * _kSlotMargin;
+
+    // **`leaning` does not use the measured box, and this is the one density that
+    // has to override it.** A shingled slot is one [kShelfLeanStep] wide — about a
+    // quarter of a cover — but a lift from this row lands in edit mode, which draws
+    // face-out. Reporting the strip would ask the receiving shelf to open a gap a
+    // quarter of the size of the book about to fill it, and the drop preview would be
+    // a promise the drop then breaks.
+    //
+    // `covers` measures a cover and draws a cover. `spines` measures a spine and
+    // draws a spine — spines are edited as spines precisely so that stays true. Only
+    // `leaning` changes its drawing on the way into edit mode, and only `leaning`
+    // pays for it here.
+    if (_effectiveDensity == ShelfDensity.leaning &&
+        book.status != bookStatusReading) {
+      return coverEstimate;
+    }
+
     final measured = _slotBoxOf(bookId)?.size.width;
     if (measured != null) return measured;
     // Nothing laid out yet. A cover's default ratio is what `BookWidget` itself
     // draws until one decodes, and no book can be lifted inside the first
     // [kShelfLiftDelay] anyway — but a spine is a third of that width, so guessing a
     // cover for one would open a gap three times too wide.
-    final book = widget.shelf.books.firstWhere(
-      (b) => b.id == bookId,
-      orElse: () => widget.shelf.books.first,
-    );
     if (_effectiveDensity == ShelfDensity.spines &&
         book.status != bookStatusReading) {
       return shelfSpineWidth(book, bookHeight);
     }
-    return bookHeight * kDefaultCoverAspect + 2 * _kSlotMargin;
+    return coverEstimate;
   }
 
   double? _slotCentreOf(String bookId) {
@@ -668,6 +687,9 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// preview and the drop are all wired by hand here instead.
   Widget _buildBookRow(double bookHeight, {required bool isEditMode}) {
     final books = widget.shelf.books;
+    if (_effectiveDensity == ShelfDensity.leaning) {
+      return _buildLeaningRow(bookHeight, isEditMode: isEditMode);
+    }
     return SizedBox(
       key: _rowKey,
       child: ListView.builder(
@@ -693,6 +715,93 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     );
   }
 
+  /// The row at `ShelfDensity.leaning`: books in progress face-out, then everything
+  /// else shingled and leaning right.
+  ///
+  /// **A `Stack`, because a `ListView` cannot paint in this order.** A list paints in
+  /// child order, which would put the *rightmost* book in front — the opposite of a
+  /// leaning cascade, and the opposite of the emphasis this density exists to give.
+  /// So the shingled books are emitted **highest index first** and positioned by
+  /// hand, which leaves book 0 painted last and therefore on top.
+  ///
+  /// **The head is a `Row`, not part of the `Stack`.** A face-out cover's width is
+  /// whatever its decoded aspect makes it, so positioning the head by hand would mean
+  /// guessing every one of those widths; laying it out lets Flutter answer. Only the
+  /// group's own total width is approximated — see [shelfLeanGroupWidth].
+  ///
+  /// **This costs one built tile per book, where the list built about four.** A
+  /// `Stack` has no laziness. It is the one place in this feature that spends more
+  /// than it saves, and it is spent knowingly: the point of the density is shelves
+  /// that *fit*, and a shelf that fits is a shelf whose tiles were all going to be
+  /// built anyway.
+  Widget _buildLeaningRow(double bookHeight, {required bool isEditMode}) {
+    final books = widget.shelf.books;
+    final head = readingHeadCount(widget.shelf);
+    final shingled = books.sublist(head);
+
+    final group = SizedBox(
+      width: shelfLeanGroupWidth(shingled.length, bookHeight),
+      // **Explicitly tall, and it has to be.** A `Positioned` given only `left` and a
+      // `width` leaves its child's height unbounded, and the `OverflowBox` below
+      // resolves to infinity and asserts. Reserving the row's own extent bounds it,
+      // and `bookRowExtent` is the same reservation the rest of the row makes for a
+      // book that hashes tall.
+      height: bookRowExtent(bookHeight),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Reversed: the last book is emitted first and painted first, so the
+          // leading book ends up on top and is hit-tested before the books it
+          // covers. Do not "tidy" this into forward order — it is the whole
+          // drawing. `test/shelf_leaning_layout_test.dart` pins it.
+          for (var i = shingled.length - 1; i >= 0; i--)
+            Positioned(
+              left: shelfLeanOffset(i, bookHeight),
+              top: 0,
+              bottom: 0,
+              // The exposed strip, so a tap lands on the book a reader can see
+              // rather than on whichever one is frontmost. See
+              // [shelfLeanSlotWidth].
+              width: shelfLeanSlotWidth(i, shingled.length, bookHeight),
+              child: OverflowBox(
+                alignment: Alignment.bottomLeft,
+                maxWidth: double.infinity,
+                child: _buildBook(
+                  head + i,
+                  shingled[i],
+                  bookHeight,
+                  isEditMode: isEditMode,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+
+    return SizedBox(
+      key: _rowKey,
+      child: SingleChildScrollView(
+        controller: _rowScroll,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        clipBehavior: Clip.none,
+        padding: const EdgeInsets.symmetric(horizontal: _kSlotMargin),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var i = 0; i < head; i++)
+              _buildBook(i, books[i], bookHeight, isEditMode: isEditMode),
+            // A full gap between the books standing face-out and the cascade, so the
+            // two groups do not read as one run.
+            if (head > 0 && shingled.isNotEmpty)
+              const SizedBox(width: _kSlotMargin),
+            if (shingled.isNotEmpty) group,
+          ],
+        ),
+      ),
+    );
+  }
+
   /// The air either side of [book]'s slot.
   ///
   /// [_kSlotMargin] each side ordinarily, which is what puts 15pt between two
@@ -703,13 +812,24 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// half so that there is a full 15pt between the reading books standing face-out
   /// and the spines beginning. Without that the first spine leans against the last
   /// cover and the two groups read as one run.
+  ///
+  /// **A shingled book takes none either**, for a different reason: it is placed by
+  /// [shelfLeanOffset] rather than laid out in sequence, so a margin here would shift
+  /// it off the offset it was given. The gap before the cascade is a `SizedBox` in
+  /// [_buildLeaningRow] instead.
   EdgeInsets _slotMarginFor(int index, Book book) {
-    if (_effectiveDensity != ShelfDensity.spines ||
-        book.status == bookStatusReading) {
+    if (book.status == bookStatusReading) {
       return const EdgeInsets.symmetric(horizontal: _kSlotMargin);
     }
-    final firstSpine = index == readingHeadCount(widget.shelf);
-    return EdgeInsets.only(left: firstSpine ? _kSlotMargin : 0);
+    switch (_effectiveDensity) {
+      case ShelfDensity.covers:
+        return const EdgeInsets.symmetric(horizontal: _kSlotMargin);
+      case ShelfDensity.leaning:
+        return EdgeInsets.zero;
+      case ShelfDensity.spines:
+        final firstSpine = index == readingHeadCount(widget.shelf);
+        return EdgeInsets.only(left: firstSpine ? _kSlotMargin : 0);
+    }
   }
 
   Widget _buildBook(
