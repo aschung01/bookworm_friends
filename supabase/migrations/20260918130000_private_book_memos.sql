@@ -1,0 +1,31 @@
+-- Notes become private to the person who wrote them.
+--
+-- `book_memos` was gated by `is_profile_visible(user_id)` -- the same rule as `books`
+-- and `shelves` -- so a friend could read every note you had written. The app calls the
+-- tab "Memo" and gives no indication it is shared, and the landing-page mockup flags
+-- this as "the memo problem": free text is the one column in the schema a reader would
+-- assume is theirs alone.
+--
+-- Dropping the policy is the whole change. "Owner full access to memos" is `FOR ALL`
+-- with `user_id = auth.uid()`, and `ALL` includes `SELECT`, so the owner keeps their own
+-- notes and nobody else has any grant at all. Adding a narrower SELECT policy alongside
+-- it would be a second way to say the same thing.
+--
+-- **Timed deliberately.** `book_memos` holds 0 rows, so this takes nothing away from
+-- anyone: there is no reader who loses access to a note they have already seen. Once
+-- people have written notes under the old rule, tightening it silently removes content
+-- from a friend's screen, and the same change stops being free.
+--
+-- Two consequences worth knowing, neither of which this migration addresses:
+--
+--  1. **`bookMemosProvider` does not filter by user** (`lib/providers/library_provider.dart`)
+--     -- it selects on `book_id` alone and leans entirely on RLS. That is why nothing in
+--     the app needs editing: the query returns fewer rows and no error.
+--  2. **The Memo tab is unconditional in `BookDetailsTabView`**, and a friend's book is
+--     reachable through the shared `shelf_row.dart`. So that tab is now always empty on
+--     someone else's book. Pre-existing and out of scope here, but it is the follow-up.
+--
+-- Published in the privacy policy at `libstack.app/privacy`, which now states that notes
+-- are readable only by their author. The document and this policy have to move together.
+
+DROP POLICY "Others can read visible memos" ON public.book_memos;
