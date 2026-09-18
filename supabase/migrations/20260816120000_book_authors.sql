@@ -1,0 +1,59 @@
+-- `books.authors`: the one column the Library Card needs, and the one it does not.
+--
+-- The card's "most-read author" tile has no source today. Authors are fetched from
+-- the catalogue at *display* time -- `book_details_tab_view.dart` calls
+-- `getByIsbn` on every open purely to print them -- and then thrown away. That is
+-- a network round trip for data the row could own, and it makes an aggregate over
+-- a whole library impossible: counting authors across 300 books would mean 300
+-- lookups.
+--
+-- `text[]` rather than a `book_authors` join table. A real bibliographic model
+-- would normalise -- "Han Kang" is one entity, not a string repeated across rows --
+-- and the tile would then be a GROUP BY on a foreign key instead of a client-side
+-- count. Rejected because the identity is not there to normalise *on*: the
+-- catalogue hands back a display name with no stable id, so the join table's
+-- primary key would be the same string, and "한강" from Kakao and "Han Kang" from
+-- Google Books would be two rows either way. A join table would buy exact counts
+-- over a name that is already inexact. If author identity ever matters beyond one
+-- tile -- an author page, following an author -- that is when the table earns its
+-- keep.
+--
+-- NOT NULL DEFAULT '{}' rather than nullable. Nullable would let a caller tell
+-- "never backfilled" from "genuinely has no listed author", which sounds useful and
+-- is not: nothing in the app would do anything different with the two, and every
+-- reader would have to handle a third state. An empty array means "no author to
+-- show", and the backfill's own log is where "did we look yet" lives.
+--
+-- No index. The tile aggregates over one user's own finished books, which the app
+-- already fetches in full for the read view (`finishedBooksProvider`), so the count
+-- happens on the client over rows that are in memory anyway. A GIN index here would
+-- serve a query nobody writes.
+
+ALTER TABLE public.books
+  ADD COLUMN authors text[] NOT NULL DEFAULT '{}';
+
+-- ---------------------------------------------------------------------------
+-- What is deliberately NOT in this migration: `books.page_count`.
+--
+-- The design record's Phase 3 entry asks for it alongside `authors` and calls both
+-- cheap, "already returned by every search provider and currently discarded". That
+-- is true of authors and false of pages, and the difference was measured rather
+-- than assumed:
+--
+--   * Kakao -- the primary provider for Korean titles, which is what this library
+--     is -- has no page field at all. Its book document carries exactly eleven
+--     keys (authors, contents, datetime, isbn, price, sale_price, publisher,
+--     status, thumbnail, title, translators). There is nothing to discard.
+--   * Google Books has `pageCount`. Sampling 40 random finished books from the
+--     migrated corpus through the keyed API: 24 were not in the catalogue at all,
+--     2 were found with no page count, and 14 had one. That is 35% coverage, and
+--     a volume can return `pageCount: 0` instead of omitting the key, so a naive
+--     reader banks a zero as knowledge.
+--   * Open Library does not request the field and covers Korean trade books worse
+--     than Google does.
+--
+-- So the drawn "4,180 pages" would be summed from about a third of a shelf and
+-- would understate a real reader threefold, silently, in the one figure on the card
+-- a reader could check by hand. A column that can only ever be a third full is not
+-- a cheap column. The stat is cut instead; see the phase plan.
+-- ---------------------------------------------------------------------------

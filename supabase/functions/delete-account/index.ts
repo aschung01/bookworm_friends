@@ -26,6 +26,26 @@ serve(async (req) => {
     });
   }
 
+  // Storage objects are not cascaded by `deleteUser` the way the `profiles` row
+  // is, so without this an avatar outlives its owner forever in a bucket nobody
+  // can list. Best-effort and *before* the delete: a failure here should not
+  // block someone leaving, and the alternative order would drop the only record
+  // of which folder was theirs.
+  try {
+    const { data: objects } = await supabase.storage
+      .from("avatars")
+      .list(user.id);
+
+    if (objects && objects.length > 0) {
+      await supabase.storage
+        .from("avatars")
+        .remove(objects.map((o) => user.id + "/" + o.name));
+    }
+  } catch (_) {
+    // Swallowed on purpose. An orphaned object is a cost; a user who cannot
+    // delete their account is a bug.
+  }
+
   const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
 
   if (deleteError) {
