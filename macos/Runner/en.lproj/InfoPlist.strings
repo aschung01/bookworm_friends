@@ -3,4 +3,4 @@
    no .lproj of their own. Korean lives in ko.lproj/InfoPlist.strings.
    PRODUCT_NAME (and therefore CFBundleName / the built .app filename) is left as
    bookworm_friends on purpose. */
-"CFBundleDisplayName" = "Bookworm Friends";
+"CFBundleDisplayName" = "Libstack";

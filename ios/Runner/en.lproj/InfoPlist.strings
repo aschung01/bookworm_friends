@@ -1,4 +1,14 @@
 /* Launcher name shown under the app icon. English is the project's development
    region, so this is also the fallback for device locales that have no .lproj
    of their own. Korean lives in ko.lproj/InfoPlist.strings. */
-"CFBundleDisplayName" = "Bookworm Friends";
+"CFBundleDisplayName" = "Libstack";
+
+/* Shown in the system photo-library permission prompt. Localised for the same
+   reason the launcher name is: an English prompt in a Korean app reads as
+   unfinished. The Info.plist value is the fallback. */
+"NSPhotoLibraryUsageDescription" = "Used to choose a profile photo";
+
+/* Shown in the system camera prompt, which Add Book triggers the first time the
+   scan button is tapped. Says what it is for, not that it is needed: a prompt
+   that only asserts a requirement gives no reason to say yes. */
+"NSCameraUsageDescription" = "Used to scan a book's barcode";

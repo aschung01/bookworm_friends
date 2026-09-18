@@ -3,5 +3,5 @@
     <!-- Launcher name shown under the app icon. This default is English, so it is
          also the fallback for every device locale without a values-<lang>
          override. Korean lives in values-ko/strings.xml. -->
-    <string name="app_name">Bookworm Friends</string>
+    <string name="app_name">Libstack</string>
 </resources>

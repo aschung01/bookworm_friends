@@ -116,3 +116,7 @@ docs/mockups/typography/_build/.cache/
 
 # rope (Python refactoring) cache, from the scripts/ tooling.
 .ropeproject/
+
+# Bytecode from the Python asset tooling (assets/branding/build_master.py and the
+# scripts/ pipeline).
+__pycache__/

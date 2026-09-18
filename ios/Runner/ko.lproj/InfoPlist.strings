@@ -1,1 +1,3 @@
-"CFBundleDisplayName" = "책벌레 친구들";
+"CFBundleDisplayName" = "Libstack";
+"NSPhotoLibraryUsageDescription" = "프로필 사진을 설정하기 위해 사진에 접근합니다";
+"NSCameraUsageDescription" = "책의 바코드를 스캔하기 위해 카메라에 접근합니다";
