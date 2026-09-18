@@ -41,9 +41,9 @@ class ShellChrome extends ConsumerWidget {
   final Widget child;
 
   Future<void> _openAddBook(WidgetRef ref) async {
-    // The native bar leaves the search item selected while Add Book is open, so a
-    // second tap on the orb fires `onSearchActiveChanged(true)` again. Without
-    // this it would stack a second Add Book on top of the first.
+    // A second tap on Search while its sheet is already up would otherwise stack a
+    // second copy of it on top of the first. The bar stays live and tappable in
+    // front of its own sheet by design, so nothing else stops that.
     if (ref.read(modalsAboveShellProvider) > 0) return;
 
     // A context from inside the navigator, which Add Book needs twice over: to

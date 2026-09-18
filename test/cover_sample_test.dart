@@ -200,13 +200,17 @@ void main() {
       // compared against.
       //
       // The expected value is worked out rather than eyeballed, and the arithmetic
-      // is worth writing down because it is counter-intuitive: **the ring is not
-      // uniformly weighted in x.** On a 100x150 cover the ring is 8px, so it is 800
-      // pixels of top band, 800 of bottom band, and 134 rows x 16 columns = 2144 of
-      // side strip — 3744 in all, well over half of it in the two narrow strips. A
-      // colour split at x = 70 therefore takes 560 + 560 from the bands and the
-      // whole 1072-pixel left strip: 2192 / 3744 = 0.585, not the 0.70 its share of
-      // the cover's *width* would suggest.
+      // is worth writing down because it is counter-intuitive: **the border is not
+      // uniformly weighted in x, and it has no foot.** On a 100x150 cover the band is
+      // 8px, so the evidence is 800 pixels of head plus 134 rows x 8 columns = 1072 of
+      // each flank (the flanks stop 8px short of the foot) — 2944 in all, and nearly
+      // three quarters of that is in the two narrow flanks. A colour split at x = 70
+      // therefore takes 560 from the head and the whole 1072-pixel left flank:
+      // 1632 / 2944 = 0.554, not the 0.70 its share of the cover's *width* would
+      // suggest.
+      //
+      // Both candidates clear `kCoverBackgroundMinShare` here, so the majority is
+      // returned directly and the area tie-break never runs.
       await _real(tester, () async {
         final result = await coverBackgroundColor(
           await _image(
@@ -219,9 +223,9 @@ void main() {
         expect(
           result!.colour.toARGB32(),
           0xFF0A14C8,
-          reason: 'the minority colour won the ring',
+          reason: 'the minority colour won the border',
         );
-        expect(result.share, closeTo(0.585, 0.01));
+        expect(result.share, closeTo(0.554, 0.005));
       });
     });
 
@@ -310,8 +314,9 @@ void main() {
           background!.share,
           lessThan(kCoverBackgroundMinShare),
           reason:
-              'a 100-column gradient spreads across 32 5-bit bins, so no bin '
-              'should come near ${kCoverBackgroundMinShare * 100}% of the ring',
+              'a 100-column gradient spreads across 16 4-bit bins, so no bin '
+              'should come near ${kCoverBackgroundMinShare * 100}% of the border. '
+              'The two biggest are also too small for the area tie-break to run.',
         );
 
         final tone = await coverToneColor(image);
@@ -336,6 +341,320 @@ void main() {
         expect(
           await coverToneColor(await _image(20, 30, (_, __) => [0, 0, 0, 0])),
           isNull,
+        );
+      });
+    });
+  });
+
+  group('the four corrections to the border', () {
+    // Each of these pins one correction, and each is named for the real cover that
+    // forced it. They were all found by measuring 460 covers out of the live database,
+    // because the previous design's tests all passed on synthetic fixtures while the
+    // policy they were pinning stored a colour that was nowhere on the book for a third
+    // of a real library.
+
+    testWidgets('Given a grainy dark background, Then it survives quantisation '
+        '(The House of the Scorpion)', (tester) async {
+      // **The bin-width correction.** Uniform RGB bins are perceptually uneven: a
+      // near-black background with ordinary JPEG grain scatters across many bins while
+      // looking flat, so it loses to its own noise and the cover falls back to a mean
+      // mixed out of its artwork. `The House of the Scorpion` is 66% one near-black
+      // along its border at 4 bits and 31% at 5, and stored `#651614` — a dark red
+      // taken from the scorpion, not from the jacket.
+      //
+      // The fixture is that failure in miniature. Border values walk 0..31, which is
+      // **four** bins at 5 bits (about 25% each, under the threshold) and **two** at 4
+      // bits (about 50% each, over it). Deterministic, so it cannot flake.
+      await _real(tester, () async {
+        final image = await _image(100, 150, (x, y) {
+          if (y >= 40 && y < 110 && x >= 10 && x < 90) return [250, 60, 60];
+          final v = (x * 7 + y * 13) % 32;
+          return [v, v, v];
+        });
+
+        final background = await coverBackgroundColor(image);
+        expect(background, isNotNull);
+        expect(
+          background!.share,
+          greaterThanOrEqualTo(kCoverBackgroundMinShare),
+          reason:
+              'the grain fragmented across bins, so a flat dark background lost '
+              'to its own noise',
+        );
+        expect(background.colour.computeLuminance(), lessThan(0.05));
+
+        // And the tone follows the background rather than the mean, which the bright
+        // block drags a long way off.
+        final tone = await coverToneColor(image);
+        expect(tone!.computeLuminance(), lessThan(0.05));
+      });
+    });
+
+    testWidgets('Given a foot band, Then the foot is not read at all '
+        '(주식투자 안내서)', (tester) async {
+      // **The dropped-foot correction.** The bottom edge is the least trustworthy part
+      // of a book image: an obi, a printed foot-band, or the paper the book was shot
+      // on. Of 77 covers examined by hand, 14 had a bottom edge both highly uniform
+      // and unlike every other edge — `주식투자 안내서` is a bright yellow jacket whose
+      // bottom edge is 100% black.
+      //
+      // Asserted as *identity between two covers* rather than as a flipped answer, and
+      // that is deliberate. A foot band only outvotes the rest of a border when it is
+      // large enough to stop being a band, so "the answer changes" would need a
+      // dishonest fixture. "Painting the foot black changes nothing" is the actual
+      // claim.
+      //
+      // Two bands, because the border excludes the foot *and the corners beside it*: a
+      // band the depth of the border is invisible to it, and a band two and a half times
+      // deeper still leaves the yellow winning 93% of the evidence. A four-sided ring
+      // would have read 21% black in the first case and 23% in the second.
+      await _real(tester, () async {
+        const yellow = [254, 238, 2];
+        final plain = await coverBackgroundColor(
+          await _image(100, 150, (x, y) => yellow),
+        );
+        final banded = await coverBackgroundColor(
+          await _image(100, 150, (x, y) => y >= 142 ? [0, 0, 0] : yellow),
+        );
+        final deeper = await coverBackgroundColor(
+          await _image(100, 150, (x, y) => y >= 130 ? [0, 0, 0] : yellow),
+        );
+
+        expect(plain, isNotNull);
+        expect(banded, isNotNull);
+        expect(banded!.colour.toARGB32(), plain!.colour.toARGB32());
+        expect(
+          banded.share,
+          plain.share,
+          reason:
+              'a foot band the depth of the border diluted it, so the bottom of '
+              'the image is still being counted',
+        );
+
+        expect(deeper!.colour.toARGB32(), plain.colour.toARGB32());
+        expect(
+          deeper.share,
+          greaterThan(0.9),
+          reason:
+              'a deeper foot band cost far more of the border than the flanks '
+              'below the cut-off can account for',
+        );
+      });
+    });
+
+    testWidgets('Given a dark jacket inside white trim, Then the trim is excluded '
+        '(매치메이커스)', (tester) async {
+      // **The paper-margin correction.** Book images are often shot or composited on
+      // white, so the jacket sits inside a light frame belonging to the photograph.
+      // Dropping the foot is not enough, because the trim is on every side:
+      // `매치메이커스` is a dark jacket whose bottom edge is 94% white and whose left and
+      // right edges are 32% white each. It stored `#FFFEFE` — pure white, for a book
+      // that is nearly black.
+      //
+      // Here the trim is 6px all round, so it is 77% of the border. Without exclusion
+      // the cover stores white; with it, only the jacket is left.
+      await _real(tester, () async {
+        final image = await _image(100, 150, (x, y) {
+          final trim = x < 6 || x >= 94 || y < 6 || y >= 144;
+          return trim ? [255, 255, 255] : [42, 42, 42];
+        });
+
+        final background = await coverBackgroundColor(image);
+        expect(background, isNotNull);
+        expect(
+          background!.colour.toARGB32(),
+          0xFF2A2A2A,
+          reason: "the photograph's white trim was taken for the book",
+        );
+        _expectHex(await coverToneColor(image), 0xFF2A2A2A);
+      });
+    });
+
+    testWidgets('Given a white cover with central artwork, Then its white is NOT '
+        'taken for trim (김대중 자서전)', (tester) async {
+      // **The load-bearing safety test for the rule above, and the reason
+      // `_paperMaxCoverage` exists.** "Uniform at the edge and absent from the middle"
+      // describes a paper margin — and equally describes a white book with a big
+      // central illustration. The first version of the rule had only the interior
+      // test, and on the 460-cover corpus it deleted the background of thirteen white
+      // books: `김대중 자서전` went from storing `#FFFFFD`, present on 66% of its jacket,
+      // to a grey present on 0% of it.
+      //
+      // Area is what separates them. Trim is a few percent of an image; a white cover
+      // is a quarter of it or more. This fixture's white is 64%, and its interior is
+      // entirely artwork — so it passes every other paper gate and must be rejected
+      // by that one alone.
+      await _real(tester, () async {
+        final image = await _image(100, 150, (x, y) {
+          final art = x >= 20 && x < 80 && y >= 30 && y < 120;
+          return art ? [48, 80, 160] : [255, 255, 255];
+        });
+
+        _expectHex(
+          await coverToneColor(image),
+          0xFFFFFFFF,
+          reason:
+              'a white book lost its own background to the paper rule — this is '
+              'the thirteen-cover regression that `_paperMaxCoverage` prevents',
+        );
+      });
+    });
+
+    testWidgets('Given a border split between two colours, Then area decides '
+        '(세대를 뛰어넘어 함께 일하기)', (tester) async {
+      // **The tie-break.** A two-tone jacket divides its own border, so neither half
+      // reaches the threshold and the cover falls to a mean that is on neither half.
+      // `세대를 뛰어넘어 함께 일하기` is white across its top quarter and yellow below — 93%
+      // white along the head, yellow down both flanks — and stored a mean present on
+      // 2% of the jacket. Asking which colour covers more of the *cover* returns the
+      // yellow, on 53%.
+      //
+      // The fixture splits the border evenly between white and yellow and then dilutes
+      // both below the threshold with a spread of colours, which is what type and grain
+      // do on a real jacket. Only the tie-break can resolve it, and it resolves toward
+      // yellow because the interior is yellow.
+      await _real(tester, () async {
+        const yellow = [254, 214, 50];
+        final image = await _image(100, 150, (x, y) {
+          final border = x < 8 || x >= 92 || y < 8;
+          if (!border) return yellow;
+          if ((x * 31 + y * 17) % 2 == 0) {
+            return [(x * 13) % 256, (y * 29) % 256, ((x + y) * 7) % 256];
+          }
+          return x < 50 ? [255, 255, 255] : yellow;
+        });
+
+        final background = await coverBackgroundColor(image);
+        expect(background, isNotNull);
+        expect(
+          background!.colour.toARGB32(),
+          0xFFFED632,
+          reason:
+              'the border was split and the white half won, or the tie-break did '
+              'not run at all',
+        );
+        expect(
+          background.share,
+          greaterThanOrEqualTo(kCoverBackgroundMinShare),
+          reason:
+              'the tie-break must report the winner at its area share, or the '
+              'threshold rejects a colour that covers most of the cover',
+        );
+        _expectHex(await coverToneColor(image), 0xFFFED632);
+      });
+    });
+
+    testWidgets('Given a band across the head, Then the background below it still '
+        'wins (역행자)', (tester) async {
+      // **The head is read, and that is safe rather than lucky.** The foot is dropped
+      // unconditionally, so the obvious objection is that a band across the *head* lies
+      // about the jacket just as loudly — and `역행자` is exactly that book, an orange
+      // jacket banded in black at head *and* foot.
+      //
+      // Pooling the edges is what defuses it. The head strip is the full width by one
+      // border depth; the flanks are two border depths by nearly the full height. Over
+      // the 460-cover corpus, whose aspect ratios run 0.65–0.69, the head strip is only
+      // **27–28% of the pooled border** — under `kCoverBackgroundMinShare`, so a head
+      // band cannot be accepted however solid it is. `_borderFraction` carries the
+      // algebra, and the four head corrections measured against it and rejected.
+      //
+      // Three fixtures, deepening: a band one border deep, one two and a half deep, and
+      // the real shape with a band at each end. The orange survives all three.
+      await _real(tester, () async {
+        const orange = [234, 107, 3];
+        final plain = await coverBackgroundColor(
+          await _image(100, 150, (x, y) => orange),
+        );
+        final candidates = {
+          'a band one border deep': await coverBackgroundColor(
+            await _image(100, 150, (x, y) => y < 8 ? [0, 0, 0] : orange),
+          ),
+          'a band two and a half borders deep': await coverBackgroundColor(
+            await _image(100, 150, (x, y) => y < 20 ? [0, 0, 0] : orange),
+          ),
+          'bands at head and foot': await coverBackgroundColor(
+            await _image(
+              100,
+              150,
+              (x, y) => (y < 20 || y >= 130) ? [0, 0, 0] : orange,
+            ),
+          ),
+        };
+
+        expect(plain, isNotNull);
+        for (final entry in candidates.entries) {
+          expect(entry.value, isNotNull, reason: entry.key);
+          expect(
+            entry.value!.colour.toARGB32(),
+            plain!.colour.toARGB32(),
+            reason: '${entry.key} was taken for the background',
+          );
+          expect(
+            entry.value!.share,
+            greaterThanOrEqualTo(kCoverBackgroundMinShare),
+            reason:
+                '${entry.key} diluted the border below the threshold, so the '
+                'cover fell back to a mean',
+          );
+        }
+      });
+    });
+
+    testWidgets('Given a head band and no rival, Then it is still never accepted', (
+      tester,
+    ) async {
+      // The guarantee above, isolated. The previous test lets the orange win on merit, so
+      // it would still pass if the head strip were worth 60% of the border. Here there is
+      // no background at all: below the band the jacket is noise, spread thin enough that
+      // no bin can carry it. The band is then the largest single colour in the border by a
+      // distance, and it must **still** lose, because 28% is 28%.
+      //
+      // A band that gets accepted when nothing opposes it is a band that gets accepted
+      // when something weak opposes it, which is the failure this pins shut.
+      await _real(tester, () async {
+        final image = await _image(100, 150, (x, y) {
+          if (y < 12) return [0, 0, 0];
+          return [(x * 13) % 256, (y * 29) % 256, ((x + y) * 7) % 256];
+        });
+
+        final background = await coverBackgroundColor(image);
+        expect(background, isNotNull);
+        expect(
+          background!.share,
+          lessThan(kCoverBackgroundMinShare),
+          reason:
+              'a band across the head carried the border, so the head strip is '
+              'worth more of it than the 27–28% the corpus measures',
+        );
+
+        // So the cover takes its mean, which is the right answer for a jacket with no
+        // background.
+        final mean = await averageCoverColor(image);
+        _expectHex(await coverToneColor(image), mean!.toARGB32());
+      });
+    });
+
+    testWidgets('Given a cover that is one colour to its edges, Then no part of it '
+        'is mistaken for a band', (tester) async {
+      // The safety test for all of the above, and the reason the shipped policy detects
+      // no bands at all. Every rejected head correction had to answer this fixture, and
+      // the cheapest of them — walk down from row 0 while the rows stay uniform — walks
+      // to the far edge here and needs a depth cap to survive it. That cap is exactly the
+      // arbitrary constant this file tries not to have, and it does not save the rule:
+      // measured over 460 covers the walk fires on 302 of them and strips real
+      // backgrounds, `역행자`'s orange included.
+      //
+      // A flat cover has to come out flat, with no band logic in the way.
+      await _real(tester, () async {
+        const teal = [46, 78, 67];
+        _expectHex(
+          await coverToneColor(await _image(100, 150, (x, y) => teal)),
+          0xFF2E4E43,
+        );
+        // And with type on it, which is what a real flat jacket looks like.
+        _expectHex(
+          await coverToneColor(await _flatCoverWithType(teal)),
+          0xFF2E4E43,
         );
       });
     });

@@ -12,11 +12,15 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/handle.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/book_search_provider.dart';
+import 'package:bookworm_friends/providers/libby_library_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
 import 'package:bookworm_friends/providers/theme_provider.dart';
+import 'package:bookworm_friends/services/store_links_service.dart'
+    show StoreId, storesForLocale;
 
 import 'package:bookworm_friends/ui/widgets/avatar_circle.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/compliment_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/libby_library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart';
 import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
@@ -186,7 +190,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _onUpdateUsernamePressed() {
     final profile = ref.read(profileProvider).valueOrNull;
     _usernameController.text = profile?.username ?? '';
-    CNBottomSheet.show(
+    CNBottomSheet.show<void>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -351,7 +355,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showDeleteAccountDialog() {
-    showAdaptiveDialog(
+    showAdaptiveDialog<void>(
       context: context,
       builder: (context) {
         final l10n = AppLocalizations.of(context);
@@ -413,12 +417,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   /// buried among every transitive dependency, so the names are stated in the
   /// page's own header where someone might actually read them. The app had no
   /// licence screen at all before this, which it owed regardless.
+  ///
+  /// The store marks are here for the same reason and one stronger: Libby's mark
+  /// comes from Arcticons under **CC BY-SA 4.0**, which requires attribution as a
+  /// licence condition rather than as a courtesy. Bundled SVG assets never appear
+  /// in Flutter's aggregated page at all, since that only collects `LICENSE`
+  /// files from packages -- so if this line is removed, nothing else carries it.
   void _onAcknowledgementsPressed() {
     final l10n = AppLocalizations.of(context);
     showLicensePage(
       context: context,
       applicationName: l10n.appTitle,
-      applicationLegalese: l10n.emojiPickerCredit,
+      applicationLegalese:
+          '${l10n.emojiPickerCredit}\n\n${l10n.storeMarksCredit}',
     );
   }
 
@@ -452,6 +463,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
       ],
     );
+  }
+
+  /// Opens the same picker the book sheet opens on a first Libby tap.
+  ///
+  /// **The same sheet, deliberately.** A stored answer needs a way back — people
+  /// move, join a second system, or mistype — and a second, Settings-shaped library
+  /// chooser would be a second thing to keep in step with Libby's endpoint.
+  ///
+  /// Dismissing here changes nothing, which is the difference from the first-run
+  /// ask: there the dismissal is an answer ("do not ask me again"), here it is just
+  /// a cancel, and clearing is a separate deliberate action.
+  Future<void> _showLibbyLibraryPicker() async {
+    final chosen = await showLibbyLibrarySheet(context);
+    if (chosen == null || !mounted) return;
+    await ref
+        .read(libbyLibraryProvider.notifier)
+        .choose(chosen.key, chosen.name);
   }
 
   static String _appearanceLabel(AppLocalizations l10n, ThemeMode mode) {
@@ -633,6 +661,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               onTap: _showBookSourcePicker,
             ),
+            // Sits beside the book-source picker because that row is already "which
+            // catalogue does this app talk to", so this needs no new section and
+            // nothing has to be explained twice.
+            //
+            // Shown only where a Libby row is offered at all: `storesForLocale('ko')`
+            // is `[play, kindle]`, and a setting for a shop the reader never sees
+            // would be a puzzle rather than a control.
+            if (storesForLocale(
+              Localizations.localeOf(context).languageCode,
+            ).contains(StoreId.libby))
+              _SettingsMenuItem(
+                labelText: l10n.libbyLibrary,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      ref.watch(libbyLibraryProvider).name ??
+                          l10n.libbyLibraryNotSet,
+                      style: AppTextStyles.label.copyWith(
+                        color: context.colors.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 20),
+                  ],
+                ),
+                onTap: _showLibbyLibraryPicker,
+              ),
             _SettingsMenuItem(
               labelText: l10n.appearance,
               trailing: Row(

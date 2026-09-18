@@ -8,8 +8,10 @@ import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/providers/shelf_density_provider.dart';
+import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
+import 'package:bookworm_friends/ui/widgets/reading_shelf_lamp.dart';
+import 'package:bookworm_friends/ui/widgets/reading_shelf_row.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
-import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
 
 /// A library — shelves scrolling behind a sheet.
 ///
@@ -86,6 +88,19 @@ class LibraryPane extends StatelessWidget {
   )?
   onMoveBook;
   final void Function(String shelfId, List<String> bookIds)? onReorderBooks;
+
+  /// The Reading shelf's new order, once a drag has landed on it.
+  ///
+  /// Separate from [onReorderBooks] because it is a different write: that one renumbers
+  /// `position` within one shelf, while this renumbers `reading_shelf_index` across the
+  /// whole reading set, which is drawn from several shelves at once. Null in a friend's
+  /// library, like the rest of the editing callbacks — though edit mode is unreachable
+  /// inside a visit anyway, so this is belt and braces.
+  final void Function(List<String> bookIds)? onReorderReadingBooks;
+
+  /// Takes a book out of the library entirely, from whichever row's remove badge was
+  /// tapped — the Reading shelf included. Shelf-agnostic on purpose: the badge names a
+  /// book, and a book has exactly one home shelf whatever row it is currently standing on.
   final void Function(String bookId)? onDeleteBook;
   final Future<void> Function()? onRefresh;
 
@@ -106,6 +121,7 @@ class LibraryPane extends StatelessWidget {
     this.onAddShelf,
     this.onMoveBook,
     this.onReorderBooks,
+    this.onReorderReadingBooks,
     this.onDeleteBook,
     this.onRefresh,
   });
@@ -113,20 +129,24 @@ class LibraryPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Read books live in the "Books read" pile at the bottom of this library, so
-    // they are kept off the shelves above it: showing both listed every read
-    // book twice.
+    // Read books live in the "Books read" pile at the bottom of this library and open
+    // ones on the Reading shelf at the top of it, so both are kept off the shelves in
+    // between: showing a book in two places listed it twice.
     //
-    // Then the in-progress books are pulled to the head of each row. Both are
-    // display transforms over the same list and neither writes a position, so they
-    // belong in one place — here — rather than one here and one inside a widget.
-    // Order between them is a readability choice only: one filters status 2, the
-    // other promotes status 1.
-    final shelvesOnDisplay = withReadingFirst(withoutFinishedBooks(shelves));
+    // Two filters of the same shape, composed here rather than one here and one inside a
+    // widget, because both are display transforms over the same list and neither writes
+    // a position. Order between them is a readability choice only.
+    final shelvesOnDisplay = withoutReadingBooks(withoutFinishedBooks(shelves));
+    // Derived from the `shelves` this pane was handed rather than watched from
+    // `readingBooksProvider`, because this is the layer the shell keeps persistent and
+    // reads no shell state itself — see the note on the class. [readingBooksOf] is that
+    // provider's own answer as a pure function, for exactly this caller.
+    final readingBooks = readingBooksOf(shelves);
     // Deliberately measured against the *unfiltered* shelves. `finishedBooks` is
     // only the books matching the pile's year/month filter, so a library made up
     // entirely of read books must not offer to add a first book just because the
-    // filter happens to exclude them all.
+    // filter happens to exclude them all. The open books are in `shelves` already, so
+    // they need no separate term here.
     final bool hasNoBooks =
         (shelves.isEmpty || shelves.every((s) => s.books.isEmpty)) &&
         finishedBooks.isEmpty;
@@ -166,7 +186,17 @@ class LibraryPane extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SadCharacter(height: 100),
+                  // Two different messages, so two different drawings: your own
+                  // empty library gets the invitation (a book beside an empty
+                  // slot), a friend's gets the book at rest. The old
+                  // `SadCharacter` drew the same frown at both, and aimed it at
+                  // a brand-new reader the copy below is trying to welcome.
+                  EmptyStateArt(
+                    isSelf
+                        ? EmptyStateArtwork.emptyLibraryMine
+                        : EmptyStateArtwork.emptyLibraryOther,
+                    size: 100,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     isSelf ? l10n.libraryEmptySelf : l10n.libraryEmptyOther,
@@ -206,9 +236,34 @@ class LibraryPane extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         // The bottom inset is the collapsed sheet floating over this list: without it
         // the last shelf could never be scrolled out from behind the sheet.
-        padding: EdgeInsets.only(top: 16, bottom: 16 + bottomInset),
+        //
+        // The top pad is [kReadingLampSourcePadding], because the lamp behind this list
+        // has to cover it — a strip of bare `surfaceVariant` between the bar and the
+        // start of the light is exactly what made the wash read as a rectangle rather
+        // than as a lit room.
+        padding: EdgeInsets.only(
+          top: kReadingLampSourcePadding,
+          bottom: 16 + bottomInset,
+        ),
         child: Column(
           children: [
+            // Above every shelf, and absent entirely when nothing is in progress. A
+            // plank with a `Reading` tab and no books on it would make a promise about
+            // a state the reader is not in, and would push every real shelf ~170pt down
+            // to do it. The shelf arriving when a book is opened is the feedback.
+            if (readingBooks.isNotEmpty)
+              ReadingShelfRow(
+                books: readingBooks,
+                mode: mode,
+                onLongPress: onEnterEditMode,
+                onReorder: onReorderReadingBooks,
+                // Gated on edit mode exactly as the queue rows below are: the badge
+                // is only drawn there anyway, but the row has no business holding a
+                // live delete callback while nothing is editable.
+                onDeleteBook: mode == LibraryMode.editLibrary
+                    ? onDeleteBook
+                    : null,
+              ),
             ...shelvesOnDisplay.map(
               (shelf) => ShelfRow(
                 shelf: shelf,
@@ -265,10 +320,28 @@ class LibraryPane extends StatelessWidget {
     // NOTE: the background has to live *outside* RefreshIndicator. That widget
     // wraps its child in a loose Stack, which would let the container shrink to
     // the shelves' height and leave the rest of the library unpainted.
+    //
+    // **The lamp goes in here, behind the shelves and outside the scroll view.** It is
+    // the Reading shelf's light, but it is not part of the Reading shelf: light is a
+    // fixture, so when the reader scrolls, the shelves move under it and it stays where
+    // it is. Two earlier drafts had it inside the row and it travelled with the books —
+    // see [kReadingLampSourcePadding], which records both.
+    //
+    // [ReadingLampLayer] pins it to `top: 0` of this box, which [LibraryPaneFrame] has
+    // already placed at [topInset] — so the light starts at the library's own top edge,
+    // immediately under the bar, with no gap above it. It is lit only when something is
+    // actually open, so the library is unlit exactly when the Reading shelf is absent,
+    // and it dims as that shelf scrolls out from under it: a fixed light that kept its
+    // full strength would end up lighting a *queue* shelf, which says the library is lit
+    // from above rather than that this row is. See [readingLampIntensity].
     final library = Container(
       width: double.infinity,
       color: context.colors.surfaceVariant,
-      child: shelfList,
+      child: ReadingLampLayer(
+        lit: readingBooks.isNotEmpty,
+        bookHeight: MediaQuery.of(context).size.height * 0.15,
+        child: shelfList,
+      ),
     );
 
     // The sheet floats over the library rather than sitting above it, which is what

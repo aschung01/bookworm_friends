@@ -10,7 +10,6 @@ const String _smileBookwormIcon = "assets/icons/smileBookwormIcon.svg";
 /// an `SvgPicture` that has not loaded its bytes paints nothing, and
 /// `RepaintBoundary.toImage` captures only what is already resolved.
 const String kBookmarkIconAsset = "assets/icons/bookmarkIcon.svg";
-const String _sadCharacter = "assets/icons/sadCharacter.svg";
 
 /// Lucide's `stretch-horizontal`, used for Manage Shelves in the library bar.
 /// The SVG remains the scalable Flutter fallback and has an explicit stroke so
@@ -115,16 +114,5 @@ class BookmarkIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SvgPicture.asset(kBookmarkIconAsset, width: width, height: height);
-  }
-}
-
-class SadCharacter extends StatelessWidget {
-  final double? width;
-  final double? height;
-  const SadCharacter({super.key, this.width, this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return SvgPicture.asset(_sadCharacter, width: width, height: height);
   }
 }

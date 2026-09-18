@@ -3,6 +3,7 @@ import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/models/book.dart';
@@ -36,10 +37,13 @@ const int bookStatusFinished = 2;
 /// shows which shelf it belongs to, and clearing the "Read" status puts the
 /// cover straight back where it was.
 ///
-/// That last promise is narrower than it reads, and [withReadingFirst] below is
-/// why: once a drag has persisted a promoted row, "where it was" is the promoted
-/// position rather than the one the reader originally chose. Filtering here still
-/// writes nothing — the qualification belongs to the drag, not to this function.
+/// That last promise is narrower than it reads, and the promotion that used to sit
+/// below was why: `withReadingFirst` moved an in-progress book to the head of its own
+/// row, and once a drag had persisted a promoted row, "where it was" was the promoted
+/// position rather than the one the reader chose. That function is gone — see
+/// [withoutReadingBooks] — so the qualification no longer applies. Filtering here still
+/// writes nothing either way: the qualification belonged to the drag, not to this
+/// function.
 List<Shelf> withoutFinishedBooks(List<Shelf> shelves) => [
   for (final shelf in shelves)
     shelf.copyWith(
@@ -49,99 +53,162 @@ List<Shelf> withoutFinishedBooks(List<Shelf> shelves) => [
     ),
 ];
 
+/// [shelves] with the books that are in progress left out.
+///
+/// The same shape as [withoutFinishedBooks] above, applied to status 1 instead of
+/// status 2, and for the same reason: a book at [bookStatusReading] is drawn on the
+/// Reading shelf at the top of the library, so leaving its cover on its own plank as
+/// well would list every open book twice.
+///
+/// **This is what retired `withReadingFirst`.** That function moved an in-progress
+/// book to the *head of its own row* rather than off the row, which made every shelf
+/// two regions with a barrier between them — `readingHeadCount` found the boundary,
+/// [clampDropIndex] defended it, and `shelf_row.dart` drew across it at five sites.
+/// Once the books leave, every shelf row is one homogeneous region again. It also
+/// retired the wart that function documented on itself: edit mode wrote positions
+/// from the *promoted* row, so the first drag on a shelf persisted the promotion and
+/// clearing a book's reading status left it where the promotion put it.
+///
+/// The book keeps its `shelf_id`, exactly as a finished one does. The details page
+/// still names the shelf it belongs to, and clearing the status puts the cover back
+/// on that plank in the position it was authored in — a promise this filter can keep
+/// and `withReadingFirst` could not.
+///
+/// **Shelves are a queue.** That is the decision this filter encodes: a shelf holds
+/// what you have not started, the Reading shelf holds what you are reading, and the
+/// read pile holds what you have finished. Status decides where a book is drawn, and
+/// `shelf_id` only places it while its status is 0.
+List<Shelf> withoutReadingBooks(List<Shelf> shelves) => [
+  for (final shelf in shelves)
+    shelf.copyWith(
+      books: shelf.books
+          .where((book) => book.status != bookStatusReading)
+          .toList(),
+    ),
+];
+
+/// Every book at [bookStatusReading], across all of [shelves], in the reader's own order.
+///
+/// **A pure function over shelves, not a provider**, because two callers need it from
+/// different places and only one of them can watch a provider: `LibraryPane` is the
+/// layer the shell keeps persistent and reads no shell state itself, so it derives
+/// this from the `shelves` it was handed. [readingBooksProvider] below is the same
+/// answer for callers that do have a `ref`.
+///
+/// **Ordered by `reading_shelf_index`, which the reader arranges by dragging.** That
+/// column exists because this shelf is a view over books drawn from several shelves, so
+/// `position` — a book's place within its *own* shelf — cannot order it: two open books
+/// off different planks can hold the same one. See [Book.readingShelfIndex].
+///
+/// **Nulls sort last, with shelf order as the tiebreak.** A book with no stored index has
+/// never been arranged — a row written before the column existed, or by a build that
+/// predates it — so it falls back to exactly where it used to be drawn: the order the
+/// reader arranged their *shelves* in, which was the only authored order there was before
+/// this column, and is still the sanest default.
+///
+/// The tiebreak is applied explicitly rather than leaning on the sort preserving the walk
+/// below, because `List.sort` is not guaranteed stable: "falls back to shelf order" has to
+/// be a rule or it is luck.
+List<Book> readingBooksOf(List<Shelf> shelves) {
+  final collected = <Book>[
+    for (final shelf in shelves)
+      ...shelf.books.where((book) => book.status == bookStatusReading),
+  ];
+  final ranked = [
+    for (var i = 0; i < collected.length; i++)
+      (book: collected[i], shelfOrder: i),
+  ];
+  ranked.sort((a, b) {
+    final ai = a.book.readingShelfIndex;
+    final bi = b.book.readingShelfIndex;
+    if (ai != bi) {
+      if (ai == null) return 1;
+      if (bi == null) return -1;
+      final byIndex = ai.compareTo(bi);
+      if (byIndex != 0) return byIndex;
+    }
+    return a.shelfOrder.compareTo(b.shelfOrder);
+  });
+  return [for (final entry in ranked) entry.book];
+}
+
 /// How many of [shelf]'s books actually stand on its plank.
 ///
 /// The count the shelf's name tab shows, and therefore **the number a reader will
 /// check by scrolling the row to its end.** It has to be the length of the row they
-/// are looking at, not the size of the shelf in the database: a finished book keeps
-/// its `shelf_id` but is drawn in the read pile instead of on the plank
-/// ([withoutFinishedBooks]), so counting the raw list would advertise covers that
-/// are provably not there.
+/// are looking at, not the size of the shelf in the database.
+///
+/// **Excludes both statuses, and that is the whole point.** A finished book is drawn
+/// in the read pile ([withoutFinishedBooks]) and an in-progress one on the Reading
+/// shelf ([withoutReadingBooks]); counting either would advertise covers that are
+/// provably not on this plank. The visible consequence is that opening a book drops
+/// its shelf's count by one, which is correct — the book has left the queue.
 ///
 /// A function of one shelf rather than a getter on [Shelf], because it is a
 /// statement about how the *library view* draws a shelf, and the model has no
 /// opinion about that. It is also what lets the two ends of the shelf-tab hero
 /// flight — the library and the book-details page — agree without sharing a widget.
-int shelvedBookCount(Shelf shelf) =>
-    shelf.books.where((book) => book.status != bookStatusFinished).length;
+int shelvedBookCount(Shelf shelf) => shelf.books
+    .where(
+      (book) =>
+          book.status != bookStatusFinished && book.status != bookStatusReading,
+    )
+    .length;
 
-/// [shelves] with each shelf's in-progress books moved to the front of its row.
+/// Where a book entering [bookStatusReading] lands on the Reading shelf: one before
+/// whatever is currently at its head, or 0 when nothing is open.
 ///
-/// A display transform, exactly like [withoutFinishedBooks] above it, and applied
-/// in the same place — see `LibraryPane.build`, which composes the two.
-/// **`Book.position` is never written by this.** What is stored stays the order
-/// the reader arranged; what is drawn puts the book they are actually reading
-/// where they will see it first.
+/// **Opening a book puts it at the head, not the tail.** The Reading row clips at about
+/// three covers behind `ShelfEdgeFades`, so appending would land a newly opened book
+/// off-screen — and the shelf visibly changing is the only feedback that opening a book did
+/// anything, which is the same reasoning the zero state rests on.
 ///
-/// **Why the view needs it at all.** Two of the three shelf densities compress
-/// every book that is not in progress — shingled in `ShelfDensity.leaning`,
-/// spine-on in `ShelfDensity.spines` — so a reading book left in the middle of a
-/// row would be compressed along with the rest and, on a long shelf, sit off the
-/// end of it. Promotion is what makes the compression safe to apply. It runs in
-/// `ShelfDensity.covers` too, so that switching density changes how a shelf is
-/// drawn and never what order it is in.
+/// `min - 1` rather than shifting every other book up by one: it costs a single UPDATE
+/// instead of *n*, and cannot half-apply. The values drift negative over time, which is
+/// harmless for ordering — [readingBooksOf] only compares them — and
+/// [LibraryNotifier.reorderReadingBooks] renumbers the set to `0…n-1` on the next drag.
 ///
-/// **A stable partition, not a sort.** `List.sort` is not stable in Dart, so
-/// sorting on a status key would let two books that compare equal swap places for
-/// no reason a reader could account for. Both groups keep their authored order.
+/// Nulls are ignored when taking the minimum, because a book with no stored index sorts
+/// *last* and so is not at the head for a new book to get in front of. [excluding] omits one
+/// book from the reckoning, so re-confirming the status of a book already in progress does
+/// not shuffle it to the front; a book being inserted has nothing to exclude.
 ///
-/// **One consequence worth knowing, because it is a real cost.** Edit mode draws
-/// the promoted row, and `LibraryNotifier.reorderBooksInShelf` writes positions
-/// from the row it is handed — so the first drag on a shelf persists the
-/// promotion into `position`, and after that, clearing a book's reading status
-/// leaves it where the promotion put it rather than where it originally sat. That
-/// is narrower than what [withoutFinishedBooks] promises for the "Read" status,
-/// and the difference is deliberate: a drag is an authoring act, the reader was
-/// looking at the promoted row when they made it, and writing back an order they
-/// were never shown would persist an arrangement nobody chose.
-List<Shelf> withReadingFirst(List<Shelf> shelves) => [
-  for (final shelf in shelves)
-    shelf.copyWith(
-      books: [
-        ...shelf.books.where((book) => book.status == bookStatusReading),
-        ...shelf.books.where((book) => book.status != bookStatusReading),
-      ],
-    ),
-];
+/// A pure function over the reading set rather than a method that fetches one, so the rule
+/// can be tested without a database — the arithmetic is the whole substance here, and the
+/// query around it is one line.
+int readingHeadIndexFor(List<Book> readingBooks, {String? excluding}) {
+  final indices = <int>[
+    for (final book in readingBooks)
+      if (book.id != excluding)
+        if (book.readingShelfIndex case final index?) index,
+  ];
+  if (indices.isEmpty) return 0;
+  return indices.reduce((a, b) => a < b ? a : b) - 1;
+}
 
-/// How many books stand at the head of [shelf] because they are in progress.
+/// [index] confined to the region of a row a book is allowed to land in.
 ///
-/// Where the reading block ends and the compressible remainder begins. Read by
-/// `ShelfBooksRow` to place the compressed group, and by `_ShelfRowState` to clamp
-/// a drag's drop index to the zone the dragged book belongs to — one function, so
-/// the drawing and the drag cannot disagree about the boundary.
+/// **Now a single region, and this function is what is left of two.** A shelf used to
+/// be drawn as the books in progress followed by everything else, with a barrier
+/// between them that a drag could not cross; `withReadingFirst` built that head and
+/// `readingHeadCount` measured it. Both are gone — [withoutReadingBooks] takes the
+/// in-progress books off the shelf entirely, so every row is homogeneous and the only
+/// clamp still needed is to the row's own ends.
 ///
-/// **Defined on an already-promoted shelf**, hence `takeWhile` and not `where`: it
-/// measures the *leading run*, so a shelf that has not been through
-/// [withReadingFirst] gets a wrong answer rather than an error. Callers get their
-/// shelves from `LibraryPane`, which promotes them before anything sees them.
-int readingHeadCount(Shelf shelf) =>
-    shelf.books.takeWhile((book) => book.status == bookStatusReading).length;
-
-/// [index] confined to the region of a row that a book is allowed to land in.
+/// Kept as a function rather than inlined at the call site because the drawing and the
+/// drag have to agree about where a book may land, and one definition is how that was
+/// guaranteed before. It is also the seam to widen again if a shelf ever grows regions
+/// for some other reason.
 ///
-/// A shelf is drawn as two regions — the books in progress, then everything else —
-/// and a drag cannot cross between them: a book being read cannot be filed behind
-/// one that is not, and a book that is not cannot jump the queue.
-///
-/// [headCount] and [rowLength] are measured on the row **with the dragged book taken
-/// out**, because that is the row an insertion index refers to. [reading] is the
-/// status of the book in flight, which for a book arriving from another shelf comes
-/// over in its `ShelfBookDrag` — the receiving shelf has no other way to know.
+/// [rowLength] is measured on the row **with the dragged book taken out**, because that
+/// is the row an insertion index refers to.
 ///
 /// **Clamped rather than corrected on release.** The index drives the gap the row
 /// opens to preview a drop, so clamping here is what makes the preview the truth. A
 /// gap that opens where the book cannot land is a promise the drop then breaks, and
 /// the book visibly springs somewhere else.
-///
-/// A reading book may land at [headCount] itself, which puts it last among the books
-/// in progress; a book that is not may land there at the earliest.
-int clampDropIndex(
-  int index, {
-  required int headCount,
-  required int rowLength,
-  required bool reading,
-}) => reading ? index.clamp(0, headCount) : index.clamp(headCount, rowLength);
+int clampDropIndex(int index, {required int rowLength}) =>
+    index.clamp(0, rowLength);
 
 /// A book taken out of local state but not yet deleted from the database, held
 /// so the library's undo can put it back at the exact shelf and position.
@@ -195,6 +262,56 @@ class LibraryNotifier extends AutoDisposeAsyncNotifier<List<Shelf>> {
             .from('shelves')
             .update({'position': i})
             .eq('id', shelfIds[i]);
+      }
+    } catch (e) {
+      EasyLoading.showError(
+        AppLocalizations.of(navigatorKey.currentContext!).reorderFailed,
+      );
+      ref.invalidateSelf();
+    }
+  }
+
+  /// Reorders the Reading shelf optimistically, then persists.
+  ///
+  /// **Nothing is reordered — only renumbered**, which is the whole difference from
+  /// [reorderBooksInShelf]. The Reading shelf is a *derived* row: every book stays in the
+  /// shelf it belongs to, and [readingBooksOf] sorts them by `reading_shelf_index` on the
+  /// way out. So this writes an index onto each book where it already sits, and the row
+  /// rebuilds in the new order.
+  ///
+  /// Unlike [reorderBooksInShelf], [bookIds] is the **whole** reading set rather than only
+  /// what the caller can see. That method's caveat exists because finished books are hidden
+  /// from a shelf and must keep their stored position; here the row clips visually but
+  /// every open book is in its list, so there is nothing absent to protect.
+  ///
+  /// **`position` is never written.** That is what keeps `withoutReadingBooks`' promise
+  /// that clearing a book's status puts it back on its own plank in the position it was
+  /// authored in — see [Book.readingShelfIndex].
+  Future<void> reorderReadingBooks(List<String> bookIds) async {
+    final current = state.valueOrNull;
+    if (current == null) return;
+
+    final indexOf = {for (var i = 0; i < bookIds.length; i++) bookIds[i]: i};
+    final updated = [
+      for (final shelf in current)
+        shelf.copyWith(
+          books: [
+            for (final book in shelf.books)
+              if (indexOf[book.id] case final index?)
+                book.copyWith(readingShelfIndex: index)
+              else
+                book,
+          ],
+        ),
+    ];
+    state = AsyncData(updated);
+
+    try {
+      for (var i = 0; i < bookIds.length; i++) {
+        await supabase
+            .from('books')
+            .update({'reading_shelf_index': i})
+            .eq('id', bookIds[i]);
       }
     } catch (e) {
       EasyLoading.showError(
@@ -563,6 +680,12 @@ class LibraryActions {
         'title': title,
         'thumbnail': thumbnail,
         'status': status,
+        // A book saved straight into "reading" needs a place on the Reading shelf like any
+        // other, or it would arrive with a null index and sort to the end of a row it is
+        // supposed to be heading. See [_readingHeadIndex].
+        'reading_shelf_index': status == bookStatusReading
+            ? await _readingHeadIndex()
+            : null,
         'start_date': dates.startDate != null
             ? DateFormat('yyyy-MM-dd').format(dates.startDate!)
             : null,
@@ -579,10 +702,17 @@ class LibraryActions {
         // a hash. Kakao never supplies one, so for most Korean titles this stays
         // null and the shelf looks exactly as it did before.
         'page_count': pageCount,
-        // The cover the user just picked, averaged, if whatever showed it to them
-        // had decoded it by the time they saved. Null is ordinary and costs
-        // nothing: the book falls back to a swatch derived from its ISBN until
-        // something decodes its cover and reports the sample back.
+        // The cover the reader just picked, resolved by the sheet that showed it to
+        // them. Populated for the ordinary add, because `showBookInfoBottomSheet` draws
+        // that cover and reports its sample; null when the thumbnail had not decoded by
+        // the time they tapped Save, or when the book has no thumbnail at all.
+        //
+        // Null costs nothing: the book falls back to a swatch derived from its ISBN
+        // until something decodes its cover and reports the sample back through
+        // [recordCoverColor]. It is worth filling in here anyway, because a book saved
+        // as *finished* never reaches the shelves -- `withoutFinishedBooks` keeps it off
+        // them -- so the path that colours most books would never see it, and it would
+        // sit in the read pile under an ISBN swatch instead.
         'cover_color': coverColor == null
             ? null
             : bookCoverColorToHex(coverColor),
@@ -654,11 +784,104 @@ class LibraryActions {
       .update({'cover_color': bookCoverColorToHex(color)})
       .eq('id', bookId);
 
+  /// Records which shop the owner's copy of a book lives in, or clears it when
+  /// [storeKey] is null.
+  ///
+  /// **Inferred from a tap, which is the only signal available.** Ownership cannot
+  /// be detected: `canLaunchUrl` proves a reader app is installed, never that this
+  /// book is in it. So tapping a shop is taken as "my copy is there", which is
+  /// right often enough to be useful and wrong often enough that clearing has to
+  /// be one tap away — somebody checking a price is recorded identically to
+  /// somebody buying. Passing null is that escape hatch.
+  ///
+  /// Only for books the signed-in user owns, and the guard is here rather than
+  /// left to RLS for the same reason [recordCoverColor]'s is: a friend's book
+  /// renders through the same sheet, so without it every tap on their book would
+  /// fire a request that is certain to be refused.
+  ///
+  /// Invalidates, unlike [recordCoverColor]. The value is not already on screen —
+  /// it *is* the screen: the sheet retitles itself and collapses to one action, so
+  /// the page has to see the new row.
+  Future<void> setReaderApp(Book book, String? storeKey) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null || book.userId != userId) return;
+    if (book.readerApp == storeKey) return;
+
+    try {
+      await supabase
+          .from('books')
+          .update({'reader_app': storeKey})
+          .eq('id', book.id);
+      ref.invalidate(libraryProvider);
+      _invalidateFinishedBooks();
+    } on PostgrestException catch (error) {
+      // **Narrowed, because the blanket swallow below hid a real defect for the
+      // whole life of this feature.** `books.reader_app` was missing from
+      // production — its migration had never been applied — so every one of these
+      // writes failed and said nothing. Reading degraded harmlessly (an absent
+      // column reads as null, which is the acquire list), so the symptom was that
+      // no shop was ever remembered: no "Your copy" title, no check, no way to
+      // open a copy. The feature's entire second half was dead and looked like a
+      // design choice.
+      //
+      // A missing column or a refused policy is a deployment bug, not a transient
+      // failure, so it fails loudly in debug and stays silent in release. `42703`
+      // is Postgres' undefined_column; `PGRST204` is PostgREST's own for a column
+      // absent from its schema cache.
+      assert(
+        error.code != '42703' && error.code != 'PGRST204',
+        'setReaderApp could not write books.reader_app — this database is '
+        'missing the column. Apply '
+        'supabase/migrations/20260915130000_book_reader_app.sql. $error',
+      );
+    } catch (_) {
+      // Swallowed on purpose, and this is the one write in this class that says
+      // nothing when it fails. Everything the reader asked for has already
+      // happened — the shop opened — and this is a note-to-self about where their
+      // copy lives. An error toast would report the failure of something they did
+      // not ask for, over a book they are no longer looking at.
+    }
+  }
+
+  /// Where a book entering [bookStatusReading] lands, read off the library as it stands.
+  ///
+  /// The rule itself is [readingHeadIndexFor]; this only supplies it with the reading set.
+  Future<int> _readingHeadIndex({String? excluding}) async {
+    final shelves = await ref.read(libraryProvider.future);
+    return readingHeadIndexFor(readingBooksOf(shelves), excluding: excluding);
+  }
+
   Future<void> updateBookStatus(
     String bookId,
     int status, {
     DateTime? startDate,
     DateTime? finishDate,
+
+    /// The reading position as a fraction 0..1, or null to leave the column alone.
+    ///
+    /// **Null means "do not write", not "clear"**, which is the one place this
+    /// parameter differs from the dates beside it. `start_date` and `finish_date`
+    /// are *derived* from the status here, so passing null for them is a real
+    /// instruction and nulls the column. A position is not derived from anything:
+    /// it is a fact about the text that the status has no opinion on, so a reader
+    /// changing a date must not have their bookmark thrown away as a side effect,
+    /// and a book put back on the shelf and reopened should be where they left it.
+    ///
+    /// Which also means there is currently no way to *clear* a position. That is
+    /// deliberate rather than missing: the wheel's lowest stop is 0%, which means
+    /// "at the very start" and is an answer, not an erasure.
+    double? progress,
+
+    /// Which unit [progress] arrived in: the page the reader typed, or null when they
+    /// answered in percent.
+    ///
+    /// **Written only when [progress] is**, and inside that branch null is a real
+    /// instruction — it clears the column. That is the opposite of what null means for
+    /// [progress] itself, and deliberately so: answering in percent is *news* about
+    /// provenance, so a book last set to p.200 and then set to 46% must stop claiming
+    /// the reader said p.200. Outside the branch the column is not mentioned, so a
+    /// date edit leaves the page alone exactly as it leaves the fraction alone.
+    int? progressPage,
   }) async {
     final dates = clampReadingDates(
       startDate: startDate,
@@ -667,16 +890,32 @@ class LibraryActions {
 
     EasyLoading.show();
     try {
+      // A place on the Reading shelf exists only while the book is in progress, so this
+      // is cleared on the way out. The local `Book` keeps its stale value, which is
+      // deliberate and harmless — see [Book.readingShelfIndex].
+      final readingShelfIndex = status == bookStatusReading
+          ? await _readingHeadIndex(excluding: bookId)
+          : null;
+
       await supabase
           .from('books')
           .update({
             'status': status,
+            'reading_shelf_index': readingShelfIndex,
             'start_date': dates.startDate != null
                 ? DateFormat('yyyy-MM-dd').format(dates.startDate!)
                 : null,
             'finish_date': dates.finishDate != null
                 ? DateFormat('yyyy-MM-dd').format(dates.finishDate!)
                 : null,
+            // One UPDATE, one Save. The key is omitted rather than sent as null
+            // when there is nothing to write — see [progress]. The page rides in
+            // the same branch so the two can never disagree about which unit the
+            // stored fraction came from.
+            if (progress != null) ...{
+              'progress': progress,
+              'progress_page': progressPage,
+            },
           })
           .eq('id', bookId);
 

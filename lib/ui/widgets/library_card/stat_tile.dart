@@ -99,15 +99,7 @@ class StatTile extends StatelessWidget {
   /// the first Korean name longer than three syllables.
   final bool figureIsText;
 
-  /// A second line under [label], and in practice the hero's alone: the card's
-  /// printed furniture, `도서관 카드 · LIBRARY · CARD`.
-  ///
-  /// Passed in rather than localised — see `card_furniture.dart` for why the string
-  /// is fixed in both locales — and drawn verbatim rather than uppercased, since it
-  /// already carries its own casing and `toUpperCase` is a no-op on the Korean half.
-  final String? subLabel;
-
-  /// Drawn below the sub-line, full width. The hero's cover row.
+  /// Drawn below the small print, full width. The hero's cover row.
   ///
   /// A slot rather than a `CardCoverRow` parameter, because a stat tile has no
   /// business knowing what books are: it knows a label, a figure and a bit of small
@@ -121,7 +113,6 @@ class StatTile extends StatelessWidget {
     this.sub,
     this.variant = StatTileVariant.tile,
     this.figureIsText = false,
-    this.subLabel,
     this.footer,
   });
 
@@ -177,23 +168,6 @@ class StatTile extends StatelessWidget {
               // was the one size in the app that had no sibling.
               style: AppTextStyles.caption.copyWith(color: onFillMuted),
             ),
-            if (subLabel != null) ...[
-              const SizedBox(height: 3),
-              Text(
-                // Verbatim, not uppercased — see [subLabel].
-                subLabel!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                // The same token as the label above it, held apart by alpha alone.
-                // Once both lines are `caption` there is no size or weight left to
-                // separate them with, and they must be separated: the label names
-                // this tile, the stamp line names the whole artifact, so the
-                // furniture has to sit *under* the label rather than beside it.
-                style: AppTextStyles.caption.copyWith(
-                  color: onFillMuted.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
             SizedBox(height: isHero ? 8 : 6),
             Text(
               figure,

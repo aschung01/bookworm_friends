@@ -8,6 +8,7 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
+import 'package:bookworm_friends/services/cover_image.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_shelf_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/update_shelf_name_bottom_sheet.dart';
@@ -506,8 +507,8 @@ class _PreviewCover extends StatelessWidget {
     final block = ColoredBox(color: generatedCoverColor(book.isbn));
     if (book.thumbnail.isEmpty) return block;
 
-    return Image.network(
-      book.thumbnail,
+    return Image(
+      image: coverImageProvider(book.thumbnail),
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) => block,
     );

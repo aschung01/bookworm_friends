@@ -6,10 +6,8 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/profile.dart';
-import 'package:bookworm_friends/providers/library_shell_provider.dart';
-import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/widgets/avatar_circle.dart';
-import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart';
+import 'package:bookworm_friends/ui/widgets/dialogs/remove_friend_confirm.dart';
 
 /// Identity, per-friend notifications, and Remove.
 ///
@@ -20,10 +18,17 @@ import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart'
 /// Cancel/Confirm in the dialog — which is the kind of inconsistency nobody notices
 /// until they are asked to describe what the app does.
 ///
-/// **Reached from the gear in the visit app bar**, beside Poke. It was drawn on a long
-/// press of the Friends row first: a real gesture (`friends_sheet.dart`) inherited from
-/// the rail, but an invisible one. Reusing an existing gesture is not the same as
-/// advertising an action.
+/// **No longer reached from the visit bar, which was its headline entry point.** The
+/// gear beside Poke is an overflow menu now, and Remove is one item in it followed by
+/// the same confirm this page raises — literally the same, via
+/// [confirmAndRemoveFriend]. Pushing a screen to offer one destructive action was
+/// more ceremony than the action deserved once the popover could offer it in place.
+///
+/// **What keeps the page alive is the long press and the invite hand-off**, neither of
+/// which the visit bar can serve: `friends_sheet.dart` opens it from a row that may
+/// not be the friend on screen, and `invite_done_page.dart` offers it as the *place*
+/// per-friend notifications will live once they exist. If those two ever move, this
+/// page has no remaining reason to exist.
 ///
 /// A page rather than a sheet, because it is a destination with a title and a back
 /// button, and because the confirm it raises is a system alert that wants a page under
@@ -162,7 +167,7 @@ class _RemoveFriendButton extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
 
     return GestureDetector(
-      onTap: () => _confirm(context, ref, l10n),
+      onTap: () => _confirm(context, ref),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
@@ -181,47 +186,18 @@ class _RemoveFriendButton extends ConsumerWidget {
     );
   }
 
-  /// The app's own confirm.
+  /// The app's own confirm, which this page no longer owns.
   ///
-  /// `showAdaptiveDialog` + [AdaptiveDialogAction], matching every other destructive
-  /// confirm in the app. iOS orders Cancel first and the destructive action second, in
-  /// red — which is what dissolves the old No/Unfollow versus Cancel/Confirm split into
-  /// the platform rather than into a house style nobody wrote down.
-  Future<void> _confirm(
-    BuildContext context,
-    WidgetRef ref,
-    AppLocalizations l10n,
-  ) async {
-    final confirmed = await showAdaptiveDialog<bool>(
+  /// It moved to [confirmAndRemoveFriend] when the visit bar's overflow menu became a
+  /// second trigger for it. What is left here is the part only a *page* has to do:
+  /// leave, because a screen whose whole subject has just been removed cannot stay.
+  Future<void> _confirm(BuildContext context, WidgetRef ref) async {
+    final removed = await confirmAndRemoveFriend(
       context: context,
-      builder: (ctx) => AlertDialog.adaptive(
-        title: Text(l10n.removeFriendConfirmTitle(friend.username ?? '')),
-        content: Text(l10n.removeFriendConfirmMessage),
-        actions: [
-          AdaptiveDialogAction(
-            label: l10n.cancel,
-            onPressed: () => Navigator.pop(ctx, false),
-          ),
-          AdaptiveDialogAction(
-            label: l10n.remove,
-            isDestructive: true,
-            onPressed: () => Navigator.pop(ctx, true),
-          ),
-        ],
-      ),
+      ref: ref,
+      friend: friend,
     );
-
-    if (confirmed != true || !context.mounted) return;
-
-    await ref.read(userActionsProvider).removeFriend(friend.id);
-    if (!context.mounted) return;
-
-    // End the visit before leaving. Without this the shell returns to a friend who is
-    // no longer in the list, which `home_page.dart` would then have to evict — the same
-    // eviction that now also fires when *they* remove *you*, a case a one-directional
-    // model could never produce.
-    ref.read(selectedFriendProvider.notifier).state = null;
-    ref.read(friendsSheetLevelProvider.notifier).state = FriendsSheetLevel.list;
+    if (!removed || !context.mounted) return;
     Navigator.pop(context);
   }
 }

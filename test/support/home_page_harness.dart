@@ -32,6 +32,7 @@ import 'package:bookworm_friends/providers/shell_chrome_provider.dart';
 import 'package:bookworm_friends/ui/pages/home_page.dart';
 import 'package:bookworm_friends/ui/widgets/shell_chrome.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
+import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
 
 import 'prefs.dart';
@@ -67,9 +68,11 @@ Book testBook(
   String? title,
   int status = 0,
   int? pageCount,
+  int? readingShelfIndex,
   DateTime? startDate,
   DateTime? finishDate,
   List<String> authors = const [],
+  double? progress,
 }) => Book(
   id: id,
   userId: 'u',
@@ -79,11 +82,21 @@ Book testBook(
   thumbnail: '',
   status: status,
   position: position,
+  // Left null by default on purpose, which is the state of every book that is not in
+  // progress and of any row written before the column existed. `readingBooksOf` sorts
+  // those last and falls back to shelf order, so a fixture that does not care about the
+  // Reading shelf's order gets the pre-column behaviour for free.
+  readingShelfIndex: readingShelfIndex,
   pageCount: pageCount,
   startDate: startDate,
   finishDate: finishDate,
   createdAt: DateTime(2024),
   authors: authors,
+  // Null by default, which is every book in production on the day the column
+  // shipped. Null draws no bar and leaves the ribbon at its shipped pin, so a
+  // fixture that does not care about a reading position gets the pre-column
+  // rendering for free.
+  progress: progress,
 );
 
 Shelf testShelf(String id, List<Book> books, {String? name}) => Shelf(
@@ -218,9 +231,26 @@ Future<void> pumpHome(
 ///
 /// Cannot use `pumpAndSettle` afterwards: the covers wiggle on a repeating
 /// animation.
+///
+/// **Scoped to the draggable inside a [ShelfRow], and both halves of that matter.**
+/// [ShelfRow] wires the hold to a `LongPressDraggable`, so that widget is the thing that
+/// actually answers one — which is true at every density, where `find.byType(BookWidget)`
+/// is not: a `spines` row draws `BookVertical` and has no cover to hold at all. And it
+/// must be a *shelf* row: the Reading shelf stands above the shelves and carries a
+/// `LongPressDraggable<ReadingBookDrag>` of its own, so an unscoped finder would sometimes
+/// hold a cover there instead — which does enter edit mode, but from a different row than
+/// the caller of this helper is usually reasoning about, and with a different lift delay.
+/// `reading_shelf_row_test.dart` holds that row's covers explicitly where it means to.
 Future<void> enterEditMode(WidgetTester tester) async {
   final gesture = await tester.startGesture(
-    tester.getCenter(find.byType(BookWidget).first),
+    tester.getCenter(
+      find
+          .descendant(
+            of: find.byType(ShelfRow),
+            matching: find.byType(LongPressDraggable<ShelfBookDrag>),
+          )
+          .first,
+    ),
   );
   // Two pumps, not one. `onTapDown` does not fire on pointer-down: the tap
   // recognizer holds it until it wins the arena or its ~100ms deadline passes,

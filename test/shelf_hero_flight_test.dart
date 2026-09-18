@@ -262,11 +262,14 @@ void main() {
 
   group('which books the details page offers a flight to', () {
     testWidgets(
-      "Given a book on a shelf, Then both shelf parts carry that shelf's tags",
+      "Given a book waiting on a shelf, Then both shelf parts carry that shelf's "
+      'tags',
       (tester) async {
+        // Status 0 is the only status whose cover is actually standing on the plank
+        // over in the library, which is what the flight's far end has to be.
         await pumpBookDetails(
           tester,
-          book: readingBook(ownerId: meId),
+          book: interestedBook(ownerId: meId),
           signedInAs: meId,
         );
 
@@ -278,6 +281,36 @@ void main() {
           tester.widget<ShelfLabel>(find.byType(ShelfLabel)).heroTag,
           shelfLabelHeroTag(shelfId),
         );
+      },
+    );
+
+    testWidgets(
+      'Given a book in progress, Then neither is tagged, because the cover they '
+      'would fly with is on the Reading shelf rather than on this one',
+      (tester) async {
+        // The mirror of the finished case below, and it arrived with the Reading
+        // shelf: `withoutReadingBooks` takes an open book off its own plank, so that
+        // plank is still on the library route under these tags but is not where the
+        // reader tapped. The Reading shelf's own plank carries no tags at all, for
+        // the matching reason — this page names the shelf the book *belongs* to, so
+        // there is nothing here for that one to fly to either.
+        await pumpBookDetails(
+          tester,
+          book: readingBook(ownerId: meId),
+          signedInAs: meId,
+        );
+
+        expect(
+          tester.widget<ShelfWidget>(find.byType(ShelfWidget)).heroTag,
+          isNull,
+        );
+        expect(
+          tester.widget<ShelfLabel>(find.byType(ShelfLabel)).heroTag,
+          isNull,
+        );
+        // The tab is still drawn and still names the shelf: where a book belongs is
+        // information the page owes the reader whether or not anything flies.
+        expect(find.text(shelfName), findsOneWidget);
       },
     );
 

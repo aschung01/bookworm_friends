@@ -36,7 +36,7 @@ import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/loading_blocks.dart';
 import 'package:bookworm_friends/ui/widgets/read_filter.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
-import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
+import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
 
 import 'support/home_page_harness.dart';
@@ -558,7 +558,7 @@ void main() {
         expect(find.textContaining('to add a book'), findsOneWidget);
         expect(find.byType(LibrarySheet), findsOneWidget);
         expect(
-          tester.getRect(find.byType(SadCharacter)).bottom,
+          tester.getRect(find.byType(EmptyStateArt)).bottom,
           lessThanOrEqualTo(tester.getRect(find.byType(LibrarySheet)).top),
           reason:
               'the empty state has to sit clear of the sheet floating over it, '

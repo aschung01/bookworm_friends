@@ -22,7 +22,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/library_card_stats.dart';
-import 'package:bookworm_friends/ui/widgets/library_card/card_furniture.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/library_card_body.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/stat_tile.dart';
 
@@ -69,12 +68,15 @@ Future<void> _pump(
   List<Book> books, {
   int year = 0,
   double textScale = 1,
+  Locale locale = const Locale('en'),
+  int streak = 0,
+  int longestStreak = 0,
 }) async {
   tester.view.physicalSize = _surface * tester.view.devicePixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
   await tester.pumpWidget(
     MaterialApp(
-      locale: const Locale('en'),
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -87,6 +89,8 @@ Future<void> _pump(
                 stats: libraryCardStats(books, year: year),
                 books: books,
                 year: year,
+                streak: streak,
+                longestStreak: longestStreak,
               ),
             ),
           ),
@@ -96,6 +100,14 @@ Future<void> _pump(
   );
   await tester.pumpAndSettle();
 }
+
+/// Every tile's label, in natural case — the tile itself draws them uppercased, so a
+/// rendered-text finder would miss for a reason that has nothing to do with the tile
+/// under test.
+List<String> _labels(WidgetTester tester) => [
+  for (final element in find.byType(StatTile).evaluate())
+    (element.widget as StatTile).label,
+];
 
 /// All stat tiles in the tree, in layout order.
 List<Element> _tiles(WidgetTester tester) =>
@@ -381,13 +393,32 @@ void main() {
 
   group('LibraryCardBody as a preview of the export', () {
     // Before this the hero was a chart: a reader tapped share on a green rectangle
-    // and got back an object they had never seen. The two things that make it a
-    // preview are the card's own furniture and the covers.
+    // and got back an object they had never seen. What makes it a preview is the
+    // covers — the lettering is the artifact's, and the hero prints none of it.
     testWidgets('Given a reader with books, When the hero renders, '
-        'Then it carries the card\'s printed furniture', (tester) async {
+        'Then it does not name the card twice', (tester) async {
+      // The label is already the card's name in the reader's language, so the
+      // artifact's stamp line under it was the same words again. Checked in both
+      // locales because the duplicate read differently in each and was fixed in two
+      // steps — `LIBRARY · CARD` under `ALL-TIME LIBRARY CARD` in `en`, then
+      // `도서관 카드` under `전기간 도서관 카드` in `ko`.
       await _pump(tester, [_spanned('a', 6, DateTime(2024, 3, 1))]);
 
-      expect(find.text(kCardStampLine), findsOneWidget);
+      expect(find.text('ALL-TIME LIBRARY CARD'), findsOneWidget);
+      expect(find.text('LIBRARY · CARD'), findsNothing);
+    });
+
+    testWidgets('Given a Korean reader with books, When the hero renders, '
+        'Then it does not name the card twice either', (tester) async {
+      // The artifact still prints `도서관 카드`, because *its* title is English in
+      // both locales and so a Korean reader learns something from the line. Here the
+      // label above has already said it. See `cardStampLine`.
+      await _pump(tester, [
+        _spanned('a', 6, DateTime(2024, 3, 1)),
+      ], locale: const Locale('ko'));
+
+      expect(find.text('전기간 도서관 카드'), findsOneWidget);
+      expect(find.text('도서관 카드'), findsNothing);
     });
 
     testWidgets('Given a reader with books, When the hero renders, '
@@ -415,11 +446,108 @@ void main() {
     });
 
     testWidgets('Given nothing finished, When the body renders, '
-        'Then there is no furniture and no cover row', (tester) async {
+        'Then there is no cover row', (tester) async {
       await _pump(tester, []);
 
-      expect(find.text(kCardStampLine), findsNothing);
       expect(find.byType(Row), findsNothing);
+    });
+  });
+
+  group('the streak tile', () {
+    testWidgets('Given no run, When the body renders, Then there is no tile', (
+      tester,
+    ) async {
+      // Omitted, never zero-filled, per this card's own rule. `0d` is not a small
+      // streak, it is the absence of one — and every account in this database is on
+      // day one, so a zero-filled tile would be the *normal* first-run state.
+      await _pump(tester, [_spanned('a', 6, DateTime(2024, 3, 1))]);
+
+      expect(_labels(tester), isNot(contains('Streak')));
+    });
+
+    testWidgets('Given a run, When the body renders, Then it is a peer of Pace', (
+      tester,
+    ) async {
+      // **Not the hero.** `booksRead` keeps the 46pt figure; a streak is a fact
+      // about this fortnight and the card's subject is a library.
+      await _pump(
+        tester,
+        [_spanned('a', 6, DateTime(2024, 3, 1))],
+        streak: 12,
+        longestStreak: 30,
+      );
+
+      expect(_labels(tester), contains('Streak'));
+      expect(find.text('12d'), findsOneWidget);
+
+      final hero = tester.widget<StatTile>(find.byType(StatTile).first);
+      expect(hero.variant, StatTileVariant.hero);
+      expect(hero.label, isNot('Streak'));
+
+      final streakTile = _tiles(tester)
+          .map((element) => element.widget as StatTile)
+          .firstWhere((tile) => tile.label == 'Streak');
+      expect(streakTile.variant, isNot(StatTileVariant.hero));
+    });
+
+    testWidgets('carries the record, which a missed night does not erase', (
+      tester,
+    ) async {
+      // With freezes deferred a single missed night severs a run outright, so this
+      // is the only figure on the card that survives it. Without the record a
+      // reader who missed one Thursday sees a fortnight reduced to `1d`.
+      await _pump(
+        tester,
+        [_spanned('a', 6, DateTime(2024, 3, 1))],
+        streak: 1,
+        longestStreak: 14,
+      );
+
+      expect(find.text('1d'), findsOneWidget);
+      expect(find.textContaining('best 14'), findsOneWidget);
+    });
+
+    testWidgets(
+      'Given three tiles, When they render, Then none is squeezed into a third',
+      (tester) async {
+        // Three tiles became reachable when the streak arrived, and the row was
+        // built for one or two. Thirds of a ~310pt card give each about 97pt, which
+        // wraps "Most-read author" three ways.
+        await _pump(
+          tester,
+          [
+            _spanned('a', 6, DateTime(2024, 3, 1), authors: ['Han Kang']),
+            _spanned('b', 4, DateTime(2024, 5, 1), authors: ['Han Kang']),
+          ],
+          streak: 12,
+          longestStreak: 30,
+        );
+
+        // Hero plus three.
+        final tiles = _tiles(tester);
+        expect(tiles, hasLength(4));
+
+        for (final tile in tiles.skip(1)) {
+          expect(
+            _rectOf(tester, tile).width,
+            greaterThan(_bodyWidth / 3),
+            reason: 'no tile may be narrower than a third of the card',
+          );
+        }
+      },
+    );
+
+    testWidgets('Given one tile, Then it still fills the width', (
+      tester,
+    ) async {
+      // The behaviour the pairing must not have changed.
+      await _pump(tester, [
+        _book(id: 'a', finish: DateTime(2024, 3, 1)),
+      ], streak: 12);
+
+      final tiles = _tiles(tester);
+      expect(tiles, hasLength(2));
+      expect(_rectOf(tester, tiles[1]).width, _bodyWidth);
     });
   });
 }

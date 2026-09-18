@@ -30,6 +30,7 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
+import 'package:bookworm_friends/services/cover_image.dart';
 import 'package:bookworm_friends/ui/widgets/book/reading_bookmark.dart';
 import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_cover_row.dart';

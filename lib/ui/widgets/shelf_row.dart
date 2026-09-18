@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/models/book.dart';
@@ -12,10 +13,15 @@ import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
+import 'package:bookworm_friends/ui/widgets/book/turning_book.dart';
+import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
+import 'package:bookworm_friends/ui/widgets/read_pile.dart' show spineToneOf;
+import 'package:bookworm_friends/ui/widgets/shelf/delete_book_badge.dart';
 import 'package:bookworm_friends/ui/widgets/shelf/shelf_book_tile.dart';
-import 'package:bookworm_friends/ui/widgets/shelf/shelf_lean_metrics.dart';
+import 'package:bookworm_friends/ui/widgets/shelf/shelf_density_turn.dart';
 import 'package:bookworm_friends/ui/widgets/shelf/shelf_spine_tile.dart';
+import 'package:bookworm_friends/ui/widgets/shelf_drop_index.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 
@@ -37,7 +43,6 @@ class ShelfBookDrag {
     required this.bookId,
     required this.shelfId,
     required this.slotExtent,
-    required this.reading,
   });
 
   final String bookId;
@@ -46,14 +51,12 @@ class ShelfBookDrag {
   /// How much room the book took along its own row, its margins included.
   final double slotExtent;
 
-  /// Whether the book in flight is one the reader is part-way through.
-  ///
-  /// Travels for the same reason [slotExtent] does: a receiving shelf cannot know
-  /// it. Every shelf draws its in-progress books at the head of the row, so a book
-  /// arriving from elsewhere has to say which side of that boundary it belongs on —
-  /// otherwise the gap could open in a place the book cannot land, and the preview
-  /// would be a promise the drop then breaks.
-  final bool reading;
+  // A `reading` flag used to travel here too, and its removal is worth a line. Every
+  // shelf drew its in-progress books at the head of the row, so a book arriving from
+  // elsewhere had to declare which side of that boundary it belonged on. Those books are
+  // on the Reading shelf now (`withoutReadingBooks`), which is inert — nothing can be
+  // dragged onto or off it — so every book in flight is a queue book and every row it
+  // can reach is one region.
 }
 
 /// How long a cover has to be held in edit mode before it lifts.
@@ -71,10 +74,15 @@ const Duration kShelfLiftDelay = Duration(milliseconds: 250);
 /// How long the covers take to part for an incoming book, and to close again.
 /// Slow enough to read as books being nudged aside rather than snapping, which
 /// matters most on a crowded shelf where several of them move at once.
-const Duration _kPartDuration = Duration(milliseconds: 280);
+const Duration kShelfPartDuration = Duration(milliseconds: 280);
 
 /// Half the space between two covers, which each of them carries as its margin.
-const double _kSlotMargin = 7.5;
+///
+/// Public because the Reading shelf spaces its books by the same number and must not
+/// keep a second copy of it: `ReadingShelfRow` is a separate widget from this one, but
+/// the two rows are read as the same piece of furniture and 15pt between covers is what
+/// makes them look it.
+const double kShelfSlotMargin = 7.5;
 
 /// How much a cover grows while it is being carried.
 ///
@@ -94,11 +102,17 @@ const Duration _kLiftScaleDuration = Duration(milliseconds: 160);
 /// band has to be something a finger can rest in. 44 is a comfortable reach at the
 /// end of a row; the same 44 at the bottom of the pane would be a third of a shelf,
 /// easy to overshoot straight past and hard to hold still inside.
-const double _kRowScrollMargin = 44;
+const double kShelfRowScrollMargin = 44;
 const double _kPaneScrollMargin = 88;
 
 /// How far either scroller travels per frame while the finger is in its band.
-const double _kAutoScrollStep = 8;
+const double kShelfAutoScrollStep = 8;
+
+/// How long a compressed book takes to come forward when it is tapped.
+///
+/// In the family of [kShelfPartDuration] (280) and the shell's 260, and a little quicker
+/// than either because one book is moving rather than a whole row.
+const Duration _kSurfaceDuration = Duration(milliseconds: 220);
 
 /// One shelf: its label, its books face-out on a plank, and in edit mode a row of
 /// long-press draggables with delete badges.
@@ -157,6 +171,10 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// The row's viewport, which is what "near either end" is measured against.
   final GlobalKey _rowKey = GlobalKey();
 
+  /// The shelf's name tab, so a compressed row can keep its last book out from under
+  /// it. See [_shelfLabelReserve].
+  final GlobalKey _labelKey = GlobalKey();
+
   /// One key per book, so the row can find out where its covers actually are.
   ///
   /// **Measured, because the covers cannot be computed.** A cover's width follows
@@ -189,13 +207,6 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// The width of the hole the book in flight left on its own shelf, from its
   /// payload. Both the gap this row opens and how far its covers slide.
   double _slotExtent = 0;
-
-  /// Whether the book in flight is one being read, from its payload.
-  ///
-  /// Held rather than read from the drag each time, because [_stepAutoScroll]
-  /// recomputes where the book would land while the row scrolls under a finger that
-  /// is holding still — and it has no `DragTargetDetails` to consult.
-  bool _draggedReading = false;
 
   /// Parts the row without animating, for the one frame a committed drop lands on.
   ///
@@ -282,6 +293,96 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// handed both the pointer and the cover's box.
   Offset _pickUp = Offset.zero;
 
+  /// The compressed book that has been brought forward, if any. At most one in the
+  /// **whole library** — see [surfacedBookProvider], which holds it.
+  ///
+  /// **Why a compressed book takes two taps.** [BookVertical]'s doc fixes what a
+  /// spine tap means — it "has to match what the chassis renders at a turn of
+  /// `-π/2`, because tapping a spine swaps one for the other in place" — and the read
+  /// pile has behaved that way since it was built. A shelf spine that went straight
+  /// to the details page would make the same drawing mean two different things in one
+  /// app.
+  ///
+  /// It also turns a small target into a forgiving one. A shingled book shows about a
+  /// quarter of itself and a spine is ~37pt wide; the worst outcome of a mis-tap is
+  /// that the wrong book comes forward, which costs nothing, rather than the wrong
+  /// page being pushed.
+  ///
+  /// `ShelfDensity.covers` is untouched and stays one tap.
+  ///
+  /// **A `watch`, so this row redraws when a book on a *different* shelf is brought
+  /// forward** and puts its own book back. Only legal from `build` and from the
+  /// methods it calls synchronously; the one caller outside that phase, [_onBookTap],
+  /// reads the provider directly.
+  String? get _surfacedBookId => ref.watch(surfacedBookProvider);
+
+  /// Drives the surfaced spine's turn from spine-on to cover-on.
+  ///
+  /// Only `spines` needs a controller: `leaning` surfaces by widening a slot, which
+  /// an [AnimatedPositioned] animates on its own.
+  ///
+  /// **Still per-row even though the book it draws is library-wide**, because it drives
+  /// a drawing rather than holding the state: at most one row can match the surfaced id
+  /// at a time, and the row that surfaces a book is the row that runs it. A row losing
+  /// the surfaced book to another shelf leaves its controller wherever it stopped, which
+  /// costs nothing — the next tap here starts it `from: 0`.
+  late final AnimationController _surfaceTurn;
+
+  /// How far this row has turned towards `spines`. 0 is cover-on, 1 is spine-on.
+  ///
+  /// The density transition, and the row's whole layout follows it: see
+  /// `shelf_density_turn.dart` for why the books turn rather than the picture being
+  /// swapped, and [_turningTile] for how a box narrows to the projection of a cover
+  /// whose width nothing here knows.
+  late final AnimationController _densityTurn;
+
+  /// One staggered pose per position in the wave, shared by every book that turns at
+  /// that position.
+  ///
+  /// Cached because a fresh [Animation] each build would make `BookWidget` re-subscribe
+  /// every frame, and because there are only [kShelfDensityStaggerBooks] + 1 distinct
+  /// curves however long the shelf is.
+  final Map<int, Animation<double>> _poses = {};
+
+  /// The book that was already turned out when a turn *back* to `covers` began.
+  ///
+  /// It is the one book on the row that is cover-on before the turn starts, so it is
+  /// already where every other book is going and must sit the turn out. Without this it
+  /// snaps to spine-on on the first frame and turns back through 90° that a reader can
+  /// see it did not need to travel.
+  ///
+  /// Captured in `build` rather than read when the turn starts, and the ordering is the
+  /// reason: `didUpdateWidget` runs *before* `build`, and by then
+  /// [surfacedBookProvider] has already cleared itself for the new density — so the
+  /// value from the previous build is the only place the id still exists.
+  String? _surfacedAtLastBuild;
+
+  /// The book excused from the current turn. See [_surfacedAtLastBuild].
+  String? _turnExemptBookId;
+
+  /// Whether [_densityTurn] is in flight, as a flag rather than as a reading of its
+  /// value.
+  ///
+  /// **The outer build may not ask the controller where it is.** `build` chooses *which*
+  /// tile each book gets, and it runs on the frame the density changed — which is the
+  /// frame `forward()` was called on, when the controller still stands exactly at the
+  /// endpoint it is leaving. Keyed off the value, every book is chosen as a resting tile,
+  /// nothing re-chooses, and the row animates its margins closed around books that never
+  /// turn. That was the first version of this and it is what the flag exists to stop.
+  ///
+  /// A flag is also the truer statement: the question the tile choice asks is "is a turn
+  /// happening", not "how far along is it". How far along is [_turningTile]'s business,
+  /// and it reads that from the pose per frame.
+  bool _densityTurning = false;
+
+  /// The density this row draws at rest.
+  ///
+  /// Not a lag any more — it is simply [ShelfRow.density]. It used to trail by one fade
+  /// leg, because the row faded out, swapped its drawing while nothing was visible, and
+  /// faded back; with the books turning there is no invisible moment to hide a swap in
+  /// and nothing to hide, since the turn *is* the change.
+  ShelfDensity get _drawnDensity => widget.density;
+
   @override
   void initState() {
     super.initState();
@@ -290,34 +391,65 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
       vsync: this,
       duration: _kLiftScaleDuration,
     );
+    _surfaceTurn = AnimationController(
+      vsync: this,
+      duration: _kSurfaceDuration,
+    );
+    _densityTurn =
+        AnimationController(
+          vsync: this,
+          duration: kShelfDensityTurnDuration,
+          // Wherever the density already is, so a row built while `spines` is selected is
+          // spine-on on its first frame rather than turning into place.
+          value: widget.density == ShelfDensity.spines ? 1 : 0,
+        )..addStatusListener((status) {
+          // **One rebuild per turn, at the end, and it is the only one.** The turn is
+          // handed to the tiles when it starts (see [_startDensityTurn], which is already
+          // inside a build) and taken back when it lands; between those two moments
+          // nothing about the *tree* changes, because everything moving is driven by the
+          // pose each tile holds and by the margin's own `AnimatedBuilder`.
+          if (status != AnimationStatus.completed &&
+              status != AnimationStatus.dismissed) {
+            return;
+          }
+          if (!mounted) return;
+          setState(() {
+            _densityTurning = false;
+            // The exemption ends with the turn that granted it.
+            _turnExemptBookId = null;
+          });
+        });
+  }
+
+  /// Brings [book] forward, or opens it if it is already forward.
+  ///
+  /// The two-step tap. See [_surfacedBookId] for why a compressed book gets one.
+  void _onBookTap(Book book) {
+    if (widget.mode == LibraryMode.editLibrary) return;
+    final compressed = _drawnDensity != ShelfDensity.covers;
+    // `read`, not `watch`: this runs from a gesture rather than from a build. The
+    // provider notifies every row, so no `setState` is needed here — including for the
+    // row that is *losing* the book, which is the case a field could not have served.
+    if (compressed && book.id != ref.read(surfacedBookProvider)) {
+      ref.read(surfacedBookProvider.notifier).surface(book.id);
+      if (_reduceMotion) {
+        // **Not "skip the animation", which is what this used to do.** The turn is what
+        // makes the spine into a cover: [TurningBook] draws a spine at 0 and a cover at
+        // 1, so leaving the controller alone left a reader with Reduce Motion on tapping
+        // a spine and getting a spine, then a details page on the second tap. Jump to
+        // the end instead.
+        _surfaceTurn.value = 1;
+      } else {
+        // `from: 0` rather than `forward()`: surfacing a second book while the first is
+        // still turning would otherwise start it part-turned.
+        _surfaceTurn.forward(from: 0);
+      }
+      return;
+    }
+    Navigator.pushNamed(context, AppRoutes.details, arguments: book);
   }
 
   bool get _reduceMotion => MediaQuery.disableAnimationsOf(context);
-
-  /// The density this row actually draws at, which is not always the active one.
-  ///
-  /// **`leaning` falls back to `covers` in edit mode, and the other two do not.**
-  /// The rule lives here alone, because it is easy to get wrong in a way that shows
-  /// up as a lying drop preview rather than as a wrong drawing.
-  ///
-  /// [ShelfBookDrag.slotExtent] is *measured* from the rendered slot and is the width
-  /// of the gap a receiving shelf opens. So any density whose drawing changes on
-  /// entering edit mode reports a gap sized for a book it is no longer drawing:
-  ///
-  /// - `covers` measures a cover and draws a cover. Nothing to reconcile.
-  /// - `spines` measures a spine and draws a spine — **spines are edited as
-  ///   spines**, which is what keeps this self-consistent, and is also the better
-  ///   experience: rearranging a shelf while seeing nine of its books beats seeing
-  ///   three and a sliver. A spine is 29–47pt wide, so it is a real drag target.
-  /// - `leaning` cannot: shingled covers overlap, so a tap is genuinely ambiguous
-  ///   about which book it hit, and the step is not the book's width. It therefore
-  ///   draws face-out in edit mode and is the one density needing a `slotExtent`
-  ///   override.
-  ShelfDensity get _effectiveDensity =>
-      widget.mode == LibraryMode.editLibrary &&
-          widget.density == ShelfDensity.leaning
-      ? ShelfDensity.covers
-      : widget.density;
 
   /// Anchors the drag to the finger, and measures the cover on the way past.
   ///
@@ -369,6 +501,40 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     final live = {for (final book in widget.shelf.books) book.id};
     _slotKeys.removeWhere((id, _) => !live.contains(id));
     _handoverKeys.removeWhere((id, _) => !live.contains(id));
+    // **Nothing here clears the surfaced book any more, and that is deliberate.** Both
+    // reasons it used to be cleared moved out: the density case belongs to
+    // [surfacedBookProvider], which resets itself, and the "it left this shelf" case
+    // stopped existing when the id became the library's rather than this row's. See
+    // that provider's doc.
+    if (widget.density != oldWidget.density) _startDensityTurn();
+  }
+
+  /// Turns the row to the density it has just been given.
+  ///
+  /// `forward`/`reverse` from wherever the controller stands rather than `from: 0`, so
+  /// flicking the button back mid-turn reverses the books from where they are instead of
+  /// restarting them. That is the whole reason the transition is one 0..1 controller and
+  /// not two one-way animations.
+  void _startDensityTurn() {
+    final toSpines = widget.density == ShelfDensity.spines;
+    // Only the way back needs an exemption: `covers` has nothing turned out, so there is
+    // never a book already spine-on when the row turns towards `spines`.
+    _turnExemptBookId = toSpines ? null : _surfacedAtLastBuild;
+    if (_reduceMotion) {
+      _densityTurn.value = toSpines ? 1 : 0;
+      _densityTurning = false;
+      _turnExemptBookId = null;
+      return;
+    }
+    // Set before the controller is started, because starting it can land immediately —
+    // a turn begun from the endpoint it is already at completes within `forward()` and
+    // the status listener would clear a flag that had not been raised yet.
+    _densityTurning = true;
+    if (toSpines) {
+      _densityTurn.forward();
+    } else {
+      _densityTurn.reverse();
+    }
   }
 
   @override
@@ -376,14 +542,22 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     _stopAutoScroll();
     _liftTurn.dispose();
     _liftScale.dispose();
+    _surfaceTurn.dispose();
+    _densityTurn.dispose();
     _rowScroll.dispose();
     super.dispose();
   }
 
   /// What goes inside a book's slot, for the density this row is drawing at.
   ///
-  /// One `switch`, so "how is a book drawn here" has a single answer. The slot, the
+  /// What goes inside a book's slot, for the density this row is drawing at.
+  ///
+  /// One decision, so "how is a book drawn here" has a single answer. The slot, the
   /// draggable and every gesture around it are the row's and do not vary.
+  ///
+  /// **Three cases, and the middle one is the transition.** At either end the row draws
+  /// the resting tile for its density; while [_densityTurn] is between them every
+  /// compressed book is the same tile, turning. See `shelf_density_turn.dart`.
   Widget _buildBookContent(
     Book book,
     double bookHeight,
@@ -394,48 +568,203 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     // [BookWidget.turnDrive] below, and the growing has to come off out here, since
     // scaling a cover is not something the book itself does.
     final landing = book.id == _landingBookId;
-    final content = switch (_effectiveDensity) {
-      // Face-out in `covers`, and face-out in the other two for any book that is in
-      // progress — keyed off the status rather than off the index, so it cannot
-      // disagree with the promotion that put those books at the head.
-      ShelfDensity.covers => _coverTile(book, bookHeight, isEditMode, withHero),
-      ShelfDensity.leaning => _coverTile(
-        book,
-        bookHeight,
-        isEditMode,
-        withHero,
-      ),
-      ShelfDensity.spines =>
-        book.status == bookStatusReading
-            ? _coverTile(book, bookHeight, isEditMode, withHero)
-            : ShelfSpineTile(
-                book: book,
-                baseHeight: bookHeight,
-                onTap: isEditMode
-                    ? () {}
-                    : () => Navigator.pushNamed(
-                        context,
-                        AppRoutes.details,
-                        arguments: book,
-                      ),
-              ),
-    };
+    final content = _densityContent(
+      book,
+      bookHeight,
+      isEditMode,
+      withHero: withHero,
+      landing: landing,
+    );
     return landing ? _liftScaled(content) : content;
   }
 
-  /// A book drawn face-out, which is what every density does for some of its books.
-  Widget _coverTile(
+  Widget _densityContent(
+    Book book,
+    double bookHeight,
+    bool isEditMode, {
+    required bool withHero,
+    required bool landing,
+  }) {
+    // **Mid-turn, and the exemptions are both about a turn that has an owner already.**
+    // A landing book's cover is held out by [_liftTurn] through `turnDrive`, which
+    // `BookWidget` documents as replacing the hold outright — it may not also be posed.
+    // And the book that was turned out when the row started back towards `covers` is
+    // already cover-on; see [_surfacedAtLastBuild].
+    if (_densityTurning && !landing && book.id != _turnExemptBookId) {
+      return _turningTile(book, bookHeight, isEditMode, withHero);
+    }
+    // At rest, and for the exempt book, the density itself decides — [_drawnDensity] is
+    // the new one from the first frame of the turn, which is exactly what an exempt book
+    // wants: it is already drawn the way the row is going.
+    if (_drawnDensity == ShelfDensity.covers) {
+      return _coverTile(book, bookHeight, isEditMode, withHero);
+    }
+    if (book.id == _surfacedBookId) {
+      // Turned out to its cover, hinged on the spine — the read pile's own drawing,
+      // shared rather than copied so the two cannot diverge. Only this one book on the
+      // row pays for a decoded cover.
+      final Widget turned = TurningBook(
+        book: book,
+        progress: _surfaceTurn,
+        baseHeight: bookHeight,
+        spineBackground: context.colors.surfaceVariant,
+        tone: spineToneOf(book),
+        heroTag: withHero ? 'book_${book.isbn}' : null,
+        onCoverSampled: (color) =>
+            ref.read(libraryActionsProvider).recordCoverColor(book, color),
+        onTap: () => _onBookTap(book),
+      );
+      // **The delete target for a compressed row, and it had to be added here.**
+      // [_deleteBadgeFor] says a `spines` badge belongs to the one book that has been
+      // turned out — but that book is drawn by [TurningBook] rather than by
+      // [ShelfBookTile], which has no slot for a badge, so the rule quietly applied to
+      // nothing. It went unnoticed because the *reading* exemption used to keep one
+      // cover face-out on any row that had an open book, and that cover carried the
+      // badge. Those books are on the Reading shelf now, so without this a `spines` row
+      // offers no way to delete anything at all.
+      //
+      // Same offset as [ShelfBookTile]'s own, and mounted only in edit mode so the
+      // read-only row keeps one child.
+      final badge = isEditMode
+          ? _deleteBadgeFor(book, AppLocalizations.of(context))
+          : null;
+      if (badge == null) return turned;
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          turned,
+          Positioned(top: -22, left: -22, child: badge),
+        ],
+      );
+    }
+    return ShelfSpineTile(
+      book: book,
+      baseHeight: bookHeight,
+      onTap: isEditMode ? null : () => _onBookTap(book),
+    );
+  }
+
+  /// One book part-way between cover-on and spine-on.
+  ///
+  /// The tile is [ShelfBookTile] with a pose and a spine face, so the cover, the ribbon,
+  /// the badge and the press hold all keep working through the turn — this is the same
+  /// book the row was already drawing, seen from another angle, rather than a stand-in
+  /// for it.
+  ///
+  /// **The box is narrowed with `Align.widthFactor` and offset with
+  /// `FractionalTranslation`, both of which take fractions rather than points.** That is
+  /// not a style preference: a cover's width follows its *decoded* aspect ratio, so
+  /// nothing out here knows it, and every previous attempt at compressed shelf geometry
+  /// has had to approximate it at [kDefaultCoverAspect] and then document the
+  /// approximation. Expressed as ratios the unknown cancels — see
+  /// [turningBookWidthFactor] — so the box is the *exact* projection of whatever width
+  /// the cover turned out to be, and the row narrows without a single guess in it.
+  ///
+  /// `bottomLeft`, because the hinge is the binding: a turning book collapses towards
+  /// the edge it is pinned on, and stands on the plank while it does.
+  Widget _turningTile(
     Book book,
     double bookHeight,
     bool isEditMode,
     bool withHero,
   ) {
+    final pose = _densityPose(book);
+    final thickness = spineMetricsFor(
+      book,
+      baseHeight: bookHeight,
+    ).jitter.thicknessFactor;
+    return AnimatedBuilder(
+      animation: pose,
+      builder: (context, child) => Align(
+        alignment: Alignment.bottomLeft,
+        widthFactor: turningBookWidthFactor(pose.value, thickness),
+        child: FractionalTranslation(
+          translation: Offset(
+            turningBookHingeFraction(pose.value, thickness),
+            0,
+          ),
+          child: child,
+        ),
+      ),
+      // Built once and handed through: the pose is an `Animation` the tile passes
+      // straight to `BookWidget.turnRadians`, so the drawing already animates without
+      // this builder rebuilding it. Only the box has to be recomputed per frame.
+      child: _coverTile(
+        book,
+        bookHeight,
+        isEditMode,
+        // **No hero tag mid-turn.** A flight from a book standing at 40° would fly from
+        // a rect that is not the book. The read pile's rule, for the same reason it has
+        // it.
+        false,
+        pose: pose,
+      ),
+    );
+  }
+
+  /// This book's place in the wave, as a pose in radians.
+  ///
+  /// Counted from the start of the shelf, which is also where the turning begins:
+  /// every book on a shelf is compressible now that [withoutReadingBooks] keeps the
+  /// in-progress ones off it. This used to subtract `readingHeadCount` so the wave
+  /// began after the promoted books rather than at slot zero — there is no promoted
+  /// head any more, so there is nothing to skip.
+  Animation<double> _densityPose(Book book) {
+    final at = widget.shelf.books.indexWhere((b) => b.id == book.id);
+    final bucket = at.clamp(0, kShelfDensityStaggerBooks);
+    return _poses.putIfAbsent(
+      bucket,
+      () => _densityTurn.drive(
+        Tween<double>(
+          begin: shelfDensityPose(0),
+          end: shelfDensityPose(1),
+        ).chain(CurveTween(curve: shelfDensityStaggerCurve(bucket))),
+      ),
+    );
+  }
+
+  /// A book drawn face-out, which is what every density does for some of its books.
+  ///
+  /// [pose] turns it away from face-out, for [_turningTile]. Given one, the tile also
+  /// gets the spine face the chassis needs on its way round — the same [BookVertical]
+  /// [ShelfSpineTile] draws, so the two agree at [kSpineOnPose] the way
+  /// `BookVertical`'s own doc requires them to.
+  Widget _coverTile(
+    Book book,
+    double bookHeight,
+    bool isEditMode,
+    bool withHero, {
+    Animation<double>? pose,
+  }) {
     final l10n = AppLocalizations.of(context);
+    final compressed = _drawnDensity != ShelfDensity.covers;
+    final metrics = pose == null
+        ? null
+        : spineMetricsFor(book, baseHeight: bookHeight);
     return ShelfBookTile(
       book: book,
       height: bookHeight,
       isEditMode: isEditMode,
-      withHero: withHero,
+      pose: pose,
+      spine: metrics == null
+          ? null
+          : BookVertical(
+              title: book.title,
+              width: metrics.metrics.thickness,
+              height: metrics.metrics.height,
+              fill: spineToneOf(book).fill,
+              titleColor: spineToneOf(book).title,
+              background: context.colors.surfaceVariant,
+              separator: true,
+              // A face of a solid object cannot have a notch in its head that the faces
+              // beside it do not. See [BookVertical.arch].
+              arch: false,
+            ),
+      // **Only a book that is wholly on screen carries the tag.** The read pile's
+      // own rule. A flight starting from a cover three-quarters hidden behind a
+      // neighbour would fly from a rect that is not the book, so a shingled book
+      // carries none until it has been brought forward.
+      withHero: withHero && (!compressed || book.id == _surfacedBookId),
       // Only for the one book on its way down: every other cover keeps its own
       // hold, which this would otherwise replace. See [_landingBookId].
       turnDrive: book.id == _landingBookId ? _liftTurn : null,
@@ -444,18 +773,33 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
       // In edit mode the badge is the sole delete target. The no-op tap handler
       // keeps cover taps from bubbling to the page-level handler and
       // unintentionally leaving edit mode.
-      onTap: isEditMode
-          ? () {}
-          : () => Navigator.pushNamed(
-              context,
-              AppRoutes.details,
-              arguments: book,
-            ),
-      deleteBadge: _DeleteBookButton(
-        key: ValueKey('delete_book_${book.id}'),
-        label: l10n.deleteBookNamed(book.title),
-        onPressed: () => widget.onDeleteBook?.call(book.id),
-      ),
+      onTap: isEditMode ? () {} : () => _onBookTap(book),
+      deleteBadge: _deleteBadgeFor(book, l10n),
+    );
+  }
+
+  /// The delete badge for [book], or null for a book that should not show one.
+  ///
+  /// **In `spines`, only the book that has been turned out gets one.**
+  /// [DeleteBookBadge] is a 44pt disc offset 22pt outside its cover's top-left, and
+  /// a spine is ~37pt wide with its neighbours touching — so a badge per spine would
+  /// blanket the two either side of it and the row would be a mat of overlapping
+  /// discs.
+  ///
+  /// The way out needed no new affordance, because the two-step tap already put one
+  /// book face-out at a time: pin the badge to that book and exactly one badge exists,
+  /// so nothing can collide. Tap a spine to turn it out, and the cover carries the
+  /// badge. **The turned-out book has to be surfaced before edit mode is entered**, since
+  /// a spine's tap is disabled while editing — see [_densityContent], which is where the
+  /// badge is actually mounted onto that cover.
+  Widget? _deleteBadgeFor(Book book, AppLocalizations l10n) {
+    if (_drawnDensity == ShelfDensity.spines && book.id != _surfacedBookId) {
+      return null;
+    }
+    return DeleteBookBadge(
+      key: DeleteBookBadge.keyFor(book.id),
+      label: l10n.deleteBookNamed(book.title),
+      onPressed: () => widget.onDeleteBook?.call(book.id),
     );
   }
 
@@ -499,28 +843,21 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// measure.** The number travels to whichever shelf a book is dropped on as the
   /// width of the gap that shelf has to open, so a wrong answer here is a drop
   /// preview that lies rather than a drawing that looks off.
+  ///
+  /// **Both densities are edited as themselves, which is why the measurement can just
+  /// be trusted.** `covers` measures a cover and draws a cover; `spines` measures a
+  /// spine and draws a spine — and spines being editable *as spines* is what keeps
+  /// that true, as well as being the better experience: rearranging a shelf while
+  /// seeing nine of its books beats seeing three and a sliver, and a 29–47pt spine is
+  /// a real drag target. Worth knowing if a third density is ever added: one whose
+  /// drawing *changes* on entering edit mode would report a gap sized for a book it is
+  /// no longer drawing, and would need an override here. A withdrawn overlapping
+  /// density did exactly that.
   double _slotExtentOf(String bookId, double bookHeight) {
     final book = widget.shelf.books.firstWhere(
       (b) => b.id == bookId,
       orElse: () => widget.shelf.books.first,
     );
-    final coverEstimate = bookHeight * kDefaultCoverAspect + 2 * _kSlotMargin;
-
-    // **`leaning` does not use the measured box, and this is the one density that
-    // has to override it.** A shingled slot is one [kShelfLeanStep] wide — about a
-    // quarter of a cover — but a lift from this row lands in edit mode, which draws
-    // face-out. Reporting the strip would ask the receiving shelf to open a gap a
-    // quarter of the size of the book about to fill it, and the drop preview would be
-    // a promise the drop then breaks.
-    //
-    // `covers` measures a cover and draws a cover. `spines` measures a spine and
-    // draws a spine — spines are edited as spines precisely so that stays true. Only
-    // `leaning` changes its drawing on the way into edit mode, and only `leaning`
-    // pays for it here.
-    if (_effectiveDensity == ShelfDensity.leaning &&
-        book.status != bookStatusReading) {
-      return coverEstimate;
-    }
 
     final measured = _slotBoxOf(bookId)?.size.width;
     if (measured != null) return measured;
@@ -528,11 +865,10 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     // draws until one decodes, and no book can be lifted inside the first
     // [kShelfLiftDelay] anyway — but a spine is a third of that width, so guessing a
     // cover for one would open a gap three times too wide.
-    if (_effectiveDensity == ShelfDensity.spines &&
-        book.status != bookStatusReading) {
+    if (_drawnDensity == ShelfDensity.spines) {
       return shelfSpineWidth(book, bookHeight);
     }
-    return coverEstimate;
+    return bookHeight * kDefaultCoverAspect + 2 * kShelfSlotMargin;
   }
 
   double? _slotCentreOf(String bookId) {
@@ -544,57 +880,20 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// Where a book held at [pointerX] would be inserted, as an index into this row
   /// with the lifted book taken out.
   ///
-  /// The finger is compared against the *centre* of each cover, so a book is only
-  /// stepped over once the finger is more than halfway past it. That is the rule
-  /// `ReorderableListView` used to apply within a shelf, and it is what keeps the
-  /// gap still while a finger rests on a boundary.
-  ///
-  /// **Then clamped to the zone the book belongs to.** Every shelf draws its
-  /// in-progress books first, so a row is two regions and neither can be entered
-  /// from the other: a book being read cannot be filed behind one that is not, and a
-  /// book that is not cannot jump the queue. [reading] says which region the book in
-  /// flight came from — for a book arriving from another shelf, this row has no other
-  /// way to know.
-  ///
-  /// Clamped here rather than at each call site, so a third caller cannot forget.
-  /// The point of clamping at all is that **the gap never opens where the book
-  /// cannot land**: a preview that has to be corrected on release is a preview that
-  /// lied.
-  int _dropIndexFor(double pointerX, {required bool reading}) {
-    var index = 0;
-    var measuredOne = false;
-    for (final book in widget.shelf.books) {
-      if (book.id == _liftedBookId) continue;
-      final centre = _slotCentreOf(book.id);
-      // A row builds lazily, so the covers scrolled off either end have no box to
-      // measure. Which end they are off is enough to place them: everything before
-      // the first built cover is behind the finger, everything after the last one
-      // is ahead of it.
-      if (centre == null) {
-        if (measuredOne) break;
-        index++;
-        continue;
-      }
-      measuredOne = true;
-      if (centre >= pointerX) break;
-      index++;
-    }
-
+  /// The arithmetic itself lives in [dropIndexForPointer], shared with
+  /// `ReadingShelfRow` — which reorders with its own drag but has to answer "where would
+  /// this land" identically. All this does is measure the slots. See that function for the
+  /// centre rule, the treatment of covers scrolled off the ends, and why the result is
+  /// clamped rather than corrected on release.
+  int _dropIndexFor(double pointerX) => dropIndexForPointer(
+    pointerX: pointerX,
     // Measured on the row *without* the lifted book, which is the row these indices
     // are into.
-    final rest = [
+    slotCentres: [
       for (final book in widget.shelf.books)
-        if (book.id != _liftedBookId) book,
-    ];
-    return clampDropIndex(
-      index,
-      headCount: rest
-          .takeWhile((book) => book.status == bookStatusReading)
-          .length,
-      rowLength: rest.length,
-      reading: reading,
-    );
-  }
+        if (book.id != _liftedBookId) _slotCentreOf(book.id),
+    ],
+  );
 
   /// How far the cover at [index] slides to preview the drop, in logical pixels.
   ///
@@ -620,7 +919,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     return dx;
   }
 
-  Duration get _partDuration => _snapping ? Duration.zero : _kPartDuration;
+  Duration get _partDuration => _snapping ? Duration.zero : kShelfPartDuration;
 
   /// A book has just left the shelf.
   ///
@@ -687,9 +986,6 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
   /// preview and the drop are all wired by hand here instead.
   Widget _buildBookRow(double bookHeight, {required bool isEditMode}) {
     final books = widget.shelf.books;
-    if (_effectiveDensity == ShelfDensity.leaning) {
-      return _buildLeaningRow(bookHeight, isEditMode: isEditMode);
-    }
     return SizedBox(
       key: _rowKey,
       child: ListView.builder(
@@ -698,9 +994,18 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
         physics: const ClampingScrollPhysics(),
         // Edit mode's covers carry a delete badge that hangs off the top-left
         // corner, so the row must not clip; the view-mode row is behind
-        // [_EdgeFades], whose fade only means anything against a clipped edge.
+        // [ShelfEdgeFades], whose fade only means anything against a clipped edge.
         clipBehavior: isEditMode ? Clip.none : Clip.hardEdge,
-        padding: const EdgeInsets.symmetric(horizontal: _kSlotMargin),
+        padding: EdgeInsets.only(
+          left: kShelfSlotMargin,
+          // The name tab floats over the trailing end of the row, and a `spines` row
+          // is dense enough to actually reach it. See [_shelfLabelReserve].
+          right:
+              kShelfSlotMargin +
+              (_drawnDensity == ShelfDensity.spines && !isEditMode
+                  ? _shelfLabelReserve(context)
+                  : 0),
+        ),
         // One past the last book, for [_buildTailRoom].
         itemCount: books.length + 1,
         itemBuilder: (context, index) => index == books.length
@@ -715,121 +1020,45 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     );
   }
 
-  /// The row at `ShelfDensity.leaning`: books in progress face-out, then everything
-  /// else shingled and leaning right.
+  /// Width kept clear at the trailing end of a compressed row for [ShelfLabel].
   ///
-  /// **A `Stack`, because a `ListView` cannot paint in this order.** A list paints in
-  /// child order, which would put the *rightmost* book in front — the opposite of a
-  /// leaning cascade, and the opposite of the emphasis this density exists to give.
-  /// So the shingled books are emitted **highest index first** and positioned by
-  /// hand, which leaves book 0 painted last and therefore on top.
-  ///
-  /// **The head is a `Row`, not part of the `Stack`.** A face-out cover's width is
-  /// whatever its decoded aspect makes it, so positioning the head by hand would mean
-  /// guessing every one of those widths; laying it out lets Flutter answer. Only the
-  /// group's own total width is approximated — see [shelfLeanGroupWidth].
-  ///
-  /// **This costs one built tile per book, where the list built about four.** A
-  /// `Stack` has no laziness. It is the one place in this feature that spends more
-  /// than it saves, and it is spent knowingly: the point of the density is shelves
-  /// that *fit*, and a shelf that fits is a shelf whose tiles were all going to be
-  /// built anyway.
-  Widget _buildLeaningRow(double bookHeight, {required bool isEditMode}) {
-    final books = widget.shelf.books;
-    final head = readingHeadCount(widget.shelf);
-    final shingled = books.sublist(head);
-
-    final group = SizedBox(
-      width: shelfLeanGroupWidth(shingled.length, bookHeight),
-      // **Explicitly tall, and it has to be.** A `Positioned` given only `left` and a
-      // `width` leaves its child's height unbounded, and the `OverflowBox` below
-      // resolves to infinity and asserts. Reserving the row's own extent bounds it,
-      // and `bookRowExtent` is the same reservation the rest of the row makes for a
-      // book that hashes tall.
-      height: bookRowExtent(bookHeight),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Reversed: the last book is emitted first and painted first, so the
-          // leading book ends up on top and is hit-tested before the books it
-          // covers. Do not "tidy" this into forward order — it is the whole
-          // drawing. `test/shelf_leaning_layout_test.dart` pins it.
-          for (var i = shingled.length - 1; i >= 0; i--)
-            Positioned(
-              left: shelfLeanOffset(i, bookHeight),
-              top: 0,
-              bottom: 0,
-              // The exposed strip, so a tap lands on the book a reader can see
-              // rather than on whichever one is frontmost. See
-              // [shelfLeanSlotWidth].
-              width: shelfLeanSlotWidth(i, shingled.length, bookHeight),
-              child: OverflowBox(
-                alignment: Alignment.bottomLeft,
-                maxWidth: double.infinity,
-                child: _buildBook(
-                  head + i,
-                  shingled[i],
-                  bookHeight,
-                  isEditMode: isEditMode,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-
-    return SizedBox(
-      key: _rowKey,
-      child: SingleChildScrollView(
-        controller: _rowScroll,
-        scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.symmetric(horizontal: _kSlotMargin),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (var i = 0; i < head; i++)
-              _buildBook(i, books[i], bookHeight, isEditMode: isEditMode),
-            // A full gap between the books standing face-out and the cascade, so the
-            // two groups do not read as one run.
-            if (head > 0 && shingled.isNotEmpty)
-              const SizedBox(width: _kSlotMargin),
-            if (shingled.isNotEmpty) group,
-          ],
-        ),
-      ),
-    );
+  /// Measured from the label's own box once it has been laid out, and estimated from
+  /// the shelf's name before that — a reserve that jumped when the measurement
+  /// arrived would shift the row, which is the thing it exists to prevent.
+  double _shelfLabelReserve(BuildContext context) {
+    final box = _labelKey.currentContext?.findRenderObject();
+    if (box is RenderBox && box.hasSize) return box.size.width;
+    // Before the first layout. The tab is the name plus a count in a capsule; this is
+    // deliberately generous, because over-reserving costs a little slack at the end of
+    // a row and under-reserving hides a book.
+    return widget.shelf.name.length * 9.0 + 48;
   }
 
-  /// The air either side of [book]'s slot.
+  /// The air either side of [book]'s slot, at the row's current turn.
   ///
-  /// [_kSlotMargin] each side ordinarily, which is what puts 15pt between two
+  /// [kShelfSlotMargin] each side ordinarily, which is what puts 15pt between two
   /// covers.
   ///
   /// **Spines touch**, the way books on a plank actually do, so a spine takes no
   /// margin at all — except on the leading edge of the *first* one, which keeps its
-  /// half so that there is a full 15pt between the reading books standing face-out
-  /// and the spines beginning. Without that the first spine leans against the last
-  /// cover and the two groups read as one run.
+  /// half so the run does not begin flush against the row's padding.
   ///
-  /// **A shingled book takes none either**, for a different reason: it is placed by
-  /// [shelfLeanOffset] rather than laid out in sequence, so a margin here would shift
-  /// it off the offset it was given. The gap before the cascade is a `SizedBox` in
-  /// [_buildLeaningRow] instead.
+  /// The exception this used to carry is gone. A book in progress kept a cover's
+  /// margins at every density and the first spine was found with `readingHeadCount`,
+  /// so the two groups had a full 15pt between them; [withoutReadingBooks] means a
+  /// shelf has no in-progress books to make room for, and the first spine is simply
+  /// the first book.
+  ///
+  /// **Interpolated rather than switched, and the row's contraction is mostly this.**
+  /// The books' own boxes narrow by turning; the air between them has to close at the
+  /// same time or the row would end up as spines spaced like covers and then jump. Read
+  /// at [_densityTurn]'s *undelayed* value, so a book's margin closes in step with the
+  /// row rather than with that book's place in the wave — the alternative was margins
+  /// that overtook the books they belong to.
   EdgeInsets _slotMarginFor(int index, Book book) {
-    if (book.status == bookStatusReading) {
-      return const EdgeInsets.symmetric(horizontal: _kSlotMargin);
-    }
-    switch (_effectiveDensity) {
-      case ShelfDensity.covers:
-        return const EdgeInsets.symmetric(horizontal: _kSlotMargin);
-      case ShelfDensity.leaning:
-        return EdgeInsets.zero;
-      case ShelfDensity.spines:
-        final firstSpine = index == readingHeadCount(widget.shelf);
-        return EdgeInsets.only(left: firstSpine ? _kSlotMargin : 0);
-    }
+    const covers = EdgeInsets.symmetric(horizontal: kShelfSlotMargin);
+    final spines = EdgeInsets.only(left: index == 0 ? kShelfSlotMargin : 0);
+    return EdgeInsets.lerp(covers, spines, _densityTurn.value)!;
   }
 
   Widget _buildBook(
@@ -856,8 +1085,15 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
         // and the height jitter would vanish.
         child: Align(
           alignment: Alignment.bottomCenter,
-          child: Container(
-            margin: _slotMarginFor(index, book),
+          // The margin closes as the row turns, so it has to be recomputed per frame —
+          // but the draggable underneath must **not** be rebuilt with it. A
+          // `LongPressDraggable` rebuilt mid-hold gets a fresh recogniser, and per
+          // `shelf_row.dart`'s own rule a drag that appears after the finger is down can
+          // never adopt that pointer. So it is passed through as `child` and built once.
+          child: AnimatedBuilder(
+            animation: _densityTurn,
+            builder: (context, child) =>
+                Container(margin: _slotMarginFor(index, book), child: child),
             child: LongPressDraggable<ShelfBookDrag>(
               // Keyed in view mode so the element — and with it the drag — survives
               // the rebuild into edit mode; keyed in edit mode only for the book
@@ -877,7 +1113,6 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
                 bookId: book.id,
                 shelfId: widget.shelf.id,
                 slotExtent: slotExtent,
-                reading: book.status == bookStatusReading,
               ),
               onDragStarted: () =>
                   _onLift(index, book.id, slotExtent, isEditMode),
@@ -983,8 +1218,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
 
   void _onDragOver(DragTargetDetails<ShelfBookDrag> details) {
     _pointer = details.offset;
-    _draggedReading = details.data.reading;
-    final index = _dropIndexFor(_pointer.dx, reading: details.data.reading);
+    final index = _dropIndexFor(_pointer.dx);
     if (index != _dropIndex || details.data.slotExtent != _slotExtent) {
       setState(() {
         _dropIndex = index;
@@ -1096,7 +1330,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     final row = _edgeSign(
       _rowKey.currentContext?.findRenderObject() as RenderBox?,
       Axis.horizontal,
-      _kRowScrollMargin,
+      kShelfRowScrollMargin,
     );
     final paneSign = _edgeSign(
       pane?.context.findRenderObject() as RenderBox?,
@@ -1144,14 +1378,14 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     // with it. Worked out again here rather than waiting for a pointer event that,
     // for a finger parked at the end of a row, may never come.
     if (_dropIndex == null) return;
-    final index = _dropIndexFor(_pointer.dx, reading: _draggedReading);
+    final index = _dropIndexFor(_pointer.dx);
     if (index != _dropIndex) setState(() => _dropIndex = index);
   }
 
   /// Moves [position] one step along, and reports whether it had anywhere to go.
   bool _nudge(ScrollPosition? position, int sign) {
     if (position == null || sign == 0) return false;
-    final to = (position.pixels + sign * _kAutoScrollStep).clamp(
+    final to = (position.pixels + sign * kShelfAutoScrollStep).clamp(
       position.minScrollExtent,
       position.maxScrollExtent,
     );
@@ -1170,6 +1404,10 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
 
   @override
   Widget build(BuildContext context) {
+    // Remembered for the next `didUpdateWidget`, which is the only place that can still
+    // want it: by then a density change has already reset [surfacedBookProvider]. See
+    // [_surfacedAtLastBuild].
+    _surfacedAtLastBuild = _surfacedBookId;
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final bookHeight = screenHeight * 0.15;
@@ -1214,6 +1452,17 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
                 child: SizedBox(
                   height: rowExtent,
                   width: screenWidth * 0.95,
+                  // **No fade across a density change, and the note that used to sit
+                  // here is worth keeping anyway.** An `AnimatedSwitcher` was the
+                  // obvious way to cross-fade the two drawings and it is the wrong one:
+                  // it keeps the outgoing child alive alongside the incoming one, and
+                  // this row cannot exist twice. `_slotKeys`, `_handoverKeys` and
+                  // `_rowKey` are `GlobalKey`s — the framework reparents on the second
+                  // sighting and the drag they carry is destroyed — and the row's Hero
+                  // tags would collide the moment a reader tapped a book mid-flight. The
+                  // fallback was a dip to zero opacity with the swap hidden at the
+                  // bottom of it; the books turn now instead, which needs one copy of
+                  // the row and no hidden moment. See `shelf_density_turn.dart`.
                   child: isEditMode
                       // Built even for an empty shelf, unlike the read-only row:
                       // an empty plank is a legitimate destination, and
@@ -1221,7 +1470,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
                       ? _buildBookRow(bookHeight, isEditMode: true)
                       : widget.shelf.books.isEmpty
                       ? const SizedBox.shrink()
-                      : _EdgeFades(
+                      : ShelfEdgeFades(
                           child: _buildBookRow(bookHeight, isEditMode: false),
                         ),
                 ),
@@ -1235,6 +1484,7 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
                   // Travels with the plank below, so the shelf reaches the
                   // details page as one object.
                   child: ShelfLabel(
+                    key: _labelKey,
                     label: widget.shelf.name,
                     // The count is what gives the clipped row's edge a meaning.
                     // `shelvedBookCount` rather than `books.length` so it counts
@@ -1336,8 +1586,12 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
 /// top-left, and a `ShaderMask` composites its child into a saved layer, which
 /// would clip them; edit mode also has no clipping problem to solve, since the
 /// reader is manipulating the row rather than reading it.
-class _EdgeFades extends StatefulWidget {
-  const _EdgeFades({required this.child});
+///
+/// **Shared with the Reading shelf**, which has the same clip for the same reason and
+/// no drag machinery of its own — see `ReadingShelfRow`. Public for that one caller;
+/// nothing else outside this file should need it.
+class ShelfEdgeFades extends StatefulWidget {
+  const ShelfEdgeFades({super.key, required this.child});
 
   final Widget child;
 
@@ -1348,13 +1602,13 @@ class _EdgeFades extends StatefulWidget {
   static const double extent = 0.12;
 
   @override
-  State<_EdgeFades> createState() => _EdgeFadesState();
+  State<ShelfEdgeFades> createState() => _ShelfEdgeFadesState();
 }
 
-class _EdgeFadesState extends State<_EdgeFades> {
+class _ShelfEdgeFadesState extends State<ShelfEdgeFades> {
   /// How much of each fade to draw, 0 (none) to 1 (full).
   ///
-  /// Ramped over the last [_EdgeFades.extent] of travel at each end rather than
+  /// Ramped over the last [ShelfEdgeFades.extent] of travel at each end rather than
   /// switched on and off, or a gradient would pop out of existence in the final
   /// pixels of the scroll — which draws more attention than the fade itself.
   double _lead = 0;
@@ -1372,7 +1626,7 @@ class _EdgeFadesState extends State<_EdgeFades> {
     // Guards the first frame, where a ScrollMetrics may carry no extents yet and
     // reading `maxScrollExtent` would throw.
     if (!m.hasContentDimensions || !m.hasPixels) return;
-    final ramp = m.viewportDimension * _EdgeFades.extent;
+    final ramp = m.viewportDimension * ShelfEdgeFades.extent;
     if (ramp <= 0) return;
     final lead = ((m.pixels - m.minScrollExtent) / ramp).clamp(0.0, 1.0);
     final trail = ((m.maxScrollExtent - m.pixels) / ramp).clamp(0.0, 1.0);
@@ -1425,113 +1679,12 @@ class _EdgeFadesState extends State<_EdgeFades> {
             // exactly as it was, with no mask visible at either end.
             stops: [
               0,
-              _EdgeFades.extent * _lead,
-              1 - _EdgeFades.extent * _trail,
+              ShelfEdgeFades.extent * _lead,
+              1 - ShelfEdgeFades.extent * _trail,
               1,
             ],
           ).createShader(bounds, textDirection: direction),
           child: widget.child,
-        ),
-      ),
-    );
-  }
-}
-
-/// The badge that takes a book off a shelf while the covers are wiggling.
-///
-/// **A white disc with a minus — iOS's own remove badge — rather than a red ✕.**
-/// Three things were wrong with the red one, and the first is the one you saw before
-/// reading any of them: a saturated red disc is the loudest thing that can be put on
-/// a screen, and there was one per cover, so a shelf in edit mode read as a shelf
-/// full of errors rather than a shelf waiting to be rearranged.
-///
-/// ✕ also means *close* everywhere else in this app — ending a visit, dismissing a
-/// sheet — so this was the single place the glyph meant something destructive. And a
-/// red fill under a white glyph is what a *committed* destructive action looks like,
-/// which this is not: the tap opens a confirm sheet and nothing has happened yet. A
-/// minus says "take this one out", which is exactly what the badge does, in the
-/// vocabulary every reader already has from rearranging a home screen.
-///
-/// **Fixed colours, deliberately not the theme's.** The badge sits on a book cover,
-/// not on the app's surface, and covers are arbitrary artwork under either theme — a
-/// disc that flipped with the theme would be dark-on-dark half the time. What keeps
-/// it off a *pale* cover, of which the shelves hold plenty, is the shadow rather than
-/// the fill.
-class _DeleteBookButton extends StatelessWidget {
-  const _DeleteBookButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-  });
-
-  /// The disc itself, centred on the cover's top-left corner.
-  static const double _diameter = 22;
-
-  /// The square the tap is taken over, bigger than the disc on purpose: 44pt is the
-  /// minimum target both platforms ask for, and a 22pt one hanging mostly off the
-  /// edge of its cover is the hardest kind there is to hit.
-  static const double _target = 44;
-
-  /// The minus, as a proportion of the disc rather than a glyph. Drawn rather than
-  /// set as `Icons.remove`, because at this size the icon font's own padding and
-  /// stroke weight decide the picture and neither of them is ours to choose.
-  static const double _barWidth = 10;
-  static const double _barThickness = 2;
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      button: true,
-      label: label,
-      onTap: onPressed,
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          excludeFromSemantics: true,
-          onTap: onPressed,
-          child: const SizedBox(
-            width: _target,
-            height: _target,
-            child: Center(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Color(0xBFFFFFFF),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    // The only thing separating the badge from a white jacket.
-                    BoxShadow(
-                      color: Color(0x4D000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: SizedBox.square(
-                  dimension: _diameter,
-                  child: Center(
-                    child: SizedBox(
-                      width: _barWidth,
-                      height: _barThickness,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          // Near-black rather than black, and rather than the
-                          // theme's ink: see the note on this class.
-                          color: Color(0xFF1C1C1E),
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(_barThickness / 2),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
       ),
     );

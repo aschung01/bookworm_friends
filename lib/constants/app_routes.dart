@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/material.dart';
 import 'package:bookworm_friends/ui/pages/auth_page.dart';
 import 'package:bookworm_friends/ui/pages/home_page.dart';
-import 'package:bookworm_friends/ui/pages/invite_code_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_consent_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_dead_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_done_page.dart';
@@ -26,20 +25,24 @@ class AppRoutes {
 
   /// Identity, per-friend notifications, and Remove.
   ///
-  /// Reached from the gear in the visit app bar, beside Poke. Takes the [Profile] as
-  /// its argument.
+  /// Reached from a long press on a Friends-sheet row, and from `InviteDonePage`'s
+  /// secondary button. **No longer from the visit bar**, whose gear became an overflow
+  /// menu offering Remove in place — see `_LibraryBar`. Takes the [Profile] as its
+  /// argument.
   static const String manageFriend = '/manage_friend';
 
-  /// The three screens a redemption passes through, plus the typed-code floor.
+  /// The three screens a redemption passes through.
   ///
   /// Spelled in [AppRoutesInvite] beside the pages and re-exported here, because the
-  /// four are one flow reached only from each other or from a link handler, and their
+  /// three are one flow reached only from each other or from a link handler, and their
   /// argument types live with them. This class stays the routing *table*; it is not
   /// also the place their names are decided.
+  ///
+  /// **There is no typed-code route, deliberately.** A friendship is created by
+  /// following an invite link and by nothing else — see [AppRoutesInvite].
   static const String inviteConsent = AppRoutesInvite.inviteConsent;
   static const String inviteDone = AppRoutesInvite.inviteDone;
   static const String inviteDead = AppRoutesInvite.inviteDead;
-  static const String inviteCode = AppRoutesInvite.inviteCode;
 
   // `searchUsers` and `userLibrary` are gone.
   //
@@ -78,7 +81,6 @@ class AppRoutes {
     inviteConsent: (_) => const InviteConsentPage(),
     inviteDone: (_) => const InviteDonePage(),
     inviteDead: (_) => const InviteDeadPage(),
-    inviteCode: (_) => const InviteCodePage(),
     details: (_) => const BookDetailsTabView(),
     settings: (_) => const SettingsPage(),
   };

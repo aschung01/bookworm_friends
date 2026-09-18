@@ -108,6 +108,18 @@ class LibraryCardSheet extends StatelessWidget {
   /// of jumping it. See [LibrarySheet].
   final Key? sheetKey;
 
+  /// The run of consecutive reading days that is still alive, and the record.
+  ///
+  /// **Props rather than a provider read, and that is deliberate.** Everything this
+  /// widget draws is handed to it — its tests pump it bare, with no `ProviderScope` —
+  /// and reaching for a container from in here would make a presentational sheet
+  /// require an ambient one. `home_page.dart` already watches for every other value on
+  /// this list; the streak joins them.
+  ///
+  /// Zero means no run, which omits the tile rather than drawing `0d`.
+  final int streak;
+  final int longestStreak;
+
   const LibraryCardSheet({
     super.key,
     this.books = const [],
@@ -122,6 +134,8 @@ class LibraryCardSheet extends StatelessWidget {
     this.bottomReserve = 0,
     this.onRestingExtent,
     this.sheetKey,
+    this.streak = 0,
+    this.longestStreak = 0,
   });
 
   static void _ignore(int _) {}
@@ -292,11 +306,16 @@ class LibraryCardSheet extends StatelessWidget {
             bottom:
                 8 + bottomReserve + MediaQuery.viewPaddingOf(context).bottom,
           ),
+          // The streak is not year-filtered, unlike everything else on this card — a
+          // run is a fact about now, and "your longest streak in 2024" is a different
+          // feature. See `LibraryCardBody.streak`.
           child: LibraryCardBody(
             stats: stats,
             books: books,
             reading: reading,
             year: filterYear,
+            streak: streak,
+            longestStreak: longestStreak,
           ),
         ),
       ),

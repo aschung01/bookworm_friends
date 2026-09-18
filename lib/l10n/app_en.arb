@@ -17,7 +17,6 @@
   "poke": "Poke",
   "manageShelves": "Manage shelves",
   "shelfDensityCovers": "Shelf view: covers",
-  "shelfDensityLeaning": "Shelf view: leaning",
   "shelfDensitySpines": "Shelf view: spines",
   "settings": "Settings",
   "dragToReorder": "Drag to reorder",
@@ -54,6 +53,92 @@
       }
     }
   },
+  "howFarIn": "How far in?",
+  "@howFarIn": {
+    "description": "Label of the reading-position row in the change-status sheet, and the title of the percent wheel it opens. A question rather than a noun (\"Position\", \"Progress\") because the row is a prompt the reader answers, and because every noun for this collides with books.position or reading_shelf_index."
+  },
+  "progressPage": "p.{page}",
+  "@progressPage": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "progressOfPages": "/ {total}",
+  "@progressOfPages": {
+    "description": "The dimmed second half of the band's read-out, following progressPage. Split from it so the total can be drawn at 60% opacity: the page is the answer and the count is context.",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "progressApproxPage": "\u2248 p.{page}",
+  "@progressApproxPage": {
+    "description": "The percent wheel's derived-page rider. Approximate on purpose: the wheel has 101 stops, so at 320 pages one stop is 3.2 pages and an exact page is not expressible. The tilde is where that cost is admitted to the reader.",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "progressModePercent": "Percent",
+  "@progressModePercent": {
+    "description": "Left half of the percent/page segment in the position wheel. Always the selected mode when the sheet opens, on every book, so a reader who already knows this sheet sees exactly what they saw before."
+  },
+  "progressModePage": "Page",
+  "@progressModePage": {
+    "description": "Right half of the percent/page segment, and also the static column label beside the page wheel. Offered only when the book has a page_count, which is about one reading book in three."
+  },
+  "progressPageColumn": "Page",
+  "@progressPageColumn": {
+    "description": "The unit label beside the page wheel, drawn once as a static column heading rather than as a suffix on the centred number. Separate from progressPage because that string is \"p.{page}\" in English and \"{page}\ucabd\" in Korean \u2014 a prefix in one locale and a suffix in the other \u2014 so there is no suffix span to shrink and a prefix would push the digits off centre under the selection overlay."
+  },
+  "progressPageClamped": "This book ends at p.{total}",
+  "@progressPageClamped": {
+    "description": "Shown under the keypad when the reader types past the last page. Stated in secondaryText rather than as an error, because the digit simply does not take \u2014 clamping means there is no invalid state to report.",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readToday": "I read today",
+  "@readToday": {
+    "description": "Checkbox in the change-status sheet that records one reading day. First person and past tense because the reader is stating a fact about tonight, not setting a preference \u2014 and deliberately not \"Mark as read\", which in a library app means finishing the book."
+  },
+  "readTodayFailed": "Couldn\u2019t save today\u2019s reading",
+  "readingStreakChip": "{days, plural, =0{Start a reading streak} =1{Reading streak: 1 day} other{Reading streak: {days} days}}",
+  "@readingStreakChip": {
+    "description": "Accessibility label for the library bar's streak chip, which draws a flame and a numeral and would otherwise be read out as a bare number. The zero case says what the chip is for rather than reading out a nothing: the chip is shown at zero on purpose, because only one profile in 137 has any reading day and omitting it hid the feature from everyone else.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardStreak": "Streak",
+  "@libraryCardStreak": {
+    "description": "Label of the streak tile on the Library Card. A peer of Pace, never the hero \u2014 the hero figure stays the count of books read."
+  },
+  "libraryCardStreakValue": "{days}d",
+  "@libraryCardStreakValue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "libraryCardStreakSub": "{days, plural, =1{in a row, best 1} other{in a row, best {days}}}",
+  "@libraryCardStreakSub": {
+    "description": "Sub-line of the streak tile. Carries the record as well as the run, because with freezes deferred one missed night severs a run outright and the record is the only figure that survives it.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "bookInfoTab": "Book info",
   "memoTab": "Notes",
   "praise": "React",
@@ -62,6 +147,69 @@
   "reactorUnknown": "Someone you don't follow",
   "bookDescription": "About this book",
   "publisher": "Publisher",
+  "whereToRead": "Where to read",
+  "yourCopy": "Your copy",
+  "forgetReaderApp": "Forget where I read this",
+  "checkingStores": "Checking the stores\u2026",
+  "noEbookTitle": "No ebook edition of this one",
+  "noEbookBody": "None of the stores we check have one. Print-only and small-press books often aren't listed.",
+  "storeOpensThisBook": "Opens this book",
+  "storeOpensStorePage": "Opens this book's store page in your browser",
+  "libbyLibraryTitle": "Which library?",
+  "libbyLibraryHint": "Library, town or branch name",
+  "libbyLibraryWhy": "Libby searches one library at a time, so it needs to know yours. Saved for next time.",
+  "@libbyLibraryWhy": {
+    "description": "Answers 'why are you asking me this' where it is asked, and answers it with Libby's constraint rather than ours \u2014 Libby genuinely cannot search without a library. Not a database fact but a routing one: libbyapp.com resolves title/<id> only beneath library/<key>."
+  },
+  "libbyLibrarySearching": "Looking for libraries\u2026",
+  "libbyLibraryNoneTitle": "Nothing by that name",
+  "libbyLibraryNoneBody": "Try the library's full name, your town, or a branch near you \u2014 any of the three will find it.",
+  "@libbyLibraryNoneBody": {
+    "description": "All three really do work: the endpoint searches branches and resolves them to the system that runs them, so 'Mission Bay Branch Library' finds San Francisco Public Library. An earlier draft warned the reader NOT to search a branch, which would have been wrong."
+  },
+  "libbyLibrarySkip": "Not now",
+  "libbyLibrary": "Libby library",
+  "libbyLibraryNotSet": "Not set",
+  "libbyLibraryForget": "Forget my library",
+  "storeOpensAtThisBook": "Opens at this book",
+  "storeOpensSearch": "Searches {store}",
+  "@storeOpensSearch": {
+    "description": "Supporting line for a shop that can only reach a results page. Phrased without an article on purpose: 'Opens a {store} search' renders 'Opens a Amazon search', and the two shops most often reached this way are Amazon and Apple Books. An article that has to agree with an interpolated proper noun cannot be got right in one string, and English is the easy case.",
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "storeOpensLibraryApp": "Opens your {store} library",
+  "@storeOpensLibraryApp": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "storeBorrowFree": "Borrow free from your library",
+  "storeBorrowThisBook": "Borrow this book from your library",
+  "@storeBorrowThisBook": {
+    "description": "The Libby row once the reader's library is known, so the destination is this exact title inside Libby. The four-character difference from storeBorrowFree is the point: without it the destination would get better and the row would look identical. Deliberately does NOT claim the copy is available \u2014 availability is per-library, and the same title is 87-of-87 at one library and 11-deep in holds at another \u2014 so it names the book and the lender, not the outcome."
+  },
+  "storeOpenApp": "Open {store}",
+  "@storeOpenApp": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "storeReadIn": "Read in {store}",
+  "@storeReadIn": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
   "writeAMemo": "Write a note",
   "noMemos": "No notes yet",
   "librarySuffixSelf": "'s Library",
@@ -78,6 +226,10 @@
   "libraryEmptyOther": "This library is empty",
   "addBookHintSuffix": " to add a book",
   "addShelf": "Add shelf",
+  "readingShelfName": "Reading",
+  "@readingShelfName": {
+    "description": "Name tab on the shelf at the top of the library holding the books the reader currently has open. The app's own shelf rather than one the reader made, so it is a state and not a category \u2014 'In progress' says the same thing in twice the width, and the tab has to survive at 140pt beside a cover."
+  },
   "finishedBooksTitle": "Books read",
   "noFinishedBooks": "No books read yet 🥲",
   "noFinishedBooksInYear": "No books recorded for {year}",
@@ -138,6 +290,10 @@
   "myLibrary": "My Library",
   "friends": "Friends",
   "tabCard": "Card",
+  "tabSearch": "Search",
+  "@tabSearch": {
+    "description": "Fourth tab in the shell's bar, which opens the search sheet. Deliberately shorter than searchTitle, which names the sheet: a tab label sits under an icon in a row of four and has to fit. Apple Books labels the same tab the same way."
+  },
   "libraryCard": "Library Card",
   "libraryCardStamp": "",
   "libraryCardAuthority": "LIBSTACK",
@@ -243,6 +399,22 @@
   },
   "searchBookHint": "Search by book title,\nauthor, or publisher ☺️",
   "searchBookPlaceholder": "Title, author, publisher…",
+  "searchTitle": "Search books",
+  "searchPlaceholder": "Your library, or a new book\u2026",
+  "searchHint": "Find a book in your library,\nor add a new one \u263a\ufe0f",
+  "searchSectionYours": "In your library",
+  "searchSectionAdd": "Add a new book",
+  "searchCatalogueFor": "Search for \u201c{query}\u201d",
+  "@searchCatalogueFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchNoneInLibrary": "Nothing in your library matches.",
+  "searchNothingNewToAdd": "Nothing new to add.",
+  "searchOwnedTag": "In your library",
   "clearSearch": "Clear search",
   "scanBook": "Scan a book",
   "scanBookLabel": "Scan a book's barcode",
@@ -343,6 +515,7 @@
   "acknowledgements": "Acknowledgements",
   "openSourceLicenses": "Open source licenses",
   "emojiPickerCredit": "Emoji picker by Sébastien Gruhier (development) and Inès Gruhier (design)",
+  "storeMarksCredit": "Store marks from Simple Icons (CC0 1.0) and Arcticons (CC BY-SA 4.0)",
   "deleteConfirmTitle": "Delete this?",
   "deleteBookWarning": "Deleted books can't be recovered.",
   "deleteShelfConfirmTitle": "Delete this shelf?",
@@ -429,10 +602,6 @@
       }
     }
   },
-  "oneLastThing": "One last thing",
-  "haveInviteCode": "Have an invite code?",
-  "inviteCodeOptional": "Optional — you can invite friends later.",
-  "continueLabel": "Continue",
   "inviteExpiredTitle": "This link has expired",
   "inviteExpiredBody": "Invite links last 48 hours. Ask {name} to send you a new one.",
   "@inviteExpiredBody": {

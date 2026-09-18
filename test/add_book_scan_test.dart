@@ -251,7 +251,7 @@ void main() {
 
     // The scanner is pushed *over* the sheet rather than replacing it, so coming
     // back lands on the sheet and not on the library.
-    expect(find.text('Add book'), findsOneWidget);
+    expect(find.text('Search books'), findsOneWidget);
   });
 
   testWidgets('the search field takes focus on open', (tester) async {

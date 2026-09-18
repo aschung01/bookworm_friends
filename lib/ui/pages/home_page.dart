@@ -1,9 +1,11 @@
+import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
+import 'package:bookworm_friends/constants/constants.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/friend_reading.dart';
 
@@ -14,15 +16,19 @@ import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 import 'package:bookworm_friends/providers/shell_chrome_provider.dart';
 import 'package:bookworm_friends/providers/profile_provider.dart';
+import 'package:bookworm_friends/providers/reading_days_provider.dart';
 import 'package:bookworm_friends/providers/user_provider.dart';
 import 'package:bookworm_friends/ui/views/library_view.dart';
 import 'package:bookworm_friends/ui/widgets/avatar_circle.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
+import 'package:bookworm_friends/ui/widgets/dialogs/remove_friend_confirm.dart';
+import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/glass_avatar_button.dart';
 import 'package:bookworm_friends/ui/widgets/friends_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/invite/invite_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/library_card_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
 import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/update_shelf_name_bottom_sheet.dart';
@@ -266,6 +272,11 @@ class _HomePageState extends ConsumerState<HomePage> {
           onRestingExtent: onRestingExtent,
           onFilterChanged: (year) =>
               ref.read(cardFilterYearProvider.notifier).state = year,
+          // Derived from `reading_days` on read, never stored. Watched here with
+          // everything else the card is handed, so the sheet itself stays free of
+          // providers — see `LibraryCardSheet.streak`.
+          streak: ref.watch(currentStreakProvider),
+          longestStreak: ref.watch(longestStreakProvider),
         );
     }
   }
@@ -384,11 +395,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                     .read(userActionsProvider)
                     .pokeUser(selectedFriend?.username ?? '')
               : null,
-          onManageFriendPressed: !isSelf && selectedFriend != null
-              ? () => Navigator.pushNamed(
-                  context,
-                  AppRoutes.manageFriend,
-                  arguments: selectedFriend,
+          onRemoveFriendPressed: !isSelf && selectedFriend != null
+              ? () => confirmAndRemoveFriend(
+                  context: context,
+                  ref: ref,
+                  friend: selectedFriend,
                 )
               : null,
         ),
@@ -709,6 +720,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     .reorderBooksInShelf(shelfId, bookIds);
                               }
                             : null,
+                        onReorderReadingBooks: isSelf
+                            ? (bookIds) {
+                                ref
+                                    .read(libraryProvider.notifier)
+                                    .reorderReadingBooks(bookIds);
+                              }
+                            : null,
                         onDeleteBook: isSelf ? _onDeleteBook : null,
                         onRefresh: _refreshLibrary,
                       ),
@@ -853,7 +871,7 @@ class _LoadingChip extends StatelessWidget {
 /// oriented, and it keeps actions out of the slot where users expect Cancel:
 ///
 ///  * your library — "My Library" and your avatar
-///  * a visit      — ✕, "jisoo's Library" and Poke
+///  * a visit      — ✕, "jisoo's Library", Poke and an overflow menu
 ///  * an edit      — manage shelves and Done
 ///
 /// **The visit state is the exception, and it is the slot's own reasoning that makes
@@ -903,9 +921,13 @@ class _LibraryBar extends StatelessWidget {
 
   final VoidCallback? onPokePressed;
 
-  /// Opens `ManageFriendPage`. Null when [isSelf], for the same reason
-  /// [onPokePressed] is: neither action has a subject outside a visit.
-  final VoidCallback? onManageFriendPressed;
+  /// Confirms and performs a removal, from the overflow menu. Null when [isSelf],
+  /// for the same reason [onPokePressed] is: neither action has a subject outside a
+  /// visit.
+  ///
+  /// A callback rather than the [Profile] and a `ref`, so this bar stays
+  /// presentational — every other action on it is passed in the same way.
+  final VoidCallback? onRemoveFriendPressed;
 
   const _LibraryBar({
     required this.isSelf,
@@ -919,7 +941,7 @@ class _LibraryBar extends StatelessWidget {
     required this.density,
     required this.onDensityPressed,
     this.onPokePressed,
-    this.onManageFriendPressed,
+    this.onRemoveFriendPressed,
   });
 
   @override
@@ -965,42 +987,101 @@ class _LibraryBar extends StatelessWidget {
               Expanded(
                 child: isSelf
                     ? Text(
-                        // The one place in the app that sets the serif. These are
-                        // the app's own two words, in the app's own voice, in the
+                        // The app's own two words, in the app's own voice, in the
                         // most permanent row on screen — which is the whole test
-                        // for [AppTextStyles.title], and the reason the visit
-                        // state below cannot use it.
+                        // for [AppTextStyles.title].
                         l10n.myLibrary,
                         style: AppTextStyles.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       )
-                    : Text.rich(
-                        TextSpan(
-                          text: username.isEmpty ? l10n.library : username,
-                          style: AppTextStyles.titleUser,
-                          children: [
-                            TextSpan(
-                              // The suffix used to be separated by weight — 18/bold
-                              // name, 16/normal `의 서재`. It is separated by colour
-                              // now, at one size, for two reasons. A weight step
-                              // needs a second cut of the face loaded to be honest
-                              // about it, and the size step made the pair read as
-                              // two fragments rather than one phrase. Colour says
-                              // the same thing more quietly: the name is the
-                              // reader's content, the suffix is the app's framing
-                              // of it.
-                              text: l10n.librarySuffixOther,
-                              style: TextStyle(
-                                color: context.colors.secondaryText,
+                    // **The title is the menu.** A visit's title carries a chevron
+                    // and that chevron discloses what can be done about this
+                    // friendship — which is the honest place for it, because every
+                    // item in that menu is about the person the title names. The two
+                    // earlier shapes are worth recording: a gear inboard of Poke that
+                    // pushed a whole page for one destructive action, then a glass
+                    // ellipsis outboard of Poke. Both spent a 44pt slot in the most
+                    // contested row in the app on a control that says nothing about
+                    // its subject; a chevron on the subject itself says it for free.
+                    //
+                    // A [Row] rather than a `WidgetSpan` inside the title. A span
+                    // would ride the text's own layout — and this text ellipsizes, so
+                    // the chevron would be the first thing truncated away, on exactly
+                    // the long names that already truncate. Outside the paragraph it
+                    // is [Flexible] that gives way instead.
+                    : Row(
+                        children: [
+                          Flexible(
+                            child: Text.rich(
+                              TextSpan(
+                                text: username.isEmpty
+                                    ? l10n.library
+                                    : username,
+                                // The serif too, not [AppTextStyles.titleUser], and
+                                // one size down from your own title. Both states of
+                                // this row are the same row, and setting one of them
+                                // in the UI face made switching into a visit read as
+                                // a change of surface — the phrase around the name is
+                                // the app's voice either way. The step down to 20
+                                // says the other half of it: this state is temporary
+                                // and yours is not. See [AppTextStyles.titleVisit],
+                                // which also records what the step does *not* fix.
+                                //
+                                // What makes the serif safe is the coverage it
+                                // already has for `spine`: Latin-1 plus KS X 1001's
+                                // 2,350 syllables, verified at 0 misses against real
+                                // Korean. A name outside that still falls through to
+                                // Pretendard per glyph, which is the risk this branch
+                                // used to avoid wholesale — the trade is deliberate
+                                // now, and it is the same one a book title on a shelf
+                                // already takes.
+                                style: AppTextStyles.titleVisit,
+                                children: [
+                                  TextSpan(
+                                    // The suffix used to be separated by weight —
+                                    // 18/bold name, 16/normal `의 서재`. It is
+                                    // separated by colour now, at one size, for two
+                                    // reasons. A weight step needs a second cut of
+                                    // the face loaded to be honest about it, and the
+                                    // size step made the pair read as two fragments
+                                    // rather than one phrase. Colour says the same
+                                    // thing more quietly: the name is the reader's
+                                    // content, the suffix is the app's framing of it.
+                                    text: l10n.librarySuffixOther,
+                                    style: TextStyle(
+                                      color: context.colors.secondaryText,
+                                    ),
+                                  ),
+                                ],
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                          ),
+                          if (onRemoveFriendPressed != null)
+                            _VisitMenuButton(
+                              semanticLabel: l10n.manageFriend,
+                              removeLabel: l10n.removeFriend,
+                              onRemove: onRemoveFriendPressed!,
+                            ),
+                        ],
                       ),
               ),
+              // **Between the title and the actions, and only at rest on your own
+              // library.** It withdraws in edit mode, where the row's two controls are
+              // the whole point and a third object competing with them would be noise;
+              // and on a visit, where a streak belongs to the reader looking rather
+              // than the reader being looked at — friends' streaks are deliberately
+              // out of scope, and `reading_days`' RLS is owner-only, so there would be
+              // no rows to read anyway.
+              //
+              // **It draws at zero too, which is a reversal.** It used to draw nothing
+              // without a run — "which is every account in this database today", as the
+              // note here said. That was the argument against it, not for it: exactly one
+              // of 137 profiles has a reading day, so omitting at zero hid the chip from
+              // everyone who had yet to start. See `ReadingStreakChip`.
+              if (isSelf && !isEditing) const ReadingStreakChip(),
               if (isEditing)
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1130,37 +1211,20 @@ class _LibraryBar extends StatelessWidget {
                     // The density applies to a friend's shelves too — an unfamiliar
                     // library is where seeing all of a shelf helps most, not least —
                     // so the control travels into a visit.
+                    // The density applies to a friend's shelves too — an unfamiliar
+                    // library is where seeing all of a shelf helps most, not least —
+                    // so the control travels into a visit.
                     _ShelfDensityButton(
                       density: density,
                       onPressed: onDensityPressed,
                     ),
                     const AdaptiveIconButtonGap(),
-                    // **The gear, inboard of Poke.** Managing a friend was reachable
-                    // only by long-pressing their row in the Friends sheet — a real
-                    // gesture, inherited from the deleted rail, and one that nothing
-                    // on screen advertised. Reusing an existing gesture is not the
-                    // same as offering an action.
-                    //
-                    // Inboard rather than outboard because Poke is the primary thing
-                    // to do on this bar and the trailing edge is where a thumb lands.
-                    // A settings glyph in that slot would put the destructive path
-                    // where the friendly one belongs.
-                    if (onManageFriendPressed != null)
-                      SizedBox(
-                        width: 40,
-                        height: 44,
-                        child: IconButton(
-                          onPressed: onManageFriendPressed,
-                          tooltip: l10n.manageFriend,
-                          splashRadius: 20,
-                          padding: EdgeInsets.zero,
-                          icon: Icon(
-                            Icons.settings_outlined,
-                            size: 22,
-                            color: context.colors.secondaryText,
-                          ),
-                        ),
-                      ),
+                    // **Poke is the only thing this side of the row carries, and that
+                    // is the point of moving the friend menu into the title.** This
+                    // slot held a gear, then a glass ellipsis; both were 44pt of the
+                    // most contested row in the app spent on a control that could not
+                    // say what it was about. Poke is the one thing a reader comes to
+                    // a friend's library to *do*, so it gets the trailing edge alone.
                     if (onPokePressed != null)
                       GestureDetector(
                         onTap: onPokePressed,
@@ -1191,22 +1255,162 @@ class _LibraryBar extends StatelessWidget {
   }
 }
 
-/// Cycles the shelves through the three [ShelfDensity] states.
+/// The chevron on a visit's title, and the menu it discloses.
 ///
-/// **One button, not three.** At three states a full cycle costs at most two taps,
-/// and the feedback is unmissable because the whole library redraws — so the effect
-/// is the affordance in a way it would not be for eight states. A segmented pill
-/// would advertise the states better and cost 110–130pt of a row whose own doc calls
-/// it "the most valuable row on screen".
+/// **Deliberately material-less on both platforms.** Every other control in this bar
+/// is a disc with something behind it — glass on iOS 26, `surfaceVariant` in the
+/// fallback — and that is right for a control that stands on its own. This one does
+/// not stand on its own: it is punctuation at the end of a phrase, and the phrase is
+/// what it acts on. Give it a disc and it stops belonging to the title and starts
+/// competing with Poke, which is the whole reason the two shapes before it (a gear,
+/// then a glass ellipsis) were wrong.
+///
+/// **Still a native `UIMenu` on iOS 26, without the glass.** `CNButtonStyle.plain`
+/// draws no material but keeps the part worth keeping: the popover morphs out of the
+/// anchor, the destructive row is the system's own red, and the typography and haptics
+/// are UIKit's. A Flutter menu on iOS looks like Android's. Elsewhere it is
+/// [PopupMenuButton], which is the idiom `read_filter.dart` already uses for its own
+/// label-plus-chevron popover.
+///
+/// **The title is not the trigger; the chevron is.** A tap target the width of a
+/// username would be the largest one in the bar and would fire on a mis-aimed tap at
+/// the name itself, which reads as a label rather than a control. So the target is
+/// [_width] x [_height]: 44 tall for the thumb, and narrower than 44 because every
+/// point of width here is taken from a title that already ellipsizes — the same
+/// crowding argument that lets the end-visit ✕ sit below `kIconButtonDiameter`.
+class _VisitMenuButton extends StatelessWidget {
+  /// What the menu is *about*. A chevron says only that there is one.
+  final String semanticLabel;
+
+  final String removeLabel;
+  final VoidCallback onRemove;
+
+  const _VisitMenuButton({
+    required this.semanticLabel,
+    required this.removeLabel,
+    required this.onRemove,
+  });
+
+  static const double _width = 34;
+  static const double _height = 44;
+
+  /// Sized against the 20pt title it punctuates rather than against the bar's other
+  /// glyphs, which are 18–22 in 44pt discs. The symbol runs smaller than the Material
+  /// icon for the usual reason: Apple's marks are inset in their box and Material's
+  /// fill it — the same 15:20 ratio `kIconButtonSymbolSize` and `kIconButtonIconSize`
+  /// already encode.
+  static const double _symbolSize = 13;
+  static const double _iconSize = 18;
+
+  @override
+  Widget build(BuildContext context) {
+    // The colour of the suffix beside it, not of the name: the chevron is the app
+    // talking about the reader's content, exactly as `의 서재` is.
+    final tint = context.colors.secondaryText;
+
+    // Native only while nothing is over this control, as every other native control
+    // in this bar is: a platform view under a sheet leaks its own rectangle through
+    // the scrim and stays tappable behind it. See [ModalCoverBuilder].
+    return ModalCoverBuilder(
+      builder: (context, covered) => SizedBox(
+        width: _width,
+        height: _height,
+        child: useNativeGlass && !covered
+            ? _native(tint)
+            : _fallback(context, tint),
+      ),
+    );
+  }
+
+  Widget _native(Color tint) => Center(
+    child: Semantics(
+      label: semanticLabel,
+      button: true,
+      container: true,
+      child: CNPopupMenuButton.icon(
+        buttonIcon: CNSymbol('chevron.down', size: _symbolSize, color: tint),
+        // Square by construction, so it takes the narrower of the two dimensions:
+        // a plain button has no material to look clipped, and the row is 56 tall.
+        size: _width,
+        buttonStyle: CNButtonStyle.plain,
+        items: [
+          CNPopupMenuItem(
+            label: removeLabel,
+            icon: const CNSymbol('person.badge.minus'),
+            isDestructive: true,
+          ),
+        ],
+        onSelected: (_) => onRemove(),
+      ),
+    ),
+  );
+
+  Widget _fallback(BuildContext context, Color tint) => PopupMenuButton<int>(
+    // Doubles as the accessible name, as it does on `AdaptiveIconButton`'s
+    // fallback. Without it `PopupMenuButton` announces Material's generic
+    // "Show menu", which says nothing about whose menu it is.
+    tooltip: semanticLabel,
+    // Under, not over: a disclosure should drop away from the thing that
+    // disclosed it rather than cover it.
+    position: PopupMenuPosition.under,
+    color: context.colors.surface,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    // Runs after the route has popped, which is what makes it safe to raise the
+    // confirm dialog straight from here.
+    onSelected: (_) => onRemove(),
+    itemBuilder: (context) => [
+      PopupMenuItem<int>(
+        value: 0,
+        child: Row(
+          children: [
+            const Icon(
+              Icons.person_remove_outlined,
+              size: 20,
+              color: cancelRedColor,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              removeLabel,
+              style: AppTextStyles.body.copyWith(color: cancelRedColor),
+            ),
+          ],
+        ),
+      ),
+    ],
+    child: Center(
+      child: Icon(Icons.keyboard_arrow_down, size: _iconSize, color: tint),
+    ),
+  );
+}
+
+/// Cycles the shelves through the [ShelfDensity] states, of which there are now two.
+///
+/// **One button, not two.** At two states this is a toggle, and the feedback is
+/// unmissable because the whole library redraws — so the effect is the affordance. A
+/// segmented pill would advertise the states better and cost 110–130pt of a row whose
+/// own doc calls it "the most valuable row on screen".
+///
+/// Still built as a cycle rather than as a boolean, because that is where a third
+/// state goes if one is ever added; a withdrawn overlapping density made this a
+/// three-state control once already. See [ShelfDensityCycle].
 ///
 /// **It shows the state you are in, not the one you would get.** This is a mode
-/// indicator; with a two-tap cycle, "what am I looking at" is the more useful
-/// question for it to answer. The semantic label names the current state for the same
-/// reason, so the cycle is announced rather than silent.
+/// indicator, so "what am I looking at" is the more useful question for it to answer.
+/// The semantic label names the current state for the same reason, so the change is
+/// announced rather than silent.
 ///
 /// SF Symbols and Material glyphs rather than bundled SVGs: the catalog has marks for
-/// all three, so there is no reason to take on the raster/mask trap documented at
+/// both, so there is no reason to take on the raster/mask trap documented at
 /// `kStretchHorizontalIconNativeAsset`.
+///
+/// `book.closed` needs iOS 14 and the floor is 15, so no availability check.
+///
+/// **`books.vertical` used to be the Library tab's mark too** (`shell_tab_bar.dart`),
+/// so in the `spines` state this button and that tab carried the same glyph two rows
+/// apart meaning different things. That resolved itself when the tab bar went to filled
+/// glyphs: the tab is `books.vertical.fill` now and this button keeps the outline, which
+/// is a real distinction rather than a rename. Still worth knowing they are neighbours —
+/// if the bar ever drops back to outline marks, the collision comes back with it.
 class _ShelfDensityButton extends StatelessWidget {
   const _ShelfDensityButton({required this.density, required this.onPressed});
 
@@ -1219,17 +1423,15 @@ class _ShelfDensityButton extends StatelessWidget {
     // One record per state, so the glyph, the fallback and the label cannot drift
     // apart from each other.
     final (symbol, icon, label) = switch (density) {
-      // A single upright cover.
+      // A closed book, seen from its front cover — which is the drawing this state
+      // makes. `book.closed` rather than `book`, whose SF Symbol is an *open* book and
+      // therefore says "reading" rather than "cover"; and rather than
+      // `rectangle.portrait`, which was accurate about the geometry and said nothing
+      // about books.
       ShelfDensity.covers => (
-        'rectangle.portrait',
-        Icons.crop_portrait,
+        'book.closed',
+        Icons.book,
         l10n.shelfDensityCovers,
-      ),
-      // Overlapping cards, which is what the cascade is.
-      ShelfDensity.leaning => (
-        'square.stack',
-        Icons.filter_none,
-        l10n.shelfDensityLeaning,
       ),
       // Upright bars: books seen along their spines.
       ShelfDensity.spines => (

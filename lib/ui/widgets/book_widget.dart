@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'package:bookworm_friends/services/cover_image.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book/cover_sample.dart';
@@ -72,6 +73,24 @@ class BookWidget extends StatefulWidget {
   /// Gates both stages of the hold. Passed `false` in edit mode, where holding
   /// belongs to the reorder drag instead.
   final bool pressEffect;
+
+  /// Whether a completed hold swallows the [onTap] that follows its release.
+  ///
+  /// Off by default, because on the shelves the two gestures are not in
+  /// competition: a tap opens the book and holding it enters edit mode, which
+  /// already suppresses the release through [onLongPress]. It is on where the book
+  /// itself owns both — the details page's cover, where a tap magnifies the book and
+  /// a hold is only ever a look at the fore-edge, and the magnified book, where a
+  /// tap puts it back. Without this, holding either one would rotate the book and
+  /// then act on the release as well, so the turned pose could never be looked at.
+  ///
+  /// **Keyed on the turn having *finished*, not on the hold having started.** The
+  /// turn starts at [kBookHoldDelay], 140ms, which is inside the range of an
+  /// ordinary slow tap, and discarding taps that late would be a bug. It completes
+  /// [kBookTurnDuration] after that, and a finger down for 400ms is unambiguously a
+  /// hold. A tap released in between gets a partial turn that unwinds as the tap's
+  /// own effect begins — which is the right way round.
+  final bool holdSuppressesTap;
 
   /// Whether the book picks up its hashed height and thickness variation.
   ///
@@ -168,6 +187,7 @@ class BookWidget extends StatefulWidget {
     this.jitterOverride,
     this.onCoverSampled,
     this.pressEffect = true,
+    this.holdSuppressesTap = false,
     this.jitter = true,
     this.pivot = Alignment.center,
   }) : assert(
@@ -205,6 +225,10 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
   /// navigate. A tap recogniser has no upper time bound, so without this a
   /// 2-second hold would enter edit mode *and* push the details route.
   bool _stageTwoFired = false;
+
+  /// Set when a release ends a hold that had turned the book all the way out, and
+  /// only where the caller asked for it. See [BookWidget.holdSuppressesTap].
+  bool _holdClaimedTap = false;
 
   ImageStream? _stream;
   ImageStreamListener? _streamListener;
@@ -277,12 +301,17 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
   /// Resolves the cover to learn its intrinsic ratio, which decides the book's
   /// width. The same provider is handed to the [Image] below, so this shares the
   /// image cache rather than fetching twice.
+  ///
+  /// Through [coverImageProvider] rather than a `NetworkImage` built here, so this
+  /// hits the same disk cache — and the same entry — as the library card's shelf.
+  /// The equality check below still holds: a [CachedNetworkImageProvider] compares
+  /// by URL, exactly as `NetworkImage` did.
   void _subscribeToImage() {
     if (widget.imageUrl.isEmpty) {
       _detachStream();
       return;
     }
-    final provider = NetworkImage(widget.imageUrl);
+    final provider = coverImageProvider(widget.imageUrl);
     if (_provider == provider && _stream != null) return;
 
     _detachStream();
@@ -335,6 +364,7 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
   void _onTapDown(TapDownDetails _) {
     if (!widget.pressEffect) return;
     _stageTwoFired = false;
+    _holdClaimedTap = false;
     _press.forward();
 
     _holdTimer = Timer(kBookHoldDelay, () {
@@ -362,6 +392,11 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
     _holdTimer?.cancel();
     _stageTwoTimer?.cancel();
     _press.reverse();
+    // Recorded before the unwind, which is what clears `isCompleted`. Runs ahead of
+    // [_onTap] because a tap recogniser reports the release first and the tap
+    // second; a cancelled press never reaches [_onTap] at all, and the flag is
+    // cleared on the next press down rather than here for that reason.
+    if (widget.holdSuppressesTap && _turn.isCompleted) _holdClaimedTap = true;
     if (_turn.value > 0) {
       _turn.animateBack(
         0,
@@ -374,6 +409,10 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
   void _onTap() {
     if (_stageTwoFired) {
       _stageTwoFired = false;
+      return;
+    }
+    if (_holdClaimedTap) {
+      _holdClaimedTap = false;
       return;
     }
     widget.onTap?.call();

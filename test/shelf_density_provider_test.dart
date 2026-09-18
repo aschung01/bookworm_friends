@@ -44,6 +44,20 @@ void main() {
     );
 
     test(
+      'Given a stored leaning, When read, Then it becomes spines rather than covers',
+      () async {
+        // The withdrawn third density was the *other* compressed one, so a reader who
+        // had chosen it asked for a shelf that fits. Dropping them to `covers` would
+        // answer a question they did not ask — which is why this is a migration and
+        // not the unrecognised-value path below.
+        final container = await _container({'shelf_density': 'leaning'});
+        addTearDown(container.dispose);
+
+        expect(container.read(shelfDensityProvider), ShelfDensity.spines);
+      },
+    );
+
+    test(
       'Given an unrecognised stored value, When read, Then it degrades to covers',
       () async {
         // A name a later version renamed or removed must not throw on launch.
@@ -62,9 +76,9 @@ void main() {
 
         await container
             .read(shelfDensityProvider.notifier)
-            .set(ShelfDensity.leaning);
+            .set(ShelfDensity.spines);
 
-        expect(container.read(shelfDensityProvider), ShelfDensity.leaning);
+        expect(container.read(shelfDensityProvider), ShelfDensity.spines);
       },
     );
 
@@ -96,8 +110,6 @@ void main() {
 
         final notifier = container.read(shelfDensityProvider.notifier);
         await notifier.cycle();
-        expect(container.read(shelfDensityProvider), ShelfDensity.leaning);
-        await notifier.cycle();
         expect(container.read(shelfDensityProvider), ShelfDensity.spines);
         await notifier.cycle();
         expect(container.read(shelfDensityProvider), ShelfDensity.covers);
@@ -107,8 +119,7 @@ void main() {
 
   group('ShelfDensityCycle', () {
     test('Given any density, When next is read, Then the cycle wraps', () {
-      expect(ShelfDensity.covers.next, ShelfDensity.leaning);
-      expect(ShelfDensity.leaning.next, ShelfDensity.spines);
+      expect(ShelfDensity.covers.next, ShelfDensity.spines);
       expect(ShelfDensity.spines.next, ShelfDensity.covers);
     });
 

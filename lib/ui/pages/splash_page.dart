@@ -45,12 +45,11 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       // earlier shape replaced the route, which meant `✕` on the consent screen
       // popped to an empty navigator.
       _pushConsentIfPending();
-      // **`InviteCodePage` is deliberately not offered here**, only from the auth
-      // page. This branch is a reader who *already had a session* — they are
-      // relaunching, not signing up — and the code screen opens with "One last
-      // thing", which is signup language. Offering it here would ambush every
-      // existing user with a signup step on their first launch after this ships.
-      // See [inviteCodePromptProvider].
+      // **A held token is the only invite there is**, and the line above has just
+      // spent it. A typed-code screen was once offered after signup and was pointedly
+      // never offered here, this branch being a reader who *already had a session*;
+      // that screen is gone entirely now, so there is nothing left to withhold. See
+      // `AuthPage._spendPendingInvite`.
     } else {
       // Signed out. The token stays in the provider across the whole OAuth round
       // trip and is spent by whatever lands after sign-in -- see

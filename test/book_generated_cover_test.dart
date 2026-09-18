@@ -3,17 +3,41 @@
 //
 // This replaces what used to be a gray box reading "no image", so the cases that
 // matter are the two ways a cover can be absent: never supplied, and supplied
-// but failed to load. Network images always fail under `flutter_test` (all HTTP
-// returns 400), which makes the failure path the default rather than something
-// that needs mocking.
+// but failed to load.
+//
+// **The failure is staged, not ambient.** This file used to lean on "network images
+// always fail under `flutter_test`, because all HTTP returns 400", which made the
+// failure path free. It stopped being free when covers moved to a disk cache: the
+// fetch still fails, but it now fails somewhere inside a cache manager looking for a
+// `path_provider` that does not exist under test, on a real async hop that a fake-async
+// `pump` never advances — so the widget was still waiting rather than fallen back, and
+// the test failed on timing rather than on behaviour. `coverImageProvider` is swapped
+// instead, which says what is being tested.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/constants/app_theme.dart';
+import 'package:bookworm_friends/services/cover_image.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
+
+/// A cover whose fetch fails, standing in for a URL that cannot be reached.
+class _FailingImage extends ImageProvider<_FailingImage> {
+  @override
+  Future<_FailingImage> obtainKey(ImageConfiguration configuration) =>
+      SynchronousFuture<_FailingImage>(this);
+
+  @override
+  ImageStreamCompleter loadImage(
+    _FailingImage key,
+    ImageDecoderCallback decode,
+  ) => OneFrameImageStreamCompleter(
+    Future<ImageInfo>.error(Exception('cover unavailable')),
+  );
+}
 
 Future<void> _pumpBook(
   WidgetTester tester, {
@@ -73,8 +97,11 @@ void main() {
     testWidgets('the generated cover is used instead of an error box', (
       tester,
     ) async {
-      // Any network image fails in tests, which is exactly the case being
-      // covered: a real cover URL that cannot be fetched.
+      // The case being covered: a real cover URL that cannot be fetched.
+      coverImageProvider = (_) => _FailingImage();
+      // Otherwise a later test in the same process quietly keeps the fake.
+      addTearDown(() => coverImageProvider = networkCoverImage);
+
       await _pumpBook(tester, imageUrl: 'https://example.com/missing.jpg');
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.byType(GeneratedCover), findsOneWidget);

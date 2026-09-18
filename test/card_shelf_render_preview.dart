@@ -28,6 +28,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/library_card_stats.dart';
+import 'package:bookworm_friends/services/cover_image.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_cover_row.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_shelf_plan.dart';
@@ -209,10 +210,7 @@ void main() {
         'shelf-$count',
         SizedBox(
           width: 360,
-          child: CardCoverRow(
-            books: _books(count),
-            unit: 360 / kCardUnits,
-          ),
+          child: CardCoverRow(books: _books(count), unit: 360 / kCardUnits),
         ),
       );
     }
@@ -508,5 +506,4 @@ void main() {
       ),
     );
   });
-
 }

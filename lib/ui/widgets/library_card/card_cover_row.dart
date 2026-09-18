@@ -4,29 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:bookworm_friends/models/book.dart';
+import 'package:bookworm_friends/services/cover_image.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
 import 'package:bookworm_friends/ui/widgets/book/reading_bookmark.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_shelf_plan.dart';
-
-/// Resolves a book's stored thumbnail URL to something [Image] can draw.
-typedef CoverImageResolver = ImageProvider Function(String url);
-
-/// Swappable so widget tests can draw a cover without a network.
-///
-/// The same seam, for the same reason, as `avatarImageProvider`: Flutter's test
-/// binding stubs HTTP to return 400, so a real [NetworkImage] never resolves under
-/// `flutter test`. Tests assign a fake here and restore [networkCoverImage]
-/// afterwards.
-///
-/// It is also the reason [cardCoverProviders] exists rather than callers building
-/// their own providers: the list handed to a precache must be the same objects the
-/// row draws, and one resolver is what guarantees that.
-CoverImageResolver coverImageProvider = networkCoverImage;
-
-/// The production resolver. Kept public so tests can restore it.
-ImageProvider networkCoverImage(String url) => NetworkImage(url);
 
 /// Width of the plate that carries the count of books the shelf is not showing.
 const double kCardPlateUnits = 7.5;
@@ -628,7 +611,15 @@ class _Cover extends StatelessWidget {
           Positioned(
             key: ValueKey('cover-bookmark-${book.isbn}'),
             top: 0,
-            right: kReadingBookmarkInset * _bookmarkScale,
+            // Slid in from the fore-edge by how far through the book the reader is,
+            // on the same track the shelf uses — scaled with the ribbon, so the
+            // card's mark sits proportionally where the shelf's does rather than
+            // reading a different value at a different size.
+            right: readingBookmarkInsetFor(
+              book.progress,
+              coverWidth: width,
+              scale: _bookmarkScale,
+            ),
             child: ReadingBookmark(scale: _bookmarkScale),
           ),
       ],

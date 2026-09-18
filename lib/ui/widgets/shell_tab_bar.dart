@@ -37,6 +37,20 @@ class ShellTabBarGeometry {
   /// [glassTop].
   static const double gap = 8;
 
+  /// Dead room the package's own platform view keeps above the `UITabBar` it
+  /// hosts.
+  ///
+  /// `CupertinoTabBarPlatformView` pins its bar's top to `container.topAnchor`
+  /// with `constant: 14` and reports its intrinsic height as `sizeThatFits + 14`
+  /// — deliberately, so iOS 26's selection pill can overshoot the bar's top edge
+  /// during its morph without being clipped (the package's 1.4.1 fix). It is a
+  /// package constant rather than one of ours, and it is the reason the box handed
+  /// to the bar is taller than the bar.
+  ///
+  /// The search variant used before iOS 27 had no such inset, which is why moving
+  /// off it changed every number below.
+  static const double pillTopRoom = 14;
+
   /// Height of the box handed to the bar.
   ///
   /// Passed to `CNTabBar` explicitly rather than letting it measure itself: the
@@ -45,47 +59,38 @@ class ShellTabBarGeometry {
   /// beneath the bar cannot learn the number.
   ///
   /// 83 is not a guess. It is `UITabBar.sizeThatFits` for an iOS 26 bar with three
-  /// labelled items and a search item, read off the rendered view on an iPhone 17
-  /// Pro / iOS 26.4 simulator. At 50 the native bar drew its labels on top of its
-  /// icons — a squashed `UITabBar` is what too small looks like. It is also
-  /// exactly `49 + 34`: a tab bar plus a home-indicator inset, which is the clue
+  /// labelled items, read off the rendered view on an iPhone 17 Pro / iOS 26.4
+  /// simulator. At 50 the native bar drew its labels on top of its icons — a
+  /// squashed `UITabBar` is what too small looks like. It is also exactly
+  /// `49 + 34`: a tab bar plus a home-indicator inset, which is the clue
   /// [glassTop] turns on.
-  double get boxHeight => native ? 83 : 50;
+  ///
+  /// [pillTopRoom] is added on top because the box is the *platform view's*, not
+  /// the bar's: the package insets the bar inside it by that much.
+  static const double barHeight = 83;
+
+  double get boxHeight => native ? barHeight + pillTopRoom : 50;
 
   /// Height of what you can actually see, which on the native path is *not*
   /// [boxHeight].
   ///
   /// iOS lays the visible glass out as a 62pt platter anchored to the **top** of
-  /// the 83pt frame, keeping 21pt of padding at the bottom of its own box. Both
-  /// the platter and the search orb measure 62.
+  /// the 83pt frame, keeping 21pt of padding at the bottom of its own box.
   ///
   /// On the native path this is **descriptive only** — no position is derived from
   /// it. That is deliberate and it is the point of [glassTop]: the 21pt inset is a
   /// native subview's offset that Flutter cannot see, so a layout that depends on
-  /// it can never be verified from Dart. Anchoring to the frame's top edge instead
-  /// removes it from every formula here.
+  /// it can never be verified from Dart.
   double get visualHeight => native ? 62 : 50;
 
   /// Inset from the screen's side edges.
   ///
   /// **Zero on the native path, and that is not an omission.** The plugin pins the
-  /// `UITabBar` to all four edges of the platform view it is handed
-  /// (`CupertinoTabBarSearchView.setupUI`), so our box *is* the bar's frame — and
-  /// iOS 26 draws its glass as a platter inset *within* that frame. Anything added
-  /// here lands on top of the margin iOS already applies, and the bar comes out
-  /// narrower than the system's. A system tab bar is handed the full width;
-  /// matching one means handing it the full width.
-  ///
-  /// Measured on an iPhone 17 Pro / iOS 26.4 simulator (402pt wide) by building it
-  /// both ways: the glass sits **14.0pt further in from each edge at `14` than at
-  /// `0`**, so the inset was purely additive with iOS's own. That delta is the
-  /// claim; it is read the same way in both builds, so it does not depend on where
-  /// exactly a soft glass edge is judged to end.
-  ///
-  /// For the absolute, iOS's own layout is the authority: with this at `0` the
-  /// `UITabBar`'s accessibility tree reports the search orb at x `319.2..381.1` —
-  /// 62pt wide, **20.9pt in from the right edge**. That margin is the system's, and
-  /// it is the whole of what a system tab bar shows.
+  /// `UITabBar` to the platform view's side edges (`CupertinoTabBarPlatformView`),
+  /// so our box's width *is* the bar's — and iOS 26 draws its glass as a platter
+  /// inset *within* that. Anything added here lands on top of the margin iOS already
+  /// applies, and the bar comes out narrower than the system's. A system tab bar is
+  /// handed the full width; matching one means handing it the full width.
   ///
   /// 14 is right for the fallback, which fills its box with a pill it draws
   /// itself.
@@ -96,9 +101,9 @@ class ShellTabBarGeometry {
   /// are derived from, so the two cannot drift apart.
   ///
   /// The top edge is the honest anchor because on both paths the glass's top edge
-  /// *is* the box's top edge: iOS anchors its platter to the top of the frame, and
-  /// the fallback's pill fills its box. Every other edge involves an inset only
-  /// native code can see.
+  /// is a fixed offset from the box's top edge: iOS anchors its platter to the top
+  /// of the bar's frame, and the fallback's pill fills its box. Every other edge
+  /// involves an inset only native code can see.
   ///
   /// **Native: the frame sits flush with the bottom of the screen**, exactly where
   /// a `UITabBar` puts itself. Its 83pt is `49 + 34` — bar plus home-indicator
@@ -116,14 +121,22 @@ class ShellTabBarGeometry {
   /// **`bottom-up 21.0..83.0`**, i.e. the platter band is 21pt to 83pt above the
   /// screen bottom and 62pt tall, exactly as [visualHeight] says. Before this the
   /// same band sat at 42..104.
+  ///
+  /// **[pillTopRoom] does not move it.** The package's 14pt of dead room sits above
+  /// the bar's frame, inside the box; the frame is still flush with the bottom, so
+  /// the platter is still [barHeight] up. Which is why dropping the search item
+  /// changed [boxHeight] and this number not at all — and why sheets did not have
+  /// to move.
   double get glassTop =>
-      native ? boxHeight : bottomViewPadding + gap + visualHeight;
+      native ? barHeight : bottomViewPadding + gap + visualHeight;
 
   /// Where to pin the bar's box, measured from the bottom of the screen.
   ///
-  /// The box's top edge is the glass's top edge, so this is [glassTop] less the
-  /// box. Zero on the native path, by the reasoning at [glassTop].
-  double get bottomOffset => glassTop - boxHeight;
+  /// **Zero on the native path**, because that is what a `UITabBar` frame is, and
+  /// the box's bottom edge *is* the frame's bottom edge — the package's inset is
+  /// all at the top. Note this is no longer [glassTop] less [boxHeight]: the box
+  /// now overshoots the glass upward by [pillTopRoom].
+  double get bottomOffset => native ? 0 : glassTop - boxHeight;
 
   /// Vertical room a sheet must leave free at its bottom so the floating bar does
   /// not cover its contents: up to the top of the glass, plus a [gap].
@@ -137,8 +150,13 @@ class ShellTabBarGeometry {
   }
 }
 
-/// The shell's floating tab bar: a pill of Library / Friends / Card, plus a
-/// detached circular button that opens Add Book.
+/// The shell's floating tab bar: one capsule of Library / Friends / Card /
+/// Search.
+///
+/// Search is a tab like the others, and it is the only one that opens a sheet
+/// instead of swapping what the shell shows. It was a detached glass orb until
+/// iOS 27 stopped drawing one and Apple's own apps stopped asking for one; see
+/// [_ShellTabBarState._buildNative].
 ///
 /// It floats *over* the sheet rather than sitting under it, which is why the
 /// sheet has to leave [ShellTabBarGeometry.reserve] pixels of room at its bottom.
@@ -152,12 +170,12 @@ class ShellTabBar extends StatefulWidget {
   final LibraryTab current;
   final ValueChanged<LibraryTab> onChanged;
 
-  /// Fires when the detached circular button is tapped. Add Book is a search, so
-  /// on iOS 26 this is the system's search tab; see the class comment in
-  /// [_buildNative].
+  /// Fires when the fourth tab — Search — is tapped. The sheet it opens searches
+  /// the reader's own library *and* the catalogue, which is why the tab is a
+  /// magnifier rather than a plus.
   ///
-  /// Awaited: the native bar keeps the search item lit while it is open, which is
-  /// truthful, and is put back only once Add Book closes.
+  /// Awaited, because the bar keeps Search lit for as long as its sheet is up and
+  /// has to know when to stop. See [_ShellTabBarState._searchActive].
   final Future<void> Function() onAddBook;
 
   const ShellTabBar({
@@ -181,31 +199,47 @@ class ShellTabBar extends StatefulWidget {
 }
 
 class _ShellTabBarState extends State<ShellTabBar> {
-  /// Only used on the native path, to put the bar's selection back after the
-  /// search tab has been tapped.
-  final _searchController = CNTabBarSearchController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   static const _tabs = LibraryTab.values;
+
+  /// Index of the Search tab, which sits after the three [LibraryTab]s and is not
+  /// one of them — it opens a sheet rather than swapping what the shell shows.
+  static const _searchIndex = 3;
+
+  /// Whether Search's sheet is up, and so whether Search is the lit tab.
+  ///
+  /// **The bar has to hold this itself**, because the shell's own notion of the
+  /// current tab cannot represent it: [LibraryTab] has three values and Search is
+  /// not one of them. Without it the bar would light Search on tap and then be
+  /// pushed straight back to Library by the next `setSelectedIndex`, which reads as
+  /// a flicker and, worse, as a claim that tapping Search did nothing.
+  ///
+  /// Lit for exactly as long as the sheet is up, which is what Apple Books does
+  /// with the same tab.
+  bool _searchActive = false;
 
   List<String> _labels(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return [l10n.library, l10n.friends, l10n.tabCard];
+    return [l10n.library, l10n.friends, l10n.tabCard, l10n.tabSearch];
   }
 
-  Future<void> _onAddBookTapped() async {
+  int get _selectedIndex =>
+      _searchActive ? _searchIndex : _tabs.indexOf(widget.current);
+
+  void _onTap(int index) {
+    if (index == _searchIndex) {
+      _onSearchTapped();
+      return;
+    }
+    // No `_searchActive = false` here: picking another tab pops the sheet, which
+    // completes the future below, which turns the light off. Doing it twice would
+    // just be two rebuilds.
+    widget.onChanged(_tabs[index]);
+  }
+
+  Future<void> _onSearchTapped() async {
+    setState(() => _searchActive = true);
     await widget.onAddBook();
-    // The native bar moves its own selection to the search item on tap and never
-    // puts it back, so without this the bar keeps claiming you are on a fourth
-    // tab that does not exist. Deferred until Add Book closes: called any earlier
-    // it runs while the pushed page covers the bar, and the search item comes
-    // back still tinted as the active tab.
-    if (mounted) _searchController.deactivateSearch();
+    if (mounted) setState(() => _searchActive = false);
   }
 
   @override
@@ -213,20 +247,33 @@ class _ShellTabBarState extends State<ShellTabBar> {
     return useNativeGlass ? _buildNative(context) : _buildFallback(context);
   }
 
-  /// iOS 26: a real `UITabBar` with a system search item, which the OS renders as
-  /// the detached Liquid Glass circle the design draws.
+  /// iOS 26+: one real `UITabBar` of four items, Search among them.
   ///
-  /// Using the search item as a plain button is deliberate, and it is worth
-  /// writing down because the package's own docs say otherwise. On iOS 26 the
-  /// search item is *only* a button: the Swift view behind it builds a plain
-  /// `UITabBar` with a `.search` system item and contains no text field,
-  /// `UISearchTab` or `UISearchController` at all. `onSearchChanged` and
-  /// `onSearchSubmit` are published on a different method channel (the one
-  /// `CNSearchScaffold` uses) and never fire here, so `onSearchActiveChanged` is
-  /// the tap hook. That is exactly what we want — Add Book owns its own search
-  /// UI in a modal — but it also means the inline-search behaviour the README
-  /// describes is fallback-only, which is why the fallback below is hand-rolled
-  /// instead of letting `CNTabBar` provide it.
+  /// **Search is an ordinary labelled tab, and that is the current platform
+  /// pattern rather than a compromise.** It used to be a `CNTabBarSearchItem`,
+  /// which asks the package for a `UITabBarItem(tabBarSystemItem: .search)`; on
+  /// iOS 26 UIKit promoted that item out of the capsule and drew it as a detached
+  /// Liquid Glass circle, and iOS 27 stopped doing so — verified side by side on
+  /// iPhone 17 Pro / iOS 26.5 and iPhone 18 Pro / iOS 27.0 from
+  /// `main_shell_preview.dart`, same build, and on a physical iPhone 16 Pro /
+  /// iOS 27.0.
+  ///
+  /// That looked like a regression and was chased as one. It is not: Apple's own
+  /// apps moved the same way. **Books** puts Home / Library / Book Store /
+  /// Audiobooks / Search in a single capsule with Search as a plain labelled tab
+  /// and no detached orb anywhere. So the bar follows Books, and the orb — whether
+  /// UIKit's or, briefly, one of our own — is gone.
+  ///
+  /// What that buys, beyond being current: the layout is entirely UIKit's again.
+  /// A detached orb of our own meant placing it against a pill that content-sizes
+  /// and centres itself, which Flutter cannot measure — so the gap between the two
+  /// came out as whatever slack the labels happened to leave, ~35pt in English and
+  /// wider in Korean, where the labels are shorter. One capsule has no such gap to
+  /// get wrong.
+  ///
+  /// The plain `CNTabBarItem` is also what keeps 26 and 27 identical: the search
+  /// item is the only thing the two OS versions disagreed about, and nothing here
+  /// asks for it any more.
   Widget _buildNative(BuildContext context) {
     final labels = _labels(context);
     return CNTabBar(
@@ -236,39 +283,64 @@ class _ShellTabBarState extends State<ShellTabBar> {
       // the default `true`, the bar would delete itself the moment any sheet
       // opened.
       //
-      // The package's reason for hiding is worth knowing, because it does not
-      // apply here: the search variant uses an unclipped native container so the
-      // orb can overhang the bar's top edge, and that lets the bar's shadow bleed
-      // through a sheet drawn over it (`tab_bar.dart:341-355`). Bleeding *through*
-      // a sheet is only wrong when the bar is meant to be behind it. It is not.
-      //
       // Turning this off does not give up halo containment for anything else:
       // `ShellRouteObserver` still drives `anyModalDepth`, so `CNButton` and the
       // native segmented controls on the page below still clip while a sheet is
       // up. Only the bar opts out of reacting.
       autoHideOnModal: false,
-      currentIndex: _tabs.indexOf(widget.current),
-      onTap: (index) => widget.onChanged(_tabs[index]),
+      // **The size knobs.** `iconSize` is yours; `buildItems`' own default is 25 if
+      // you ever want the platform's. A null font pair leaves the labels on the
+      // system face, and passing null is identical to omitting them — the Dart side
+      // only forwards each one `if (... != null)`.
+      iconSize: 18,
+      labelFontFamily: null,
+      labelFontSize: null,
+      currentIndex: _selectedIndex,
+      onTap: _onTap,
       tint: context.colors.brandText,
-      // SF Symbols only: with a search item set, the native view ignores
-      // rasterised `customIcon`s, image assets and icon sizes entirely.
+      // SF Symbols only: the native view ignores rasterised `customIcon`s and
+      // image assets on the iOS 26+ path.
+      //
+      // Icon and label size *are* adjustable here, unlike on the search variant
+      // this replaced — add `iconSize:` and `labelFontFamily:` + `labelFontSize:`
+      // above. Two things to know before you do, both measured on iOS 27:
+      //
+      //   - `labelFontSize` alone does nothing. `applyLabelFont` returns early
+      //     unless `labelFontFamily` is also set, size included.
+      //   - **iOS fixes the glass platter at 62pt**, so the icon and its label
+      //     share a budget that [ShellTabBarGeometry.barHeight] cannot enlarge:
+      //     raising the frame only moves the platter up, and drags every sheet
+      //     with it via `reserve`. Above 25 UIKit also adds a
+      //     `titlePositionAdjustment` of `iconSize - 25`, pushing the label down
+      //     into the glyph. 30/15 collided; 27 with Pretendard at 12 fits.
+      //
+      // **`.fill` on three of the four, and the fourth is not an oversight.**
+      // Filled glyphs are what the current platform bar uses — Books' Home /
+      // Library / Book Store / Audiobooks are all filled — and `magnifyingglass`
+      // simply has no `.fill` counterpart in SF Symbols. Books therefore sets a
+      // plain magnifier beside its filled glyphs too, so the odd one out here
+      // matches Apple's own bar rather than falling short of it.
+      //
+      // Filled in **both** states rather than `icon` outline / `activeIcon` filled.
+      // Selection is already carried twice over, by [AppColors.brandText] and by
+      // the capsule iOS draws behind the selected item; a third signal that swaps
+      // the glyph's whole silhouette is what makes a bar look like it is animating
+      // when you have only changed tabs. `_TabSegment` declines a weight change for
+      // the same reason.
       items: [
-        CNTabBarItem(label: labels[0], icon: const CNSymbol('books.vertical')),
-        CNTabBarItem(label: labels[1], icon: const CNSymbol('person.2')),
-        CNTabBarItem(label: labels[2], icon: const CNSymbol('creditcard')),
+        CNTabBarItem(
+          label: labels[0],
+          icon: const CNSymbol('books.vertical.fill'),
+        ),
+        CNTabBarItem(label: labels[1], icon: const CNSymbol('person.2.fill')),
+        CNTabBarItem(label: labels[2], icon: const CNSymbol('creditcard.fill')),
+        CNTabBarItem(label: labels[3], icon: const CNSymbol('magnifyingglass')),
       ],
-      searchController: _searchController,
-      searchItem: CNTabBarSearchItem(
-        label: AppLocalizations.of(context).addBook,
-        onSearchActiveChanged: (isActive) {
-          if (isActive) _onAddBookTapped();
-        },
-      ),
     );
   }
 
-  /// Everywhere else — and under `flutter test`, which reports Android — the
-  /// pill and the circle are drawn in Flutter over a blur.
+  /// Everywhere else — and under `flutter test`, which reports Android — the same
+  /// four-tab capsule is drawn in Flutter over a blur.
   ///
   /// `CNTabBar`'s own fallback is not used: given a search item it grows an
   /// inline `CupertinoTextField` in the bar, which is a different interaction
@@ -282,68 +354,39 @@ class _ShellTabBarState extends State<ShellTabBar> {
     // and the design's own numbers, so the box does not grow with the text
     // inside it. Now that the labels are a real token with a real line-height
     // (13 × 1.2), the largest accessibility step drove them straight past the
-    // pill's edge, and a three-tab row with nowhere to go ellipsizes every
-    // label to one letter — which is worse for the reader who turned the setting
-    // on than a slightly small label is.
+    // pill's edge, and a row with nowhere to go ellipsizes every label to one
+    // letter — which is worse for the reader who turned the setting on than a
+    // slightly small label is.
     //
     // 1.3 rather than 1.0: refusing scaling outright is the thing to avoid, and
     // 13 → 16.9 still fits. The native `CNTabBar` path is untouched; UIKit sizes
     // its own bar.
+    //
+    // There is one fewer pixel of slack than there was, because Search moved in
+    // here from a circle of its own: four labels share the width three used to.
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
-      child: Row(
-        children: [
-          Expanded(
-            child: _Glass(
-              borderRadius: BorderRadius.circular(height / 2),
-              child: SizedBox(
-                height: height,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < _tabs.length; i++)
-                        Expanded(
-                          child: _TabSegment(
-                            label: labels[i],
-                            height: height,
-                            selected: _tabs[i] == widget.current,
-                            onTap: () => widget.onChanged(_tabs[i]),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          _Glass(
-            borderRadius: BorderRadius.circular(height / 2),
-            child: SizedBox.square(
-              dimension: height,
-              child: Semantics(
-                button: true,
-                label: AppLocalizations.of(context).addBook,
-                // A `GestureDetector` rather than an `IconButton`, matching
-                // [_TabSegment]. `ShellChrome` hosts this bar above the
-                // `Navigator`, where there is no `Material` and no `Overlay` -- so
-                // ink and tooltips have no ancestor to find and throw. The label
-                // moves to `Semantics`, which needs neither.
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _onAddBookTapped,
-                  child: Center(
-                    child: Icon(
-                      Icons.search,
-                      color: context.colors.secondaryText,
+      child: _Glass(
+        borderRadius: BorderRadius.circular(height / 2),
+        child: SizedBox(
+          height: height,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              children: [
+                for (var i = 0; i < labels.length; i++)
+                  Expanded(
+                    child: _TabSegment(
+                      label: labels[i],
+                      height: height,
+                      selected: i == _selectedIndex,
+                      onTap: () => _onTap(i),
                     ),
                   ),
-                ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

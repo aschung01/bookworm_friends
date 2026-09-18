@@ -67,6 +67,23 @@ class AppColors extends ThemeExtension<AppColors> {
   /// what is behind it.
   final Color brandFill;
 
+  /// The one warm hue in an otherwise all-green, all-neutral palette.
+  ///
+  /// **Exists for exactly one thing: [ReadingStreakChip]'s flame**, so that a fire
+  /// glyph does not render in the brand green and read as miscoloured. It shipped
+  /// once tinted with [brandText] on the reasoning that the chip is a brand surface
+  /// like any other; a flame is not — its colour is part of what makes it legible as
+  /// *a flame* rather than an arbitrary glyph, and green fire reads as a bug
+  /// screenshot rather than a streak.
+  ///
+  /// Not [brand] itself, for [brand]'s own reason: light mode's vivid value clears
+  /// only ~3:1 on a light surface, so this is darkened the same way [brandText] is
+  /// darkened from [brand] — a burnt orange rather than a bright one. Dark mode can
+  /// afford to stay closer to a true flame orange, the same asymmetry [brandText]
+  /// already has between its two themes. Cleared to AA (4.5:1) on every surface this
+  /// token's only user reads text against; see `test/color_contrast_test.dart`.
+  final Color flame;
+
   /// Background for modal bottom sheets.
   ///
   /// Pinned rather than left to Material's default
@@ -91,6 +108,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.brand,
     required this.brandText,
     required this.brandFill,
+    required this.flame,
     required this.sheetBackground,
     required this.shimmerHighlight,
   });
@@ -107,6 +125,12 @@ class AppColors extends ThemeExtension<AppColors> {
     // light surface. surfaceVariant is the binding constraint, not white.
     brandText: Color(0xff067657),
     brandFill: Color(0xff067657),
+    // 5.4/4.6/5.2/4.9:1 on surface/surfaceVariant/pageBackground/sheetBackground —
+    // AA on every light surface the flame is drawn against. A true fire orange
+    // (`#FF9600`) clears none of them (~2:1 on white), the same defect `brand` has
+    // as text — so this is darkened the way `brandText` is darkened from `brand`,
+    // just far enough to still read as orange rather than brown.
+    flame: Color(0xffB54708),
     sheetBackground: Color(0xffEFF5EF),
     shimmerHighlight: Color(0xffF8F9FA),
   );
@@ -127,6 +151,10 @@ class AppColors extends ThemeExtension<AppColors> {
     // 6.8:1 on the dark surface, so the vivid green needs no adjustment.
     brandText: Color(0xff09BC8A),
     brandFill: Color(0xff067657),
+    // 6.2:1 on the dark surface (the binding one, being lightest), so dark mode can
+    // stay close to a genuine flame orange the way `brandText` stays close to the
+    // vivid green there.
+    flame: Color(0xffFF922B),
     sheetBackground: Color(0xff171D1A),
     shimmerHighlight: Color(0xff3A3A3C),
   );
@@ -142,6 +170,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? brand,
     Color? brandText,
     Color? brandFill,
+    Color? flame,
     Color? sheetBackground,
     Color? shimmerHighlight,
   }) {
@@ -155,6 +184,7 @@ class AppColors extends ThemeExtension<AppColors> {
       brand: brand ?? this.brand,
       brandText: brandText ?? this.brandText,
       brandFill: brandFill ?? this.brandFill,
+      flame: flame ?? this.flame,
       sheetBackground: sheetBackground ?? this.sheetBackground,
       shimmerHighlight: shimmerHighlight ?? this.shimmerHighlight,
     );
@@ -173,6 +203,7 @@ class AppColors extends ThemeExtension<AppColors> {
       brand: Color.lerp(brand, other.brand, t)!,
       brandText: Color.lerp(brandText, other.brandText, t)!,
       brandFill: Color.lerp(brandFill, other.brandFill, t)!,
+      flame: Color.lerp(flame, other.flame, t)!,
       sheetBackground: Color.lerp(sheetBackground, other.sheetBackground, t)!,
       shimmerHighlight: Color.lerp(
         shimmerHighlight,

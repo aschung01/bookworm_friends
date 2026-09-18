@@ -1,25 +1,24 @@
 // Where a sign-in lands when an invite is waiting.
 //
-// Two arrivals, and they must not collide:
+// One arrival, and one only: a **tapped link** held across the OAuth round trip, which
+// goes straight to consent. It is pushed *onto* the library rather than replacing it, so
+// dismissing consent leaves the reader on their own shelf instead of an empty navigator.
 //
-//   * a **tapped link** held across the OAuth round trip -> straight to consent, and
-//     the code screen is suppressed because the token has already been used;
-//   * **no link** -> the code screen once, because the reader may have installed from
-//     the landing page with a token sitting on their clipboard.
-//
-// Both are pushed *onto* the library rather than replacing it, so dismissing either
-// leaves the reader on their own shelf instead of an empty navigator.
+// **There is no typed-code path any more**, and the last case here is the guard for that.
+// A screen offered once per install used to catch the landing page's clipboard handoff;
+// it is gone, because eight characters a reader types is the shape a referral code will
+// want and the two must not share an input. The cost is the deferred tier: a reader who
+// installs from the landing page and opens the app cold has no invite until they tap the
+// link again.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
-import 'package:bookworm_friends/providers/invite_code_prompt_provider.dart';
 import 'package:bookworm_friends/providers/invite_link_provider.dart';
 import 'package:bookworm_friends/ui/pages/auth_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_consent_page.dart';
@@ -52,11 +51,7 @@ class _Recorder extends NavigatorObserver {
 Future<_Recorder> _pump(
   WidgetTester tester, {
   required String? pendingToken,
-  bool promptAlreadyShown = false,
 }) async {
-  SharedPreferences.setMockInitialValues(
-    promptAlreadyShown ? {kInviteCodePromptPrefKey: true} : {},
-  );
   final observer = _Recorder();
 
   await tester.pumpWidget(
@@ -77,7 +72,6 @@ Future<_Recorder> _pump(
         routes: {
           AppRoutes.home: (_) => const Scaffold(body: Text('LIBRARY')),
           AppRoutes.inviteConsent: (_) => const Scaffold(body: Text('CONSENT')),
-          AppRoutes.inviteCode: (_) => const Scaffold(body: Text('CODE')),
         },
       ),
     ),
@@ -101,21 +95,6 @@ void main() {
   );
 
   testWidgets(
-    'Given a token arrived by link, When consent is shown, Then the code screen is '
-    'never also offered',
-    (tester) async {
-      final observer = await _pump(tester, pendingToken: 'K7M2QP4X');
-
-      expect(
-        observer.pushed,
-        isNot(contains(AppRoutes.inviteCode)),
-        reason:
-            'the reader has already spent a token; asking for a code repeats it',
-      );
-    },
-  );
-
-  testWidgets(
     'Given the token reached consent, When it is handed over, Then it is the one from '
     'the link',
     (tester) async {
@@ -128,28 +107,50 @@ void main() {
   );
 
   testWidgets(
-    'Given no link, When a first sign-in completes, Then the code screen is offered as '
-    'the clipboard handoff\'s landing point',
+    'Given the token was spent, When the page rebuilds, Then consent is not presented '
+    'a second time',
     (tester) async {
-      final observer = await _pump(tester, pendingToken: null);
+      final observer = await _pump(tester, pendingToken: 'K7M2QP4X');
 
-      expect(observer.pushed, contains(AppRoutes.inviteCode));
-      expect(observer.pushed, isNot(contains(AppRoutes.inviteConsent)));
+      await tester.pump();
+      expect(
+        observer.pushed.where((r) => r == AppRoutes.inviteConsent).length,
+        1,
+        reason: 'the token is cleared before the push for exactly this reason',
+      );
     },
   );
 
   testWidgets(
-    'Given the code screen was already offered once, When signing in again, Then it is '
-    'not offered a second time',
+    'Given no link, When a sign-in completes, Then the reader is left on their library '
+    'with nothing asked of them',
     (tester) async {
-      final observer = await _pump(
-        tester,
-        pendingToken: null,
-        promptAlreadyShown: true,
-      );
+      final observer = await _pump(tester, pendingToken: null);
 
-      expect(observer.pushed, isNot(contains(AppRoutes.inviteCode)));
+      expect(observer.replaced, contains(AppRoutes.home));
       expect(find.text('LIBRARY'), findsOneWidget);
+      expect(
+        observer.pushed,
+        isNot(contains(AppRoutes.inviteConsent)),
+        reason: 'there is no token to consent to',
+      );
+    },
+  );
+
+  testWidgets(
+    'Given a sign-in with no link, When the landing is inspected, Then no invite-code '
+    'screen exists to be pushed',
+    (tester) async {
+      await _pump(tester, pendingToken: null);
+
+      // The route is gone from the table, so a regression that re-added the push would
+      // throw on an unknown name rather than quietly showing a signup step. Asserting
+      // the absence directly says why.
+      expect(
+        AppRoutes.routes.keys,
+        isNot(contains('/invite_code')),
+        reason: 'a typed code is the shape a referral code will want',
+      );
     },
   );
 }

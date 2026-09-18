@@ -17,6 +17,21 @@ class BookSearchResult {
   final DateTime? datetime;
   final String? contents;
 
+  /// Google Books' own id for this volume, when the result came from there.
+  ///
+  /// **The only per-book identifier the app can get without a second request**,
+  /// and the reason it is worth carrying: it names both the Play Store page
+  /// (`/store/books/details?id=`) and the Play Books reader
+  /// (`/books/reader?id=`), which makes Play Books the one shop that can be
+  /// reached exactly for either intent. Every other shop falls back to a search.
+  ///
+  /// Null for Kakao and Open Library, which have no equivalent. Note this is a
+  /// *different* thing from the volume id occasionally ending up in [isbn]: that
+  /// happens when a volume lists no ISBN at all and something non-empty is needed
+  /// as a key (see [GoogleBooksSearchProvider._mapVolume]), and it is exactly why
+  /// `looksLikeIsbn` exists.
+  final String? volumeId;
+
   /// Pages, when the provider reports a credible count.
   ///
   /// Null for Kakao, which has no page field at all — its book document carries
@@ -39,6 +54,7 @@ class BookSearchResult {
     this.datetime,
     this.contents,
     this.pageCount,
+    this.volumeId,
   });
 
   factory BookSearchResult.fromJson(Map<String, dynamic> json) {
@@ -209,6 +225,10 @@ class GoogleBooksSearchProvider implements BookSearchProvider {
       isbn: isbn,
       pageCount: pageCount,
       thumbnail: thumbnail,
+      // Kept in its own field as well as being the ISBN fallback above. The two
+      // uses are unrelated: there it is standing in for a missing key, here it is
+      // the identifier that makes an exact Play Books link possible.
+      volumeId: item['id'] as String?,
       url:
           volume['infoLink'] as String? ??
           volume['canonicalVolumeLink'] as String?,

@@ -25,9 +25,9 @@ double shelfSpineWidth(Book book, double baseHeight) =>
 /// resolves the four things a shelf has to decide differently from the pile.
 ///
 /// **Cheaper than a cover.** Its width comes from the page count rather than from a
-/// decoded image, so a row of these needs no network and no decode to lay out. That
-/// is the reason `ShelfDensity.spines` costs less than `ShelfDensity.leaning`
-/// despite looking like the more elaborate drawing.
+/// decoded image, so a row of these needs no network and no decode to lay out — and
+/// the row stays a lazy `ListView`, which builds about four tiles rather than one per
+/// book. Both are true despite this looking like the more elaborate drawing.
 class ShelfSpineTile extends StatelessWidget {
   const ShelfSpineTile({
     super.key,

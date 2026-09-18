@@ -57,12 +57,26 @@ class ShelfLabel extends StatelessWidget {
 
   final Object? heroTag;
 
+  /// The name's own colour, for a tab that is not one the reader named.
+  ///
+  /// The Reading shelf sets it to `brandText`, because that shelf belongs to the app:
+  /// its books were put there by their *status* rather than by a reader filing them, and
+  /// the colour is what says so without a second word on the tab. Null takes the
+  /// ambient text colour, which is what every reader-named shelf wants.
+  ///
+  /// Safe for the hero contract above in a way that a font change would not be: colour
+  /// does not affect the box's measured width, so a tab that flies keeps its size even
+  /// if the two ends were ever to disagree about this. (They cannot today — the Reading
+  /// shelf flies nothing. See `ReadingShelfRow`.)
+  final Color? labelColor;
+
   const ShelfLabel({
     super.key,
     required this.label,
     this.count,
     this.maxWidth = 140,
     this.heroTag,
+    this.labelColor,
   });
 
   @override
@@ -98,7 +112,9 @@ class ShelfLabel extends StatelessWidget {
               // depends on this tab measuring the *same* width at both ends of
               // the flight. Two call sites spelling out 14/bold could drift
               // apart; one token cannot.
-              style: AppTextStyles.label,
+              style: labelColor == null
+                  ? AppTextStyles.label
+                  : AppTextStyles.label.copyWith(color: labelColor),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

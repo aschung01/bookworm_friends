@@ -1,5 +1,10 @@
-// `ShelfDensity.spines` draws every book that is not in progress along its spine,
-// and leaves the in-progress ones face-out at the head of the row.
+// `ShelfDensity.spines` draws every book on a shelf along its spine.
+//
+// It used to say "every book that is not in progress, and leaves the in-progress ones
+// face-out at the head of the row" — that exemption is gone, and its removal is the
+// structural payoff of the Reading shelf. `withoutReadingBooks` takes an open book off
+// its plank entirely, so a shelf row is homogeneous: one region, no boundary to compute,
+// draw or defend against a drag.
 //
 // The assertions worth understanding are the two about `slotExtent`. That number is
 // measured from the rendered slot and travels to whichever shelf a book is dropped
@@ -17,17 +22,20 @@ import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
+import 'package:bookworm_friends/ui/widgets/reading_shelf_row.dart';
 import 'package:bookworm_friends/ui/widgets/shelf/shelf_spine_tile.dart';
+import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
 
 import 'support/home_page_harness.dart';
 import 'support/prefs.dart';
 
-/// A shelf with one book in progress and three that are not.
-List<Book> _mixedShelf() => [
-  testBook('reading', 's1', position: 0, status: bookStatusReading),
-  testBook('a', 's1', position: 1, pageCount: 120),
-  testBook('b', 's1', position: 2, pageCount: 450),
-  testBook('c', 's1', position: 3, pageCount: 880),
+/// Three books of increasing page count, so the spines they compress to differ in
+/// thickness. Nothing in progress: an open book is drawn on the Reading shelf rather
+/// than on a plank, so a fixture that put one here would be testing the wrong widget.
+List<Book> _plainShelf() => [
+  testBook('a', 's1', position: 0, pageCount: 120),
+  testBook('b', 's1', position: 1, pageCount: 450),
+  testBook('c', 's1', position: 2, pageCount: 880),
 ];
 
 Future<void> _pump(
@@ -36,7 +44,7 @@ Future<void> _pump(
   List<Book>? books,
 }) async => pumpHome(
   tester,
-  shelves: [testShelf('s1', books ?? _mixedShelf(), name: 'Dev')],
+  shelves: [testShelf('s1', books ?? _plainShelf(), name: 'Dev')],
   extraOverrides: [
     await sharedPreferencesOverride({'shelf_density': density.name}),
   ],
@@ -44,14 +52,14 @@ Future<void> _pump(
 
 void main() {
   testWidgets(
-    'Given the spines density, When the library is shown, Then only the in-progress '
-    'book is face-out',
+    'Given the spines density, When the library is shown, Then every book on the '
+    'shelf is a spine',
     (tester) async {
       await _pump(tester, density: ShelfDensity.spines);
 
-      // Three spines for the three books that are not in progress.
+      // Three books, three spines — no exemption for any of them.
       expect(find.byType(ShelfSpineTile), findsNWidgets(3));
-      // The reading book keeps its cover. `BookWidget` also appears elsewhere in the
+      // And no cover anywhere in the row. `BookWidget` also appears elsewhere in the
       // shell, so scope the count to the shelf's own tiles.
       expect(
         find.descendant(
@@ -178,8 +186,7 @@ void main() {
   );
 
   testWidgets(
-    'Given a shelf with nothing in progress, When drawn as spines, Then every book '
-    'is a spine',
+    'Given a two-book shelf, When drawn as spines, Then every book is a spine',
     (tester) async {
       await _pump(
         tester,
@@ -194,22 +201,38 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Given a shelf where everything is in progress, When drawn as spines, Then '
-    'nothing is compressed',
-    (tester) async {
-      await _pump(
-        tester,
-        density: ShelfDensity.spines,
-        books: [
-          testBook('a', 's1', position: 0, status: bookStatusReading),
-          testBook('b', 's1', position: 1, status: bookStatusReading),
-        ],
-      );
+  testWidgets('Given a shelf where every book is in progress, When drawn as spines, Then the '
+      'row is empty rather than uncompressed', (tester) async {
+    await _pump(
+      tester,
+      density: ShelfDensity.spines,
+      books: [
+        testBook('a', 's1', position: 0, status: bookStatusReading),
+        testBook('b', 's1', position: 1, status: bookStatusReading),
+      ],
+    );
 
-      // Correct rather than broken: nothing on the shelf is compressible, so the
-      // density has nothing to do and the toggle appears to do nothing here.
-      expect(find.byType(ShelfSpineTile), findsNothing);
-    },
-  );
+    // **This assertion is unchanged and it means the opposite of what it used to.**
+    // There were no spines here because nothing on the shelf was compressible — both
+    // books stood face-out and the density toggle appeared to do nothing. Now there
+    // are none because there is nothing on the shelf at all: both books are on the
+    // Reading shelf, and this plank is empty. Which is why the covers are checked for
+    // too.
+    expect(find.byType(ShelfSpineTile), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(ShelfRow),
+        matching: find.byType(BookWidget),
+      ),
+      findsNothing,
+    );
+    // They have not vanished from the library, only from the plank.
+    expect(
+      find.descendant(
+        of: find.byType(ReadingShelfRow),
+        matching: find.byType(BookWidget),
+      ),
+      findsNWidgets(2),
+    );
+  });
 }

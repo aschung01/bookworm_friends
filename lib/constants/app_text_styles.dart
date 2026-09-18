@@ -17,9 +17,9 @@ abstract final class AppFonts {
   /// [AppTextStyles.title], [AppTextStyles.hero] and [AppTextStyles.spine].
   ///
   /// Cut to Latin-1 plus **KS X 1001's 2,350 Hangul syllables** — 1.32MB, against
-  /// 7.85MB for the whole 11,172-syllable block. The first two tokens set the
-  /// app's own words, where coverage is guaranteed by construction; `spine` sets a
-  /// book title, which is catalogue text and is not, so the cut has to be a
+  /// 7.85MB for the whole 11,172-syllable block. `hero` sets the app's own words,
+  /// where coverage is guaranteed by construction; `spine` sets a book title and
+  /// `title` sets a friend's username, neither of which is, so the cut has to be a
   /// judgement about what real Korean reaches. KS X 1001 has been that judgement
   /// since 1987, and it holds here: **0 misses** across the 618 distinct syllables
   /// in the 624 titles of `migration_data/book.jsonl`, the 290 in `app_ko.arb`, and
@@ -75,22 +75,23 @@ const double kEmojiGlyphSize = 24;
 ///  * `fontFamily: CupertinoSystemText` on iOS — SF Pro *Text*, the optical size
 ///    drawn for ≤19pt — used for the 24pt auth title and the 30/46pt figures.
 ///
-/// ## Eight tokens, four weights
+/// ## Nine tokens, four weights
 ///
 /// Before this there were thirteen sizes (10.5, 11, 11.5, 12, 12.5, 13, 14, 15,
 /// 16, 17, 18, 20, 24, plus 26/30/46 in `StatTile`) and six weight spellings, of
 /// which `bold` and `w700` are the same weight written two ways. `bold` appeared
 /// 44 times, which is the same as nothing being emphasised.
 ///
-/// Eight rather than seven because [titleUser] is [title]'s metrics in the other
-/// family; four weights (400/600/700/800) is what has to be shipped, and it is
+/// Nine rather than seven because [titleUser] is [title]'s metrics in the other
+/// family and [titleVisit] is [title] one size down for the library bar's other
+/// state; four weights (400/600/700/800) is what has to be shipped, and it is
 /// one more than the three first quoted — w800 exists solely for [display], and
 /// the alternative was faux-bolding.
 ///
 /// ## Every token repeats three properties, and that is deliberate
 ///
 /// `textBaseline`, `leadingDistribution` and `letterSpacing` are spelled out in
-/// all eight tokens rather than inherited from a shared `_base`, because
+/// every token rather than inherited from a shared `_base`, because
 /// `TextStyle.copyWith` and `merge` are not `const` and these have to be: a
 /// non-const token cannot be used in a `const TextStyle` field, which several
 /// widgets here have.
@@ -184,16 +185,21 @@ abstract final class AppTextStyles {
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  /// Page titles — the library bar's own title, and nothing else yet.
+  /// Page titles — the library bar's own title. [titleVisit] is the same row when
+  /// it belongs to a friend.
   ///
-  /// The one place the serif is set. 22pt rather than the 18 it replaced: 18 was
-  /// also the size of the sheet title stacked on top of it, so the foreground
-  /// element did not read as more important than the page behind it, and neither
-  /// read as a page title.
+  /// 22pt rather than the 18 it replaced: 18 was also the size of the sheet title
+  /// stacked on top of it, so the foreground element did not read as more
+  /// important than the page behind it, and neither read as a page title.
   ///
-  /// [AppFonts.serif] is subset to the app's own l10n strings, so this token
-  /// carries `fontFamilyFallback` to Pretendard. Use [titleUser] for a title
-  /// containing someone's name.
+  /// **The serif now sets a friend's name too**, which [titleUser] used to exist
+  /// to prevent. The bar is one row with one voice, and splitting the family by
+  /// whose shelves are behind it made entering a visit read as a change of
+  /// surface. `fontFamilyFallback` is what makes that affordable: a syllable
+  /// outside the cut renders in Pretendard rather than as a box — the same trade
+  /// [spine] already takes with catalogue text, on a corpus with 0 misses.
+  /// [titleUser] is still the token for a name set *outside* this row, where
+  /// there is no app phrase around it to carry the voice.
   ///
   /// **w700 while [titleUser] is w600, and the mismatch is the honest spelling.**
   /// Gowun Batang ships one weight, 700, and that is the file `pubspec.yaml`
@@ -213,12 +219,58 @@ abstract final class AppTextStyles {
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  /// [title]'s metrics in the UI face, for a title that contains user text.
+  /// [title] one step down, for the state of that row that carries a friend's name.
   ///
-  /// A username is the reader's content, not the app's voice, and the serif is
-  /// subset to the app's own strings. Rendering `아모개의 서재` half in Gowun
-  /// Batang and half in Pretendard — which is what the fallback would do — looks
-  /// like a bug rather than a choice, so the whole title goes sans instead.
+  /// **20pt, and the reason is hierarchy rather than fit.** Your library is the
+  /// app's permanent subject; a visit is somewhere the reader is standing for a
+  /// moment. Of two sizes on one row, the smaller belongs to the temporary state,
+  /// and the step is what makes entering a visit feel like going somewhere rather
+  /// than renaming the page you were already on.
+  ///
+  /// The row it lands in is also the crowded one, which the own-library state
+  /// never has to deal with: a leading ✕ (36 + 6), then density (44), the gear
+  /// (40) and Poke — a *word*, four syllables under `ko`. That leaves the title
+  /// roughly 150pt less measure than "My Library" gets, on a longer string, so 22
+  /// filled everything it was given and read as squeezed in rather than fitted to
+  /// the row.
+  ///
+  /// **What the step does not do is stop truncation, and the drawing says so.**
+  /// `test/library_bar_title_render_preview.dart` runs this ladder at 390pt:
+  /// `bartholomew's Library` truncates at 22, still truncates at 20, and only
+  /// fits at 18. Korean names fit at every size on the ladder, because the suffix
+  /// is short and the syllables are square. So 20 buys about a character and a
+  /// half — worth having, not the argument. A long Latin name ellipsising is
+  /// accepted here; the alternative is 18, and 18 is one point off [subtitle],
+  /// which is the sheet title stacked directly over this row. That is the exact
+  /// collision the 22 in [title] was chosen to avoid, and reintroducing it a point
+  /// away is worse than reintroducing it exactly.
+  ///
+  /// `letterSpacing` is [title]'s -0.018em at the new size, so the two read as one
+  /// decision at two sizes. w700 because that is still the only cut Gowun Batang
+  /// ships.
+  static const TextStyle titleVisit = TextStyle(
+    fontFamily: AppFonts.serif,
+    fontFamilyFallback: [AppFonts.sans],
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    height: 1.15,
+    letterSpacing: -0.36,
+    textBaseline: TextBaseline.alphabetic,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// [title]'s metrics in the UI face, for user text with no app phrase around it.
+  ///
+  /// A username is the reader's content, not the app's voice, so a name standing
+  /// alone — `ManageFriendPage`'s identity block — is set in the UI face. The
+  /// library bar no longer uses this: there the name sits inside `의 서재` /
+  /// `'s Library`, which is the app speaking, and the phrase wants one family.
+  ///
+  /// The risk this token was created for is still real and still the thing to
+  /// weigh before reaching for [title] with user text: the serif is a subset, so
+  /// `아모개의 서재` can render half Gowun Batang and half Pretendard, which looks
+  /// like a bug rather than a choice. Latin-1 plus KS X 1001 makes that rare, not
+  /// impossible.
   ///
   /// Same size, height and tracking as [title] so the two are interchangeable in
   /// layout; w600 rather than w700 because that is where Pretendard matches Gowun
@@ -343,6 +395,7 @@ abstract final class AppTextStyles {
     'figure': figure,
     'hero': hero,
     'title': title,
+    'titleVisit': titleVisit,
     'titleUser': titleUser,
     'subtitle': subtitle,
     'body': body,

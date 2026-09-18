@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +10,7 @@ import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
+import 'package:bookworm_friends/ui/widgets/book/turning_book.dart';
 import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
@@ -19,17 +18,16 @@ import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 
 /// Air either side of the book that has been turned out, at full turn.
 ///
-/// Zero at rest, so the resting pile's density is exactly what it was. Flush was
-/// the first answer and it took seeing it to reject: the turned cover sat hard
-/// against the spines on both sides, which reads as a book wedged in place rather
-/// than one taken off the shelf, and it clipped the stacked shadows that are the
-/// only thing separating a cover from the plank behind it.
-const double kTurnMargin = 8;
+/// [kTurnMargin], re-exported: the value moved to `turning_book.dart` with the turn
+/// it belongs to, and this name is what the pile's own tests and layout arithmetic
+/// call it.
+const double kReadTurnMargin = kTurnMargin;
 
 /// The pose a book in the pile rests at: spine-on, cover edge-on.
 ///
-/// Negative because positive turn exposes the fore-edge. See [bookParentMatrix].
-const double kReadSpinePose = -math.pi / 2;
+/// [kSpineOnPose], re-exported. A shelf drawn at `ShelfDensity.spines` rests at the
+/// same pose, which is why the constant is no longer the pile's alone.
+const double kReadSpinePose = kSpineOnPose;
 
 /// The size of one book in the read pile.
 ///
@@ -222,16 +220,6 @@ class _ReadPileState extends ConsumerState<ReadPile>
     _open.forward();
   }
 
-  /// Projected width of a book at [pose], which is what the row lays out against.
-  ///
-  /// `cover×|cos| + thickness×|sin|`, the silhouette of two perpendicular faces.
-  /// Non-monotonic by ~3pt near cover-on, because a book at 80° is very slightly
-  /// wider than one at 90° — which is what a real book does, and is accepted: the
-  /// alternative is to lay out against the maximum and have the row open a gap
-  /// before the book grows into it.
-  double _slotWidth(BookMetrics m, double pose) =>
-      m.width * math.cos(pose).abs() + m.thickness * math.sin(pose).abs();
-
   Widget _flatSpine(Book book) {
     final size = readSpineMetrics(book);
     final tone = _spineTone(book);
@@ -269,89 +257,34 @@ class _ReadPileState extends ConsumerState<ReadPile>
   ({Color fill, Color title}) _spineTone(Book book) => spineToneOf(book);
 
   /// The one book that is a real [BookWidget]: turned out, or on its way.
-  Widget _turnedBook(Book book, Animation<double> progress) {
-    final size = readSpineMetrics(book);
-    final m = size.metrics;
-    final tone = _spineTone(book);
-
-    return AnimatedBuilder(
-      animation: progress,
-      builder: (context, child) {
-        final t = progress.value;
-        final pose = kReadSpinePose * (1 - t);
-        final slot = _slotWidth(m, pose);
-        // The hinge is the chassis box's left edge at every angle, and at a
-        // negative pose the spine hangs a thickness to the *left* of it. Offset
-        // the box by that much so the drawing's leftmost point is the slot's, and
-        // the resting pile is laid out exactly as flat spines are.
-        final hinge = m.thickness * math.sin(pose).abs();
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: kTurnMargin * t),
-          child: SizedBox(
-            width: slot,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  left: hinge,
-                  bottom: 0,
-                  width: m.width,
-                  height: m.height,
-                  child: child!,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      // Built once, outside the builder: it owns an ImageStream, and rebuilding it
-      // every frame of the turn would re-resolve the cover 16 times.
-      child: BookWidget(
-        imageUrl: book.thumbnail,
-        isbn: book.isbn,
-        title: book.title,
-        height: ReadPile.spineBase,
-        pageCount: book.pageCount,
-        // The same jitter the flat spine was drawn at, handed over rather than
-        // recomputed, so the cover is exactly as thick as the spine that was
-        // tapped.
-        jitterOverride: size.jitter,
-        turnRadians: progress.drive(
-          Tween<double>(begin: kReadSpinePose, end: 0),
-        ),
-        pivot: Alignment.centerLeft,
-        spine: BookVertical(
-          title: book.title,
-          width: m.thickness,
-          height: m.height,
-          fill: tone.fill,
-          titleColor: tone.title,
-          background: context.colors.sheetBackground,
-          separator: true,
-          // A face of a solid object cannot have a notch in its head that the
-          // faces beside it do not. See [BookVertical.arch].
-          arch: false,
-        ),
-        // Only the open book carries the tag, which is what makes the Hero legal
-        // here at all — see the note in `book_details_tab_view.dart`.
-        heroTag: 'book_${book.isbn}',
-        // **The pile is the screen where a missing colour is visible as a
-        // disagreement**, and this is the one book on it with a decoded cover to
-        // offer. Turn out a book whose spine is still an ISBN swatch and the swatch
-        // sits directly beside the jacket it does not match; reporting the sample
-        // here means that cannot happen twice for the same book.
-        //
-        // It also closes a gap the other three call sites could not: a finished book
-        // is kept off the shelves by `withoutFinishedBooks`, so of the paths that
-        // decode a cover, only the read grid and the details page ever saw these
-        // books at all.
-        onCoverSampled: (color) =>
-            ref.read(libraryActionsProvider).recordCoverColor(book, color),
-        onTap: () =>
-            Navigator.pushNamed(context, AppRoutes.details, arguments: book),
-      ),
-    );
-  }
+  ///
+  /// [TurningBook], which the shelves share — see there for why the turn cannot have
+  /// two implementations.
+  Widget _turnedBook(Book book, Animation<double> progress) => TurningBook(
+    book: book,
+    progress: progress,
+    baseHeight: ReadPile.spineBase,
+    // The pile is a sheet's `collapsedBody`, so `sheetBackground` is what a pale
+    // spine is actually seen against.
+    spineBackground: context.colors.sheetBackground,
+    tone: _spineTone(book),
+    // Only the open book carries the tag, which is what makes the Hero legal here at
+    // all — see the note in `book_details_tab_view.dart`.
+    heroTag: 'book_${book.isbn}',
+    // **The pile is the screen where a missing colour is visible as a
+    // disagreement**, and this is the one book on it with a decoded cover to offer.
+    // Turn out a book whose spine is still an ISBN swatch and the swatch sits
+    // directly beside the jacket it does not match; reporting the sample here means
+    // that cannot happen twice for the same book.
+    //
+    // It also closes a gap the other three call sites could not: a finished book is
+    // kept off the shelves by `withoutFinishedBooks`, so of the paths that decode a
+    // cover, only the read grid and the details page ever saw these books at all.
+    onCoverSampled: (color) =>
+        ref.read(libraryActionsProvider).recordCoverColor(book, color),
+    onTap: () =>
+        Navigator.pushNamed(context, AppRoutes.details, arguments: book),
+  );
 
   @override
   Widget build(BuildContext context) {

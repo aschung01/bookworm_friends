@@ -7,21 +7,26 @@ const String _prefKey = 'shelf_density';
 /// How a shelf draws the books that are not in progress.
 ///
 /// A shelf is one horizontal row and only **3.57** face-out covers fit in it on a
-/// 390pt phone, so a twelve-book shelf shows three and a sliver. These are three
-/// answers to that, and the two compressed ones get a shelf to about ten books —
-/// or about thirteen when nothing on it is in progress.
+/// 390pt phone, so a twelve-book shelf shows three and a sliver. These are two answers
+/// to that, and the compressed one gets a shelf to about ten books — or about twelve
+/// when nothing on it is in progress.
+///
+/// **There was a third, and it was withdrawn.** `leaning` shingled the compressed
+/// books at a fixed step so they overlapped like cards, leaning right with the leftmost
+/// frontmost. It was the densest of the three and it worked, in the end — but the
+/// overlap is what a reader has to reason about to use it: at a quarter of a cover the
+/// recognition is being done by colour rather than by type, taps have to be aimed at a
+/// 20pt strip on each book's *trailing* edge, and bringing one book forward has to push
+/// its neighbours both ways to get out from under them. A spine is a thing readers
+/// already know how to look at, and it costs about two books of density to say so.
 ///
 /// **Deliberately not a widening of `LibraryMode`.** That enum is about what the
 /// reader is *doing*; this is about how books are *drawn*. The two are orthogonal
-/// — edit mode always draws face-out, from any density — so one enum of six states
-/// would have three aliases in it.
+/// — edit mode draws each density as itself — so one enum of four states would have
+/// two aliases in it.
 enum ShelfDensity {
   /// Face-out covers, 15pt apart. The row as it has always been drawn.
   covers,
-
-  /// In-progress books face-out; the rest shingled at a fixed step, leaning right
-  /// so the leftmost book is frontmost.
-  leaning,
 
   /// In-progress books face-out; the rest spine-on, per `BookVertical`.
   spines,
@@ -32,6 +37,11 @@ extension ShelfDensityCycle on ShelfDensity {
   ///
   /// Here rather than in the button, so the cycle has one definition and a second
   /// caller — a test, a shortcut, a settings row — cannot get a different order.
+  ///
+  /// At two states this is a toggle, and the button is still built as a cycle. Keeping
+  /// it that way costs a modulo and leaves the third state re-addable without touching
+  /// the control; collapsing it into `!` would put the shape of the enum into the
+  /// button.
   ShelfDensity get next =>
       ShelfDensity.values[(index + 1) % ShelfDensity.values.length];
 }
@@ -75,11 +85,16 @@ class ShelfDensityNotifier extends Notifier<ShelfDensity> {
   /// **Anything unrecognised is [ShelfDensity.covers], not an error.** A stored
   /// name that a later version has renamed or removed must not throw on launch,
   /// and the row as it has always been drawn is the safe thing to fall back to.
+  ///
+  /// `'leaning'` is the one exception, and it is a migration rather than a fallback.
+  /// The withdrawn third density was the *other* compressed one, so a reader who had
+  /// chosen it had asked for a shelf that fits rather than for covers; dropping them
+  /// back to `covers` would answer a question they did not ask. This can go once no
+  /// stored preference can plausibly still say it.
   static ShelfDensity _parse(String? value) {
     switch (value) {
-      case 'leaning':
-        return ShelfDensity.leaning;
       case 'spines':
+      case 'leaning':
         return ShelfDensity.spines;
       default:
         return ShelfDensity.covers;
@@ -90,8 +105,6 @@ class ShelfDensityNotifier extends Notifier<ShelfDensity> {
     switch (density) {
       case ShelfDensity.covers:
         return 'covers';
-      case ShelfDensity.leaning:
-        return 'leaning';
       case ShelfDensity.spines:
         return 'spines';
     }

@@ -49,6 +49,59 @@ String? isbnFromBarcode(String? raw) {
   return digits;
 }
 
+/// The EAN-13 check digit for [twelve], which must be twelve digits.
+///
+/// The inverse of the sum [isValidEan13] checks: same alternating 1/3 weights,
+/// solved for the digit that takes the total to a multiple of ten.
+int _ean13CheckDigit(String twelve) {
+  var sum = 0;
+  for (var i = 0; i < 12; i++) {
+    final value = twelve.codeUnitAt(i) - 0x30;
+    sum += i.isEven ? value : value * 3;
+  }
+  return (10 - sum % 10) % 10;
+}
+
+/// [raw] as thirteen digits, or null if it is not an ISBN at all.
+///
+/// **Exists because `books.isbn` is not a normalised column, and comparing it to
+/// a catalogue result by string is therefore wrong.** A scanned book stores a
+/// validated ISBN-13; `GoogleBooksSearchProvider._mapVolume` prefers ISBN-13 but
+/// falls back to ISBN-10 and then to the *volume id*; Open Library takes the
+/// first ISBN in a list that may hold either length. So the same book can be
+/// held under two different strings, and telling "you already own this" from
+/// "this is a different edition" needs both sides put in one form first.
+///
+/// Accepts an ISBN-10 and converts it (prefix 978, recompute the check digit),
+/// which is the case that actually matters — Google hands back ten digits often
+/// enough that ignoring it would make exact matching miss most of the time.
+///
+/// **Deliberately does not verify the check digit of a 13-digit input**, unlike
+/// [isbnFromBarcode]. That function guards a *decode*, where a bad digit means a
+/// misread symbol worth rejecting. This one reads values already stored by
+/// providers of varying quality, and refusing to compare two identical strings
+/// because a publisher's metadata has a typo in it would be the wrong trade: the
+/// caller only wants to know whether these are the same book.
+///
+/// Returns null for a Google volume id (`zyTCAlFPjgYC`) and for anything else
+/// that is not an ISBN, which callers read as "no identifier to compare".
+String? normalisedIsbn13(String? raw) {
+  if (raw == null) return null;
+  final trimmed = raw.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+  if (trimmed.length == 13) {
+    return RegExp(r'^\d{13}$').hasMatch(trimmed) ? trimmed : null;
+  }
+  if (trimmed.length == 10) {
+    // The tenth character of an ISBN-10 is a check digit over a different
+    // modulus and can be an X; it is discarded rather than converted, because
+    // the 13-digit form recomputes its own.
+    if (!RegExp(r'^\d{9}[\dX]$').hasMatch(trimmed)) return null;
+    final body = '978${trimmed.substring(0, 9)}';
+    return '$body${_ean13CheckDigit(body)}';
+  }
+  return null;
+}
+
 /// Picks the ISBN to use out of everything found in one frame.
 ///
 /// Two symbols in frame is the ordinary case for a Korean book rather than an

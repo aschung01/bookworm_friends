@@ -36,8 +36,13 @@ Future<void> _pump(
 Finder _button(IconData icon) =>
     find.descendant(of: find.byType(AppBar), matching: find.byIcon(icon));
 
-const _covers = Icons.crop_portrait;
-const _leaning = Icons.filter_none;
+/// The Material fallbacks, which are what the tests see: `find.bySemanticsLabel` does
+/// not reach an `AdaptiveIconButton` on this path, because the label becomes an
+/// `IconButton` tooltip.
+///
+/// `Icons.book` for covers — a book, matching the `book.closed` SF Symbol the native
+/// path draws.
+const _covers = Icons.book;
 const _spines = Icons.view_week;
 
 void main() {
@@ -47,8 +52,8 @@ void main() {
     (tester) async {
       await _pump(tester);
 
-      // Shows the current state, not the next one: this is a mode indicator, and with
-      // a two-tap cycle "what am I looking at" is the more useful question.
+      // Shows the current state, not the next one: this is a mode indicator, and "what
+      // am I looking at" is the more useful question for one to answer.
       expect(_button(_covers), findsOne);
       expect(_button(_spines), findsNothing);
     },
@@ -65,16 +70,11 @@ void main() {
   );
 
   testWidgets(
-    'Given the button, When it is tapped three times, Then the cycle returns to '
-    'covers',
+    'Given the button, When it is tapped twice, Then the cycle returns to covers',
     (tester) async {
       await _pump(tester);
 
       await tester.tap(_button(_covers));
-      await tester.pumpAndSettle();
-      expect(_button(_leaning), findsOne);
-
-      await tester.tap(_button(_leaning));
       await tester.pumpAndSettle();
       expect(_button(_spines), findsOne);
 
@@ -92,9 +92,9 @@ void main() {
       await tester.tap(_button(_covers));
       await tester.pumpAndSettle();
 
-      // The label names the state you are in, so the cycle is announced rather than
+      // The label names the state you are in, so the change is announced rather than
       // silent.
-      expect(find.byTooltip('Shelf view: leaning'), findsOne);
+      expect(find.byTooltip('Shelf view: spines'), findsOne);
     },
   );
 
@@ -122,11 +122,10 @@ void main() {
       );
       await enterEditMode(tester);
 
-      // Density does not apply while rearranging: `spines` is edited as spines and
-      // `leaning` falls back to covers, and neither is a choice to make here.
+      // Density does not apply while rearranging: `spines` is edited as spines, so
+      // there is nothing to choose here.
       expect(_button(_spines), findsNothing);
       expect(_button(_covers), findsNothing);
-      expect(_button(_leaning), findsNothing);
     },
   );
 }

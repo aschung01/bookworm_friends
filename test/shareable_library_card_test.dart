@@ -27,8 +27,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/library_card_stats.dart';
-import 'package:bookworm_friends/ui/widgets/library_card/card_furniture.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/shareable_library_card.dart';
+
+/// Whether a string contains Hangul: syllables, plus the Jamo and compatibility
+/// blocks so a decomposed form cannot slip through.
+///
+/// Code units rather than a regex literal, so the ranges are readable as numbers
+/// and the test file itself stays free of the characters it is looking for.
+bool _hasKorean(String value) => value.codeUnits.any(
+  (unit) =>
+      (unit >= 0xAC00 && unit <= 0xD7AF) ||
+      (unit >= 0x1100 && unit <= 0x11FF) ||
+      (unit >= 0x3130 && unit <= 0x318F),
+);
 
 /// Fixed so `Date of issue` is not the day the suite happens to run.
 final _issued = DateTime(2026, 8, 20);
@@ -211,12 +222,13 @@ void main() {
     });
 
     testWidgets(
-      'Given a Korean locale, When the card renders, Then its furniture '
-      'is unchanged',
+      'Given a Korean locale, When the card renders, Then the stamp line and '
+      'authority are the Korean ones',
       (tester) async {
-        // Fixed furniture, not l10n: an artifact that names itself differently
-        // depending on who exported it is two products. The date is forced English
-        // for the same reason — `8월` on one card and `AUG` on the next.
+        // The card's name in the reader's language, which is the sub-line's whole
+        // job — and the only locale that has one, since the title above is already
+        // the English name. The date is still forced English in both: `8월` on one
+        // card and `AUG` on the next would make two artifacts out of one.
         await _pump(
           tester,
           books: [_read('a', DateTime(2026, 3, 1))],
@@ -226,11 +238,44 @@ void main() {
         );
 
         expect(find.text('MY LIBRARY CARD'), findsOneWidget);
-        expect(find.text(kCardStampLine), findsOneWidget);
-        expect(find.text(kCardAuthority), findsOneWidget);
+        expect(find.text('도서관 카드'), findsOneWidget);
+        expect(find.text('책벌레 친구들 · LIBSTACK'), findsOneWidget);
         expect(find.text('20 AUG 26'), findsOneWidget);
       },
     );
+
+    testWidgets('Given an English locale, When the card renders, Then it names itself once '
+        'and prints no Korean', (tester) async {
+      // Two things at once, because they are the same edit. The sub-line is gone
+      // — `LIBRARY · CARD` under `MY LIBRARY CARD` was the same words twice, which
+      // is what the old bilingual constant hid by carrying a Korean half that did
+      // add something.
+      //
+      // And nothing Korean is left: the artifact is the copy that reaches other
+      // people, so Hangul on an English reader's card is Hangul in their friends'
+      // threads too. Swept over every glyph rather than asserted string by string,
+      // so a new piece of furniture cannot reintroduce it unnoticed. `displayName`
+      // is deliberately Latin here — a Korean display name on an English card is
+      // the reader's own content and stays, which the issue block's own test pins.
+      await _pump(
+        tester,
+        books: [_read('a', DateTime(2026, 3, 1))],
+        displayName: 'Jisoo',
+        handle: 'paper_fox_412',
+      );
+
+      expect(find.text('MY LIBRARY CARD'), findsOneWidget);
+      expect(find.text('LIBRARY · CARD'), findsNothing);
+      expect(find.text('LIBSTACK'), findsOneWidget);
+
+      for (final text in tester.widgetList<Text>(find.byType(Text))) {
+        expect(
+          _hasKorean(text.data ?? ''),
+          isFalse,
+          reason: 'the English card printed Korean',
+        );
+      }
+    });
   });
 
   group('the issue block', () {

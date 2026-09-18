@@ -91,6 +91,16 @@ class SearchTextField extends StatelessWidget {
   /// a layout accident.
   final Widget? trailing;
 
+  /// Called on every keystroke, for callers that search as you type.
+  ///
+  /// Optional because the original callers search on *submit*: Add Book runs a
+  /// paged catalogue query that is too expensive to fire per letter. The Libby
+  /// library picker passes it and debounces on the other side.
+  ///
+  /// The clear button calls [onFieldSubmitted], not this, in every case — clearing
+  /// is a submit of the empty query, which is how both callers already read it.
+  final ValueChanged<String>? onChanged;
+
   const SearchTextField({
     super.key,
     required this.controller,
@@ -100,6 +110,7 @@ class SearchTextField extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.trailing,
+    this.onChanged,
   });
 
   @override
@@ -111,6 +122,7 @@ class SearchTextField extends StatelessWidget {
       focusNode: focusNode,
       autofocus: autofocus,
       onSubmitted: onFieldSubmitted,
+      onChanged: onChanged,
       textInputAction: TextInputAction.search,
       style: AppTextStyles.body,
       decoration: InputDecoration(

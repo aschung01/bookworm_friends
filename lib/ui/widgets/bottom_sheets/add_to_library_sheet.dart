@@ -28,7 +28,13 @@ Future<void> showAddToLibrarySheet(
     book: book,
     shelfNames: shelves.map((s) => s.name).toList(),
     onSavePressed:
-        (shelfName, status, {DateTime? startDate, DateTime? finishDate}) async {
+        (
+          shelfName,
+          status, {
+          DateTime? startDate,
+          DateTime? finishDate,
+          Color? coverColor,
+        }) async {
           final shelf = shelves.firstWhere((s) => s.name == shelfName);
           await ref
               .read(libraryActionsProvider)
@@ -42,6 +48,10 @@ Future<void> showAddToLibrarySheet(
                 finishDate: finishDate,
                 authors: book.authors,
                 pageCount: book.pageCount,
+                // Sampled from the cover this sheet just drew, when it decoded in time.
+                // Null is ordinary and costs nothing -- see the note on
+                // [showBookInfoBottomSheet] for why it is worth capturing at all.
+                coverColor: coverColor,
               );
           // `popUntil` rather than `pop`, and it is load-bearing for the scan
           // path: what sits between here and the shell is one sheet when the

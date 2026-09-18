@@ -10,6 +10,7 @@ import 'package:bookworm_friends/providers/book_search_provider.dart';
 import 'package:bookworm_friends/providers/invite_link_provider.dart';
 import 'package:bookworm_friends/providers/shell_chrome_provider.dart';
 import 'package:bookworm_friends/providers/theme_provider.dart';
+import 'package:bookworm_friends/services/image_disk_cache.dart';
 import 'package:bookworm_friends/services/notification_service.dart';
 import 'package:bookworm_friends/ui/widgets/invite_link_listener.dart';
 import 'package:bookworm_friends/ui/widgets/shell_chrome.dart';
@@ -34,6 +35,10 @@ void main() async {
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
   final prefs = await SharedPreferences.getInstance();
+
+  // Before the first cover or avatar resolves. Assigns a static and nothing more --
+  // see `configureImageDiskCache`.
+  configureImageDiskCache();
 
   _configureEasyLoading();
 

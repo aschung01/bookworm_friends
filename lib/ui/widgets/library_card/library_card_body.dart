@@ -7,7 +7,6 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/library_card_stats.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_cover_row.dart';
-import 'package:bookworm_friends/ui/widgets/library_card/card_furniture.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/stat_tile.dart';
 
 /// The Library Card's contents: a hero tile and whatever tiles have something true
@@ -32,10 +31,18 @@ import 'package:bookworm_friends/ui/widgets/library_card/stat_tile.dart';
 /// zero would be a claim the sample cannot support; a count of nothing is just true.
 ///
 /// **The hero now previews the artifact rather than charting it,** which is why this
-/// takes [books] at all. It carries the card's own furniture and a row of the
-/// reader's covers, so what the sheet shows and what share produces are recognisably
-/// the same object; before this, a reader tapped share on a green rectangle and got
-/// something they had never seen.
+/// takes [books] at all. It carries a row of the reader's covers, so what the sheet
+/// shows and what share produces are recognisably the same object; before this, a
+/// reader tapped share on a green rectangle and got something they had never seen.
+///
+/// **The covers are the whole of that resemblance now — the hero prints none of the
+/// card's lettering.** It used to carry the artifact's stamp line under its label, on
+/// the reasoning that the printed furniture is what makes a preview a preview. It was
+/// saying the card's name twice: the label already reads `ALL-TIME LIBRARY CARD` in
+/// `en` and `전기간 도서관 카드` in `ko`, and the line beneath it added
+/// `LIBRARY · CARD` and `도서관 카드` to those. The artifact keeps the line because
+/// *its* title is English in both locales, so a Korean reader learns something from it
+/// — see `cardStampLine`. Here there is nothing left for it to add.
 ///
 /// Still deliberately holds **no** read-books list — read books belong entirely to
 /// the Library tab. Covers are not that list: they are unordered, unlabelled, capped
@@ -61,6 +68,23 @@ class LibraryCardBody extends StatelessWidget {
   /// not count them either — the hero figure is a count of books *read*.
   final List<Book> reading;
 
+  /// The run of consecutive reading days that is still alive, and the record.
+  ///
+  /// **Not part of [stats], and that is deliberate rather than an oversight.**
+  /// `LibraryCardStats` is derived from `books`; a run is derived from `reading_days`,
+  /// which is a different table read through a different provider. Folding it in would
+  /// give that class a second source and make every one of its pure-function tests need
+  /// a set of days it has no opinion about.
+  ///
+  /// **Not year-filtered either**, unlike everything else on the card. A run is a fact
+  /// about now; "your longest streak in 2024" is a different feature. That is a real
+  /// inconsistency on a year-scoped surface, and it is the same tension that leaves the
+  /// month grid without a home — see the note on the tile below.
+  final int streak;
+
+  /// The longest run on record, which a missed night does not erase.
+  final int longestStreak;
+
   /// How the reader has chosen to see the books they have finished.
   const LibraryCardBody({
     super.key,
@@ -68,6 +92,8 @@ class LibraryCardBody extends StatelessWidget {
     this.books = const [],
     this.year = 0,
     this.reading = const [],
+    this.streak = 0,
+    this.longestStreak = 0,
   });
 
   @override
@@ -120,6 +146,29 @@ class LibraryCardBody extends StatelessWidget {
     }
 
     final tiles = <Widget>[
+      // **A peer of Pace, never the hero.** `booksRead` stays the 46pt figure —
+      // settled by looking at the shipped widget rather than by arguing about it. A
+      // streak is a fact about this fortnight; the card's subject is a library.
+      //
+      // **Omitted, never zero-filled**, per this class's own rule: a run of 0 is not a
+      // small streak, it is the absence of one, and every account in this database is
+      // on day one. A `0d` tile would be the *normal* first-run state.
+      //
+      // **The month grid does not go here**, and that is a decision rather than a
+      // gap. This card is year-scoped and its label reads "All-time library card", so
+      // a month pager inside it would put two conflicting time scales on one surface.
+      // The grid needs a destination of its own, which is an open question and not a
+      // task.
+      if (streak > 0)
+        StatTile(
+          label: l10n.libraryCardStreak,
+          figure: l10n.libraryCardStreakValue(streak),
+          // Carries the record as well as the run. With freezes deferred a single
+          // missed night severs a run outright, so this is the only figure on the card
+          // that survives the night that reset everything else — without it a reader
+          // who missed one Thursday sees a fortnight of reading reduced to `1d`.
+          sub: l10n.libraryCardStreakSub(longestStreak),
+        ),
       if (stats.hasPace)
         StatTile(
           label: l10n.libraryCardPace,
@@ -148,7 +197,6 @@ class LibraryCardBody extends StatelessWidget {
           label: year == 0
               ? l10n.libraryCardHeroAllTime
               : l10n.libraryCardHeroYear(year),
-          subLabel: kCardStampLine,
           figure: numbers.format(stats.booksRead),
           sub: parts.join(' · '),
           // `start` rather than centred, per the drawings: inside the hero the row
@@ -184,27 +232,41 @@ class LibraryCardBody extends StatelessWidget {
         ),
         if (tiles.isNotEmpty) ...[
           const SizedBox(height: 10),
-          // `IntrinsicHeight`, and it is not decoration. The row wants
-          // `CrossAxisAlignment.stretch` so two tiles are the same height whatever
-          // their contents — an author's name wraps to two lines and a pace never
-          // does — but a `Row` inside a min-height `Column` is offered unbounded
-          // height, and `stretch` against unbounded height is
-          // "BoxConstraints forces an infinite height". Measuring the tallest child
-          // first is what makes stretch legal here.
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < tiles.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  // Expanded, so one tile fills the width and two split it. The
-                  // alternative — a fixed half-width tile — leaves a hole beside
-                  // itself for the majority of readers, who have only one.
-                  Expanded(child: tiles[i]),
+          // **At most two per row, which is new and is forced by there now being a
+          // third tile.** One tile fills the width and two split it — both unchanged.
+          // Three used to be unreachable, and letting them share one row would give
+          // each about 97pt of a 310pt card: "Most-read author" wraps to three lines in
+          // that and the name under it wraps again, so the widest tile in the set would
+          // be the one squeezed hardest. A second row costs 10pt and keeps every tile
+          // at a width its contents were drawn for.
+          for (var start = 0; start < tiles.length; start += 2) ...[
+            if (start > 0) const SizedBox(height: 10),
+            // `IntrinsicHeight`, and it is not decoration. The row wants
+            // `CrossAxisAlignment.stretch` so two tiles are the same height whatever
+            // their contents — an author's name wraps to two lines and a pace never
+            // does — but a `Row` inside a min-height `Column` is offered unbounded
+            // height, and `stretch` against unbounded height is
+            // "BoxConstraints forces an infinite height". Measuring the tallest child
+            // first is what makes stretch legal here.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (
+                    var i = start;
+                    i < start + 2 && i < tiles.length;
+                    i++
+                  ) ...[
+                    if (i > start) const SizedBox(width: 10),
+                    // Expanded, so one tile fills the width and two split it. The
+                    // alternative — a fixed half-width tile — leaves a hole beside
+                    // itself for the majority of readers, who have only one.
+                    Expanded(child: tiles[i]),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
+          ],
         ],
       ],
     );

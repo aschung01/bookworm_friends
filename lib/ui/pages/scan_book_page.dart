@@ -19,6 +19,7 @@ import 'package:bookworm_friends/services/isbn.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/add_to_library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
+import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
 
 /// What the scanner hands back to Add Book.
 ///
@@ -634,6 +635,16 @@ class _ScanBookPageState extends ConsumerState<ScanBookPage>
       _Failure.none => ('', '', null),
     };
 
+    // Only the no-match case gets a drawing, and it is deliberately kept out of
+    // the switch above rather than added as a null to all seven arms. The other
+    // failures are about the camera, the network or a quota -- an empty-shelf
+    // illustration would misdescribe them. "We looked this book up and found
+    // nothing" is the one that is the same state as a search miss, so it gets
+    // the same art.
+    final artwork = _failure == _Failure.noCatalogueMatch
+        ? EmptyStateArtwork.noMatch
+        : null;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -646,6 +657,14 @@ class _ScanBookPageState extends ConsumerState<ScanBookPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // `dark.secondaryText`, not `context.colors` — the scanner is a
+              // camera view and this card is always dark regardless of the app
+              // theme, so the tint has to come from the same palette the text
+              // beside it is using.
+              if (artwork != null) ...[
+                EmptyStateArt(artwork, size: 34, color: dark.secondaryText),
+                const SizedBox(height: 12),
+              ],
               Text(
                 title,
                 textAlign: TextAlign.center,

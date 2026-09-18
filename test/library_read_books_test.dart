@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
-import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 
 import 'support/home_page_harness.dart';
@@ -46,9 +45,18 @@ List<String> _idsOn(ProviderContainer container, String shelfId) => container
     .map((b) => b.id)
     .toList();
 
-
 void main() {
   group('shelves', () {
+    // **These cases are about the shelves, and deliberately assert nothing about the pile.**
+    // Three of them used to, and went stale when `ReadPile` moved out of the library page
+    // into `FinishedBooksSheet` (presented from `home_page.dart`): a bare pumped home has no
+    // pile inline any more, so expectations on a spine, on a finished book's title, or on
+    // the pile's own empty state were failing for a reason that had nothing to do with what
+    // they were named for. The pile's side of each claim is covered where the pile now lives
+    // — `finished_books_sheet_test.dart` for the spines, `read_month_grid_test.dart` for the
+    // "no books read yet" state. What is left here is the half this file is actually about:
+    // a read book is off the plank, and the library keeps its shelves rather than falling
+    // back to the add-a-book prompt.
     testWidgets(
       'Given a shelf holding a read book, When the library is shown, Then only the unread cover is on the shelf',
       (tester) async {
@@ -59,16 +67,6 @@ void main() {
           tester.widget<BookWidget>(find.byType(BookWidget)).heroTag,
           'book_b1',
         );
-      },
-    );
-
-    testWidgets(
-      'Given a shelf holding a read book, When the library is shown, Then the read book is in the pile',
-      (tester) async {
-        await _pumpMixedLibrary(tester);
-
-        expect(find.byType(BookVertical), findsOneWidget);
-        expect(find.text('Dune'), findsOneWidget);
       },
     );
 
@@ -87,7 +85,6 @@ void main() {
 
         expect(find.byType(BookWidget), findsNothing);
         expect(find.text('Dev'), findsOneWidget);
-        expect(find.text('Dune'), findsOneWidget);
       },
     );
 
@@ -106,7 +103,6 @@ void main() {
         );
 
         expect(find.text('Dev'), findsOneWidget);
-        expect(find.text('No books read yet 🥲'), findsOneWidget);
         expect(find.textContaining('to add a book'), findsNothing);
       },
     );

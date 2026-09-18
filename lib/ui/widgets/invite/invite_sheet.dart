@@ -81,12 +81,11 @@ Future<void> showInviteSheet(BuildContext context) {
 /// of that were wrong.
 ///
 /// The copy did not parse — "them" refers to nobody on a screen the sender is looking at
-/// alone — and the sender never needs the code, because **the recipient gets it from the
-/// landing page, not from the sender.** `libstack.app/i/<token>` prints it and copies it
-/// to the clipboard inside the tap that leaves for the App Store; `InviteCodePage` reads
-/// it back on first launch. The typed tier is real and complete, and none of it passes
-/// through the sender's eyes. Reading eight characters down a phone was a scenario
-/// invented to justify a control, not one anybody designed for.
+/// alone — and the sender never needs the code, because **there is nothing anyone can
+/// type it into.** A friendship is created by following `libstack.app/i/<token>` and by
+/// nothing else; the token lives inside the link, not as a credential a reader enters.
+/// Reading eight characters down a phone was a scenario invented to justify a control,
+/// not one anybody designed for.
 ///
 /// So the sheet is the reference's shape exactly: mark, two paragraphs, contract, one
 /// button.

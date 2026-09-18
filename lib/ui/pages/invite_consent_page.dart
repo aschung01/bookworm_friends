@@ -15,13 +15,14 @@ import 'package:bookworm_friends/ui/widgets/invite/shelf_duo.dart';
 /// What a redemption has to know before it can ask.
 ///
 /// The token, and whatever is already known about the inviter. The name is optional
-/// because the two paths here learn it at different times: a tapped link can carry it
-/// in the landing page's payload, and a typed code cannot know it until the server
-/// answers.
+/// because the token does not carry one: this client cannot read `friend_invites` to
+/// resolve it, so a link tapped cold arrives anonymous and the copy falls back to
+/// "Someone". A landing-page payload could fill it in later.
 class InviteConsentArgs {
   final String token;
 
-  /// The inviter, when the caller already resolved them. Null on the typed-code path.
+  /// The inviter, when the caller already resolved them. Null for a link tapped cold,
+  /// which is every link today.
   final Profile? inviter;
 
   const InviteConsentArgs({required this.token, this.inviter});
@@ -210,7 +211,12 @@ abstract final class AppRoutesInvite {
   static const String inviteConsent = '/invite_consent';
   static const String inviteDone = '/invite_done';
   static const String inviteDead = '/invite_dead';
-  static const String inviteCode = '/invite_code';
+
+  // **No `inviteCode`.** There was a typed-code screen here, offered once after signup,
+  // as the landing page's clipboard handoff had to land somewhere. It is gone on
+  // purpose: eight characters a reader types is the shape a *referral* code will want,
+  // and two schemes sharing one field would each have to reject the other's input with a
+  // misleading error. A friendship is created by following a link, and by nothing else.
 }
 
 /// What the success screen needs.

@@ -11,6 +11,7 @@ import 'package:bookworm_friends/ui/widgets/avatar_circle.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
+import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
 import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 
 /// The Friends tab's sheet: everyone you follow, and the way into a visit.
@@ -348,10 +349,15 @@ class _FriendRowState extends State<_FriendRow>
   ///
   /// **The gesture survives; what it opens does not.** This was `friend_info_dialog`,
   /// inherited from the deleted `FriendRail`, showing a follower/following pair that
-  /// a mutual model makes one number. `ManageFriendPage` replaces it, and the gear in
-  /// the visit bar is what *advertises* it — a long press with nothing pointing at it
-  /// is not an affordance, which is why the gear had to exist regardless. This stays
-  /// as the shortcut for people who already know it is here.
+  /// a mutual model makes one number. `ManageFriendPage` replaces it.
+  ///
+  /// **It is now the page's main door rather than its shortcut.** The visit bar used
+  /// to carry a gear that opened the same page, and that gear existed precisely
+  /// because a long press with nothing pointing at it is not an affordance. The gear
+  /// is an overflow menu now and offers Remove directly, so what this reaches is the
+  /// part of the page the menu does *not* duplicate: identity, and the place
+  /// per-friend notifications will live. Worth revisiting — an unadvertised gesture
+  /// is still the only way in from here.
   ///
   /// Wired on the row *and* on the avatar for the same reason [_activate] is:
   /// [AvatarCircle] carries its own recogniser and wins the arena for gestures that
@@ -596,6 +602,12 @@ class _NoFriends extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Above the heading, unlike the library states where it sits above a
+            // single line of body copy: this card is a title plus body plus
+            // button, and the drawing has to read as belonging to all three
+            // rather than to the sentence directly under it.
+            const EmptyStateArt(EmptyStateArtwork.noFriends, size: 40),
+            const SizedBox(height: 10),
             Text(
               l10n.noFriendsYet,
               textAlign: TextAlign.center,

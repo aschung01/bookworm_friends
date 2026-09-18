@@ -96,6 +96,64 @@ const double _kShadowDrop = 4;
 const double _kShadowBlur = 4;
 const double _kShadowAlpha = 0.5;
 
+/// Width of the empty box down the asset's right-hand side, from its 22pt viewBox
+/// holding a ribbon that ends at x17.5. Bleed the SVG's own drop-shadow filter
+/// needed, and the reason [kReadingBookmarkInset] is 8 rather than 12.5.
+const double _kBookmarkRightBleed = 4.5;
+
+/// The visible ribbon, x4 to x17.5 of the asset's box.
+const double _kBookmarkRibbonWidth = 13.5;
+
+/// Fraction of a cover's width taken by the drawn binding band, from
+/// `BookMetrics.bindingWidth`. The near end of the ribbon's track: a bookmark cannot
+/// sit in the gutter.
+const double _kBindingFraction = 0.082;
+
+/// Where the ribbon hangs, as a `right:` inset, for a book the reader is [progress]
+/// of the way through.
+///
+/// **The mark slides across the cover's top edge, gutter to fore-edge** — which is
+/// what a bookmark in a closed book does, and it is the one encoding of reading
+/// position that never leaves the cover. Earlier drawings made the mark's *length*
+/// carry the value instead, hanging it further down the page the deeper in you were;
+/// that ran into a dead zone at the low end (the asset's own height is a floor) and,
+/// worse, it reached the shelf label and the band and covered them.
+///
+/// **Read, never dragged.** Field research settled this: Fable, Goodreads and Life
+/// Reset all show a position on a cover and none of them makes the cover the input
+/// device. The mark reads, a sheet asks. So this track carries no points-per-page
+/// duty at all — about half a point per percent is plenty for "about two thirds in",
+/// which is the only question a shelf answers.
+///
+/// **A null [progress] returns the shipped pin unchanged**, which is the far end of
+/// the track. That is deliberate: every book in the library has a null position on
+/// the day the column ships, and a mark that jumped to the gutter would redraw a
+/// whole shelf to say "we know nothing". So the ribbon only ever moves *in* from
+/// where readers already know it, and it does so only once someone answers.
+double readingBookmarkInsetFor(
+  double? progress, {
+
+  /// The cover's rendered width, which sets the near end of the track.
+  required double coverWidth,
+
+  /// Matches [ReadingBookmark.scale] — the Library Card draws the same ribbon
+  /// smaller, and its track has to shrink with it.
+  double scale = 1,
+}) {
+  const pin = kReadingBookmarkInset;
+  if (progress == null) return pin * scale;
+
+  // Both ends measured to the *visible* ribbon's left edge, so the asset's bleed
+  // cancels out of the travel rather than shifting one end of it.
+  final ribbonLeftAtPin =
+      coverWidth - (pin + _kBookmarkRightBleed + _kBookmarkRibbonWidth) * scale;
+  final gutter = coverWidth * _kBindingFraction;
+  final travel = ribbonLeftAtPin - gutter;
+  if (travel <= 0) return pin * scale;
+
+  return pin * scale + (1 - progress.clamp(0.0, 1.0)) * travel;
+}
+
 /// Decodes the ribbon before something captures it.
 ///
 /// **The same failure as an undecoded cover, in a smaller shape.**

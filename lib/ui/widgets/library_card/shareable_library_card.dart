@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:bookworm_friends/constants/app_theme.dart';
+import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/library_card_stats.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_cover_row.dart';
@@ -284,6 +285,9 @@ class ShareableLibraryCard extends StatelessWidget {
     final selected = booksInCardYear(books, year);
     final issued = issuedOn ?? DateTime.now();
     final palette = cardPalette(lighting);
+    // Null under `en`, where the title below already names the card. The same call
+    // `LibraryCardBody`'s hero makes, so the preview and this cannot disagree.
+    final stamp = cardStampLine(AppLocalizations.of(context));
 
     return SizedBox.fromSize(
       size: kShareableCardSize,
@@ -330,11 +334,7 @@ class ShareableLibraryCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _Well(
-                    books: selected,
-                    reading: reading,
-                    palette: palette,
-                  ),
+                  _Well(books: selected, reading: reading, palette: palette),
                   _Perforation(color: palette.perforationInk),
                   Expanded(
                     child: Padding(
@@ -359,19 +359,24 @@ class ShareableLibraryCard extends StatelessWidget {
                               shadows: palette.bloom,
                             ),
                           ),
-                          const SizedBox(height: 0.8 * _u),
-                          Text(
-                            kCardStampLine,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 2.9 * _u,
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
-                              letterSpacing: 0.1 * _u,
-                              color: palette.labelInk,
+                          // The gap belongs to the line, so an `en` card closes the
+                          // title straight onto the 2.5 below rather than leaving a
+                          // 0.8 shim where the sub-line used to be.
+                          if (stamp != null) ...[
+                            const SizedBox(height: 0.8 * _u),
+                            Text(
+                              stamp,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 2.9 * _u,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                                letterSpacing: 0.1 * _u,
+                                color: palette.labelInk,
+                              ),
                             ),
-                          ),
+                          ],
                           const SizedBox(height: 2.5 * _u),
                           _IssueBlock(
                             books: stats.booksRead,
@@ -608,14 +613,24 @@ class _Seal extends StatelessWidget {
               border: Border.all(color: palette.sealRing, width: 0.4 * _u),
             ),
             alignment: Alignment.center,
-            child: Text(
-              kCardSeal,
-              style: TextStyle(
-                fontSize: 4.4 * _u,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2 * _u,
+            // The brand mark rather than the `LS` monogram it replaced — see
+            // [kCardSealMarkAsset]. Tinted from pure alpha with `sealInk`, so the emboss
+            // trick is unchanged: 10% opacity in daylight, revealed under the flame.
+            //
+            // 10.5u against the ring's ~12.6u inner diameter: the artwork keeps its own
+            // margins (the drawing's furthest opaque pixel sits at ~76% of the canvas),
+            // so the visible book lands around 8u — the presence the two 4.4u letters
+            // had — and cannot touch the ring.
+            //
+            // The chalk edge loses `palette.bloom`, which only `Shadow`s on text can
+            // carry; under a candle the disc's own `BoxShadow` glow does that work.
+            child: SizedBox(
+              width: 10.5 * _u,
+              height: 10.5 * _u,
+              child: Image.asset(
+                kCardSealMarkAsset,
                 color: palette.sealInk,
-                shadows: palette.bloom,
+                filterQuality: FilterQuality.medium,
               ),
             ),
           ),
@@ -691,7 +706,12 @@ class _IssueBlock extends StatelessWidget {
     // deliberately leaves out.
     final rows = <(String, String)>[
       if (holder != null && holder!.isNotEmpty) ('Holder', holder!),
-      ('Authority', kCardAuthority),
+      // The one value in this block that is translated. Its *label* is not, and the
+      // split is not an oversight: the labels are a fixed-width Latin column
+      // ([kCardMetaLabelUnits] is sized for them), while the authority is the app's
+      // own name and was the second of the two strings printing Hangul on an English
+      // reader's card. See `card_furniture.dart`.
+      ('Authority', AppLocalizations.of(context).libraryCardAuthority),
       ('Date of issue', _issueDate(issued)),
       if (memberSince != null) ('Member since', _issueDate(memberSince!)),
     ];

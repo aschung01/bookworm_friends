@@ -124,6 +124,56 @@ void main() {
     );
   });
 
+  group('flame contrast', () {
+    // `flame` exists for one reason: `ReadingStreakChip`'s fire icon shipped tinted
+    // `brandText` and read as a rendering defect rather than a streak — a green flame
+    // looks like a bug screenshot. It gets the same discipline `brandText` gets,
+    // against the same four surfaces `secondaryText` is checked on below, since the
+    // chip can sit on any of them depending on where the bar is placed.
+
+    test('Given light mode, Then flame clears AA on every light surface', () {
+      const c = AppColors.light;
+      for (final entry in <String, Color>{
+        'surface': c.surface,
+        'surfaceVariant': c.surfaceVariant,
+        'pageBackground': c.pageBackground,
+        'sheetBackground': c.sheetBackground,
+      }.entries) {
+        expect(
+          _contrast(c.flame, entry.value),
+          greaterThanOrEqualTo(_aaNormal),
+          reason: 'flame on ${entry.key}',
+        );
+      }
+    });
+
+    test('Given dark mode, Then flame clears AA on every dark surface', () {
+      const c = AppColors.dark;
+      for (final entry in <String, Color>{
+        'surface': c.surface,
+        'surfaceVariant': c.surfaceVariant,
+        'pageBackground': c.pageBackground,
+        'sheetBackground': c.sheetBackground,
+      }.entries) {
+        expect(
+          _contrast(c.flame, entry.value),
+          greaterThanOrEqualTo(_aaNormal),
+          reason: 'flame on ${entry.key}',
+        );
+      }
+    });
+
+    test(
+      'Given a genuine fire orange, Then it would fail this group on a light surface',
+      () {
+        // Records why `flame` is a burnt orange and not `#FF9600`: the vivid value
+        // measures well under AA on white, the same defect `brand` has as text.
+        const vivid = Color(0xffFF9600);
+        expect(_contrast(vivid, AppColors.light.surface), lessThan(_aaNormal));
+      },
+    );
+  });
+
   group('secondaryText contrast', () {
     // This group is a shipped defect closed. `secondaryText` was `#ADB5BD`, which
     // measures **2.07:1** on white and about 2.0:1 on the sheet — nowhere near

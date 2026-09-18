@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:bookworm_friends/models/profile.dart';
+import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 
 /// State shared by the library shell: which library you are looking at, whether
 /// you are rearranging it, and how the "Books read" pile is filtered.
@@ -134,3 +135,54 @@ final friendReadsFilterYearProvider = StateProvider.autoDispose<int>(
 /// that changes behind a tab switch is the kind of thing nobody reports and everybody
 /// notices.
 final cardFilterYearProvider = StateProvider.autoDispose<int>((ref) => 0);
+
+/// The one book in the **whole library** that has been brought forward from a
+/// compressed shelf, if any.
+///
+/// **One per library, not one per shelf, and the distinction is the whole point of
+/// this being a provider.** It began as a `_surfacedBookId` field on
+/// `_ShelfRowState`, which made "at most one" true of each row independently — so a
+/// library of five shelves could stand five covers among its spines at once. That is
+/// not a stricter version of the rule, it is a different rule: a cover among spines
+/// reads as *the* book being looked at, and five of them read as a shelf that has
+/// half-changed density.
+///
+/// It also carries the delete-badge rule, which was only ever coherent because at most
+/// one book is face-out: a 44pt disc offset 22pt outside a ~37pt spine blankets the
+/// spines either side of it, and in `spines` they are touching. One badge per *shelf*
+/// was already several badges per screen.
+///
+/// **Resets when the density changes**, via the `ref.watch` below rather than from any
+/// row's `didUpdateWidget`. Two reasons, and the second is the load-bearing one. It
+/// belongs to the state rather than to a view of it — a book brought forward stops
+/// being forward when the density changes what "forward" even means, whether or not a
+/// row happened to rebuild. And a row clearing it would be mutating a provider from
+/// inside a widget lifecycle callback, once per shelf, during the same frame the
+/// density change is being handled.
+///
+/// **Not reset when the book leaves its shelf**, which the per-row version did. With
+/// one id for the library there is nothing to go stale: a book dragged to another
+/// shelf is still the book being looked at and the receiving row draws it forward, and
+/// a book that is deleted matches no row at all. Ids are unique, so a dangling one can
+/// never name a different book.
+///
+/// `autoDispose`, like everything else here: it describes a moment, and leaving the
+/// library ends the moment.
+class SurfacedBookNotifier extends AutoDisposeNotifier<String?> {
+  @override
+  String? build() {
+    ref.watch(shelfDensityProvider);
+    return null;
+  }
+
+  /// Brings the book with [bookId] forward, and puts back whatever was forward
+  /// before — on this shelf or any other.
+  void surface(String bookId) => state = bookId;
+
+  void clear() => state = null;
+}
+
+final surfacedBookProvider =
+    NotifierProvider.autoDispose<SurfacedBookNotifier, String?>(
+      SurfacedBookNotifier.new,
+    );

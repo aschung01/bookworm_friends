@@ -29,10 +29,20 @@ String shelfHeroTag(String shelfId) => 'shelf_$shelfId';
 class ShelfWidget extends StatelessWidget {
   final double? width;
   final Object? heroTag;
-  const ShelfWidget({super.key, this.width, this.heroTag});
+
+  /// A second, warm shadow spread evenly around the plank — the pool a light above the
+  /// shelf throws on the board it stands over.
+  ///
+  /// Added to the drop shadow rather than replacing it: the plank is still lit from
+  /// above by the room, so it still casts downward. Only the Reading shelf passes one;
+  /// see `kReadingLampPlankGlow`.
+  final Color? glow;
+
+  const ShelfWidget({super.key, this.width, this.heroTag, this.glow});
 
   @override
   Widget build(BuildContext context) {
+    final pool = glow;
     final Widget plank = Container(
       height: 8,
       width: width ?? MediaQuery.of(context).size.width * 0.95,
@@ -44,6 +54,11 @@ class ShelfWidget extends StatelessWidget {
             blurRadius: 2,
             color: Colors.black.withOpacity(0.25),
           ),
+          if (pool != null)
+            // No offset, so the warmth spreads either side of the board the way a
+            // pool of light does rather than falling in one direction the way a
+            // shadow does.
+            BoxShadow(blurRadius: 12, color: pool),
         ],
       ),
     );

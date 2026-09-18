@@ -11,7 +11,7 @@
 //     > build/backfill/books.json
 //
 //   # 2. resolve them  (add --dart-define=verify=true to only report, not write)
-//   flutter test test/cover_color_backfill_tool.dart \
+//   flutter test test/cover_color_backfill_tool.dart --dart-define=tool=true \
 //     --dart-define=user=d1ca8213-3dc5-444d-baa7-9308064bfc7a
 //
 //   # 3. review, then apply
@@ -36,6 +36,12 @@
 // the values already in the database are from the current policy. That is how the
 // single-texel bug in the old sampler was found: 56 rows written by a real device,
 // none of them within 8/255 of their cover's mean.
+//
+// **Opt-in via `--dart-define=tool=true`.** It lives in `test/`, so `flutter test` with
+// no arguments would otherwise run it — fetching several hundred covers over the network
+// from whatever machine happened to type the command. Before this gate it depended on
+// `build/backfill/books.json` being absent to stay out of the way, which is not a
+// guarantee: the file is a build artefact that any earlier step may have left behind.
 
 import 'dart:convert';
 import 'dart:io';
@@ -59,6 +65,9 @@ const bool _verify = bool.fromEnvironment('verify');
 /// cannot be scoped per user — only the data can. Filtering here is how one library
 /// gets looked at by a human before 471 rows move.
 const String _user = String.fromEnvironment('user');
+
+/// Off unless asked for. See the note in the header.
+const bool _enabled = bool.fromEnvironment('tool');
 
 /// Covers are fetched serially. There are a few hundred and no hurry, and a burst
 /// of 400 parallel requests at one CDN is how a tool gets rate-limited into
@@ -106,6 +115,12 @@ String _hex(Color c) => bookCoverColorToHex(c);
 
 void main() {
   testWidgets('resolve every cover', (tester) async {
+    if (!_enabled) {
+      markTestSkipped(
+        'pass --dart-define=tool=true to run the backfill (it fetches covers)',
+      );
+      return;
+    }
     final file = File('$_dir/books.json');
     if (!file.existsSync()) {
       fail(

@@ -11,8 +11,11 @@ const String kInviteLinkHost = 'libstack.app';
 const String kInviteLinkPathPrefix = '/i/';
 
 /// A token is 8 characters of the server's alphabet: A-Z and 2-9, less `O`, `I`, `0`
-/// and `1`. Restated from `supabase/migrations/20260828120300_invite_rpcs.sql` and
-/// identical to the rule `invite_code_page.dart` filters on.
+/// and `1`. Restated from `supabase/migrations/20260828120300_invite_rpcs.sql`.
+///
+/// **The only place this rule lives on the client now.** It used to be duplicated in
+/// `invite_code_page.dart`, as an input filter for a typed code; that page and the whole
+/// typed tier are gone, so a link is the only thing a token is ever read out of.
 final RegExp kInviteTokenPattern = RegExp(r'^[A-HJ-NP-Z2-9]{8}$');
 
 /// Pulls a token out of a URI, or returns null.

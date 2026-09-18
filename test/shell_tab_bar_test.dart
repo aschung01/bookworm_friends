@@ -2,8 +2,9 @@
 //
 // Two things are being pinned here, and the second is the one that matters.
 //
-// 1. The bar renders three tabs and a detached Add Book button, and selecting a
-//    tab swaps the sheet's contents.
+// 1. The bar renders four tabs -- Library, Friends, Card and Search -- and
+//    selecting one of the first three swaps the sheet's contents. Search is the
+//    odd one out: it opens a modal instead, and stays lit while that modal is up.
 // 2. It swaps *only* the sheet. The library behind it is the same widget in the
 //    same place — asserted through the `State` object of a `ShelfRow`, which a
 //    rebuilt-from-scratch library would replace. "One persistent background,
@@ -125,8 +126,8 @@ void main() {
     );
 
     testWidgets(
-      'Given the shell, When first laid out, Then three tabs and Add Book are '
-      'shown with Library selected',
+      'Given the shell, When first laid out, Then four tabs are shown with '
+      'Library selected',
       (tester) async {
         await _pumpShell(tester);
 
@@ -144,7 +145,7 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.descendant(of: bar, matching: find.byIcon(Icons.search)),
+          find.descendant(of: bar, matching: find.text('Search')),
           findsOneWidget,
         );
 
@@ -511,7 +512,7 @@ void main() {
       },
     );
     testWidgets(
-      'Given the shell, When Add Book is tapped, Then it opens as a modal at 95% '
+      'Given the shell, When Search is tapped, Then it opens as a modal at 95% '
       'height rather than replacing the library',
       (tester) async {
         SharedPreferences.setMockInitialValues({});
@@ -527,7 +528,7 @@ void main() {
         await tester.tap(
           find.descendant(
             of: find.byType(ShellTabBar),
-            matching: find.byIcon(Icons.search),
+            matching: find.text('Search'),
           ),
         );
         await tester.pumpAndSettle();
@@ -538,7 +539,14 @@ void main() {
           findsOneWidget,
           reason: 'the search field should be in it',
         );
-        expect(find.text('Add book'), findsOneWidget);
+        expect(
+          find.text('Search books'),
+          findsOneWidget,
+          reason:
+              'the sheet is titled Search books, not Add book: it searches the '
+              "reader's own library as well as the catalogue, and adding is one "
+              'of its two sections rather than the whole of it',
+        );
 
         // Starts at the safe-area inset so the barrier stays visible and the
         // status bar reads against the library, not against sheet content.
@@ -579,7 +587,7 @@ void main() {
         await tester.tap(
           find.descendant(
             of: find.byType(ShellTabBar),
-            matching: find.byIcon(Icons.search),
+            matching: find.text('Search'),
           ),
         );
         await tester.pumpAndSettle();
@@ -614,7 +622,7 @@ void main() {
         await tester.tap(
           find.descendant(
             of: find.byType(ShellTabBar),
-            matching: find.byIcon(Icons.search),
+            matching: find.text('Search'),
           ),
         );
         await tester.pumpAndSettle();
@@ -624,7 +632,7 @@ void main() {
         // result does it. The results list is empty here, and the sheet under
         // test is the shell's reaction to it rather than the list.
         showBookInfoBottomSheet(
-          tester.element(find.text('Add book')),
+          tester.element(find.text('Search books')),
           book: const BookSearchResult(
             title: 'The Hard Thing About Hard Things',
             isbn: '9780062273208',
@@ -632,7 +640,7 @@ void main() {
             authors: ['Ben Horowitz'],
           ),
           shelfNames: const ['자기계발'],
-          onSavePressed: (_, __, {startDate, finishDate}) {},
+          onSavePressed: (_, __, {startDate, finishDate, coverColor}) {},
         );
         await tester.pumpAndSettle();
         // Twice: the sheet's heading, and the generated cover beside it, which
@@ -704,6 +712,7 @@ void main() {
     // iPhone in portrait with a home indicator.
     const indicator = 34.0;
     const gap = ShellTabBarGeometry.gap;
+    const pillTopRoom = ShellTabBarGeometry.pillTopRoom;
 
     test('Given the native path, Then the bar is handed a system tab bar\'s '
         'frame: flush with the bottom and full-width', () {
@@ -724,6 +733,12 @@ void main() {
       // So the indicator inset must *not* be added on top.
       expect(geometry.glassTop, 83);
       expect(geometry.reserve, 83 + gap - indicator);
+
+      // The box is taller than the frame by the package's own top inset, and
+      // *only* by that -- the bar still ends at the bottom of the screen. This is
+      // what changed when the search item went away: `boxHeight` grew, and the
+      // three numbers above did not move, which is why no sheet had to.
+      expect(geometry.boxHeight, 83 + pillTopRoom);
     });
 
     test('Given the fallback path, Then it reserves the home-indicator strip '
@@ -751,11 +766,13 @@ void main() {
 
         expect(
           geometry.bottomOffset + geometry.boxHeight,
-          geometry.glassTop,
+          geometry.glassTop + (native ? pillTopRoom : 0),
           reason:
-              '$label: the glass\'s top edge is the box\'s top edge on both '
-              'paths -- that is the only edge Flutter can place, since every '
-              'other one involves an inset only native code can see',
+              '$label: the glass\'s top edge is a fixed offset from the box\'s '
+              'top edge -- the same edge on the fallback, and the package\'s own '
+              '14pt of pill room above it on the native path. It is the only edge '
+              'Flutter can place, since every other one involves an inset only '
+              'native code can see',
         );
         expect(
           geometry.reserve + geometry.bottomViewPadding,

@@ -14,6 +14,7 @@ import 'package:bookworm_friends/ui/widgets/book/reading_bookmark.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_cover_row.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_framing.dart';
+import 'package:bookworm_friends/ui/widgets/library_card/card_furniture.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/shareable_library_card.dart';
 
@@ -158,7 +159,11 @@ Future<String> exportLibraryCardFile(
     context: context,
     widget: request.build(),
     logicalSize: framedCardSize,
-    precache: covers,
+    // The seal's brand mark rides along with the covers: it is an asset rather than a
+    // network fetch, but `toImage` does not care where undecoded bytes were going to
+    // come from — an unresolved AssetImage exports as the same hole. A cache hit on
+    // every share after the first.
+    precache: [...covers, const AssetImage(kCardSealMarkAsset)],
     // The same failure in a smaller shape, and `precache` cannot carry it: an
     // `SvgPicture` is not an `ImageProvider`, so the ribbon an open book wears has to be
     // warmed separately or it is missing from exactly the covers whose job is to be

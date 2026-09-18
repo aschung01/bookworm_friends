@@ -1,10 +1,14 @@
-// The four screens a redemption passes through, and the one rule that ties them
+// The three screens a redemption passes through, and the one rule that ties them
 // together: **every outcome is distinguishable, and every screen has a way out.**
 //
 // The defect these exist to prevent is not a wrong string. It is the shape the first
-// draft had: one "this link didn't work" screen for four different failures, and a
-// code field that could be a dead end. Both are invisible in a screenshot and both
-// leave the reader stuck, so they are asserted rather than eyeballed.
+// draft had: one "this link didn't work" screen for four different failures. That is
+// invisible in a screenshot and it leaves the reader stuck, so it is asserted rather
+// than eyeballed.
+//
+// **A fourth screen used to be here** — a typed-code field, tested for the dead end it
+// could become. It is gone, along with every way to create a friendship other than
+// following a link.
 //
 // Widget tests against the pages directly, with `inviteActionsProvider` overridden.
 // Nothing here touches Supabase: `InviteActions` is the seam, and overriding it is
@@ -51,9 +55,9 @@ class _FakeInviteActions extends InviteActions {
 
   final InviteRedemptionResult answer;
 
-  /// How many times a redemption was attempted. The skip path asserts this is zero,
-  /// which is the only way to tell "continued without a code" apart from
-  /// "continued with a code that failed" — both land on the library.
+  /// How many times a redemption was attempted. Asserted to be exactly one on the
+  /// consent path, which is the only thing that tells "accepted" apart from "arrived
+  /// and did nothing" — both leave the reader looking at a screen.
   int redeemCalls = 0;
 
   @override
@@ -295,114 +299,6 @@ void main() {
     );
   });
 
-  group('the code screen', () {
-    testWidgets(
-      'Given the field is empty, When Continue is tapped, Then it skips without '
-      'attempting a redemption',
-      (tester) async {
-        final fake = await _pump(
-          tester,
-          route: AppRoutes.inviteCode,
-          arguments: const <String, Object?>{},
-        );
-
-        await tester.tap(find.text('Continue'));
-        await tester.pumpAndSettle();
-
-        // **This is what "optional" means here**, and it is why there is no Skip
-        // button: a second action would only make it ambiguous which one declines.
-        expect(find.text('LIBRARY'), findsOneWidget);
-        expect(
-          fake.redeemCalls,
-          0,
-          reason:
-              'an empty field is a skip, not a redemption of the empty string',
-        );
-      },
-    );
-
-    testWidgets(
-      'Given a valid code, When Continue is tapped, Then the friendship lands on '
-      'the success screen',
-      (tester) async {
-        await _pump(
-          tester,
-          route: AppRoutes.inviteCode,
-          arguments: const <String, Object?>{},
-        );
-
-        await tester.enterText(find.byType(TextField), 'K7M2QP4X');
-        await tester.tap(find.text('Continue'));
-        await tester.pumpAndSettle();
-
-        // Straight past consent: typing eight characters *is* the consent, and the
-        // friendship is already written by the time the RPC returns.
-        expect(find.text("You're now friends"), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'Given a typed lowercase code, When it is entered, Then the field holds it '
-      'uppercased',
-      (tester) async {
-        await _pump(
-          tester,
-          route: AppRoutes.inviteCode,
-          arguments: const <String, Object?>{},
-        );
-
-        await tester.enterText(find.byType(TextField), 'k7m2qp4x');
-        await tester.pump();
-
-        expect(find.text('K7M2QP4X'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'Given the ambiguous characters, When they are typed, Then the field refuses '
-      'them instead of failing later',
-      (tester) async {
-        await _pump(
-          tester,
-          route: AppRoutes.inviteCode,
-          arguments: const <String, Object?>{},
-        );
-
-        // `O`, `I`, `0` and `1` are not in the server's alphabet. A field that takes
-        // them and then reports "we couldn't find that code" has taught the reader
-        // nothing; one where they never appear makes the alphabet self-evident.
-        await tester.enterText(find.byType(TextField), 'O0I1ABCD');
-        await tester.pump();
-
-        expect(find.text('ABCD'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'Given a bad code, When Continue is tapped, Then the reader still has a way '
-      'out',
-      (tester) async {
-        await _pump(
-          tester,
-          route: AppRoutes.inviteCode,
-          arguments: const <String, Object?>{},
-          answer: InviteRedemptionResult.notFound,
-        );
-
-        await tester.enterText(find.byType(TextField), 'ZZZZZZZZ');
-        await tester.tap(find.text('Continue'));
-        await tester.pumpAndSettle();
-
-        // **This screen must never block signup.** Every path out of it leads
-        // onward, including the one where the code was wrong.
-        expect(find.text("We couldn't find that code"), findsOneWidget);
-        await tester.tap(find.text('Continue to my library'));
-        await tester.pumpAndSettle();
-        expect(find.text('LIBRARY'), findsOneWidget);
-      },
-    );
-  });
-
   group('the success screen', () {
     testWidgets(
       'Given a new friendship, When the screen is shown, Then Done leaves and the '
@@ -440,12 +336,12 @@ void main() {
     );
 
     testWidgets(
-      'Given a code was typed rather than a link tapped, When the screen is shown, '
-      'Then the missing inviter does not leave a hole in the copy',
+      'Given a link tapped cold, When the screen is shown, Then the missing inviter '
+      'does not leave a hole in the copy',
       (tester) async {
-        // The typed-code path cannot name the inviter: `redeem_invite` returns their
-        // id, and the redeemer cannot read `friend_invites` to resolve it. The copy
-        // has to survive that rather than render "You and  can see…".
+        // The token carries no name and this client cannot read `friend_invites` to
+        // resolve one, so every link today arrives anonymous. The copy has to survive
+        // that rather than render "You and  can see…".
         await _pump(
           tester,
           route: AppRoutes.inviteDone,

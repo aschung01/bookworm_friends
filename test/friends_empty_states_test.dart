@@ -14,7 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/friend_reading.dart';
 import 'package:bookworm_friends/models/profile.dart';
 import 'package:bookworm_friends/ui/widgets/friends_sheet.dart';

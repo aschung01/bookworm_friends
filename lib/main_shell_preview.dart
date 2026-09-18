@@ -156,7 +156,7 @@ List<Book> _readBooks() => [
     pos: 5,
     started: DateTime(2025, 10, 24),
     finished: DateTime(2025, 11, 11),
-    authors: const ['무라별열'],
+    authors: const ['무라카미 하루키'],
   ),
   _book(
     'r7',

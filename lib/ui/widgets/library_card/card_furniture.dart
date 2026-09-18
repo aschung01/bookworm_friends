@@ -1,47 +1,94 @@
 /// Strings printed on the Library Card as furniture rather than as content.
 ///
-/// **Deliberately not in the ARB files, and that is the decision this file exists to
-/// record.** Everything else the card says is localised, because everything else is
-/// read by the person holding the phone. These are read by whoever the image is sent
-/// to, and an exported card that names itself differently depending on who exported
-/// it is two products in circulation instead of one. It is the same argument that
-/// pins the artifact's stock in both themes.
+/// **What is left here is Latin in every locale, and that is now the whole membership
+/// rule.** This file used to hold the card's two bilingual strings as well, on the
+/// argument that furniture is read by whoever the image is sent to rather than by the
+/// person holding the phone — so an exported card that names itself differently
+/// depending on who exported it would be two products in circulation instead of one,
+/// the same argument that pins the artifact's stock in both themes.
 ///
-/// Being bilingual is therefore the point, not a compromise: a Korean passport
-/// prints 대한민국 / REPUBLIC OF KOREA on its data page whoever is reading it, and the
-/// machine-readable strip stays Latin-only for the same reason.
+/// **That argument was overtaken by a plainer one: an English reader was being shown
+/// Hangul.** Two of these strings carried a Korean half — `도서관 카드 · LIBRARY · CARD`
+/// and `책벌레 친구들 · LIBSTACK` — and the first of them was drawn in the Card tab's
+/// hero as well as on the artifact, where the reader *is* the person holding the phone.
+/// So the old rule was being broken by its own strings: an `en` user got Korean
+/// furniture in their own UI, and got it again on the image they sent to
+/// English-speaking friends. Both are now `libraryCardStamp` and
+/// `libraryCardAuthority` in the ARB files, and the hero no longer prints either — see
+/// `LibraryCardBody`.
+///
+/// **The passport argument survives inside the Korean translation, which is where it
+/// was actually doing work.** The line beneath the artifact's title exists to give the
+/// card's name in the reader's language; `ko` supplies `도서관 카드`, and `en` supplies
+/// nothing, because [cardStampTitle] above it is already the English name. See
+/// [cardStampLine].
+///
+/// **One invariant survives the move into the ARB files, and nothing there enforces
+/// it:** every translation of `libraryCardAuthority` has to keep `LIBSTACK` in it,
+/// because the `Authority` row is printed a few millimetres above [kCardBrandHandle]
+/// and a name that does not match the address underneath it reads as a forgery. `ko`
+/// keeps it by staying bilingual; `en` is the bare word.
+///
+/// So what remains below is the furniture that is Latin *by construction* rather than
+/// by choice: a title that a translation would not improve, a two-letter seal, and a
+/// domain. The machine-readable strip stays Latin-only for its own reason — see
+/// `cardStripLines`.
 library;
 
-/// The line under the hero's label, and the artifact's own subtitle.
-///
-/// 도서관 대출 카드 — the checkout card in the paper pocket at the back of a library
-/// book — is the object this card is imitating, and it is a known object to any
-/// Korean reader over thirty. The English half is what makes the artifact legible to
-/// everyone else in the thread.
-const String kCardStampLine = '도서관 카드 · LIBRARY · CARD';
+import 'package:bookworm_friends/l10n/app_localizations.dart';
 
-/// The artifact's title, over [kCardStampLine].
+/// The line under the artifact's title, or **null when the title already says it**.
 ///
-/// English, with the bilingual line beneath it, exactly as a passport prints
-/// PASSPORT over its national-language equivalent. Takes the year because a card
-/// filtered to 2026 that calls itself `MY LIBRARY CARD` is the one place the year
-/// capsules could make the export lie.
+/// The card names itself once. `libraryCardStamp` is deliberately empty under `en`,
+/// because [cardStampTitle] directly above reads `MY LIBRARY CARD` and a sub-line
+/// reading `LIBRARY · CARD` under it was the same words twice — which is exactly what
+/// the old bilingual constant hid, by carrying a Korean half that *did* add something.
+/// Strip the Korean and the redundancy is all that is left. Under `ko` it reads
+/// `도서관 카드`: the checkout card in the paper pocket at the back of a library book,
+/// a known object to any Korean reader over thirty, and the thing this card imitates.
+///
+/// **Resolved through a function rather than read straight off `l10n`, because "empty
+/// means absent" is not something a `Text` can be told.** The artifact is the only
+/// caller — the Card tab's hero used to draw this line too and no longer does, since
+/// its own label already names the card in the reader's language — so this exists to
+/// keep the empty-string convention next to the reason for it rather than as a bare
+/// `.isEmpty` at the call site.
+///
+/// Empty rather than absent from the ARB file because the template has to carry every
+/// key. A translator who fills it in for `en` reintroduces the duplicate.
+String? cardStampLine(AppLocalizations l10n) {
+  final line = l10n.libraryCardStamp;
+  return line.isEmpty ? null : line;
+}
+
+/// The artifact's title, over [cardStampLine].
+///
+/// English in both locales, exactly as a passport prints PASSPORT over its
+/// national-language equivalent — and it is the reason [cardStampLine] is null under
+/// `en`: this *is* the English name, so there is nothing for the line beneath to add.
+///
+/// Takes the year because a card filtered to 2026 that calls itself `MY LIBRARY CARD`
+/// is the one place the year capsules could make the export lie.
 String cardStampTitle(int year) =>
     year == 0 ? 'MY LIBRARY CARD' : 'MY $year LIBRARY CARD';
 
-/// Who issued the card. Both names, because the artifact travels.
+/// The blind-embossed stamp in the cover well: the brand mark, not a monogram.
 ///
-/// `책벌레 친구들` is the Korean display name and `LIBSTACK` the English one and the
-/// host. Printing one of them would give a stranger a name that does not match the
-/// address underneath it; printing whichever matches the *exporter's* locale would
-/// put two different products into circulation.
-const String kCardAuthority = '책벌레 친구들 · LIBSTACK';
-
-/// The blind-embossed stamp in the cover well, and the prefix on a card number.
+/// The drawings show `BF` and the card shipped with `LS`, both of which were initials
+/// standing in for an emblem — but an embossing die is exactly where an emblem belongs,
+/// and `LS` said nothing the record's `LIBSTACK` line and the strip's `@LIBSTACK.APP`
+/// were not already saying twice. The launcher's own mark says it once, pictorially.
 ///
-/// `LS`, not the `BF` the drawings show: those were drawn before the rename, and
-/// every string file in the app now says Libstack.
-const String kCardSeal = 'LS';
+/// This is `app_icon_mark.png` — white on transparency — because the seal is drawn by
+/// *tinting* pure alpha with `sealInk`, the same constraint the Android monochrome
+/// layer puts on this artwork. The full-bleed `app_icon.png` carries its green plate
+/// and cannot be tinted. The one runtime asset bundled from `assets/branding/`; see
+/// the note in `pubspec.yaml`.
+///
+/// **Any export drawing this must precache it** — `RepaintBoundary.toImage` paints
+/// only what is already decoded. `exportLibraryCardFile` hands
+/// `AssetImage(kCardSealMarkAsset)` to its `precache` list for exactly this reason.
+const String kCardSealMarkAsset = 'assets/branding/app_icon_mark.png';
 
 /// The one printed return path, and it is deliberately one string rather than two.
 ///

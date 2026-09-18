@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/constants/app_theme.dart';
+import 'package:bookworm_friends/services/cover_image.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
@@ -37,8 +38,14 @@ Future<void> _pump(WidgetTester tester, Widget book) async {
 
 /// A solid image of [color], served to [BookWidget] through the image cache.
 ///
-/// `NetworkImage` is its own cache key, so priming the cache under an identical
-/// provider makes `resolve` return this completer and no request is ever made.
+/// Primed under `coverImageProvider(url)` rather than a provider named here, because
+/// that is the one [BookWidget] will resolve and an [ImageProvider] is its own cache
+/// key: an identical provider makes `resolve` return this completer and no request is
+/// ever made. Naming the class instead broke this twice — once when covers moved to
+/// [CachedNetworkImageProvider] for the disk cache, at which point the primed
+/// `NetworkImage` entry was simply never looked up and the real cache manager went
+/// looking for a `path_provider` that does not exist under `flutter test`.
+///
 /// The alternative is a fake `HttpClient`, which is four classes of boilerplate
 /// to deliver the same bytes.
 Future<void> _primeCover(String url, Color color) async {
@@ -48,7 +55,7 @@ Future<void> _primeCover(String url, Color color) async {
   ).drawRect(const Rect.fromLTWH(0, 0, 8, 12), Paint()..color = color);
   final image = await recorder.endRecording().toImage(8, 12);
   PaintingBinding.instance.imageCache.putIfAbsent(
-    NetworkImage(url),
+    coverImageProvider(url),
     () => OneFrameImageStreamCompleter(Future.value(ImageInfo(image: image))),
   );
 }

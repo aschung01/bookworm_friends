@@ -26,6 +26,7 @@ void main() {
           'figure': (30, FontWeight.w700),
           'hero': (30, FontWeight.w700),
           'title': (22, FontWeight.w700),
+          'titleVisit': (20, FontWeight.w700),
           'titleUser': (22, FontWeight.w600),
           'subtitle': (17, FontWeight.w600),
           'body': (15, FontWeight.w400),
@@ -129,15 +130,44 @@ void main() {
     });
 
     test('Given titleUser, Then it is the sans at title metrics', () {
-      // A username is the reader's content, and the serif is subset to the app's
-      // own strings — so a name would render half serif, half fallback. Same
-      // metrics so the two titles are interchangeable in layout.
+      // A username standing alone is the reader's content, not the app's voice, so
+      // `ManageFriendPage` sets it in the UI face at the page-title size.
       const a = AppTextStyles.title;
       const b = AppTextStyles.titleUser;
       expect(b.fontFamily, AppFonts.sans);
       expect(b.fontSize, a.fontSize);
       expect(b.height, a.height);
       expect(b.letterSpacing, a.letterSpacing);
+    });
+
+    test('Given titleVisit, Then it is title one step down in the same face', () {
+      // The library bar's two states, and the only differences between them that
+      // are allowed to exist. Asserting the *relationship* rather than the number:
+      // a visit title must stay smaller than your own — your library is the
+      // permanent subject, a visit is temporary — while staying clear of
+      // `subtitle`, which is the sheet title stacked over this same row.
+      const own = AppTextStyles.title;
+      const visit = AppTextStyles.titleVisit;
+      expect(visit.fontFamily, own.fontFamily);
+      expect(visit.fontFamilyFallback, contains(AppFonts.sans));
+      expect(visit.fontWeight, own.fontWeight);
+      expect(visit.height, own.height);
+      expect(visit.fontSize, lessThan(own.fontSize!));
+      expect(
+        visit.fontSize,
+        greaterThan(AppTextStyles.subtitle.fontSize! + 1),
+        reason:
+            'a page title one point off the sheet title above it is the exact '
+            'collision the 22 in `title` was chosen to avoid. Going lower to '
+            'stop a long Latin name truncating is the trade this floor refuses '
+            '— see the ladder in library_bar_title_render_preview.dart',
+      );
+      // Tracking scales with the size rather than being carried over flat, so the
+      // two read as one decision at two sizes.
+      expect(
+        visit.letterSpacing! / visit.fontSize!,
+        closeTo(own.letterSpacing! / own.fontSize!, 0.001),
+      );
     });
 
     test('Given the two titles, Then their weights differ on purpose', () {
@@ -160,23 +190,23 @@ void main() {
       expect(AppTextStyles.display.fontWeight, FontWeight.w800);
     });
 
-    test('Given the serif, Then only title, hero and spine use it', () {
-      // Three tokens, and what the list guards is the **coverage judgement**. The
+    test('Given the serif, Then only the four title-and-book tokens use it', () {
+      // Four tokens, and what the list guards is the **coverage judgement**. The
       // face is cut to KS X 1001's 2,350 syllables, not the whole 11,172 block, so
       // every token here is a place a call site can hand it text outside that set.
-      // For `title` and `hero` that cannot happen — they set strings this repo
-      // authors. `spine` is the one that can: a book title is catalogue text, and
-      // it is only here because KS X 1001 was verified against three corpora with
-      // 0 misses (see `AppFonts.serif`).
+      // For `hero` that cannot happen — it sets strings this repo authors. `spine`
+      // and `titleVisit` can: a book title is catalogue text and the library bar's
+      // visit title carries a username, and both are here because KS X 1001 was
+      // verified against three corpora with 0 misses (see `AppFonts.serif`).
       //
-      // A fourth token is not free. Check two things when one appears: whether its
+      // A fifth token is not free. Check two things when one appears: whether its
       // text can leave KS X 1001, and whether it can live with 21.3% ink — this
       // face has no cut above 700 and 700 is barely bold.
       final serifTokens = AppTextStyles.all.entries
           .where((e) => e.value.fontFamily == AppFonts.serif)
           .map((e) => e.key)
           .toSet();
-      expect(serifTokens, {'title', 'hero', 'spine'});
+      expect(serifTokens, {'title', 'titleVisit', 'hero', 'spine'});
     });
 
     test('Given every serif token, Then it names the sans as its fallback', () {
