@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Bookworm Friends</string>
+	<string>Libstack</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -47,7 +47,52 @@
 	<array>
 		<string>kakaokompassauth</string>
 		<string>kakaolink</string>
+		<!-- The Library Card's Stories destination. Without this entry
+		     `canOpenURL` answers false whatever is installed, so the slot would
+		     simply never be drawn and nothing would say why. -->
+		<string>instagram-stories</string>
+		<!-- Reader apps, for the "where to read this" sheet. Same rule as the
+		     entry above: `canLaunchUrl` answers false for an undeclared scheme
+		     however the device is actually configured, so an absent entry here
+		     silently drops the row rather than failing loudly.
+
+		     What these prove is narrower than it looks, and the copy depends on
+		     the distinction: a true answer means the app is INSTALLED, never that
+		     this book is in it. Nothing can prove the latter, which is why the
+		     sheet infers it from a tap and stores the answer instead.
+
+		     `libby` WAS here and has been removed: it is not Libby's scheme at
+		     all -- that app is `com.overdrive.dewey` -- and `launchUrl` returned
+		     false even with this entry present, which surfaced to the reader as a
+		     "Something went wrong" dialog. That row now uses a universal link
+		     (`libbyapp.com/shelf/loans`), which needs no entry here and, unlike a
+		     custom scheme, degrades to the web app instead of failing outright.
+		     Prefer that shape for any future store.
+
+		     `kindle` and `com.google.playbooks` HAVE now gone the same way, and
+		     that rule is why. Both are replaced by https paths their app claims in
+		     its own app-site-association -- `read.amazon.com/application` against
+		     `com.amazon.Lassen`, `play.google.com/books/reader` against
+		     `com.google.GoogleBooks` -- so neither needs declaring here and
+		     neither can dead-end a reader who lacks the app.
+		     `com.google.playbooks` was wrong besides: Google's iOS schemes read
+		     `googlegmail://` / `comgooglekeep://`, never a reverse-DNS bundle id.
+
+		     `ibooks` STAYS, alone and deliberately. It is documented rather than
+		     guessed, and there is no Apple Books web reader, so no universal link
+		     exists that could reach a reader's own library -- `books.apple.com/`
+		     bare is a storefront. Books also ships preinstalled, so the hard
+		     failure the rule above guards against barely arises. -->
+		<string>ibooks</string>
 	</array>
+	<!-- Sent as `source_application` on every Stories hand-off. Required by Meta
+	     since January 2023: omit it and Instagram tells the reader "The app you
+	     shared from doesn't currently support sharing to Stories", which reads as
+	     our bug. An App ID is public by design and carries no authority on its
+	     own; the App Secret is the one that would not belong in source, and
+	     nothing here needs it. -->
+	<key>FacebookAppID</key>
+	<string>1623819535975796</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -55,6 +100,16 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to scan a book's barcode</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to choose a profile photo</string>
+	<!-- Adding only, which is a narrower grant than the read permission above and
+	     is all the Library Card's Photos destination needs. iOS 14+ shows no
+	     prompt at all for add-only, so this string is rarely read -- but the key
+	     must be present or `Gal.putImage` fails. -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Used to save your Library Card to Photos</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Used to collect crash, performance data</string>
 	<key>UIApplicationSceneManifest</key>

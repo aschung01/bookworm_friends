@@ -1,6 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <queries>
         <package android:name="com.kakao.talk" />
+        <!-- The Library Card's Stories destination. `social_story_share` declares
+             this too and the manifests merge, so this is belt-and-braces -- but the
+             install probe runs in *our* process, and on Android 11+ a package the
+             manifest cannot see reports as not installed. Declaring it here means
+             the slot's visibility does not depend on a dependency's manifest. -->
+        <package android:name="com.instagram.android" />
+        <!-- Reader apps, for the "where to read this" sheet. Same Android 11+
+             package-visibility rule as the two above: a package this manifest
+             cannot see reports as not installed, and `launchUrl` on a custom
+             scheme cannot resolve an activity for it — so without these the
+             sheet's Open rows fail on Android however the device is configured.
+
+             `com.apple.iBooks` is deliberately absent: Apple Books does not
+             exist on Android, and `storesForLocale` would still offer the row.
+             That is a real gap and is tracked as such rather than papered over
+             with a package name that can never resolve. -->
+        <package android:name="com.amazon.kindle" />
+        <package android:name="com.google.android.apps.books" />
+        <package android:name="com.overdrive.mobile.android.libby" />
         <intent>
             <action android:name=
                 "android.support.customtabs.action.CustomTabsService" />
@@ -35,6 +54,31 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="bookworm-friends" />
             </intent-filter>
+            <!--
+              No https/libstack.app App Link here, and that is deliberate rather than
+              an oversight. iOS claims invite links through AASA; Android cannot yet.
+
+              assetlinks.json is keyed to the package name PLUS the signing
+              certificate SHA-256, and per docs/APP_IDENTITY.md:82-95 the
+              applicationId is expected to change on Play re-registration --
+              com.unicorn.bookworm_friends may not even be reusable. Publishing the
+              file now would pin it to a name that is about to change, and an App
+              Link whose assetlinks.json does not verify silently falls back to the
+              browser.
+
+              Add this together with the file, after the Play account decision:
+
+                <intent-filter android:autoVerify="true">
+                    <action android:name="android.intent.action.VIEW" />
+                    <category android:name="android.intent.category.DEFAULT" />
+                    <category android:name="android.intent.category.BROWSABLE" />
+                    <data android:scheme="https" android:host="libstack.app"
+                          android:pathPrefix="/i/" />
+                </intent-filter>
+
+              Note the identifiers differ across platforms in more than case: iOS is
+              com.unicorn.bookwormFriends, Android is com.unicorn.bookworm_friends.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -70,5 +114,18 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />  
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Add Book's barcode scanner. `android.hardware.camera` is declared
+         not-required so the app still installs on a device without one; the
+         scanner reports the failure and offers typing instead. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- The Library Card's Photos destination, via `gal`. Capped at API 29
+         because from API 30 the MediaStore write needs no permission at all, and
+         an uncapped storage permission is both unnecessary and a Play review
+         question. No `requestLegacyExternalStorage`: that is only needed to save
+         into a named *album*, and this saves to the camera roll. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>

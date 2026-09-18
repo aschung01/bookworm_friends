@@ -4,5 +4,23 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!--
+	  Universal Links for invites. Claims https://libstack.app/i/<token> so a tapped
+	  link opens the app instead of Safari.
+
+	  Requires /.well-known/apple-app-site-association to be served at that host over
+	  HTTPS, with Content-Type application/json, no file extension, and NO redirect.
+	  The OS enforces all three and fails silently when any is wrong -- the link just
+	  opens the browser and nothing says why.
+
+	  The AASA must scope itself to /i/* rather than /*, or the app also claims the
+	  marketing pages and the /@handle profiles that are meant to be web pages.
+
+	  See docs/superpowers/specs/2026-08-30-invite-landing-design.md.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:libstack.app</string>
+	</array>
 </dict>
 </plist>

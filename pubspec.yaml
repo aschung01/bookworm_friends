@@ -1,7 +1,7 @@
 name: bookworm_friends
 description: A social reading tracker app.
 publish_to: "none"
-version: 1.1.0+1
+version: 1.1.0+12
 
 environment:
   sdk: ^3.9.0
@@ -23,7 +23,6 @@ dependencies:
   firebase_core: ^3.3.0
   firebase_messaging: ^15.0.0
   flutter_local_notifications: ^17.0.0
-  app_links: ^6.3.0
   in_app_review: ^2.0.9
   package_info_plus: ^8.0.0
   firebase_analytics: ^11.2.0
@@ -34,6 +33,69 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.3.0
   awesome_emoji_picker: ^1.0.5
+  # Library Card sharing. The card is the shareable artifact, so the sheet needs a
+  # platform share sheet to hand a rendered PNG to, and a temp directory to put it
+  # in. `path_provider` was already here transitively; declared because it is now
+  # imported directly.
+  share_plus: ^10.1.0
+  path_provider: ^2.1.0
+  # Profile photos. `image_picker` resizes and re-encodes natively via
+  # `maxWidth`/`imageQuality`, which is why there is no separate compression
+  # package and no cropper -- see the profile-photos design record.
+  image_picker: ^1.2.3
+  # The community fork, not `cached_network_image`: the original's last release
+  # was August 2024. Drop-in compatible, and its pluggable cache eviction is the
+  # only lever there is over an avatar still on disk after an unfollow.
+  cached_network_image_ce: ^4.10.0
+  # Barcode scanning for Add Book. 7.x moved iOS/macOS from ML Kit to Apple
+  # Vision, which is what brings the minimum deployment target back below our
+  # 15.0 -- 6.x required 15.5 and would have forced a bump.
+  #
+  # Android keeps the *bundled* ML Kit barcode model (the default). That costs
+  # 3-10MB of app size against ~600KB for the unbundled one, and is the right
+  # trade here: the whole reason a barcode beats reading the cover is that it is
+  # instant and works offline, and the unbundled model downloads through Play
+  # Services on first use. Set
+  # `dev.steenbakker.mobile_scanner.useUnbundled=true` in
+  # `android/gradle.properties` to reverse it -- and add a "model not ready"
+  # state to the scanner if you do.
+  mobile_scanner: ^7.4.0
+  # The Library Card's two named destinations, beside `share_plus`'s OS sheet.
+  #
+  # `social_story_share` for Instagram Stories: the pasteboard keys plus the
+  # `instagram-stories://` scheme, which `share_plus` does not do and cannot,
+  # because handing content to a *named* app is a different operation from
+  # opening the platform sheet. Chosen over writing our own channel, and the
+  # risk is worth recording rather than discovering: it is **0.2.2, published
+  # weeks ago, from an unverified uploader, with 2 likes**. What tips it is that
+  # it ships iOS as a Swift Package *and* keeps a podspec, so it survives the SPM
+  # migration this project has not made yet; and that the whole surface we use is
+  # three calls, so replacing it with our own channel later is a day's work
+  # confined to `card_destinations.dart`.
+  #
+  # ⚠️ Its `ShareResult` collides by name with `share_plus`'s. They are never
+  # imported into the same file; `card_destinations.dart` translates it to
+  # `StoryOutcome` at the boundary so nothing downstream has to care.
+  social_story_share: ^0.2.2
+  # Photos, which is the escape hatch every other destination can be reached
+  # through -- and the only one that leaves the reader holding the file.
+  gal: ^2.3.3
+  # Only for `openAppSettings()` and for telling "never asked" apart from
+  # "denied" and "denied forever". `mobile_scanner` reports that its permission
+  # was refused but cannot send anyone to Settings to undo it, and the denied
+  # card is useless without that -- see `docs/mockups/scan-to-add`.
+  permission_handler: ^11.3.0
+  # Receives the invite link. `https://libstack.app/i/<token>` is claimed by the app
+  # through AASA, and this is what delivers the URI to Dart.
+  #
+  # ⚠️ **It is a singleton, and `Supabase.initialize` is already a subscriber.** It
+  # starts its own observer (`SupabaseAuth._startDeeplinkObserver`) to exchange the
+  # OAuth code; a second listener that reacts to *every* URI raced it over a
+  # single-use PKCE code and broke sign-in intermittently -- see the comment in
+  # `main.dart` that this package's absence used to justify. `InviteLinkService`
+  # filters to the `/i/` path before doing anything, which is what makes a second
+  # subscriber safe. Do not widen that filter.
+  app_links: ^7.2.1
 
 dependency_overrides:
   path_provider_foundation: 2.4.1
@@ -43,19 +105,145 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  # Lets a widget test stand in for the platform side of `url_launcher` and record
+  # the URL the app hands over. The store-links sheet's whole job is to build
+  # correct URLs, and without this the suite could only assert row *labels* --
+  # which is how a row once promised "Open Play Books" while performing a Play
+  # Store search. Test-only; `url_launcher` itself is already a dependency and
+  # this is its own platform interface, not a mocking framework.
+  url_launcher_platform_interface: ^2.3.2
+  # Generates every platform launcher icon from the masters in
+  # `assets/branding/`. Do not hand-edit the generated icons; run
+  # `./assets/branding/build_icons.sh` instead.
+  flutter_launcher_icons: ^0.14.4
+
+# Note: `assets/branding/` is deliberately absent from the `assets:` list below,
+# with one exception. These are build-time inputs for flutter_launcher_icons, not
+# runtime assets, so bundling them would only add weight to the app. The exception
+# is `app_icon_mark.png` (~105KB): the Library Card's embossed seal draws the brand
+# mark by tinting its alpha — see `kCardSealMarkAsset` in
+# `lib/ui/widgets/library_card/card_furniture.dart`.
+flutter_launcher_icons:
+  image_path: "assets/branding/app_icon.png"
+
+  android: true
+  # The plate lives in the background layer so the foreground's transparent
+  # gaps let it show through -- that, rather than green-filled gaps, is what
+  # keeps the monochrome layer usable.
+  adaptive_icon_background: "#09BC8A"
+  adaptive_icon_foreground: "assets/branding/app_icon_foreground.png"
+  # Android 13+ themed icons. Tinted by alpha, so it needs the same
+  # transparent-gap artwork as the foreground.
+  adaptive_icon_monochrome: "assets/branding/app_icon_foreground.png"
+  # 0 because the safe-zone inset is baked into app_icon_foreground.png by
+  # build_master.py, where it can be verified against a real circle mask rather
+  # than guessed. See `assets/branding/_mask_preview.png`.
+  adaptive_icon_foreground_inset: 0
+
+  ios: true
+  # The App Store rejects icons with an alpha channel.
+  remove_alpha_ios: true
+  image_path_ios_dark_transparent: "assets/branding/app_icon_mark.png"
+  image_path_ios_tinted_grayscale: "assets/branding/app_icon_mark.png"
+  desaturate_tinted_to_grayscale_ios: true
+
+  web:
+    generate: true
+    image_path: "assets/branding/app_icon.png"
+    background_color: "#09BC8A"
+    theme_color: "#09BC8A"
+
+  macos:
+    generate: true
+    # Not the full-bleed icon: macOS expects a rounded body with transparent
+    # margins and applies no mask of its own.
+    image_path: "assets/branding/app_icon_macos.png"
+
+  windows:
+    generate: true
+    image_path: "assets/branding/app_icon.png"
+    icon_size: 256
 
 flutter:
   generate: true
   uses-material-design: true
   assets:
-    - assets/icons/bookwormIcon.svg
     - assets/icons/smileBookwormIcon.svg
     - assets/icons/appleWhiteIcon.svg
     - assets/icons/appleBlackIcon.svg
     - assets/icons/googleIcon.svg
     - assets/icons/bookmarkIcon.svg
-    - assets/icons/sadCharacter.svg
+    - assets/icons/stretchHorizontalIcon.svg
+    - assets/icons/stretchHorizontalIcon.png
+    # Per-store marks for the "Where to read" sheet, keyed by `StoreId`.
+    # Simple Icons (CC0), monochrome single-path, no `fill` attribute -- so one
+    # file tints per theme via `BlendMode.srcIn`, like the empty-state stencils.
+    #
+    # There are deliberately only TWO here for four stores. Simple Icons carries
+    # no Kindle and no Apple Books mark: the whole `amazon*` family was removed
+    # upstream, and only the bare `apple` logo exists. Kindle and Libby
+    # therefore fall back to the letter chip -- see `_Glyph` in
+    # `store_links_sheet.dart`. Do NOT close the gap by hand-drawing
+    # approximations of either mark; `AGENTS.md` records how that went for the
+    # empty-state art.
+    - assets/icons/storePlayIcon.svg
+    - assets/icons/storeAppleIcon.svg
+    # Kindle is the Amazon mark (Simple Icons, CC0) -- Amazon publishes no Kindle
+    # glyph in any licence-clean set, and the row's own second line already says
+    # "Searches Amazon", so the ecosystem mark and the label agree.
+    - assets/icons/storeKindleIcon.svg
+    # Libby is from Arcticons (CC BY-SA 4.0), the only set carrying one. It is a
+    # line mark where the other three are solid, and its stroke-width is raised
+    # from the source's default 1 to 3 so it does not vanish at 16pt.
+    # Attribution is owed -- see the licence page in settings_page.dart.
+    - assets/icons/storeLibbyIcon.svg
+    # Empty-state illustrations, in the app icon's chalk hand. Generated, not
+    # hand-authored -- see `docs/mockups/empty-states/PROMPTS.md` (Route C) and
+    # rebuild with `python3 scripts/cut_empty_state_assets.py`.
+    #
+    # These are **alpha stencils**: chalk coverage lives in the alpha channel and
+    # the RGB is flat, so `EmptyStateArt` tints one file per piece to
+    # `secondaryText` per theme with `BlendMode.srcIn` and the grain survives.
+    # That is why there is no light/dark pair -- the two themes are the same
+    # geometry, which is what stops them drifting apart.
+    #
+    # Only the 1x path is listed. Flutter finds the `2.0x/` and `3.0x/` siblings
+    # itself and picks by device pixel ratio, so a 40pt spot decodes ~120px
+    # rather than the 1024px master.
+    - assets/icons/empty/rest.png
+    - assets/icons/empty/invite.png
+    - assets/icons/empty/search.png
+    - assets/icons/empty/nomatch.png
+    - assets/icons/empty/note.png
+    - assets/icons/empty/duo.png
+    # The seal on the Library Card. The one branding master bundled at runtime --
+    # see the note above `flutter_launcher_icons`.
+    - assets/branding/app_icon_mark.png
   fonts:
+    # Built by `scripts/build_fonts.py`, which subsets the upstream faces before
+    # they land here. Flutter does not subset text fonts, so what is in this
+    # directory ships whole: upstream these five files are 13.8MB, subset 4.97MB.
+    #
+    # Pretendard (OFL) carries arbitrary text, so it has the full Hangul block.
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Pretendard-ExtraBold.otf
+          weight: 800
+    # Gowun Batang (OFL) sets `AppTextStyles.title`, `hero` and `spine`. Cut to
+    # Latin-1 plus KS X 1001's 2,350 Hangul syllables -- 1.32MB, against 7.85MB for
+    # the whole block, which no corpus in this repo reaches. Only one weight,
+    # because 700 is its heaviest; asking for 800 would synthesise. See
+    # `AppFonts.serif` for the coverage evidence and the weight it cannot reach.
+    - family: GowunBatang
+      fonts:
+        - asset: assets/fonts/GowunBatang-Bold.ttf
+          weight: 700
     - family: DesignHouse
       fonts:
         - asset: assets/fonts/designhouseOTFBold.otf
