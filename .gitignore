@@ -4,6 +4,8 @@
 *.pyc
 *.swp
 .DS_Store
+# Pillow venv created by assets/branding/build_icons.sh
+.venv/
 .atom/
 .build/
 .buildlog/
@@ -73,6 +75,19 @@ amplifytools.xcconfig
 # Local build-time secrets (dart-define-from-file)
 env.json
 
+# App Store Connect API credentials for ./release_ios.sh. Not committed: the
+# issuer/key ids identify a specific ASC integration, and the .p8 they point at
+# is a private key that lives outside the repo entirely.
+ios/asc.json
+
+# Signing material, wherever it lands. `ios/asc.json` above points at a .p8 that
+# is meant to live in ~/private_keys/, but a key dropped into the repo by mistake
+# would otherwise be stageable -- these three lines are the backstop for that.
+*.p8
+*.p12
+.env
+.env.*
+
 # Generated localizations (gen-l10n)
 lib/l10n/app_localizations*.dart
 
@@ -80,5 +95,24 @@ lib/l10n/app_localizations*.dart
 migration_data/
 supabase/.temp/
 
+# Resume caches for the scripts/backfill_*.py scripts. They hold catalogue answers
+# keyed by ISBN, which are reproducible from the API and would only go stale in the
+# repo. Globbed so a future backfill script is covered without another edit here.
+scripts/.*_backfill_cache.json
+scripts/.*_backfill_cache.tmp
+
 # Brainstorming session mockups
 .superpowers/
+
+# Source fonts downloaded by docs/mockups/typography/build-fonts.py. Tens of MB of
+# upstream TTFs that the script re-fetches on demand; only the subset it derives
+# from them (_build/fonts.css, base64'd into the page) is worth keeping.
+docs/mockups/typography/_build/.cache/
+
+# Argent's screen recordings. Editor and agent config *is* tracked in this repo
+# (.agents/, .claude/, .zed/, .vscode/, .mcp.json), but this directory holds no
+# config -- only megabytes of throwaway simulator captures.
+.argent/recordings/
+
+# rope (Python refactoring) cache, from the scripts/ tooling.
+.ropeproject/
