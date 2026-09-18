@@ -1,0 +1,3924 @@
+<!doctype html>
+<!--
+  GENERATED. Edit _build/{tokens.css,frame.css,data.js} and run
+    python3 _build/build.py && sh _build/verify.sh
+  Hand edits here are lost on the next build. The output is still fully
+  self-contained: no build step, no server, no network to view it.
+  Open it straight from disk.
+
+  Replace the marked sections in the script below:
+    SECTION 1  TOKENS    - real colours/metrics copied from the codebase
+    SECTION 2  FRAME     - how one screen of THIS product is drawn
+    SECTION 3  DATA      - the screens, flows and elements themselves
+    SECTION 4  VERSIONS  - named variants, git-branch style (optional)
+  Leave SECTION 5 (ENGINE) alone unless you're changing behaviour.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Where to read this &mdash; three homes for a store link</title>
+        <style>
+            :root {
+                /* ---- SECTION 1a: product tokens.
+                   Copied verbatim from AppColors.light in
+                   lib/constants/app_theme.dart. Not eyeballed — the pitfall
+                   that wasted three review rounds on the library set was
+                   invented brand colours. ---- */
+                --page: #f8f9fa; /* pageBackground   */
+                --surface: #ffffff; /* surface          */
+                --variant: #e9ecef; /* surfaceVariant — the hero's background */
+                --text: #212529; /* primaryText      */
+                /* secondaryText. #626A72, NOT the #ADB5BD the praise-region
+                   set (which this frame is forked from) still carries — that
+                   value measured 2.07:1 on white and was replaced in
+                   app_theme.dart, whose doc now names surfaceVariant the
+                   binding surface at 4.63:1. Corrected here rather than
+                   inherited, because the store rows below use it for their
+                   supporting line and a stale token would make an unreadable
+                   row look acceptable in the drawing. */
+                --text2: #626a72;
+                --divider: #e9ecef; /* divider          */
+                --brand: #09bc8a; /* decoration only, 2.45:1 on white */
+                --brandText: #067657; /* brandText == brandFill */
+                --sheet: #eff5ef; /* sheetBackground, the pinned mint tint */
+                /* ---- page chrome (safe to leave) ---- */
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.5;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            mark.hl {
+                background: rgba(79, 125, 243, 0.28);
+                color: inherit;
+                border-radius: 3px;
+                padding: 0 1px;
+            }
+            .gone {
+                display: none;
+            }
+
+            /* ---------- top chrome ---------- */
+            .top {
+                position: sticky;
+                top: 0;
+                z-index: 300;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+            }
+            .top-in {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 11px 22px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+            }
+            .brand span {
+                color: var(--brandText);
+            }
+            .vtabs {
+                display: flex;
+                gap: 2px;
+            }
+            .vtabs button {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--muted);
+                background: none;
+                border: 0;
+                padding: 6px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+            }
+            .vtabs button:hover {
+                color: var(--ink);
+            }
+            .vtabs button.on {
+                color: var(--ink);
+                font-weight: 800;
+                background: #fff;
+                border: 0.5px solid var(--line);
+                box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.1);
+            }
+            .vtabs button::after,
+            .hk::after {
+                content: attr(data-key);
+                position: absolute;
+                top: calc(100% + 7px);
+                left: 50%;
+                transform: translateX(-50%) translateY(3px);
+                background: #26262b;
+                color: #fff;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2.5px 6px;
+                border-radius: 5px;
+                box-shadow: 0 3px 9px rgba(0, 0, 0, 0.28);
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.12s,
+                    transform 0.12s;
+                z-index: 50;
+            }
+            .vtabs button:hover::after,
+            .hk:hover::after {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+                transition-delay: 0.3s;
+            }
+            .sep {
+                width: 1px;
+                height: 20px;
+                background: var(--line);
+            }
+            .count {
+                margin-left: auto;
+                font-size: 12px;
+                color: var(--text2);
+                text-align: right;
+                line-height: 1.4;
+                white-space: nowrap;
+            }
+            .kbd {
+                display: inline-block;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--muted);
+                background: #f4f2ef;
+                border: 1px solid var(--line);
+                border-bottom-width: 2px;
+                border-radius: 4px;
+                padding: 0 4px;
+                line-height: 15px;
+                min-width: 15px;
+                text-align: center;
+            }
+
+            /* ---------- comboboxes (version + filter share the panel styling) ---------- */
+            .cbox {
+                position: relative;
+            }
+            .cbox.hide {
+                display: none;
+            }
+            .cbtn {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--ink);
+                background: #f4f2ef;
+                border: 0.5px solid var(--line);
+                padding: 6px 13px;
+                border-radius: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .cbtn:hover {
+                background: #eeece7;
+            }
+            .cbtn .chev {
+                font-size: 9px;
+                color: var(--muted);
+                transition: transform 0.15s;
+            }
+            .cbox.open .cbtn .chev {
+                transform: rotate(180deg);
+            }
+            .cbtn .badge {
+                font-size: 11px;
+                font-weight: 800;
+                color: #fff;
+                background: var(--brandText);
+                border-radius: 20px;
+                padding: 0 6px;
+                line-height: 16px;
+            }
+            .cbtn .branch {
+                font-size: 12px;
+                opacity: 0.5;
+            }
+            .cbtn.vbtn {
+                background: #eef2fd;
+                border-color: #cddafb;
+                color: #22407f;
+            }
+            .cbtn.vbtn:hover {
+                background: #e3ebfc;
+            }
+            .cpanel {
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                width: 340px;
+                max-height: min(70vh, 520px);
+                display: none;
+                flex-direction: column;
+                background: rgba(38, 38, 41, 0.97);
+                backdrop-filter: blur(20px);
+                border-radius: 15px;
+                box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+                overflow: hidden;
+                z-index: 400;
+            }
+            .cbox.open .cpanel {
+                display: flex;
+            }
+            .csearch {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                padding: 13px 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .csearch svg {
+                flex: 0 0 auto;
+                opacity: 0.5;
+            }
+            .csearch input {
+                flex: 1;
+                font: inherit;
+                font-size: 14.5px;
+                color: #fff;
+                background: none;
+                border: 0;
+                outline: none;
+            }
+            .csearch input::placeholder {
+                color: rgba(255, 255, 255, 0.42);
+            }
+            .clist {
+                overflow-y: auto;
+                padding: 7px 7px 9px;
+                flex: 1 1 auto;
+            }
+            .clist::-webkit-scrollbar {
+                width: 9px;
+            }
+            .clist::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.22);
+                border-radius: 9px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+            .cgrp {
+                font-size: 12px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.45);
+                padding: 9px 11px 4px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .cgrp:hover {
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .copt {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                padding: 8px 11px;
+                border-radius: 9px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .copt:hover,
+            .copt.kb {
+                background: rgba(255, 255, 255, 0.11);
+            }
+            .copt .box {
+                width: 17px;
+                height: 17px;
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.16);
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: #fff;
+            }
+            .copt.sel .box {
+                background: var(--brand);
+                color: #fff;
+                font-weight: 900;
+            }
+            .copt.radio .box {
+                border-radius: 50%;
+            }
+            .copt .lb {
+                font-size: 14.5px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .copt .lb mark.hl {
+                background: rgba(79, 125, 243, 0.5);
+                color: #fff;
+            }
+            .copt .sub {
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+                line-height: 1.45;
+            }
+            .copt .col {
+                flex: 1;
+                min-width: 0;
+            }
+            .copt .tagn {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1px 6px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.14);
+                color: rgba(255, 255, 255, 0.75);
+                white-space: nowrap;
+            }
+            .cfoot {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .cfoot .n {
+                flex: 1;
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .cfoot button {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                color: #fff;
+                background: rgba(255, 255, 255, 0.13);
+                border: 0;
+                border-radius: 7px;
+                padding: 4px 10px;
+                cursor: pointer;
+            }
+            .cfoot button:hover {
+                background: rgba(255, 255, 255, 0.22);
+            }
+            .cempty {
+                color: rgba(255, 255, 255, 0.45);
+                font-size: 13px;
+                padding: 16px 11px;
+            }
+
+            /* ---------- version bar ---------- */
+            .vinfo {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                color: var(--muted);
+                padding: 2px 0 0;
+            }
+            .vinfo .lbl {
+                font-weight: 800;
+                color: var(--brandText);
+                white-space: nowrap;
+            }
+            .vinfo .note {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .vinfo .diffs {
+                white-space: nowrap;
+                font-weight: 700;
+            }
+            .vinfo button {
+                font: inherit;
+                font-size: 11.5px;
+                font-weight: 700;
+                color: var(--brandText);
+                background: #eef2fd;
+                border: 0.5px solid #cddafb;
+                border-radius: 7px;
+                padding: 2px 9px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .vinfo button:hover {
+                background: #e3ebfc;
+            }
+            .vinfo button.off {
+                color: var(--muted);
+                background: #f4f2ef;
+                border-color: var(--line);
+            }
+
+            /* ---------- layout ---------- */
+            .wrap {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 22px 22px 90px;
+            }
+            .view {
+                display: none;
+            }
+            .view.on {
+                display: block;
+            }
+            h1 {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.4px;
+                margin: 6px 0 4px;
+            }
+            .lead {
+                color: var(--muted);
+                font-size: 14px;
+                max-width: 800px;
+                margin: 0 0 22px;
+            }
+            h2.grp {
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #a09c95;
+                margin: 30px 0 12px;
+                padding-bottom: 7px;
+                border-bottom: 1px solid var(--line);
+                scroll-margin-top: 80px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 20px 16px;
+            }
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+            .item .cap {
+                margin-top: 9px;
+            }
+            .item .nm {
+                font-size: 12.5px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .item .ds {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                margin-top: 2px;
+            }
+            .shot {
+                background: #e6e3dd;
+                border-radius: 10px;
+                padding: 14px 0;
+                display: flex;
+                justify-content: center;
+            }
+            .pair {
+                display: flex;
+                gap: 8px;
+            }
+            .pair > div {
+                flex: 1;
+                min-width: 0;
+            }
+            .pair .vl {
+                font-size: 9.5px;
+                font-weight: 800;
+                color: var(--muted);
+                text-align: center;
+                margin-bottom: 5px;
+                letter-spacing: 0.03em;
+            }
+            .pair .vl.b {
+                color: var(--brandText);
+            }
+            .noneleft {
+                color: var(--muted);
+                font-size: 13.5px;
+                padding: 26px 0;
+            }
+            .pend {
+                background: #fdf3f0;
+                border-left: 3px solid #c05746;
+                padding: 9px 13px;
+                border-radius: 0 6px 6px 0;
+                font-size: 12px;
+                line-height: 1.55;
+                margin: 0 0 13px;
+                max-width: 840px;
+            }
+            .tag {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1.5px 7px;
+                border-radius: 20px;
+                white-space: nowrap;
+            }
+            .tag.changed {
+                background: #fff4e0;
+                color: #8a5a10;
+            }
+            .tag.onlyHere {
+                background: #e6f4ee;
+                color: #0b6b4f;
+            }
+            .tag.onlyThere {
+                background: #fdecea;
+                color: #a3302a;
+            }
+            .tag.ver {
+                background: #eef2fd;
+                color: #2f55b8;
+            }
+
+            /* ---------- flows ---------- */
+            /* ghosts: present in the compared version, absent here */
+            .item.ghost .shot,
+            .el.ghost .demo {
+                opacity: 0.5;
+                outline: 1px dashed #c7a9a4;
+                outline-offset: -1px;
+            }
+            .item.ghost .nm,
+            .el.ghost .nm,
+            .flow.ghost .fh {
+                text-decoration: line-through;
+                text-decoration-color: #c7a9a4;
+            }
+            .flowlayout {
+                display: grid;
+                grid-template-columns: 216px 1fr;
+                gap: 26px;
+                align-items: start;
+            }
+            .side {
+                position: sticky;
+                top: 80px;
+            }
+            .sbox {
+                position: relative;
+                margin-bottom: 14px;
+            }
+            .search {
+                width: 100%;
+                font: inherit;
+                font-size: 13px;
+                padding: 9px 40px 9px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #faf9f7;
+                outline: none;
+            }
+            .search:focus {
+                border-color: var(--brandText);
+                background: #fff;
+            }
+            .sbox .hint {
+                position: absolute;
+                display: none;
+                right: 9px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+            .sbox .hint-slash {
+                display: block;
+            }
+            .sbox.focused .hint-slash,
+            .sbox.dirty .hint-slash {
+                display: none;
+            }
+            .sbox.dirty .hint-esc {
+                display: block;
+            }
+            .side a {
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--muted);
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border-left: 2px solid transparent;
+            }
+            .side a:hover {
+                background: #f5f4f1;
+                color: var(--ink);
+            }
+            .side a.cur {
+                color: var(--brandText);
+                background: #eef2fd;
+                font-weight: 800;
+                border-left-color: var(--brandText);
+            }
+            .side .sh {
+                font-size: 10.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                color: #b9b6b0;
+                margin: 16px 0 5px;
+                padding-left: 10px;
+            }
+            .flow {
+                margin-bottom: 38px;
+                scroll-margin-top: 88px;
+            }
+            .flow .fh {
+                font-size: 15.5px;
+                font-weight: 800;
+                margin: 0 0 3px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                flex-wrap: wrap;
+            }
+            .flow .fd {
+                font-size: 12.5px;
+                color: var(--muted);
+                margin: 0 0 13px;
+                max-width: 780px;
+            }
+            .flow .vrow {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--muted);
+                margin: 0 0 5px;
+                letter-spacing: 0.03em;
+            }
+            .flow .vrow.b {
+                color: var(--brandText);
+            }
+            .steps {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            .step {
+                flex: 0 0 auto;
+                width: 170px;
+            }
+            .step .shot {
+                border-radius: 9px;
+                padding: 11px 0;
+            }
+            .step .sn {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--brandText);
+                margin-bottom: 5px;
+            }
+            .step .sc {
+                font-size: 10.5px;
+                color: var(--muted);
+                line-height: 1.45;
+                margin-top: 7px;
+                padding-right: 8px;
+            }
+            .arrow {
+                flex: 0 0 auto;
+                width: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #c9c5be;
+                font-size: 17px;
+                padding-bottom: 40px;
+            }
+
+            /* ---------- elements ---------- */
+            .egrid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+                gap: 16px;
+            }
+            .el {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .el .demo {
+                background: #f2f0ec;
+                padding: 20px 18px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 96px;
+            }
+            .el .body {
+                padding: 12px 15px 14px;
+            }
+            .el .nm {
+                font-size: 13px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .el .ds {
+                font-size: 11.5px;
+                color: var(--muted);
+                line-height: 1.55;
+                margin-top: 3px;
+            }
+            .el .ds b {
+                color: #c05746;
+            }
+
+            /* ================================================================
+SECTION 1b: DEVICE / FRAME STYLES.
+
+   Not a phone: a *crop* of the book-details page, from the back button down
+   into the first rows of the Book info tab. That is the unit under review —
+   a "where to read this" control cannot be judged apart from the hero it
+   competes with for prominence, or from the description it sits above.
+
+   Forked from docs/mockups/praise-region/_build/frame.css, which measured
+   the hero against the widgets. The hero, cover, shelf, band, status card
+   and tab strip below are that file's values unchanged; the reaction pill
+   and capsule are kept because they really are in this corner and any
+   store control has to coexist with them. What is new here is everything
+   from `.tabbody` down.
+
+   The frame is 393px wide and 1px == 1pt, so every number below is the
+   real Flutter value and can be checked against the widget. Contexts that
+   need it smaller set --z (zoom shrinks the layout box, unlike transform,
+   so the grid still packs correctly).
+   ================================================================ */
+            /* Wider columns than the shell's default: a 393pt frame does not
+               fit in a 210px cell. */
+            .grid {
+    grid-template-columns: repeat(auto-fill, minmax(415px, 1fr));
+}
+.grid.cmp {
+    grid-template-columns: repeat(auto-fill, minmax(478px, 1fr));
+}
+.grid.cmp .fr {
+    --z: 0.56;
+}
+.step {
+    width: 262px;
+}
+.step .fr {
+    --z: 0.62;
+}
+.shot {
+    align-items: flex-start;
+}
+
+.fr {
+    width: 393px; /* iPhone 15 logical width */
+    zoom: var(--z, 1);
+    background: var(--page);
+    border: 1px solid #d9d6d0;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 0 0 auto;
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    line-height: 1.3;
+}
+
+/* ---------- chrome above the hero ---------- */
+.fr .nav {
+    height: 54px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 8px;
+}
+.fr .back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+/* AppBar actions. IconButton(icon size 24) in primaryText, pushed right.
+   On the shipped build this whole group is behind `isSelf`, so a friend's
+   book has an empty bar — which is exactly why the appbar-sheet version
+   has to add the group back rather than append to it. */
+.fr .acts {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 19px;
+    color: var(--text);
+}
+.fr .acts .ai {
+    width: 24px;
+    text-align: center;
+}
+/* The store entry point when it lives in the bar. Tinted so the drawing
+   distinguishes "new control" from the two that already ship; it is
+   primaryText like its neighbours in the real thing. */
+.fr .acts .ai.newctl {
+    color: var(--brandText);
+    position: relative;
+}
+/* The proposed "a store is already known" marker — an open decision.
+   A dot rather than a second glyph, because the action is identical and
+   only its outcome differs; swapping the symbol would imply a different
+   control. 5pt on brandFill, which is the smallest mark elsewhere in the
+   app that is still meant to be noticed. */
+.fr .acts .ai.newctl .dot {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--brandText);
+}
+
+/* ---------- hero: cover, right column, corner, shelf ----------
+               Container(color: surfaceVariant, padding: only(top 20, l/r 20)).
+               No bottom padding, which is what lets the corner's `bottom: 0`
+               land on the shelf. */
+.fr .hero {
+    background: var(--variant);
+    padding: 20px 20px 0;
+    position: relative;
+}
+.fr .hrow {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+/* Positioned(bottom: 0, right: 0) inside the hero's Stack. */
+.fr .corner {
+    position: absolute;
+    right: 20px;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+/* ShelfWidget: 8pt, surface, shadow offset(0,2) blur 2 black@25%. */
+.fr .shelf {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- the book ----------
+               height 180 (BookWidget height: 180), width 120 from
+               kDefaultCoverAspect 2/3. Binding is 8.2% of width with the
+               overlay blend _BlendMask applies. The cover art is a stand-in
+               for the real thumbnail — deliberately crude, so nobody reads it
+               as a rendering of the artwork. */
+.fr .cover {
+    width: 120px;
+    height: 180px;
+    flex: 0 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: #e12a20;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.fr .cover .k1 {
+    position: absolute;
+    left: 13px;
+    top: 24px;
+    right: 10px;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: #fff;
+    line-height: 1.05;
+}
+.fr .cover .k3 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 34px;
+    background: rgba(0, 0, 0, 0.2);
+}
+.fr .cover .bind {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 9.84px;
+    mix-blend-mode: overlay;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.26) 0%,
+        rgba(0, 0, 0, 0.07) 34%,
+        rgba(255, 255, 255, 0.3) 78%,
+        rgba(0, 0, 0, 0.11) 100%
+    );
+}
+.fr .cover .hair {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+/* ---------- right column ----------
+               Expanded(Column(crossAxisAlignment: end)). 217pt wide at 393:
+               393 - 40 padding - 120 cover - 16 gap. */
+.fr .rcol {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* BookStatusBadge, as it ships today. Read/Reading take a 10% fill and a
+   40% border; Interested has NO fill and a 55% border, which is the
+   repair book_status_badge.dart documents — the old Interested and Read
+   tints composited to two near-identical greys. Only the three shipped
+   forms are here; the exploration that produced them is in
+   docs/mockups/praise-region. */
+.fr .sbadge {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.fr .sbadge.read {
+    color: var(--text);
+    background: rgba(33, 37, 41, 0.1);
+    border: 1px solid rgba(33, 37, 41, 0.4);
+}
+.fr .sbadge.reading {
+    color: var(--brandText);
+    background: rgba(6, 118, 87, 0.1);
+    border: 1px solid rgba(6, 118, 87, 0.4);
+}
+.fr .sbadge.interested {
+    color: var(--text);
+    background: transparent;
+    border: 1px solid rgba(33, 37, 41, 0.55);
+}
+/* ShelfLabel: surface, top radius 3 only, h9/v5, bold 14, max 140. */
+.fr .slab {
+    background: var(--surface);
+    border-radius: 3px 3px 0 0;
+    padding: 5px 9px;
+    font-size: 14px;
+    font-weight: 700;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- the reaction pill and capsule ----------
+   Not under review here, but present: on a friend's finished book they own
+   the hero's right column, so a store control in the hero (the hero-row
+   version) has to fit beside them. ElevatedButton.icon: brandFill, white,
+   radius 20, h12/v6, label 13 w600, icon 18. */
+.fr .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--brandText);
+    color: #fff;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+}
+.fr .pill .em {
+    font-size: 15px;
+}
+.fr .caprow {
+    margin-top: 8px;
+}
+.fr .rcol > .caprow:first-child {
+    margin-top: 0;
+}
+.fr .cap {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    padding: 0 9px;
+    white-space: nowrap;
+}
+.fr .cap .e {
+    font-size: 15px;
+    line-height: 1;
+}
+.fr .cap .chev {
+    font-size: 14px;
+    color: var(--text);
+    margin-left: 1px;
+    margin-right: -2px;
+}
+
+/* ---------- title band ----------
+               surfaceVariant, bottom radius 30, padding fromLTRB(30,8,30,16).
+               Title 20 bold height 1; author 13 with 10 above; period card 12
+               above. */
+.fr .band {
+    background: var(--variant);
+    border-radius: 0 0 30px 30px;
+    padding: 8px 30px 16px;
+}
+.fr .btitle {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+}
+.fr .bauth {
+    font-size: 13px;
+    margin-top: 10px;
+}
+/* ReadingPeriodRow's card. The badge stands in for the old "Reading
+   period" label rather than sitting beside it. */
+.fr .period {
+    margin-top: 12px;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 8px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+}
+.fr .period i {
+    font-style: normal;
+    color: var(--brandText);
+    font-weight: 600;
+}
+/* Status 0 has no dates, so no card: Align(centerLeft, BookStatusBadge).
+   Same vertical position the card would occupy. */
+.fr .barebadge {
+    margin-top: 12px;
+}
+
+/* ---------- tab strip ---------- */
+.fr .tabs {
+    background: var(--surface);
+    display: flex;
+}
+.fr .tabs s {
+    flex: 1;
+    text-decoration: none;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    padding: 15px 0 13px;
+    position: relative;
+}
+.fr .tabs s.on {
+    color: var(--text);
+}
+.fr .tabs s.on:after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 62px;
+    height: 2px;
+    background: var(--text);
+}
+.fr .tail {
+    height: 24px;
+    background: var(--surface);
+}
+
+/* ==================================================================
+   NEW BELOW: the Book info tab body, and the store controls.
+   ================================================================== */
+
+/* _BookInfoTab: Container(color: surface) wrapping a
+   SingleChildScrollView(padding: EdgeInsets.all(24)). The 24 is why no
+   row below carries its own horizontal padding. */
+.fr .tabbody {
+    background: var(--surface);
+    padding: 24px;
+}
+/* The tab's existing headings — "Book description", "Publisher", the
+   literal 'ISBN' — are all AppTextStyles.subtitle, 17/w600/-0.2. A store
+   section heading takes the same token so it reads as a peer of them and
+   not as a promotion. */
+.fr .h3 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    line-height: 1.25;
+}
+/* SizedBox(height: 8) under every heading, 24 between blocks. */
+.fr .h3 + * {
+    margin-top: 8px;
+}
+.fr .blk + .blk {
+    margin-top: 24px;
+}
+.fr .prose {
+    font-size: 15px;
+    line-height: 1.4;
+}
+.fr .prose.clip {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ---------- the store list, `rows` layout ----------
+   48pt rows on a hairline divider. Not ListTile: ListTile with a leading
+   icon is 56pt in M3 and carries its own 16pt horizontal padding, which
+   would either double the tab's 24 or have to be stripped. Four 56pt
+   rows is 224pt of a 393-wide frame, and drawn at 1:1 that pushed the
+   description entirely off screen — which is the whole argument this
+   layout has to win. 48 with no inset is the compromise. */
+.fr .srow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 48px;
+    border-top: 1px solid var(--divider);
+}
+.fr .srow:last-child {
+    border-bottom: 1px solid var(--divider);
+}
+/* A single neutral glyph for every store, rather than brand marks. The
+   logos-or-text decision is drawn as an element; this is the text side. */
+.fr .sico {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    border-radius: 7px;
+    background: var(--variant);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+.fr .stx {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.fr .slbl {
+    display: block;
+    font-size: 15px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* The supporting line, and the load-bearing part of the whole design:
+   it is where a search-only destination admits to being one.
+
+   **15pt, not the 13 this was first drawn at.** `AppTextStyles` has no
+   13/w400 step, and `text_style_test.dart` scans `lib/ui` for any line
+   spelling out its own `fontSize`/`fontWeight` — so `label.copyWith(
+   fontWeight: w400)` is not available either. The shipped row therefore
+   uses `body` in `secondaryText`, which is what every other supporting
+   line in the app already does (`delete_book_bottom_sheet.dart`).
+   Corrected here rather than left at 13, because a mockup that
+   contradicts the code is worse than no mockup.
+
+   secondaryText is #626A72 — 4.63:1 on surface. Unreadable at the
+   #ADB5BD this frame was forked from. */
+.fr .ssub {
+    display: block;
+    font-size: 15px;
+    color: var(--text2);
+    line-height: 1.4;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* Icons.north_east / arrow.up.right: leaves the app. Distinct from the
+   chevron the app uses for in-app drill-ins (ReactionCapsule, the memo
+   menu), which is the point — these all leave. */
+.fr .sgo {
+    font-size: 15px;
+    color: var(--text2);
+    flex: 0 0 auto;
+    transform: translateY(-1px);
+}
+
+/* ---------- the store list, `chips` layout ----------
+   34pt capsules in surfaceVariant, which is what that token is for
+   ("subtle filled areas: chips, avatars, input fills"). Wraps rather
+   than scrolls: a horizontally scrolling row hides its own overflow, and
+   four items is not enough to be worth a gesture nobody is told about. */
+.fr .schips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.fr .schip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    border-radius: 17px;
+    background: var(--variant);
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.fr .schip .g {
+    font-size: 13px;
+    color: var(--text2);
+}
+/* Chips cannot carry the supporting line, so a search-only store has
+   nowhere to say so. Drawn to make that visible rather than argued in
+   prose — this is the layout's real cost. */
+.fr .schip.searchonly {
+    border: 1px dashed rgba(33, 37, 41, 0.3);
+    background: transparent;
+}
+
+/* ---------- the remembered state ----------
+   One primary action instead of a list. brandFill on white text, 44pt —
+   the height ElevatedActionButton uses for Save in the add-book sheet —
+   fully rounded at 22. */
+.fr .openbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    border-radius: 22px;
+    background: var(--brandText);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+/* The quieter alternative. Padding is reduced by exactly the border
+   width so the box stays 44pt — the Border.all inset trap AvatarCircle
+   and .pill.out both already hit. */
+.fr .openbtn.quiet {
+    background: transparent;
+    color: var(--brandText);
+    border: 1.5px solid var(--brandText);
+    height: 44px;
+    box-shadow: none;
+}
+/* "Get it elsewhere" — the escape hatch that keeps a wrong guess from
+   being a trap. A text button, deliberately not a second filled one. */
+.fr .ovf {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brandText);
+}
+
+/* ---------- loading and empty ----------
+   Availability is a network answer, so both of these are real states and
+   not edge cases. Shimmer base is surfaceVariant per the token doc. */
+.fr .sload {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.fr .sload i {
+    display: block;
+    height: 47px;
+    border-top: 1px solid var(--divider);
+    background: linear-gradient(
+        90deg,
+        var(--variant) 0%,
+        var(--page) 50%,
+        var(--variant) 100%
+    );
+}
+.fr .sempty {
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--text2);
+}
+
+/* ---------- the hero-row version ----------
+   A full-width control inside the band, under the status card. 40pt
+   rather than 44: it is permanent header height on every book, and the
+   collapse threshold _handleScroll measures is the title's own height,
+   so anything added here has to be fixed-height or the fade point moves
+   between books. */
+.fr .herostores {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    border-radius: 20px;
+    background: var(--surface);
+    font-size: 13px;
+    font-weight: 600;
+}
+.fr .herostores .g {
+    font-size: 14px;
+    color: var(--text2);
+}
+
+/* ---------- sheets ----------
+   CNBottomSheet with the app's pinned kSheetCornerRadius = 24 and
+   sheetBackground #EFF5EF. showMenuBottomSheet's own title is
+   AppTextStyles.subtitle with symmetric(vertical: 20) around it. */
+.fr .scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+.fr .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    background: var(--sheet);
+    border-radius: 24px 24px 0 0;
+    padding: 0 20px 20px;
+    box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.18);
+}
+.fr .sheet .st {
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 20px 0;
+}
+/* In a sheet the rows get ListTile's real 56pt: there is no competing
+   content to buy space from, and 56 is what showMenuBottomSheet already
+   draws for every other menu in the app. */
+.fr .sheet .srow {
+    height: 56px;
+    border-top: 0;
+}
+.fr .sheet .srow:last-child {
+    border-bottom: 0;
+}
+.fr .sheet .srow .sico {
+    background: rgba(33, 37, 41, 0.06);
+}
+/* MenuAction.isSelected: a trailing check in brandText. */
+.fr .sheet .srow .chk {
+    color: var(--brandText);
+    font-size: 15px;
+    font-weight: 700;
+}
+/* MenuAction.isDestructive: cancelRedColor. "Forget where I read this"
+   is not destructive in the delete-a-book sense, so it is NOT drawn
+   red — noted because the sheet's own API makes red one flag away. */
+.fr .sheet .srow.clear .slbl {
+    color: var(--text);
+}
+
+/* ---------- the sheet's own loading and empty states ----------
+   Both are real states rather than edge cases, and both live here in the
+   chosen design: availability resolves after the sheet is up, where a
+   spinner is unremarkable and nothing above it moves. */
+.fr .sheet .sload i {
+    height: 55px;
+    border-top: 1px solid rgba(33, 37, 41, 0.06);
+}
+/* "Checking the stores…" under the shimmer rather than over them: the
+   rows are already the progress indicator, so the line is a caption and
+   not a headline. */
+.fr .sfoot {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    padding: 14px 0 4px;
+}
+/* Title plus body, on the scanNoMatchTitle/Body pattern: what happened,
+   why, and no blame. The title takes subtitle (17/w600) so it reads as
+   the sheet's answer rather than as a row that failed to draw. */
+.fr .snone {
+    padding: 4px 4px 12px;
+}
+.fr .snt {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    line-height: 1.25;
+}
+.fr .snb {
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--text2);
+}
+
+/* ---------- element gallery panels ---------- */
+.el .demo {
+    background: var(--variant);
+}
+.demopanel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.demorow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+/* Side-by-side for the logos-or-text decision. */
+.logocmp {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+.logocmp > div {
+    flex: 1 1 200px;
+    min-width: 190px;
+}
+.logocmp h5 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+/* Brand-mark stand-ins. Flat discs with an initial, deliberately crude:
+   embedding real Amazon/Apple/Google marks in a mockup would be both a
+   licensing question and a claim to have checked their brand guidelines. */
+.fr .sico.logo {
+    border-radius: 50%;
+    color: #fff;
+}
+
+/* ==================================================================
+   Library picker — the `libby-library` version only.
+
+   Reuses the sheet's own chrome: same 24px radius, same 20px gutter,
+   same 56pt rows as every other menu in the app. Nothing new is
+   invented here, which is the point — the picker is one more sheet.
+   ================================================================== */
+.fr .sheet .lsearch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: var(--surfaceVariant);
+    color: var(--text2);
+    font-size: 15px;
+}
+.fr .sheet .lsearch .mag {
+    font-size: 14px;
+    opacity: 0.7;
+}
+.fr .sheet .lsearch.typed {
+    color: var(--text);
+}
+/* A library result: name over the system it belongs to. Two lines for
+   the same reason the store rows have two — the second line is what
+   tells two similarly-named library systems apart. */
+.fr .sheet .lrow {
+    display: flex;
+    align-items: center;
+    height: 56px;
+    gap: 12px;
+}
+.fr .sheet .lrow .lico {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 8px;
+    background: rgba(33, 37, 41, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+.fr .sheet .lrow .ltx {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+.fr .sheet .lrow .lname {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fr .sheet .lrow .lmeta {
+    font-size: 13px;
+    color: var(--text2);
+}
+.fr .sheet .lhint {
+    font-size: 13px;
+    color: var(--text2);
+    padding: 4px 0 12px;
+    line-height: 1.45;
+}
+        </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="top-in">
+                <div class="cbox" id="vbox">
+                    <button class="cbtn vbtn hk" id="vbtn" data-key="v">
+                        <span class="branch">&#9095;</span
+                        ><span id="vbtn-label">main</span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="vsearch"
+                                placeholder="Search versions&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="vlist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="vfoot-n"></span
+                            ><button id="vcmp-clear">Stop comparing</button>
+                        </div>
+                    </div>
+                </div>
+                <span class="sep"></span>
+                <span class="brand"
+                    >Libstack &mdash; <span>where to read this</span></span
+                >
+                <div class="vtabs">
+                    <button data-v="screens" data-key="1" class="on">
+                        Screens
+                    </button>
+                    <button data-v="elements" data-key="2">UI Elements</button>
+                    <button data-v="flows" data-key="3">Flows</button>
+                </div>
+                <span class="sep"></span>
+                <div class="cbox" id="cbox">
+                    <button class="cbtn hk" id="cbtn" data-key="/">
+                        <span id="cbtn-label">Screens</span
+                        ><span class="badge" id="cbtn-badge" hidden></span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="csearch"
+                                placeholder="Search screens&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="clist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="cfoot-n"></span
+                            ><button id="cclear">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="count" id="cnt"></div>
+                <div class="vinfo">
+                    <span class="lbl" id="vinfo-lbl"></span>
+                    <span class="note" id="vinfo-note"></span>
+                    <span class="diffs" id="vinfo-diffs"></span>
+                    <button id="difftoggle" class="off">
+                        Only differences
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="view on" id="v-screens">
+                <h1>Where to read this &mdash; three homes for a store link</h1>
+                <p class="lead">
+                    Opening a book in Kindle, Apple Books, Play Books or Libby
+                    from the details page, drawn at
+                    <b>1px&nbsp;=&nbsp;1pt</b> on a 393pt frame, cropped from
+                    the back button down into the Book info tab &mdash; the
+                    control competes with the hero for prominence and with the
+                    description for space, so neither can be left out. Three
+                    versions put it in three places:
+                    <code>tab-section</code> (recommended),
+                    <code>hero-row</code> and <code>bar-sheet</code>. Switch
+                    with <span class="kbd">v</span>, compare two with
+                    <span class="kbd">&#8679;Enter</span>.
+                </p>
+                <p class="lead">
+                    Colours are <code>AppColors.light</code> verbatim &mdash;
+                    <code>surfaceVariant #E9ECEF</code> for the hero,
+                    <code>surface #FFFFFF</code> for the tab body,
+                    <code>brandFill #067657</code> for the primary action,
+                    <code>sheetBackground #EFF5EF</code> for sheets. Note
+                    <code>secondaryText #626A72</code>: this frame is forked
+                    from <code>docs/mockups/praise-region</code>, which still
+                    carries the old <code>#ADB5BD</code> at 2.07:1, and the
+                    store rows put real information on that token. Type is
+                    <code>AppTextStyles</code> &mdash; headings
+                    <code>subtitle</code> 17/w600/&minus;0.2 (the same token
+                    the tab's own <i>Book description</i> and <i>Publisher</i>
+                    headings use, so the section reads as their peer),
+                    <code>body</code> 15/1.4, <code>label</code> 13/w600. The
+                    cover is 120&times;180 from
+                    <code>kDefaultCoverAspect</code> 2/3, the shelf 8pt with
+                    <code>offset(0,2) blur 2 black@25%</code>, the tab body
+                    <code>EdgeInsets.all(24)</code>, sheets
+                    <code>kSheetCornerRadius</code> 24. The
+                    <i>Interested</i> badge is unfilled with a 55% border,
+                    which is what <code>book_status_badge.dart</code> ships
+                    today.
+                </p>
+                <p class="lead">
+                    <b>What the drawings settle.</b> A store row's second line
+                    is load-bearing, not decoration: it is the only place
+                    Kindle can admit it leads to a search results page rather
+                    than to the book, because Amazon publishes no per-book deep
+                    link. That single fact rules out the chips layout as a
+                    default and rules out any design that shows the four stores
+                    as interchangeable. It also explains the remembered state
+                    &mdash; once the reader has told us where their copy lives,
+                    &ldquo;launch the app&rdquo; is finally an honest promise
+                    instead of a guess about ownership.
+                </p>
+                <div id="screens"></div>
+                <div class="noneleft gone" id="screens-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-elements">
+                <h1>UI elements</h1>
+                <p class="lead">
+                    The parts the three versions are assembled from, and the two
+                    decisions still open. The brand-mark discs are crude
+                    stand-ins on purpose: embedding real Amazon, Apple or Google
+                    marks in a mockup would be a licensing question and a claim
+                    to have checked three sets of brand guidelines.
+                </p>
+                <div id="elements"></div>
+                <div class="noneleft gone" id="elements-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-flows">
+                <h1>UX flows</h1>
+                <p class="lead">
+                    Acquiring, opening, changing a wrong guess, and finding what
+                    a friend read. Every step is a real state from the Screens
+                    tab, so a version cannot have its screens corrected and its
+                    flows left stale. One step is deliberately undrawable and
+                    says so: once the reader leaves for Kindle, the app is gone.
+                </p>
+                <div class="flowlayout">
+                    <div class="side">
+                        <div class="sbox" id="sbox">
+                            <input
+                                class="search"
+                                id="fsearch"
+                                placeholder="Search flows&hellip;"
+                                autocomplete="off"
+                            />
+                            <span class="hint hint-slash"
+                                ><span class="kbd">/</span></span
+                            >
+                            <span class="hint hint-esc"
+                                ><span class="kbd">Esc</span></span
+                            >
+                        </div>
+                        <div id="sidenav"></div>
+                    </div>
+                    <div>
+                        <div id="flows"></div>
+                        <div class="noneleft gone" id="flows-none">
+                            No flows match that search.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+/* ==================================================================
+   SECTION 2: FRAME RENDERER — the book-details page, drawn once.
+
+   The chosen design is `bar-sheet`: an app-bar icon that opens a sheet.
+   That is the ROOT version, so the base data below is the settled design
+   and the two rejected alternatives are patches over it.
+
+   The chrome (bar, cover, corner, shelf, band, status card, tabs, tab
+   body) is defined here once. `where` is still read in three places
+   rather than switched at the top, because a frame per version is exactly
+   how the chrome drifts.
+   ================================================================== */
+/* The four destinations, and the honest supporting line for each.
+
+               `kind` is the capability, and it is the spine of this whole
+               page:
+                 exact   — a per-book URL exists and we have its id
+                 search  — only a query, so the reader lands on results
+                 library — a borrow lookup, not a purchase
+                 app     — launches the reader app, cannot target the book
+
+               Kindle is `search` for acquiring and `app` for opening, and no
+               wording makes it otherwise: Amazon publishes no per-book deep
+               link, and Kindle's only claimed URL reaches the library rather
+               than a title.
+
+               **The verb carries the capability.** `Read in Play Books`
+               promises a book; `Open Kindle` promises an app. That split is
+               the single most load-bearing decision in the copy — a reader
+               who learns it once can trust every row afterwards. Reviewed
+               against app_en.arb, whose voice is sentence case, contracted
+               ("Couldn't load book info"), and states what DOES happen
+               rather than apologising for what doesn't.
+
+               **Which of the two lists the sheet shows has changed since this
+               page was drawn, and it is not drawn here.** It used to turn on
+               `reader_app` alone. `reader_app` and status are now read as two
+               independent facts: `reader_app` decides which shop LEADS and
+               carries the check, and status decides whether the OTHER shops are
+               `open` rows or `acquire` rows. For your own book at Reading or
+               Finished, every row is an open row.
+
+               The numbers forced it -- of 473 books in production 342 are
+               reading or finished and 3 carry a `reader_app`, so the acquire
+               list was being shown for the large majority of a library the app
+               knew had been read. And the first attempt only applied it when
+               nothing was stored, which meant storing one shop sent every other
+               shop back to the storefront: a book at Reading with Apple Books
+               stored still offered `Opens this book's store page in your
+               browser` for Play Books.
+
+               Each row still reaches as far as it can -- Play Books says
+               `Read in Play Books / Opens at this book` where a volume id
+               exists, Kindle admits it can only reach the library. An earlier
+               draft withheld the ids to hold every row at `app`, and checking
+               that killed it: `play.google.com/books/reader` with no id IS the
+               Play Books storefront, so the humbler row promised `Opens your
+               Play Books library` and landed on a shop.
+
+               Gated on ownership: a friend's finished book still shows the
+               shops, which is the case this whole sheet was built for.
+
+               No new rows and no new copy, which is why no screen was added --
+               it is the same four shops with the `open` labels every
+               stored-shop screen below already shows. */
+const S = {
+  play: {
+    n: "Play Books",
+    ico: "G",
+    logo: "#1a73e8",
+    /* A licence-clean monochrome mark exists (Simple Icons, CC0) and ships
+       as `assets/icons/storePlayIcon.svg`. Drawn here from the same path
+       data so this page shows what the app shows. */
+    mark: "M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z",
+    /* Exact, but a WEB STORE PAGE rather than the app -- which is the reported
+       bug, and is proven rather than inferred. Apple's app-site-association for
+       play.google.com claims exactly `/books/reader`, `/books/listen`,
+       `/books/getapp2` and `/books/notes` for com.google.GoogleBooks;
+       `/store/books/details` is claimed by nothing, so it opens Safari however
+       installed the app is. It is also the *right* destination -- Google cannot
+       sell books in-app on iOS -- so the URL stays and the copy changed. */
+    get: [
+      "Play Books",
+      "Opens this book&rsquo;s store page in your browser",
+      "storepage",
+    ],
+    /* Acquiring WITHOUT a volume id -- a Play Store search rather than the
+       book's store page. The counterpart to `openNoId` below, and reached in
+       the same circumstance: a Kakao-sourced book whose keyless Google Books
+       lookup also came up empty. */
+    getNoId: ["Play Books", "Searches Play Books", "search"],
+    /* `/books/reader` IS claimed, so this one genuinely opens the app. The one
+       row in the sheet that reaches a book inside the shop's own reader. */
+    open: ["Read in Play Books", "Opens at this book", "exact"],
+    /* Opening WITHOUT a volume id. This pair is the fix for the reported
+       bug: Play Books was the only shop with no app fallback, so an
+       id-less open fell through to a Play Store search while the sheet
+       still labelled it "Open Play Books". A row promising the app and
+       performing a search is exactly what StoreReach exists to prevent.
+
+       Reachable less often now than it was: a Kakao-sourced book gets one
+       keyless Google Books lookup to find an id, so this is the state
+       after that lookup also comes up empty. */
+    openNoId: ["Open Play Books", "Opens your Play Books library", "app"],
+  },
+  apple: {
+    n: "Apple Books",
+    ico: "A",
+    logo: "#000000",
+    /* The bare Apple mark, which is the only Apple glyph Simple Icons
+       carries — there is no Apple Books icon. Acceptable because the row is
+       already labelled "Apple Books"; the mark identifies the ecosystem and
+       the label identifies the shop. */
+    mark: "M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701",
+    /* Exact and IN THE APP, since `books.apple.com` is a domain Books claims.
+       One keyless iTunes lookup supplies the id -- by ISBN, then by a guarded
+       title+author search for the many books Apple sells but has not indexed by
+       ISBN. `getNoId` is the "we could not ask" case; when Apple answers that it
+       has no edition the row is DROPPED entirely, because its fallback opens
+       Books on an empty search tab and no wording makes that honest. See the
+       `apple-absent` screen. */
+    get: ["Apple Books", "Opens this book", "exact"],
+    getNoId: ["Apple Books", "Searches Apple Books", "search"],
+    open: ["Open Apple Books", "Opens your Books library", "app"],
+  },
+  kindle: {
+    n: "Kindle",
+    ico: "K",
+    logo: "#ff9900",
+    /* The AMAZON mark, not a Kindle one. Amazon publishes no Kindle glyph in
+       any set that can be legally redistributed, and this row's own second
+       line already reads "Searches Amazon" -- so the mark names the ecosystem
+       and the label names the shop, which agree rather than compete. Simple
+       Icons, CC0; ships as `assets/icons/storeKindleIcon.svg`. */
+    mark: "M.045 18.02q.107-.174.348-.022q5.455 3.165 11.87 3.166q4.278-.001 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13c.226-.088.39-.046.525.13c.12.174.09.336-.12.48c-.256.19-.6.41-1.006.654q-1.867 1.113-4.185 1.726a17.6 17.6 0 0 1-10.951-.577a17.9 17.9 0 0 1-5.43-3.35q-.15-.113-.151-.22c0-.047.021-.09.051-.13zm6.565-6.218q0-1.507.743-2.577c.495-.71 1.17-1.25 2.04-1.615c.796-.335 1.756-.575 2.912-.72c.39-.046 1.033-.103 1.92-.174v-.37c0-.93-.105-1.558-.3-1.875c-.302-.43-.78-.65-1.44-.65h-.182c-.48.046-.896.196-1.246.46c-.35.27-.575.63-.675 1.096c-.06.3-.206.465-.435.51l-2.52-.315c-.248-.06-.372-.18-.372-.39c0-.046.007-.09.022-.15q.372-1.935 1.82-2.88c.976-.616 2.1-.975 3.39-1.05h.54c1.65 0 2.957.434 3.888 1.29c.135.15.27.3.405.48c.12.165.224.314.283.45c.075.134.15.33.195.57c.06.254.105.42.135.51c.03.104.062.3.076.615c.01.313.02.493.02.553v5.28c0 .376.06.72.165 1.036q.157.471.315.674l.51.674q.136.204.136.36q0 .181-.18.314c-1.2 1.05-1.86 1.62-1.963 1.71q-.247.203-.63.045a6 6 0 0 1-.526-.496l-.31-.347a9 9 0 0 1-.317-.42l-.3-.435c-.81.886-1.603 1.44-2.4 1.665c-.494.15-1.093.227-1.83.227c-1.11 0-2.04-.343-2.76-1.034c-.72-.69-1.08-1.665-1.08-2.94l-.05-.076zm3.753-.438q-.001.848.425 1.364c.285.34.675.512 1.155.512c.045 0 .106-.007.195-.02c.09-.016.134-.023.166-.023c.614-.16 1.08-.553 1.424-1.178c.165-.28.285-.58.36-.91c.09-.32.12-.59.135-.8c.015-.195.015-.54.015-1.005v-.54c-.84 0-1.484.06-1.92.18c-1.275.36-1.92 1.17-1.92 2.43l-.035-.02zm9.162 7.027c.03-.06.075-.11.132-.17q.544-.365 1.05-.5a8 8 0 0 1 1.612-.24c.14-.012.28 0 .41.03c.65.06 1.05.168 1.172.33c.063.09.099.228.099.39v.15c0 .51-.149 1.11-.424 1.8q-.418 1.034-1.156 1.68q-.11.09-.197.09c-.03 0-.06 0-.09-.012c-.09-.044-.107-.12-.064-.24c.54-1.26.806-2.143.806-2.64c0-.15-.03-.27-.087-.344c-.145-.166-.55-.257-1.224-.257q-.364 0-.87.046c-.363.045-.7.09-1 .135q-.134 0-.18-.044c-.03-.03-.036-.047-.02-.077c0-.017.006-.03.02-.063v-.06z",
+    /* Not "Kindle Store / Search results, no exact match", which was a
+       clinical caveat in a voice that does not write them.
+
+       Nor "Opens an Amazon search", which was the reviewed copy and
+       shipped as `Searches {store}` instead: an article cannot agree with
+       an interpolated brand name, and it rendered "Opens a Amazon
+       search". Amazon and Apple Books are the two shops most often
+       reached this way, so the article was wrong in the common case
+       rather than the rare one. A widget test caught it and now pins it. */
+    get: ["Kindle", "Searches Amazon", "search"],
+    /* Not "Open in Kindle / Opens the app, not the book":
+                       leads with what does happen, and is more accurate —
+                       it opens the library. Dropping "in" matters too,
+                       because you are not opening the book in Kindle.
+
+       The destination is `read.amazon.com/application`, which replaced
+       `kindle://` -- following the rule the Libby row below established after a
+       device failure. That host matters: on `www.amazon.com` the Kindle app
+       claims nothing, and `/bookshelf` there belongs to the *shopping* app, so
+       the obvious-looking URL would open the wrong app. Uninstalled it reaches
+       Kindle Cloud Reader, which is genuinely the reader's library -- so the
+       line stays true through the fallback instead of dying on it.
+
+       **Confirmed on a device: it opens Kindle at the library page.** So this
+       line is earned rather than assumed, like Libby's below.
+
+       Play Books moved the same way, to `play.google.com/books/reader`, though
+       that one is not tapped yet. Apple Books is the sole remaining scheme:
+       there is no Apple Books web reader, so no universal link could reach a
+       reader's own library at all. */
+    open: ["Open Kindle", "Opens your Kindle library", "app"],
+  },
+  libby: {
+    n: "Libby",
+    ico: "L",
+    logo: "#c8102e",
+    /* The one mark no CC0 set carries. From Arcticons (CC BY-SA 4.0), which
+       is why the licence page in settings_page.dart now names it -- bundled
+       SVGs never reach Flutter's aggregated page, so nothing else would.
+
+       A STROKE where the other three are solid fills, so it carries less ink
+       at equal size and `_Glyph` draws it at 20 of the 30pt box rather than
+       16. `markStroke` reproduces that here; see
+       `test/store_marks_probe_test.dart` for the side-by-side. */
+    markBox: "0 0 48 48",
+    markStroke: true,
+    mark: "m39.85 14.43l-15.42 3.64a1.8 1.8 0 0 1-.86 0L8.15 14.43a1.87 1.87 0 0 0-1.87 1.86V38a1.87 1.87 0 0 0 1.87 1.86l15.42 3.62a1.8 1.8 0 0 0 .86 0l15.42-3.62A1.87 1.87 0 0 0 41.72 38V16.29a1.87 1.87 0 0 0-1.87-1.86m-17.28 3.41v25.37m2.86-25.37v25.37M37.56 15a15.1 15.1 0 0 0-27.12 0M30.17 7.82V4.5l2.53 1.63l2.53-1.63v7.02",
+    get: ["Libby", "Borrow free from your library", "library"],
+    /* Both lines ship, and which one a reader sees is derived from the reach like
+       every other row's — `get` when no library is stored, `getExact` when one is.
+
+       The four-character difference is load-bearing: without it the destination
+       would get better (an exact in-app title instead of a browser page) and the row
+       would look identical. `storeBorrowThisBook` is the shipped key.
+
+       Neither line claims the copy is **available**. Availability is per-library --
+       the same title is 87-of-87 at LAPL and eleven deep in holds at SFPL -- so the
+       row names the book and the lender and lets Libby settle the outcome. */
+    getExact: ["Libby", "Borrow this book from your library", "exact"],
+    /* The rendered string is the generic `storeOpensLibraryApp`, not a
+       Libby-specific line -- this used to read "Opens your Libby shelf" here and
+       did not match what ships. It stays truthful: the destination is
+       `libbyapp.com/shelf/loans`, the reader's own loans, and a title id does not
+       upgrade it, because reaching one loan needs a library key we do not have.
+
+       That URL replaced `libby://`, which was a guessed scheme, is not the app's
+       (`com.overdrive.dewey`) and failed with "Something went wrong" even while
+       declared in LSApplicationQueriesSchemes. Libby claims every path on its
+       host, so a universal link opens the app -- and degrades to Libby's web
+       shelf when it is missing, which a custom scheme can never do. Confirmed on
+       a device: it is where the failed `title/<id>` attempt landed. */
+    open: ["Open Libby", "Opens your Libby library", "app"],
+  },
+};
+const ALL = ["play", "apple", "kindle", "libby"];
+
+/* Every user-facing string, in one table, because that is what a
+               copy review needs to be able to read. Keys are the names they
+               would take in app_en.arb. */
+const T = {
+  whereToRead: "Where to read",
+  yourCopy: "Your copy",
+  forget: "Forget where I read this",
+  checking: "Checking the stores\u2026",
+  noneTitle: "No ebook edition of this one",
+  noneBody:
+    "None of the stores we check have one. Print-only and small-press books often aren't listed.",
+  /* --- `libby-library` only. Copy is a first draft, NOT reviewed: the
+     approved copy in the design doc covers the store rows only, and this
+     version has not been through /ux-copy. --- */
+  libTitle: "Which library?",
+  libSearchHint: "Library name or postcode",
+  /* Answers "why are you asking me this", once, where it is asked. Libby
+     itself cannot search without a library either, so this is the
+     product's own constraint rather than ours -- worth saying plainly
+     instead of implying the app is nosy. */
+  libWhy:
+    "Libby searches one library at a time, so it needs to know yours. Saved for next time.",
+  libNoneTitle: "No library by that name",
+  libNoneBody:
+    "Try the library system rather than a branch \u2014 \u201cKing County\u201d rather than \u201cAuburn\u201d.",
+};
+
+/* BookStatusBadge, all three shipped forms. */
+function statusBadge(s) {
+  const [cls, label] =
+    s.status === 2
+      ? ["read", "Read"]
+      : s.status === 1
+        ? ["reading", "Reading"]
+        : ["interested", "Interested"];
+  return `<span class="sbadge ${cls}">${label}</span>`;
+}
+
+/* ReadingPeriodRow. No dates means no card — a lone chip in a
+               full-width white slab was drawn at 1:1 in the praise-region set
+               and looked worse than nothing, so status 0 gets a bare badge in
+               the same vertical position. */
+function periodCard(s) {
+  if (s.status < 1) return `<div class="barebadge">${statusBadge(s)}</div>`;
+  return (
+    `<div class="period">${statusBadge(s)}` +
+    `<span>2023.09.04 ~ ${s.status === 2 ? "2023.09.05" : ""}</span>` +
+    `<i>${s.status === 2 ? "1 day" : "12 days"}</i></div>`
+  );
+}
+
+/* The hero's right column. Empty on your own book; on a friend's
+               finished one it carries the reaction controls. */
+function rcol(s) {
+  if (!s.praise) return "";
+  return (
+    `<span class="pill"><span class="em">&#127881;</span>React</span>` +
+    `<div class="caprow"><span class="cap"><span class="e">&#128079;</span>` +
+    `<span class="e">&#128149;</span><span class="chev">&#8250;</span></span></div>`
+  );
+}
+
+/* One store row. `mode` picks which of the two label pairs on S
+               to use, so a store cannot say "opens at this book" in the
+               acquire list and mean the search page. */
+function storeRow(id, mode, opts) {
+  const o = opts || {};
+  const st = S[id];
+  /* `noId` degrades a row to its unresolved pair where the store has one.
+     Both lookups can miss, and a store that cannot be exact anyway has no
+     second pair to fall back to -- so this is a lookup, not a branch.
+
+     `libbyExact` is the mirror, and belongs to the `libby-library` proposal:
+     it UPGRADES a row where a stored library key makes one possible. */
+  const key =
+    o.libbyExact && st[mode + "Exact"]
+      ? mode + "Exact"
+      : o.noId && st[mode + "NoId"]
+        ? mode + "NoId"
+        : mode;
+  const [lbl, sub, kind] = st[key];
+  /* The real mark for all four shops. An earlier round shipped letter chips for
+     Kindle and Libby, on the conclusion that no licence-clean mark existed for
+     either -- wrong twice over: Simple Icons still carries `amazon`, and
+     Arcticons carries Libby. The letter (`st.ico`) survives only as the
+     brand-colour comparison in `el-logos`.
+
+     Tinted with `currentColor`, not painted in the brand's own colour: the sheet
+     is otherwise entirely typographic, and a full-colour badge would be the
+     loudest thing on it. `st.logo` is retained only for that rejected
+     comparison.
+
+     Libby's is a stroke rather than a fill, and is drawn larger for it -- see the
+     note on its entry in S. */
+  const box = st.markBox || "0 0 24 24";
+  const px = st.markStroke ? 19 : 15;
+  const paint = st.markStroke
+    ? `fill="none" stroke="currentColor" stroke-width="3" ` +
+      `stroke-linecap="round" stroke-linejoin="round"`
+    : `fill="currentColor"`;
+  const ico = o.brandColour
+    ? `<span class="sico logo" style="background:${st.logo}">${st.ico}</span>`
+    : `<span class="sico"><svg viewBox="${box}" width="${px}" height="${px}" ` +
+      `${paint} aria-hidden="true"><path d="${st.mark}"/></svg></span>`;
+  const trail = o.check
+    ? `<span class="chk">&#10003;</span>`
+    : `<span class="sgo">&#8599;</span>`;
+  return (
+    `<div class="srow${o.cls ? " " + o.cls : ""}" data-kind="${kind}">${ico}` +
+    `<span class="stx"><span class="slbl">${lbl}</span>` +
+    `<span class="ssub">${sub}</span></span>${trail}</div>`
+  );
+}
+
+function storeRows(list, mode, opts) {
+  return list.map((id) => storeRow(id, mode, opts)).join("");
+}
+
+/* The chips layout, kept only for the rejected tab-section
+               branch. A chip has no second line, so a search-only
+               destination has nowhere to admit it — drawn as a dashed
+               outline instead, which is a weaker signal and is meant to
+               look like one. */
+function storeChips(list, mode) {
+  return (
+    `<div class="schips">` +
+    list
+      .map((id) => {
+        const [lbl, , kind] = S[id][mode];
+        const cls = kind === "search" ? " searchonly" : "";
+        return `<span class="schip${cls}">${lbl}<span class="g">&#8599;</span></span>`;
+      })
+      .join("") +
+    `</div>`
+  );
+}
+
+/* The sheet's body, which is the whole of the chosen design.
+
+               Rows get ListTile's real 56pt here: there is no competing
+               content to buy space from, and 56 is what showMenuBottomSheet
+               already draws for every other menu in the app. */
+function sheetBody(s) {
+  /* The library picker, `libby-library` only. Drawn as one more sheet
+     rather than a page: it is a single choice made once, and it is
+     reached from inside a sheet, so pushing a route would take the
+     reader further from the book than the decision warrants. */
+  if (s.state === "librarypick")
+    return (
+      `<div class="lsearch${s.typed ? " typed" : ""}">` +
+      `<span class="mag">&#9906;</span>${s.typed || T.libSearchHint}</div>` +
+      (s.libs && s.libs.length
+        ? s.libs
+            .map(
+              (l) =>
+                `<div class="lrow"><span class="lico">&#127968;</span>` +
+                `<span class="ltx"><span class="lname">${l[0]}</span>` +
+                `<span class="lmeta">${l[1]}</span></span>` +
+                `<span class="sgo">&#8250;</span></div>`,
+            )
+            .join("")
+        : `<div class="snone"><div class="snt">${T.libNoneTitle}</div>` +
+          `<div class="snb">${T.libNoneBody}</div></div>`) +
+      `<div class="lhint">${s.hint || T.libWhy}</div>`
+    );
+  if (s.state === "loading")
+    return (
+      `<div class="sload"><i></i><i></i><i></i><i></i></div>` +
+      `<div class="sfoot">${T.checking}</div>`
+    );
+  if (s.state === "empty")
+    return (
+      `<div class="snone"><div class="snt">${T.noneTitle}</div>` +
+      `<div class="snb">${T.noneBody}</div></div>`
+    );
+  if (s.state === "remembered") {
+    const others = ALL.filter((x) => x !== s.remembered);
+    /* `noId` draws the state where no per-book identifier could
+         be found for the remembered shop. Only Play Books has a
+         different pair for it; the rest cannot be exact anyway. */
+    const mode = s.noId && S[s.remembered].openNoId ? "openNoId" : "open";
+    return (
+      storeRow(s.remembered, mode, { check: true }) +
+      storeRows(others, "get", { noId: s.noId }) +
+      /* Not drawn red. showMenuBottomSheet's own API makes
+                           isDestructive one flag away, but forgetting a store
+                           is not deleting a book. */
+      `<div class="srow clear"><span class="sico">&#8722;</span>` +
+      `<span class="stx"><span class="slbl">${T.forget}</span></span></div>`
+    );
+  }
+  return storeRows(s.stores, "get", {
+    noId: s.noId,
+    libbyExact: s.libbyExact,
+  });
+}
+
+function sheet(s) {
+  /* The title is the only thing that can report the remembered
+                   state, because the bar icon cannot. See the `icon-unmarked`
+                   screen for what that costs. */
+  const title =
+    s.state === "librarypick"
+      ? T.libTitle
+      : s.state === "remembered"
+        ? T.yourCopy
+        : T.whereToRead;
+  return `<div class="sheet"><div class="st">${title}</div>${sheetBody(s)}</div>`;
+}
+
+/* The rejected tab-section branch's in-tab section. */
+function storeSection(s) {
+  if (s.where !== "tab") return "";
+  if (s.state === "loading")
+    return (
+      `<div class="blk"><div class="h3">${T.whereToRead}</div>` +
+      `<div class="sload"><i></i><i></i><i></i></div></div>`
+    );
+  if (s.state === "empty")
+    return (
+      `<div class="blk"><div class="h3">${T.whereToRead}</div>` +
+      `<div class="snb">${T.noneBody}</div></div>`
+    );
+  if (s.state === "remembered") {
+    const [lbl, sub] = S[s.remembered].open;
+    return (
+      `<div class="blk"><div class="h3">${T.yourCopy}</div>` +
+      `<div class="openbtn">${lbl}<span>&#8599;</span></div>` +
+      `<div class="ssub" style="text-align:center;margin-top:6px">${sub}</div></div>`
+    );
+  }
+  const body =
+    s.layout === "chips"
+      ? storeChips(s.stores, "get")
+      : storeRows(s.stores, "get", {});
+  return `<div class="blk"><div class="h3">${T.whereToRead}</div>${body}</div>`;
+}
+
+/* The Book info tab. In the chosen design this is exactly as it
+               ships — the headings are the real l10n strings, and
+               `bookDescription` is "About this book", not "Book
+               description". */
+function tabBody(s) {
+  if (s.tab === "notes")
+    return (
+      `<div class="tabbody"><div class="blk">` +
+      `<div class="prose" style="color:var(--text2)">No notes yet</div>` +
+      `</div></div>`
+    );
+  return (
+    `<div class="tabbody">` +
+    storeSection(s) +
+    `<div class="blk"><div class="h3">About this book</div>` +
+    `<div class="prose clip">Live commerce is no longer a channel bolted onto retail. ` +
+    `This book follows six sellers through their first year, and asks what ` +
+    `actually changed about the work.</div></div>` +
+    `<div class="blk"><div class="h3">Publisher</div>` +
+    `<div class="prose">\uc0dd\uac01\uc758\ud798</div></div>` +
+    `<div class="blk"><div class="h3">ISBN</div>` +
+    `<div class="prose">9791161571188</div></div></div>`
+  );
+}
+
+/* The rejected hero-row branch's control. */
+function heroCtl(s) {
+  if (s.where !== "hero") return "";
+  if (s.state === "empty") return "";
+  if (s.state === "remembered") {
+    const [lbl] = S[s.remembered].open;
+    return `<div class="herostores">${lbl}<span class="g">&#8599;</span></div>`;
+  }
+  return `<div class="herostores">${T.whereToRead}<span class="g">&#8250;</span></div>`;
+}
+
+/** Draw one screen from its spec. */
+function frame(s) {
+  /* The Settings page, `libby-library` only. A different page entirely, so it
+     short-circuits the book-details frame rather than adding flags to it.
+     Deliberately drawn beside the EXISTING book-source row: that row is
+     already "which catalogue does this app talk to", so the library belongs
+     with it and needs no new section. */
+  if (s.settings) {
+    const row = (name, meta) =>
+      `<div class="lrow"><span class="ltx">` +
+      `<span class="lname">${name}</span>` +
+      `<span class="lmeta">${meta}</span></span>` +
+      `<span class="sgo">&#8250;</span></div>`;
+    return (
+      `<div class="fr"><div class="nav"><span class="back">&#8249;</span></div>` +
+      `<div class="tabbody" style="padding-top:8px">` +
+      `<div class="blk"><div class="h3">Books</div>` +
+      row("Book search", "Google Books") +
+      row("Library for borrowing", "King County Library System") +
+      `<div class="lhint">Used for the Libby row on a book. Clearing it puts ` +
+      `that row back to a plain search.</div></div></div></div>`
+    );
+  }
+  let h = `<div class="fr">`;
+  h += `<div class="nav"><span class="back">&#8249;</span>`;
+  /* The shipped bar is `isSelf ? [delete, edit] : null`, so a
+                   friend's book has no actions at all. This version has to
+                   CREATE the group on a friend's book rather than add to it —
+                   the one place it costs more than it looks. */
+  if (s.isSelf || s.where === "bar") {
+    h += `<span class="acts">`;
+    if (s.where === "bar")
+      h +=
+        `<span class="ai newctl${s.marked ? " marked" : ""}">&#8599;` +
+        (s.marked ? `<i class="dot"></i>` : "") +
+        `</span>`;
+    if (s.isSelf)
+      h += `<span class="ai">&#128465;</span><span class="ai">&#9998;</span>`;
+    h += `</span>`;
+  }
+  h += `</div>`;
+  h += `<div class="hero"><div class="hrow">`;
+  h += `<div class="cover"><div class="k1">\ub77c\uc774\ube0c<br/>\ucee4\uba38\uc2a4</div><div class="k3"></div><span class="bind"></span><span class="hair"></span></div>`;
+  h += `<div class="rcol">${rcol(s)}</div></div>`;
+  h += `<div class="corner"><span class="slab">IT 12</span></div>`;
+  h += `</div><div class="shelf"></div>`;
+  h += `<div class="band"><div class="btitle">\ub77c\uc774\ube0c \ucee4\uba38\uc2a4 \uc131\uacf5 \uc804\ub7b5</div><div class="bauth">\uc774\ud604\uc219</div>`;
+  h += periodCard(s);
+  h += heroCtl(s);
+  h += `</div>`;
+  h += `<div class="tabs"><s class="${s.tab === "notes" ? "" : "on"}">Book info</s><s class="${s.tab === "notes" ? "on" : ""}">Notes</s></div>`;
+  h += tabBody(s);
+  if (s.sheet) h += `<div class="scrim"></div>${sheet(s)}`;
+  return h + `</div>`;
+}
+
+/* ==================================================================
+   SECTION 3: DATA — the chosen design. An app-bar icon opening a sheet.
+   ================================================================== */
+/* Base specs, named so the version patches can derive from them
+               instead of restating them. Restating an unchanged screen in a
+               patch is the drift the data model exists to prevent, and it
+               makes the diff report changes that are not there. */
+const B = {
+  closed: {
+    where: "bar",
+    tab: "info",
+    state: "acquire",
+    stores: ALL,
+    isSelf: true,
+    status: 0,
+  },
+  open: {
+    where: "bar",
+    tab: "info",
+    state: "acquire",
+    stores: ALL,
+    isSelf: true,
+    status: 0,
+    sheet: "stores",
+  },
+  reading: {
+    where: "bar",
+    tab: "info",
+    state: "acquire",
+    stores: ALL,
+    isSelf: true,
+    status: 1,
+  },
+  remembered: {
+    where: "bar",
+    tab: "info",
+    state: "remembered",
+    remembered: "kindle",
+    stores: ALL,
+    isSelf: true,
+    status: 1,
+    sheet: "stores",
+  },
+  friend: {
+    where: "bar",
+    tab: "info",
+    state: "acquire",
+    stores: ALL,
+    isSelf: false,
+    status: 2,
+    praise: true,
+  },
+};
+
+const SCREENS = [
+  [
+    "Own book &middot; nothing known yet",
+    [
+      [
+        "bar-icon",
+        "The entry point",
+        "One 24pt glyph beside delete and edit. The tab body is exactly as it ships \u2014 no section, description unclipped, headings still the real l10n strings. That is the whole argument for this version: nothing is spent. The cost is that nothing is advertised either, and the glyph has to carry a novel action on its own, which is why its tooltip is real copy rather than an afterthought.",
+        B.closed,
+      ],
+      [
+        "sheet-open",
+        "Where to read",
+        "The design. Four destinations at ListTile's real 56pt, each with a second line that says what a tap actually does \u2014 and that second line is the only place Kindle can admit it leads to an Amazon search rather than to the book. If these four rows ever look interchangeable, the feature has started lying.",
+        B.open,
+      ],
+      [
+        "sheet-open-noid",
+        "… when both lookups miss",
+        "The same sheet after the two on-demand lookups come up empty, which is the ordinary case for a Korean book rather than an edge: Kakao supplies no Google volume id, and Apple's kr ISBN coverage is thin enough that most Korean titles miss. Two rows lose their exact promise and say so, and Kindle and Libby are unchanged because nothing could ever have upgraded them — which is the clearest demonstration on this page that the second line is derived from the reach rather than written per shop. Worth looking at next to sheet-open: the sheet degrades without changing shape, so nothing moves and nothing has to apologise.",
+        { ...B.open, noId: true },
+      ],
+      [
+        "apple-absent",
+        "Apple says it has no edition",
+        "The three-way answer, drawn. Apple's row is **gone**, not degraded, and that is the only honest option left: `books.apple.com/<cc>/search?term=` does open the Books app -- the domain is claimed -- and then ignores the term completely, landing the reader on an empty search box under a row that said \u201cSearches Apple Books\u201d. Since a bare app launch is banned for an acquire link, and no wording describes an empty search box as a way to get a book, the row is withdrawn. Compare sheet-open: only Apple leaves, the sheet keeps its shape, and nothing apologises. **The asymmetry is the point** -- this fires only when Apple *answered*; a timeout or an offline device keeps the row, because hiding a shop on the strength of a dropped connection would be the worse error.",
+        { ...B.open, stores: ["play", "kindle", "libby"] },
+      ],
+      [
+        "loading",
+        "Checking the stores",
+        "Availability resolves after the sheet is up, where a spinner is unremarkable and no layout above it moves. Strictly the best home for the async problem of the three versions considered \u2014 the tab-section branch has to reserve height and the hero-row branch cannot take a late height change at all.",
+        { ...B.open, state: "loading" },
+      ],
+      [
+        "empty",
+        "Nothing found",
+        "Title plus body, on the scanNoMatch pattern: what happened, why, and no blame. Deliberately does not name the ISBN \u2014 scanNoMatchBody does, but there the reader had just scanned a barcode so the number was salient. Here it is developer-facing. A real state, not an edge case: Book.isbn is sometimes a Google volume id.",
+        { ...B.open, state: "empty" },
+      ],
+    ],
+  ],
+  [
+    "Own book &middot; store remembered",
+    [
+      [
+        "remembered",
+        "Your copy &middot; Kindle",
+        'After one tap on Kindle. The title changes because the icon cannot, the remembered store takes the check MenuAction.isSelected already draws, and the verb drops to Open because that is all Kindle can do. "Opens your Kindle library" is the honest line, and it is honest without apologising.',
+        B.remembered,
+      ],
+      [
+        "remembered-play",
+        "Your copy &middot; Play Books",
+        "The one store where opening can be exact: accessInfo.webReaderLink lands on this book. So the verb becomes Read in rather than Open, and the second line says at this book. That four-character difference is the most valuable copy on the page \u2014 a reader who learns it once can trust every row. Requires a Google Books volume id; see remembered-play-noid for when there isn't one.",
+        { ...B.remembered, remembered: "play" },
+      ],
+      [
+        "remembered-play-noid",
+        "Your copy &middot; Play Books, no id",
+        "**The reported bug, and its fix.** Play Books was the only shop with no app fallback, so an id-less open fell through to a Play Store search while this row still read \u201cOpen Play Books\u201d \u2014 a row promising the app and performing a search, which is precisely what StoreReach exists to prevent. It survived because the tests walked one happy path per shop rather than the grid; all sixteen store \u00d7 intent \u00d7 id combinations are asserted now, and the invariant is stated directly: no open link may ever be a search. Reached less often than it was, because a Kakao-sourced book now gets one keyless Google Books lookup first \u2014 this is the state after that comes up empty too.",
+        { ...B.remembered, remembered: "play", noId: true },
+      ],
+      [
+        "icon-unmarked",
+        "The icon cannot say it knows",
+        "This version's structural cost, drawn. A book whose store is remembered looks identical from the outside \u2014 same glyph, same tooltip, both equally true. So opening your own copy is always two taps and is never advertised, which is a real loss given that the remembered state is what makes opening a copy deliverable at all.",
+        { ...B.remembered, sheet: null },
+      ],
+      [
+        "icon-marked",
+        "\u2026 unless the glyph changes",
+        'The proposed fix, and an open decision. A dot on the glyph when reader_app is set. Cheap in Flutter and impossible later without users relearning the control, so it wants deciding now. Copy cannot solve this one: "Where to read" is equally true either way.',
+        { ...B.remembered, sheet: null, marked: true },
+      ],
+    ],
+  ],
+  [
+    "Friend's book",
+    [
+      [
+        "friend-finished",
+        "A friend's finished book",
+        "The discovery moment, and the reason the entry point must not be isSelf-gated the way delete and edit are. Also the hidden cost: the shipped bar is isSelf ? [delete, edit] : null, so this version has to bring the actions group into existence for a single icon \u2014 and that icon is then the only action in the bar.",
+        B.friend,
+      ],
+      [
+        "friend-sheet",
+        "A friend's book &middot; acquire only",
+        "Always the acquire list, never Your copy: reader_app is the owner's fact, so showing \"Open Kindle\" here because your friend uses Kindle would be wrong \u2014 and RLS would block the write anyway, so a friend's book needs no write path at all. No check, no forget row.",
+        { ...B.friend, sheet: "stores" },
+      ],
+    ],
+  ],
+  [
+    "Reachability",
+    [
+      [
+        "notes-tab",
+        "Notes tab &middot; icon survives",
+        "The strongest single argument for this version. The bar is pinned by SliverPersistentHeader, so the control is reachable from both tabs and at any scroll offset. The tab-section branch loses it entirely on this swipe.",
+        { ...B.closed, tab: "notes" },
+      ],
+      [
+        "reading-book",
+        "On a Reading book",
+        "The tallest hero \u2014 cover 180, shelf 8, title, author, status card \u2014 completely unchanged, because this version adds nothing below the bar. Worth drawing precisely because there is nothing to see.",
+        B.reading,
+      ],
+    ],
+  ],
+];
+
+const ELEMENTS = [
+  [
+    "The store row",
+    [
+      [
+        "el-row-kinds",
+        "Acquiring &middot; exact vs search",
+        'The same row saying two different things. Play Books has a per-book URL and says "Opens this book"; Kindle has only a query and says "Searches Amazon". Check this element first after any copy change \u2014 it is the honesty the whole design rests on.',
+        `<div class="fr" style="width:353px;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0">${storeRow("play", "get", {})}${storeRow("kindle", "get", {})}</div></div>`,
+      ],
+      [
+        "el-row-verbs",
+        "Opening &middot; the verb split",
+        "Read in Play Books promises a book; Open Kindle promises an app. The second lines follow \u2014 \u201cOpens at this book\u201d against \u201cOpens your Kindle library\u201d. Both lead with what does happen, which is what app_en.arb does everywhere (\u201cCover reading is limited to keep it free\u201d) rather than warning about what doesn't.",
+        `<div class="fr" style="width:353px;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0">${storeRow("play", "open", { check: true })}${storeRow("kindle", "open", { check: true })}</div></div>`,
+      ],
+      [
+        "el-row-libby",
+        "Libby",
+        "The one destination with no App Store guideline 3.1.1 exposure at all, because nothing is being sold. Also the one that makes the sheet read as a service rather than an affiliate shelf. But see the localisation note: Libby maps to US and UK library systems and is meaningless in the ko build.",
+        `<div class="fr" style="width:353px;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0">${storeRow("libby", "get", {})}</div></div>`,
+      ],
+      [
+        "el-clear",
+        "Forget where I read this",
+        'The escape hatch that keeps a wrong guess from being a trap, since a tap is not a purchase. Not drawn red: showMenuBottomSheet makes isDestructive one flag away, but forgetting a store is not deleting a book. Chosen over "Forget where this lives", which is an idiom and would not survive translation.',
+        `<div class="fr" style="width:353px;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0"><div class="srow clear"><span class="sico">&#8722;</span><span class="stx"><span class="slbl">${T.forget}</span></span></div></div></div>`,
+      ],
+    ],
+  ],
+  [
+    "States",
+    [
+      [
+        "el-empty",
+        "Empty state",
+        "Title plus body, matching scanNoMatchTitle/Body. Body is secondaryText at #626A72, which is 4.63:1 on the sheet. The praise-region frame this page forks still carries the old #ADB5BD at 2.07:1 \u2014 an empty state drawn in that token looks fine in a mockup and is unreadable on a device, which is how the original defect survived twenty-nine files.",
+        `<div class="fr" style="width:353px;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0"><div class="snone"><div class="snt">${T.noneTitle}</div><div class="snb">${T.noneBody}</div></div></div></div>`,
+      ],
+      [
+        "el-loading",
+        "Checking the stores",
+        "Ellipsis character, not three dots \u2014 app_en.arb uses \u2026 throughout (\u201cLooking it up\u2026\u201d, \u201cReading the cover\u2026\u201d). Four shimmer rows because four destinations are expected, so the sheet does not resize when they land.",
+        `<div class="fr" style="width:353px;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0"><div class="sload"><i></i><i></i><i></i><i></i></div><div class="sfoot">${T.checking}</div></div></div>`,
+      ],
+    ],
+  ],
+  [
+    "Open questions",
+    [
+      [
+        "el-icon",
+        "The glyph &middot; unmarked vs marked",
+        "Left: what ships if nothing changes \u2014 identical whether or not a store is known. Right: a dot when reader_app is set. This is the one thing copy cannot fix, because the tooltip is equally true in both states.",
+        `<div class="logocmp"><div><h5>Unmarked</h5><div class="fr" style="width:150px;height:auto;background:var(--surface)"><div class="nav"><span class="acts"><span class="ai newctl">&#8599;</span><span class="ai">&#9998;</span></span></div></div></div><div><h5>Marked</h5><div class="fr" style="width:150px;height:auto;background:var(--surface)"><div class="nav"><span class="acts"><span class="ai newctl marked">&#8599;<i class="dot"></i></span><span class="ai">&#9998;</span></span></div></div></div></div>`,
+      ],
+      [
+        "el-logos",
+        "Brand marks &middot; and the two that have none",
+        "Settled: real marks where one can be sourced, the store's initial where one cannot. The split is a sourcing fact, not an unfinished job \u2014 Simple Icons (CC0, monochrome, tintable) has no `amazon*` icon at all and no Libby/OverDrive icon, so Play Books and Apple Books get marks and Kindle and Libby keep the letter. The two alternatives were both worse: drawing the missing marks invents a trademark, and the official brand kits are full-colour wordmark lockups whose clear-space rules a 30pt chip breaks. Right shows the rejected brand-colour treatment \u2014 in a sheet this typographic, a coloured chip is the loudest thing on the page, and it would not follow dark mode.",
+        `<div class="logocmp"><div><h5>Tinted, with letter fallback (ships)</h5><div class="fr" style="width:100%;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0">${storeRows(["play", "apple", "kindle", "libby"], "get", {})}</div></div></div><div><h5>Brand colour (rejected)</h5><div class="fr" style="width:100%;height:auto;border:0;background:var(--sheet);padding:0"><div class="sheet" style="position:static;box-shadow:none;border-radius:0;padding:0">${storeRows(["play", "kindle"], "get", { brandColour: true })}</div></div></div></div>`,
+      ],
+    ],
+  ],
+];
+
+/* Mark an id as an unresolved decision; renders inline as a red callout. */
+const OPEN = {
+  "acquire-remember":
+    "Open decision: a tap is not a purchase. Tapping Kindle to look at the price and never buying leaves the book wrongly marked. The forget row is the mitigation, but the alternative \u2014 asking outright, or only remembering after a second visit \u2014 has not been ruled out. SHARPENED since: the recording gate now fires on open taps too, not just acquire ones, and Reading/Finished books lead with open rows -- so there are more writing taps, on books a reader may only be browsing.",
+  "icon-marked":
+    "Open decision: should the glyph change when a store is remembered? Cheap now, expensive after release. Copy cannot substitute.",
+  "el-row-libby":
+    "Open decision: the ko store set. Libby, Kindle and Apple Books are the wrong four for Korean readers, who use \ub9ac\ub514\ubd81\uc2a4, \ubc00\ub9ac\uc758\uc11c\uc7ac, \uc608\uc2a424 and \uad50\ubcf4. Needs settling before strings are written, because it is not a wording problem.",
+};
+
+/* ==================================================================
+   SECTION 4: VERSIONS — the chosen design, and the two it beat.
+
+   The root is the settled design. Both branches are SUPERSEDED and say so
+   in their notes, so neither can be mistaken for current. Patches derive
+   from the B specs rather than restating them.
+   ================================================================== */
+const VERSIONS = [
+  [
+    "bar-sheet",
+    "bar-sheet",
+    "CHOSEN. An app-bar icon opening a sheet. Costs the hero and the tab body nothing, resolves availability where a spinner is already normal, and is the only version reachable from both tabs because the bar is pinned. Its cost is that the glyph cannot report a remembered store \u2014 see icon-unmarked.",
+    null,
+    {},
+  ],
+  [
+    "tab-section",
+    "tab-section",
+    "SUPERSEDED. A section at the top of the Book info tab, above the description. Showed all four second lines without a tap, which is its one real advantage over the chosen design \u2014 but it disappears on the Notes tab and spends 193pt of the tab body on a secondary action.",
+    "bar-sheet",
+    {
+      screens: {
+        "bar-icon": {
+          name: "Acquire &middot; section in the tab",
+          note: "SUPERSEDED. Four 48pt rows above the description, all four second lines visible on arrival with nothing to tap. 48 rather than ListTile's 56 because four 56pt rows pushed the description off a 393pt frame entirely.",
+          spec: {
+            ...B.closed,
+            where: "tab",
+            layout: "rows",
+          },
+        },
+        "sheet-open": {
+          name: "Acquire &middot; chips",
+          note: "SUPERSEDED, and rejected within its own branch. Half the height, but a chip has no second line, so Kindle can only be marked with a dashed outline and never explained. Drawing it is what settled that the second line is not decoration.",
+          spec: {
+            ...B.closed,
+            where: "tab",
+            layout: "chips",
+          },
+        },
+        loading: {
+          name: "Resolving &middot; in the tab",
+          note: "SUPERSEDED. Three shimmer rows inside bookInfoAsync.when, which already has a loading branch. Workable, but the height has to be reserved or the description jumps when the answer lands.",
+          spec: {
+            ...B.closed,
+            where: "tab",
+            layout: "rows",
+            state: "loading",
+          },
+        },
+        empty: {
+          name: "Nothing found &middot; in place",
+          note: "SUPERSEDED, and this branch's best state: the section can say so exactly where the reader is already looking, with no sheet to open. The chosen design makes this a sheet that opens onto a sentence.",
+          spec: {
+            ...B.closed,
+            where: "tab",
+            layout: "rows",
+            state: "empty",
+          },
+        },
+        remembered: {
+          name: "Your copy &middot; in the tab",
+          note: "SUPERSEDED. A 44pt filled button, the height ElevatedActionButton uses for Save. Loud for a secondary action, but it does what the chosen design cannot: shows on arrival that a store is already known.",
+          spec: {
+            ...B.remembered,
+            where: "tab",
+            sheet: null,
+          },
+        },
+        "remembered-play": null,
+        "remembered-play-noid": null,
+        /* Dropped for the same reason the chips lost: a chip has no second
+           line, so a degraded row has nowhere to admit it degraded. The
+           state exists in this branch too and simply cannot be drawn. */
+        "sheet-open-noid": null,
+        /* Dropped for the same reason: this branch cannot show a row
+           leaving the list without the list being the design. */
+        "apple-absent": null,
+        "icon-unmarked": null,
+        "icon-marked": null,
+        "friend-sheet": null,
+        "notes-tab": {
+          name: "Notes tab &middot; section gone",
+          note: "SUPERSEDED, and the reason. Swipe to Notes and the control does not exist. The chosen design keeps it, because the bar is pinned and the tab body is not.",
+          spec: {
+            ...B.closed,
+            where: "tab",
+            layout: "rows",
+            tab: "notes",
+          },
+        },
+        "friend-finished": {
+          name: "A friend's book &middot; in the tab",
+          note: "SUPERSEDED. Reaction controls in the hero, acquire rows in the tab. No bar actions at all, which is the shipped behaviour \u2014 the chosen design has to change that.",
+          spec: { ...B.friend, where: "tab", layout: "rows" },
+        },
+        "reading-book": {
+          name: "On a Reading book &middot; in the tab",
+          note: "SUPERSEDED. The status card plus the section, which is where the 193pt cost is easiest to see.",
+          spec: {
+            ...B.reading,
+            where: "tab",
+            layout: "rows",
+          },
+        },
+      },
+      open: {
+        "icon-marked": null,
+        "sheet-open":
+          "Rejected: chips cannot carry a supporting line, so the search-only store is marked rather than explained.",
+      },
+    },
+  ],
+  [
+    "hero-row",
+    "hero-row",
+    "SUPERSEDED. A 40pt row in the band under the status card. Read as first-class and survived the tab swipe, but spent permanent header height on every book, hid all four second lines behind a sheet anyway, and could not handle the empty state \u2014 hiding the row varies the header height, which moves the title handoff _handleScroll measures.",
+    "bar-sheet",
+    {
+      screens: {
+        "bar-icon": {
+          name: "Acquire &middot; hero row",
+          note: 'SUPERSEDED. One row in the band. The label can only say "Where to read" \u2014 which store does what is invisible until the sheet opens, so it pays the header cost and still buys none of the honesty the tab-section branch got for free.',
+          spec: { ...B.closed, where: "hero" },
+        },
+        empty: {
+          name: "Nothing found &middot; row hidden",
+          note: "SUPERSEDED, and this branch's worst state. Hiding the row is the only honest option and it changes the header's height between books, which moves the title handoff _handleScroll computes. Reserving the space instead leaves a dead control.",
+          spec: {
+            ...B.closed,
+            where: "hero",
+            state: "empty",
+          },
+        },
+        remembered: {
+          name: "Your copy &middot; hero row",
+          note: "SUPERSEDED. Where this branch was strongest: one tap from arrival, no scrolling, no tab, and visibly already known.",
+          spec: {
+            ...B.remembered,
+            where: "hero",
+            sheet: null,
+          },
+        },
+        "remembered-play": null,
+        "remembered-play-noid": null,
+        /* Dropped: the band shows one destination, so there is no list in
+           which a row could visibly lose its exact promise. */
+        "sheet-open-noid": null,
+        /* Dropped for the same reason: this branch cannot show a row
+           leaving the list without the list being the design. */
+        "apple-absent": null,
+        "icon-unmarked": null,
+        "icon-marked": null,
+        "friend-sheet": null,
+        loading: {
+          name: "Resolving &middot; hero row",
+          note: "SUPERSEDED. The row draws immediately and the sheet resolves when opened, which is how this branch dodged the height-change problem \u2014 at the price of never being able to hide the row when nothing is available.",
+          spec: { ...B.closed, where: "hero" },
+        },
+        "sheet-open": {
+          name: "Sheet &middot; opened from the band",
+          note: "SUPERSEDED. Identical sheet to the chosen design's, reached from the band instead of the bar. That the sheet is shared is what made the entry point the only real question.",
+          spec: { ...B.open, where: "hero" },
+        },
+        "notes-tab": {
+          name: "Notes tab &middot; row survives",
+          note: "SUPERSEDED. The band is above the tab strip, so this branch kept the control too. The chosen design gets the same property from a pinned bar without spending header height.",
+          spec: {
+            ...B.closed,
+            where: "hero",
+            tab: "notes",
+          },
+        },
+        "friend-finished": {
+          name: "A friend's book &middot; hero row",
+          note: "SUPERSEDED. The row lands directly under the reaction capsule, so the hero carries two competing controls in the same 100pt. The densest real state in the app, and the one this branch was most likely to break.",
+          spec: { ...B.friend, where: "hero" },
+        },
+        "reading-book": {
+          name: "On a Reading book &middot; hero row",
+          note: "SUPERSEDED. The tallest hero plus a 40pt control, all before the tab strip. The state to judge the branch on.",
+          spec: { ...B.reading, where: "hero" },
+        },
+      },
+      open: {
+        "icon-marked": null,
+        empty:
+          "Rejected: this branch must either hide the row and vary the header height, or keep a control that leads nowhere.",
+      },
+    },
+  ],
+  /* ==================================================================
+     BUILT. Asking the reader for their library once, so Libby can reach
+     a book instead of a shelf.
+
+     Kept as a branch rather than folded into the root because both
+     states ship: the root's sheet screens are the reader who has not
+     answered (or declined), and this branch is the reader who has. The
+     root is not stale, it is the other half.
+
+     Its one UNRESOLVED question -- "I could not find a library NAME
+     search API" -- turned out to be answerable. See the flow's callout.
+     ================================================================== */
+  [
+    "libby-library",
+    "libby-library",
+    "BUILT. Ask for the reader's library once, so Libby can reach the book rather than the shelf. **Required, not a nicety:** `libbyapp.com/title/<id>` shows \"View not found.\" because Libby resolves `title/<id>` only beneath `library/<key>`, taking the key from its ancestor route. With a key, `libbyapp.com/library/<key>/title/<id>` reaches the book *and* the loan; without one, acquiring stops at `overdrive.com/media/<id>` in a browser and opening stops at the Shelf. The ask is just-in-time on the first Libby tap, dismissible, and remembered either way. Stored in SharedPreferences beside the book-source preference rather than the drawn nullable column \u2014 see the spec. Note this is a **library**, not a library card: the card stays Libby's business.",
+    "bar-sheet",
+    {
+      screens: {
+        "libby-ask": {
+          group: "Proposal &middot; asking once",
+          name: "First tap on Libby",
+          note: "The just-in-time ask, and the whole reason this is affordable. It is not onboarding and not a settings chore \u2014 it appears the first time the reader taps Libby, when they have just shown they want it, and never again. Drawn as a sheet rather than a pushed page because it is one choice made once, reached from inside a sheet; a route would take the reader further from the book than the decision warrants. The line at the bottom answers \u201cwhy are you asking me this\u201d in one sentence, and answers it with Libby's constraint rather than ours \u2014 Libby cannot search without a library either.",
+          spec: {
+            ...B.open,
+            state: "librarypick",
+            libs: [
+              ["King County Library System", "Washington, US"],
+              ["Kitsap Regional Library", "Washington, US"],
+              ["Kings County Library", "California, US"],
+            ],
+          },
+        },
+        "libby-typed": {
+          group: "Proposal &middot; asking once",
+          name: "\u2026 narrowed by typing",
+          note: "Two lines per result, for the same reason the store rows have two: the second line is the only thing that tells two similarly-named systems apart, and \u201cKing County\u201d vs \u201cKings County\u201d is exactly the confusion a reader would otherwise resolve by guessing. **This screen is where the risk lives** \u2014 it assumes a name search exists, and I could not find one. See the flow's open callout.",
+          spec: {
+            ...B.open,
+            state: "librarypick",
+            typed: "king count",
+            libs: [
+              ["King County Library System", "Washington, US"],
+              ["Kings County Library", "California, US"],
+            ],
+          },
+        },
+        "libby-none": {
+          group: "Proposal &middot; asking once",
+          name: "Nothing by that name",
+          note: "Takes the scanNoMatch shape every other failure in the app takes \u2014 what happened, why, no blame. **The second line was rewritten during the build**, and the reason is worth keeping: this used to spend it warning readers off searching a branch instead of the system that runs it. That warning would have been wrong. `locate.libbyapp.com/autocomplete` searches branches and resolves each to its parent system, so \u2018Mission Bay Branch Library\u2019 finds San Francisco Public Library and \u2018Auburn Library\u2019 finds King County Library System. The shipped line offers all three kinds of query \u2014 full name, town, nearby branch \u2014 because all three genuinely work.",
+          spec: {
+            ...B.open,
+            state: "librarypick",
+            typed: "auburn",
+            libs: [],
+          },
+        },
+        "libby-exact": {
+          group: "Proposal &middot; what it buys",
+          name: "Libby reaches the book",
+          note: "The payoff, and the only screen worth comparing against the shipped build. With a library key the row can be exact: a title id from that library's catalogue resolves a per-book Libby link, and title ids are global \u2014 the same query against lapl, chipublib and nassau returns the same id \u2014 so one key serves any reader. Note what does NOT change: Kindle stays a search, because nothing can upgrade it. The sheet is the same shape, one row got better, and no copy was invented to celebrate it.",
+          spec: { ...B.open, libbyExact: true },
+        },
+        "libby-settings": {
+          group: "Proposal &middot; what it buys",
+          name: "Changing it later",
+          note: "A stored answer needs a way back, exactly as `Forget where I read this` does for the store \u2014 people move, join a second system, or mistype. Sits beside the existing book-source picker in Settings, which is already the row for \u201cwhich catalogue does this app talk to\u201d, so it needs no new section and nothing has to be explained twice.",
+          spec: { ...B.open, settings: true },
+        },
+      },
+      flows: {
+        "libby-first-run": {
+          group: "Proposal",
+          note: "Four steps, once per reader, and then never again.",
+          steps: [
+            [
+              "Tap Libby",
+              "Nothing is stored yet, so the row still reads Borrow free from your library \u2014 truthful before and after.",
+              { ...B.open, sheet: "stores" },
+            ],
+            [
+              "Which library?",
+              "Asked here and only here. Dismissing falls back to today's behaviour rather than blocking: overdrive.com search, which needs no library.",
+              {
+                ...B.open,
+                state: "librarypick",
+                libs: [
+                  ["King County Library System", "Washington, US"],
+                  ["Kitsap Regional Library", "Washington, US"],
+                ],
+              },
+            ],
+            [
+              "Saved",
+              "One nullable column, on the same reasoning as reader_app: NULL means never asked, which is a different state from asked-and-declined.",
+              { ...B.open, libbyExact: true },
+            ],
+            [
+              "Every book after this",
+              "The ask never returns. Libby is exact when the library holds the book, and an honest search when it does not.",
+              { ...B.open, libbyExact: true },
+            ],
+          ],
+        },
+      },
+      open: {
+        "libby-first-run":
+          'RESOLVED, and the way it was wrong is the lesson. This said no library NAME search API existed. What had actually been established was narrower: `thunder.api.overdrive.com/v2/libraries` really is a 13,112-row directory filtering only by `libraryKeys` and `websiteIds`, and `/libraries/search` and `/libraries/autocomplete` really do 404. But Libby does not use `thunder` for this. Its bundle derives a **separate** service by rewriting its own root \u2014 `_createDeweyLocateService` does `ROOT_URI.replace("//", "//locate.")` \u2014 and calls `autocomplete/<query>` on it. `https://locate.libbyapp.com/autocomplete/<query>` is keyless and returns 200. Two hops are needed, because `locate` returns a system\'s `websiteId` and the URL wants its key: then `thunder/v2/libraries?websiteIds=\u2026` gives `preferredKey`. **\u2018This API does not exist\u2019 is a much stronger claim than \u2018I did not find it on the host I was looking at\u2019, and only the second one had been shown.** One bonus: the endpoint searches BRANCHES and resolves them to the system that runs them, so \u2018Mission Bay Branch Library\u2019 finds San Francisco Public Library \u2014 the branch-versus-system confusion this flow\'s empty state was drawn to warn about does not happen, and that copy was rewritten to offer all three kinds of query instead.',
+      },
+    },
+  ],
+];
+
+const FLOWS = [
+  [
+    "Acquiring",
+    [
+      [
+        "acquire-remember",
+        "First tap, then remembered",
+        "The whole design in four steps: the reader answers the ownership question by acting, and the sheet changes shape once they have. Nothing is asked outright, because nothing can be \u2014 canLaunchUrl proves an app is installed, never that the book is in it.",
+        [
+          [
+            "Tap the glyph",
+            "An Interested book. No reader_app on the row, so the sheet will offer the acquire list.",
+            B.closed,
+          ],
+          [
+            "Where to read",
+            'Four destinations, each honest about what it opens. Kindle says "Searches Amazon" because Amazon publishes no per-book deep link.',
+            B.open,
+          ],
+          [
+            "Back in the app",
+            "books.reader_app is now 'kindle'. The title becomes Your copy, Kindle takes the check, and the verb drops to Open \u2014 \"Opens your Kindle library\", which is all it can do.",
+            B.remembered,
+          ],
+          [
+            "Wrong guess, undone",
+            "The forget row. A tap was never proof of purchase, so this is what keeps a wrong guess from being a trap.",
+            B.remembered,
+          ],
+        ],
+      ],
+      [
+        "nothing-found",
+        "Nothing to offer",
+        "Two steps, and the reason the empty state is drawn at all: Book.isbn is not always an ISBN \u2014 book_search_service.dart stores a Google volume id when no ISBN exists, and Kakao's mapper keeps only the first space-separated token \u2014 so this path is ordinary rather than exceptional.",
+        [
+          [
+            "Checking the stores",
+            "Four shimmer rows, so the sheet does not resize when the answer lands.",
+            { ...B.open, state: "loading" },
+          ],
+          [
+            "No ebook edition",
+            "Title plus body, no blame, and no ISBN on screen. The reader learns the question was asked and answered.",
+            { ...B.open, state: "empty" },
+          ],
+        ],
+      ],
+    ],
+  ],
+  [
+    "Opening a copy",
+    [
+      [
+        "open-copy",
+        "Opening the copy you own",
+        "Three steps, and the last cannot be drawn: the app is gone. Worth stating plainly \u2014 every claim this feature makes about opening a copy ends outside the process, so the only thing the design controls is whether the label promised something the launch can deliver.",
+        [
+          [
+            "The glyph, unchanged",
+            "A remembered book looks identical from the outside. This is the version's structural cost: opening your own copy is two taps and is never advertised.",
+            { ...B.remembered, sheet: null },
+          ],
+          [
+            "Your copy",
+            "Play Books, the one store where opening is exact \u2014 accessInfo.webReaderLink lands on this book, so the verb is Read in rather than Open.",
+            { ...B.remembered, remembered: "play" },
+          ],
+          [
+            "Play Books takes over",
+            "Not drawable. For Kindle and Apple Books this step is the app's own library rather than the book, which is precisely what their second line says.",
+            { ...B.remembered, remembered: "play" },
+          ],
+        ],
+      ],
+    ],
+  ],
+  [
+    "Discovery",
+    [
+      [
+        "friend-discovery",
+        "Finding what a friend read",
+        "The case for not gating the entry point on isSelf. Two steps, no writes: a friend's book never records a store, because the column belongs to its owner and RLS would refuse the update anyway.",
+        [
+          [
+            "Their finished book",
+            "Reaction pill and capsule in the hero. The bar exists only because this version creates it \u2014 shipped, a friend's book has no actions at all.",
+            B.friend,
+          ],
+          [
+            "Acquire only",
+            "Never Your copy, no check, no forget row. Their reader_app is theirs, and showing it here would be wrong even if RLS allowed the read.",
+            { ...B.friend, sheet: "stores" },
+          ],
+        ],
+      ],
+    ],
+  ],
+];
+            /* ==================================================================
+   SECTION 5: ENGINE — behaviour is load-bearing.
+   See reference/pitfalls.md in this skill before changing it.
+   ================================================================== */
+            function stripTags(s) {
+                return String(s)
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&[a-z]+;/g, " ");
+            }
+            /* Every query term must appear somewhere (order-independent AND), so
+   "cover book" finds "Book cover". Haystack must be pre-lowercased. */
+            function matchWords(haystack, query) {
+                return query
+                    .trim()
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .every((t) => haystack.includes(t));
+            }
+            function escapeReg(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+            function highlightText(text, query) {
+                const terms = query
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(escapeReg);
+                if (!terms.length) return text;
+                return text.replace(
+                    new RegExp(`(${terms.join("|")})`, "gi"),
+                    '<mark class="hl">$1</mark>',
+                );
+            }
+            function flowSearchText(g, nm, ds, steps) {
+                return stripTags(
+                    [
+                        nm,
+                        g,
+                        ds,
+                        steps.map(([sn, sc]) => `${sn} ${sc}`).join(" "),
+                    ].join(" "),
+                )
+                    .toLowerCase()
+                    .replace(/["&<>]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            /* ---- version resolution ---------------------------------------- */
+            const VMAP = new Map(VERSIONS.map((v) => [v[0], v]));
+            const VROOT = VERSIONS[0][0];
+
+            function chainOf(vid) {
+                const out = [];
+                let cur = vid;
+                const seen = new Set();
+                while (cur && VMAP.has(cur) && !seen.has(cur)) {
+                    seen.add(cur);
+                    out.unshift(cur);
+                    cur = VMAP.get(cur)[3];
+                }
+                return out;
+            }
+            /* payload key per view: what a patch entry carries */
+            const PAYLOAD = {
+                screens: "spec",
+                flows: "steps",
+                elements: "demo",
+            };
+
+            /** Resolve one view for a version into [group, [[id,nm,ds,payload],...]]. */
+            function resolveView(vid, kind) {
+                const base =
+                    kind === "screens"
+                        ? SCREENS
+                        : kind === "flows"
+                          ? FLOWS
+                          : ELEMENTS;
+                // flat map of id -> {group,nm,ds,payload}, preserving group order
+                const groups = base.map(([g]) => g);
+                const items = new Map();
+                base.forEach(([g, list]) =>
+                    list.forEach(([id, nm, ds, payload]) =>
+                        items.set(id, { group: g, nm, ds, payload }),
+                    ),
+                );
+
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {})[kind] || {};
+                    for (const [id, val] of Object.entries(patch)) {
+                        if (val === null) {
+                            items.delete(id);
+                            continue;
+                        }
+                        const prev = items.get(id);
+                        const group =
+                            val.group ||
+                            prev?.group ||
+                            `Added in ${VMAP.get(step)[1]}`;
+                        if (!groups.includes(group)) groups.push(group);
+                        items.set(id, {
+                            group,
+                            nm: val.name ?? prev?.nm ?? id,
+                            ds: val.note ?? prev?.ds ?? "",
+                            payload: val[PAYLOAD[kind]] ?? prev?.payload,
+                        });
+                    }
+                }
+                return groups
+                    .map((g) => [
+                        g,
+                        [...items.entries()]
+                            .filter(([, v]) => v.group === g)
+                            .map(([id, v]) => [id, v.nm, v.ds, v.payload]),
+                    ])
+                    .filter(([, l]) => l.length);
+            }
+            function resolveOpen(vid) {
+                let out = { ...OPEN };
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {}).open || {};
+                    for (const [id, val] of Object.entries(patch))
+                        val === null ? delete out[id] : (out[id] = val);
+                }
+                return out;
+            }
+            /** id -> 'changed' | 'onlyHere' | 'onlyThere', reading a against b. */
+            function diffMap(a, b, kind) {
+                const A = new Map(),
+                    B = new Map();
+                resolveView(a, kind).forEach(([, l]) =>
+                    l.forEach((it) => A.set(it[0], it)),
+                );
+                resolveView(b, kind).forEach(([, l]) =>
+                    l.forEach((it) => B.set(it[0], it)),
+                );
+                const out = new Map();
+                for (const [id, it] of A) {
+                    if (!B.has(id)) out.set(id, "onlyHere");
+                    else if (
+                        JSON.stringify(it[3]) !== JSON.stringify(B.get(id)[3])
+                    )
+                        out.set(id, "changed");
+                }
+                for (const id of B.keys())
+                    if (!A.has(id)) out.set(id, "onlyThere");
+                return out;
+            }
+
+            let activeV = VROOT,
+                compareV = null,
+                onlyDiff = false;
+            let view = "screens",
+                cbOpen = false,
+                kbIndex = -1,
+                kbId = null,
+                vbOpen = false,
+                vkbIndex = -1,
+                vkbId = null;
+            const sel = { screens: new Set(), elements: new Set() };
+
+            /**
+             * One list per group of entries to draw, for the active version.
+             *
+             * In compare mode this also emits "ghost" entries for items the
+             * compared version has and the active one doesn't. Without them a
+             * removal is invisible: render only walks the active version, so a
+             * deleted screen just silently isn't there.
+             */
+            function viewModel(kind) {
+                const A = resolveView(activeV, kind);
+                const cmp = compareV && compareV !== activeV;
+                const d = cmp ? diffMap(activeV, compareV, kind) : new Map();
+                const B = cmp ? resolveView(compareV, kind) : [];
+                const bItem = new Map(),
+                    bGroup = new Map();
+                B.forEach(([g, l]) =>
+                    l.forEach((it) => {
+                        bItem.set(it[0], it);
+                        bGroup.set(it[0], g);
+                    }),
+                );
+                const groups = A.map(([g]) => g);
+                if (cmp)
+                    for (const [g] of B)
+                        if (!groups.includes(g)) groups.push(g);
+
+                return groups
+                    .map((g) => {
+                        const own = (A.find(([n]) => n === g)?.[1] || []).map(
+                            ([id, nm, ds, payload]) => ({
+                                id,
+                                nm,
+                                ds,
+                                payload,
+                                diff: d.get(id) || null,
+                                ghost: false,
+                                other: bItem.get(id)?.[3] ?? null,
+                            }),
+                        );
+                        const ghosts = cmp
+                            ? [...d.entries()]
+                                  .filter(
+                                      ([id, k]) =>
+                                          k === "onlyThere" &&
+                                          bGroup.get(id) === g,
+                                  )
+                                  .map(([id]) => {
+                                      const it = bItem.get(id);
+                                      return {
+                                          id,
+                                          nm: it[1],
+                                          ds: it[2],
+                                          payload: it[3],
+                                          diff: "onlyThere",
+                                          ghost: true,
+                                          other: null,
+                                      };
+                                  })
+                            : [];
+                        return [g, own.concat(ghosts)];
+                    })
+                    .filter(([, l]) => l.length);
+            }
+
+            /* ---- render (re-runnable; version changes call this) ------------ */
+            let CB = {},
+                nScreens = 0,
+                nFlows = 0,
+                nEls = 0;
+
+            function render() {
+                const SM = viewModel("screens");
+                const EM = viewModel("elements");
+                const FM = viewModel("flows");
+                const openMap = resolveOpen(activeV);
+                const cmp = compareV && compareV !== activeV;
+                const bLabel = cmp ? VMAP.get(compareV)[1] : "";
+                const aLabel = VMAP.get(activeV)[1];
+
+                // Labels read from the point of view of the version on screen.
+                const TAGTEXT = {
+                    changed: "changed",
+                    onlyHere: "only here",
+                    onlyThere: `only in ${bLabel}`,
+                };
+                const tagFor = (d) =>
+                    d ? `<span class="tag ${d}">${TAGTEXT[d]}</span>` : "";
+                const keep = (e) => !(onlyDiff && cmp && !e.diff);
+
+                const count = (m) =>
+                    m.reduce((a, [, l]) => a + l.filter(keep).length, 0);
+                nScreens = count(SM);
+                nEls = count(EM);
+                nFlows = count(FM);
+
+                document.getElementById("screens").innerHTML = SM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map((e) => {
+                                let shot;
+                                if (cmp && e.diff === "changed")
+                                    shot = `<div class="pair"><div><div class="vl">${aLabel}</div><div class="shot">${frame({ ...e.payload, sm: true })}</div></div><div><div class="vl b">${bLabel}</div><div class="shot">${frame({ ...(e.other || e.payload), sm: true })}</div></div></div>`;
+                                else
+                                    shot = `<div class="shot">${frame(e.payload)}</div>`;
+                                return `<div class="item${e.ghost ? " ghost" : ""}" data-id="${e.id}">${shot}<div class="cap"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`;
+                            })
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="grid${cmp ? " cmp" : ""}">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                document.getElementById("elements").innerHTML = EM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<div class="el${e.ghost ? " ghost" : ""}" data-id="${e.id}"><div class="demo">${e.payload}</div><div class="body"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`,
+                            )
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="egrid">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                const stepRow = (steps) =>
+                    `<div class="steps">${steps
+                        .map(
+                            ([sn, sc, spec], i) =>
+                                (i ? '<div class="arrow">&rarr;</div>' : "") +
+                                `<div class="step"><div class="sn">${String(i + 1).padStart(2, "0")} &middot; ${sn}</div><div class="shot">${frame(spec)}</div><div class="sc">${sc}</div></div>`,
+                        )
+                        .join("")}</div>`;
+
+                document.getElementById("flows").innerHTML = FM.map(
+                    ([g, entries]) =>
+                        entries
+                            .filter(keep)
+                            .map((e) => {
+                                const rows =
+                                    cmp && e.diff === "changed"
+                                        ? `<div class="vrow">${aLabel}</div>${stepRow(e.payload)}<div class="vrow b">${bLabel}</div>${stepRow(e.other || e.payload)}`
+                                        : stepRow(e.payload);
+                                return `<div class="flow${e.ghost ? " ghost" : ""}" id="f-${e.id}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}"><p class="fh">${e.nm}${tagFor(e.diff)}</p><p class="fd">${e.ds}</p>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }${rows}</div>`;
+                            })
+                            .join(""),
+                ).join("");
+
+                document.getElementById("sidenav").innerHTML = FM.map(
+                    ([g, entries]) => {
+                        const links = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<a href="#f-${e.id}" data-id="${e.id}" data-nm="${stripTags(e.nm)}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}">${stripTags(e.nm)}</a>`,
+                            )
+                            .join("");
+                        return links
+                            ? `<div class="sh">${g}</div>${links}`
+                            : "";
+                    },
+                ).join("");
+
+                const cbGroups = (m) =>
+                    m
+                        .map(([g, entries]) => [
+                            g,
+                            entries.filter(keep).map((e) => [e.id, e.nm, e.ds]),
+                        ])
+                        .filter(([, l]) => l.length);
+
+                CB = {
+                    screens: {
+                        label: "Screens",
+                        placeholder: "Search screens…",
+                        container: "screens",
+                        itemSel: ".item",
+                        none: "screens-none",
+                        groups: cbGroups(SM),
+                    },
+                    elements: {
+                        label: "UI Elements",
+                        placeholder: "Search elements…",
+                        container: "elements",
+                        itemSel: ".el",
+                        none: "elements-none",
+                        groups: cbGroups(EM),
+                    },
+                };
+                // drop filter selections for ids this version doesn't have
+                for (const k of ["screens", "elements"]) {
+                    const live = new Set(
+                        CB[k].groups.flatMap(([, l]) => l.map(([id]) => id)),
+                    );
+                    [...sel[k]].forEach((id) => {
+                        if (!live.has(id)) sel[k].delete(id);
+                    });
+                }
+
+                const total = cmp
+                    ? ["screens", "elements", "flows"].reduce(
+                          (a, k) => a + diffMap(activeV, compareV, k).size,
+                          0,
+                      )
+                    : 0;
+                document.getElementById("vinfo-lbl").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document.getElementById("vinfo-note").innerHTML = cmp
+                    ? `${VMAP.get(activeV)[2]}`
+                    : VMAP.get(activeV)[2];
+                document.getElementById("vinfo-diffs").textContent = cmp
+                    ? total
+                        ? `${total} difference${total === 1 ? "" : "s"}`
+                        : "identical"
+                    : "";
+                document
+                    .getElementById("difftoggle")
+                    .classList.toggle("gone", !cmp);
+                document.getElementById("vbtn-label").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document
+                    .getElementById("vcmp-clear")
+                    .classList.toggle("gone", !cmp);
+                if (view !== "flows") applyFilter();
+                else updateCount(0);
+                if (view === "flows" && fsearch.value)
+                    fsearch.dispatchEvent(
+                        new Event("input", { bubbles: true }),
+                    );
+                spy();
+            }
+
+            /* ---- filter combobox ---- */
+            const cbox = document.getElementById("cbox"),
+                cbtn = document.getElementById("cbtn"),
+                cbtnLabel = document.getElementById("cbtn-label"),
+                cbtnBadge = document.getElementById("cbtn-badge"),
+                csearch = document.getElementById("csearch"),
+                clist = document.getElementById("clist"),
+                cfootN = document.getElementById("cfoot-n"),
+                cclear = document.getElementById("cclear");
+
+            function visibleOpts() {
+                const q = csearch.value.trim().toLowerCase();
+                if (!q) return CB[view].groups;
+                return CB[view].groups
+                    .map(([g, items]) => [
+                        g,
+                        // A group's own name pulls in its whole contents (browse by category);
+                        // otherwise an item needs every query word in its name or note.
+                        matchWords(g.toLowerCase(), q)
+                            ? items
+                            : items.filter(([, nm, ds]) =>
+                                  matchWords(
+                                      stripTags(
+                                          `${nm} ${ds || ""}`,
+                                      ).toLowerCase(),
+                                      q,
+                                  ),
+                              ),
+                    ])
+                    .filter(([, items]) => items.length);
+            }
+            function renderList() {
+                const groups = visibleOpts(),
+                    q = csearch.value.trim();
+                if (!groups.length) {
+                    kbIndex = -1;
+                    kbId = null;
+                    clist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                clist.innerHTML = groups
+                    .map(
+                        ([g, items]) =>
+                            `<div class="cgrp" data-group="${g}">${g}</div>` +
+                            items
+                                .map(
+                                    ([id, nm]) =>
+                                        `<div class="copt${sel[view].has(id) ? " sel" : ""}" data-id="${id}"><span class="box">${
+                                            sel[view].has(id) ? "&#10003;" : ""
+                                        }</span><span class="lb">${highlightText(stripTags(nm), q)}</span></div>`,
+                                )
+                                .join(""),
+                    )
+                    .join("");
+                // Keep keyboard focus on the same option across a re-render, so toggling
+                // with Enter doesn't fling focus back to the top.
+                const opts = [...clist.querySelectorAll(".copt")];
+                let idx = kbId
+                    ? opts.findIndex((o) => o.dataset.id === kbId)
+                    : -1;
+                if (idx < 0) idx = 0;
+                if (opts.length) {
+                    kbIndex = idx;
+                    kbId = opts[idx].dataset.id;
+                    opts[idx].classList.add("kb");
+                } else {
+                    kbIndex = -1;
+                    kbId = null;
+                }
+            }
+            function applyFilter() {
+                const cfg = CB[view],
+                    s = sel[view],
+                    root = document.getElementById(cfg.container);
+                let shown = 0;
+                root.querySelectorAll(cfg.itemSel).forEach((el) => {
+                    const on = s.size === 0 || s.has(el.dataset.id);
+                    el.classList.toggle("gone", !on);
+                    if (on) shown++;
+                });
+                root.querySelectorAll(".gsec").forEach((g) =>
+                    g.classList.toggle(
+                        "gone",
+                        !g.querySelector(cfg.itemSel + ":not(.gone)"),
+                    ),
+                );
+                document
+                    .getElementById(cfg.none)
+                    .classList.toggle("gone", shown > 0);
+                const total = view === "screens" ? nScreens : nEls;
+                cbtnBadge.hidden = s.size === 0;
+                cbtnBadge.textContent = s.size;
+                cfootN.textContent =
+                    s.size === 0
+                        ? `Showing all ${total}`
+                        : `Showing ${shown} of ${total}`;
+                updateCount(shown);
+            }
+            function updateCount(shown) {
+                const s = sel[view] ? sel[view].size : 0;
+                document.getElementById("cnt").textContent = [
+                    `${view === "screens" && s ? shown + " of " : ""}${nScreens} screens`,
+                    `${nFlows} flows`,
+                    `${view === "elements" && s ? shown + " of " : ""}${nEls} elements`,
+                ].join(" · ");
+            }
+            function openCB(focus) {
+                if (view === "flows") return;
+                closeVB(); // only one dropdown at a time
+                cbOpen = true;
+                cbox.classList.add("open");
+                kbId = null;
+                renderList();
+                if (focus) csearch.focus();
+            }
+            function closeCB() {
+                cbOpen = false;
+                cbox.classList.remove("open");
+                csearch.blur();
+            }
+
+            cbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                cbOpen ? closeCB() : openCB(true);
+            });
+            csearch.addEventListener("input", () => {
+                clist.scrollTop = 0;
+                renderList();
+            });
+            clist.addEventListener("click", (e) => {
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    // stopPropagation is required: renderList() replaces clist.innerHTML,
+                    // detaching this node before the click finishes bubbling, which would
+                    // make the document listener below see a detached target and close.
+                    e.stopPropagation();
+                    const id = opt.dataset.id;
+                    sel[view].has(id)
+                        ? sel[view].delete(id)
+                        : sel[view].add(id);
+                    renderList();
+                    applyFilter();
+                    return;
+                }
+                const grp = e.target.closest(".cgrp");
+                if (grp) {
+                    e.stopPropagation();
+                    const ids = CB[view].groups
+                        .find(([n]) => n === grp.dataset.group)[1]
+                        .map(([id]) => id);
+                    const allOn = ids.every((id) => sel[view].has(id));
+                    ids.forEach((id) =>
+                        allOn ? sel[view].delete(id) : sel[view].add(id),
+                    );
+                    renderList();
+                    applyFilter();
+                }
+            });
+            cclear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                sel[view].clear();
+                csearch.value = "";
+                renderList();
+                applyFilter();
+            });
+            document.addEventListener("click", (e) => {
+                if (cbOpen && !cbox.contains(e.target)) closeCB();
+                if (vbOpen && !vbox.contains(e.target)) closeVB();
+            });
+
+            /* ---- version combobox (single-select, plus compare) ---- */
+            const vbox = document.getElementById("vbox"),
+                vbtn = document.getElementById("vbtn"),
+                vsearch = document.getElementById("vsearch"),
+                vlist = document.getElementById("vlist"),
+                vfootN = document.getElementById("vfoot-n"),
+                vcmpClear = document.getElementById("vcmp-clear"),
+                diffToggle = document.getElementById("difftoggle");
+
+            function renderVList() {
+                const q = vsearch.value.trim(),
+                    ql = q.toLowerCase();
+                const rows = VERSIONS.filter(
+                    ([id, label, note]) =>
+                        !ql ||
+                        matchWords(
+                            stripTags(`${label} ${note} ${id}`).toLowerCase(),
+                            ql,
+                        ),
+                );
+                if (!rows.length) {
+                    vkbIndex = -1;
+                    vkbId = null;
+                    vlist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                vlist.innerHTML =
+                    `<div class="cgrp" style="cursor:default">Show version</div>` +
+                    rows
+                        .map(
+                            ([id, label, note, parent]) =>
+                                `<div class="copt radio${id === activeV ? " sel" : ""}" data-v="${id}">
+        <span class="box">${id === activeV ? "&#10003;" : ""}</span>
+        <span class="col"><span class="lb">${highlightText(label, q)}</span>${
+            note
+                ? `<div class="sub">${parent ? `from ${VMAP.get(parent)[1]} &middot; ` : ""}${note}</div>`
+                : ""
+        }</span>
+        ${id !== activeV ? `<span class="tagn" data-cmp="${id}">${compareV === id ? "comparing" : "compare"}</span>` : ""}
+      </div>`,
+                        )
+                        .join("");
+                // Keep keyboard focus on the same version across a re-render
+                // (toggling compare re-renders this list), falling back to the
+                // first row only when the focused version is filtered out.
+                const vopts = [...vlist.querySelectorAll(".copt")];
+                let vi = vkbId
+                    ? vopts.findIndex((o) => o.dataset.v === vkbId)
+                    : -1;
+                if (vi < 0) vi = 0;
+                if (vopts.length) {
+                    vkbIndex = vi;
+                    vkbId = vopts[vi].dataset.v;
+                    vopts[vi].classList.add("kb");
+                } else {
+                    vkbIndex = -1;
+                    vkbId = null;
+                }
+
+                const legend = "&#8629; show &middot; &#8679;&#8629; compare";
+                vfootN.innerHTML = compareV
+                    ? `Comparing with ${VMAP.get(compareV)[1]} &middot; ${legend}`
+                    : `${VERSIONS.length} version${VERSIONS.length === 1 ? "" : "s"} &middot; ${legend}`;
+            }
+            function openVB(focus) {
+                closeCB(); // only one dropdown at a time, or they fight over the arrow keys
+                vbOpen = true;
+                vbox.classList.add("open");
+                vkbId = activeV; // open focused on where you already are
+                renderVList();
+                if (focus) vsearch.focus();
+            }
+            function closeVB() {
+                vbOpen = false;
+                vbox.classList.remove("open");
+                vsearch.blur();
+            }
+
+            vbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                vbOpen ? closeVB() : openVB(true);
+            });
+            vsearch.addEventListener("input", () => {
+                vlist.scrollTop = 0;
+                renderVList();
+            });
+            vlist.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const cmpBtn = e.target.closest("[data-cmp]");
+                if (cmpBtn) {
+                    const id = cmpBtn.dataset.cmp;
+                    compareV = compareV === id ? null : id;
+                    renderVList();
+                    render();
+                    return;
+                }
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    activeV = opt.dataset.v;
+                    if (compareV === activeV) compareV = null;
+                    renderVList();
+                    render();
+                    closeVB();
+                }
+            });
+            vcmpClear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                compareV = null;
+                onlyDiff = false;
+                diffToggle.classList.add("off");
+                renderVList();
+                render();
+            });
+            diffToggle.addEventListener("click", () => {
+                onlyDiff = !onlyDiff;
+                diffToggle.classList.toggle("off", !onlyDiff);
+                render();
+            });
+
+            /* ---- view switching ---- */
+            function switchView(v) {
+                const btn = document.querySelector(
+                    `.vtabs button[data-v="${v}"]`,
+                );
+                if (!btn || view === v) return;
+                view = v;
+                document
+                    .querySelectorAll(".vtabs button")
+                    .forEach((x) => x.classList.toggle("on", x === btn));
+                document
+                    .querySelectorAll(".view")
+                    .forEach((el) =>
+                        el.classList.toggle("on", el.id === "v-" + view),
+                    );
+                closeCB();
+                const isFlows = view === "flows";
+                cbox.classList.toggle("hide", isFlows);
+                if (!isFlows) {
+                    cbtnLabel.textContent = CB[view].label;
+                    csearch.placeholder = CB[view].placeholder;
+                    csearch.value = "";
+                    applyFilter();
+                } else updateCount(0);
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }
+            document
+                .querySelectorAll(".vtabs button")
+                .forEach((b) =>
+                    b.addEventListener("click", () => switchView(b.dataset.v)),
+                );
+
+            /* ---- flow search + scroll-spy ---- */
+            const fsearch = document.getElementById("fsearch"),
+                sbox = document.getElementById("sbox");
+            fsearch.addEventListener("focus", () =>
+                sbox.classList.add("focused"),
+            );
+            fsearch.addEventListener("blur", () =>
+                sbox.classList.remove("focused"),
+            );
+            fsearch.addEventListener("input", () => {
+                sbox.classList.toggle("dirty", fsearch.value.length > 0);
+                const q = fsearch.value.trim().toLowerCase();
+                let any = false;
+                document.querySelectorAll(".flow").forEach((f) => {
+                    const show = !q || matchWords(f.dataset.f, q);
+                    f.classList.toggle("gone", !show);
+                    if (show) any = true;
+                });
+                document.querySelectorAll("#sidenav a").forEach((a) => {
+                    a.classList.toggle(
+                        "gone",
+                        !(!q || matchWords(a.dataset.f, q)),
+                    );
+                    a.innerHTML = highlightText(
+                        a.dataset.nm,
+                        fsearch.value.trim(),
+                    );
+                });
+                document.querySelectorAll("#sidenav .sh").forEach((h) => {
+                    let n = h.nextElementSibling,
+                        on = false;
+                    while (n && n.tagName === "A") {
+                        if (!n.classList.contains("gone")) on = true;
+                        n = n.nextElementSibling;
+                    }
+                    h.classList.toggle("gone", !on);
+                });
+                document
+                    .getElementById("flows-none")
+                    .classList.toggle("gone", any);
+                spy();
+            });
+
+            /* Highlights whichever flow is under the header as you scroll, not only on
+   click. Filter-aware, and clamps to the last section at the page bottom. */
+            let spyRAF = null;
+            function spy() {
+                if (spyRAF) return;
+                spyRAF = requestAnimationFrame(() => {
+                    spyRAF = null;
+                    if (view !== "flows") return;
+                    const flows = [
+                        ...document.querySelectorAll(".flow:not(.gone)"),
+                    ];
+                    if (!flows.length) return;
+                    let cur = flows[0];
+                    for (const f of flows)
+                        if (f.getBoundingClientRect().top <= 100) cur = f;
+                    if (
+                        window.innerHeight + window.scrollY >=
+                        document.body.scrollHeight - 4
+                    )
+                        cur = flows[flows.length - 1];
+                    const id = cur.id.replace(/^f-/, "");
+                    document
+                        .querySelectorAll("#sidenav a")
+                        .forEach((a) =>
+                            a.classList.toggle("cur", a.dataset.id === id),
+                        );
+                });
+            }
+            window.addEventListener("scroll", spy, { passive: true });
+            window.addEventListener("resize", spy);
+
+            /* ---- hotkeys: 1/2/3 views, v versions, / search, Esc clear-then-close ---- */
+            function isTyping(el) {
+                return (
+                    el &&
+                    (el.tagName === "INPUT" ||
+                        el.tagName === "TEXTAREA" ||
+                        el.isContentEditable)
+                );
+            }
+            document.addEventListener("keydown", (e) => {
+                const free =
+                    !isTyping(document.activeElement) &&
+                    !e.metaKey &&
+                    !e.ctrlKey;
+                if (["1", "2", "3"].includes(e.key) && free) {
+                    e.preventDefault();
+                    switchView(
+                        { 1: "screens", 2: "elements", 3: "flows" }[e.key],
+                    );
+                    return;
+                }
+                if ((e.key === "v" || e.key === "V") && free) {
+                    e.preventDefault();
+                    vbOpen ? closeVB() : openVB(true);
+                    return;
+                }
+                if (e.key === "/" && free) {
+                    e.preventDefault();
+                    if (view === "flows") {
+                        fsearch.focus();
+                        fsearch.select();
+                    } else openCB(true);
+                    return;
+                }
+                if (e.key === "Escape") {
+                    if (vbOpen) {
+                        if (vsearch.value) {
+                            vsearch.value = "";
+                            renderVList();
+                        } else closeVB();
+                        return;
+                    }
+                    if (cbOpen) {
+                        if (csearch.value) {
+                            csearch.value = "";
+                            renderList();
+                        } else closeCB();
+                        return;
+                    }
+                    if (isTyping(document.activeElement)) {
+                        const el = document.activeElement;
+                        el.value = "";
+                        el.dispatchEvent(new Event("input", { bubbles: true }));
+                        el.blur();
+                    }
+                    return;
+                }
+                if (
+                    vbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const vopts = [...vlist.querySelectorAll(".copt")];
+                    if (!vopts.length) return;
+                    if (e.key === "Enter") {
+                        if (vkbIndex < 0) return;
+                        e.preventDefault();
+                        const id = vopts[vkbIndex].dataset.v;
+                        if (e.shiftKey) {
+                            // Shift+Enter compares instead of switching. A letter
+                            // key can't be used here: the search field has focus,
+                            // so it would just be typed.
+                            if (id !== activeV) {
+                                compareV = compareV === id ? null : id;
+                                renderVList();
+                                render();
+                            }
+                        } else {
+                            activeV = id;
+                            if (compareV === activeV) compareV = null;
+                            renderVList();
+                            render();
+                            closeVB();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    vkbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(vkbIndex + 1, vopts.length - 1)
+                            : Math.max(vkbIndex - 1, 0);
+                    vkbId = vopts[vkbIndex].dataset.v;
+                    vopts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === vkbIndex),
+                    );
+                    vopts[vkbIndex].scrollIntoView({ block: "nearest" });
+                    return;
+                }
+                if (
+                    cbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const opts = [...clist.querySelectorAll(".copt")];
+                    if (!opts.length) return;
+                    if (e.key === "Enter") {
+                        if (kbIndex >= 0) {
+                            e.preventDefault();
+                            opts[kbIndex].click();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    kbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(kbIndex + 1, opts.length - 1)
+                            : Math.max(kbIndex - 1, 0);
+                    kbId = opts[kbIndex].dataset.id;
+                    opts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === kbIndex),
+                    );
+                    opts[kbIndex].scrollIntoView({ block: "nearest" });
+                }
+            });
+
+            /* one version means versioning is unused: hide the selector entirely */
+            if (VERSIONS.length < 2) {
+                vbox.classList.add("hide");
+                document.querySelector(".vinfo").classList.add("gone");
+            }
+            renderVList();
+            render();
+        </script>
+    </body>
+</html>

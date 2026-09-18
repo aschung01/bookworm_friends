@@ -1,0 +1,3721 @@
+<!doctype html>
+<!--
+  Design mockup shell. Self-contained: no build, no server, no network.
+  Open it straight from disk.
+
+  Replace the marked sections in the script below:
+    SECTION 1  TOKENS    - real colours/metrics copied from the codebase
+    SECTION 2  FRAME     - how one screen of THIS product is drawn
+    SECTION 3  DATA      - the screens, flows and elements themselves
+    SECTION 4  VERSIONS  - named variants, git-branch style (optional)
+  Leave SECTION 5 (ENGINE) alone unless you're changing behaviour.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Libstack &middot; exact-page entry</title>
+        <style>
+            :root {
+                /* ---- scale ----
+                   Declared at the ROOT, not just on .dev, because an element
+                   demo that is not wrapped in a frame still needs a scale:
+                   without one, every `calc(N * var(--pt))` is invalid and the
+                   demo renders as an empty box. That was a real defect, and the
+                   terminal checks could not see it. ---- */
+                --pt: 1px;
+
+                /* ---- SECTION 1a: product tokens.
+                   Copied from AppColors.light in lib/constants/app_theme.dart:98-112,
+                   dark from :114-132. Not eyeballed — the documented pitfall that
+                   wasted three review rounds on the library set was invented brand
+                   colours.
+
+                   NOTE for whoever reads both pages: the sibling
+                   docs/mockups/streaks/index.html still carries --text2:#adb5bd,
+                   which is STALE. secondaryText was darkened to #626A72 to reach AA
+                   on surfaceVariant (app_theme.dart:103, reasoning at :119-123). This
+                   page uses the real value. ---- */
+                --page: #f8f9fa; /* pageBackground     app_theme.dart:99  */
+                --surface: #ffffff; /* surface                         :100 */
+                --variant: #e9ecef; /* surfaceVariant                  :101 */
+                --text: #212529; /* primaryText                        :102 */
+                --text2: #626a72; /* secondaryText                     :103 */
+                --divider: #e9ecef; /* divider                         :104 */
+                --brand: #09bc8a; /* brand, decoration only            :105 */
+                --brandText: #067657; /* brandText                     :108 */
+                --brandFill: #067657; /* brandFill                     :109 */
+                --sheet: #eff5ef; /* sheetBackground                   :110 */
+
+                /* iOS system fills, for the picker's DEFAULT selectionOverlay.
+                   CupertinoColors.tertiarySystemFill, which is what
+                   CupertinoPickerDefaultSelectionOverlay paints
+                   (flutter/lib/src/cupertino/picker.dart:418). */
+                --iosFill: rgba(118, 118, 128, 0.12);
+                --iosFillDark: rgba(118, 118, 128, 0.24);
+
+                /* ---- page chrome (safe to leave) ---- */
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+                --bad: #c05746;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.5;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            mark.hl {
+                background: rgba(79, 125, 243, 0.28);
+                color: inherit;
+                border-radius: 3px;
+                padding: 0 1px;
+            }
+            .gone {
+                display: none;
+            }
+
+            /* ---------- top chrome ---------- */
+            .top {
+                position: sticky;
+                top: 0;
+                z-index: 300;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+            }
+            .top-in {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 11px 22px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+            }
+            .brand span {
+                color: var(--brandText);
+            }
+            .vtabs {
+                display: flex;
+                gap: 2px;
+            }
+            .vtabs button {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--muted);
+                background: none;
+                border: 0;
+                padding: 6px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+            }
+            .vtabs button:hover {
+                color: var(--ink);
+            }
+            .vtabs button.on {
+                color: var(--ink);
+                font-weight: 800;
+                background: #fff;
+                border: 0.5px solid var(--line);
+                box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.1);
+            }
+            .vtabs button::after,
+            .hk::after {
+                content: attr(data-key);
+                position: absolute;
+                top: calc(100% + 7px);
+                left: 50%;
+                transform: translateX(-50%) translateY(3px);
+                background: #26262b;
+                color: #fff;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2.5px 6px;
+                border-radius: 5px;
+                box-shadow: 0 3px 9px rgba(0, 0, 0, 0.28);
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.12s,
+                    transform 0.12s;
+                z-index: 50;
+            }
+            .vtabs button:hover::after,
+            .hk:hover::after {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+                transition-delay: 0.3s;
+            }
+            .sep {
+                width: 1px;
+                height: 20px;
+                background: var(--line);
+            }
+            .count {
+                margin-left: auto;
+                font-size: 12px;
+                color: var(--text2);
+                text-align: right;
+                line-height: 1.4;
+                white-space: nowrap;
+            }
+            .kbd {
+                display: inline-block;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--muted);
+                background: #f4f2ef;
+                border: 1px solid var(--line);
+                border-bottom-width: 2px;
+                border-radius: 4px;
+                padding: 0 4px;
+                line-height: 15px;
+                min-width: 15px;
+                text-align: center;
+            }
+
+            /* ---------- comboboxes (version + filter share the panel styling) ---------- */
+            .cbox {
+                position: relative;
+            }
+            .cbox.hide {
+                display: none;
+            }
+            .cbtn {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--ink);
+                background: #f4f2ef;
+                border: 0.5px solid var(--line);
+                padding: 6px 13px;
+                border-radius: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .cbtn:hover {
+                background: #eeece7;
+            }
+            .cbtn .chev {
+                font-size: 9px;
+                color: var(--muted);
+                transition: transform 0.15s;
+            }
+            .cbox.open .cbtn .chev {
+                transform: rotate(180deg);
+            }
+            .cbtn .badge {
+                font-size: 11px;
+                font-weight: 800;
+                color: #fff;
+                background: var(--brandText);
+                border-radius: 20px;
+                padding: 0 6px;
+                line-height: 16px;
+            }
+            .cbtn .branch {
+                font-size: 12px;
+                opacity: 0.5;
+            }
+            .cbtn.vbtn {
+                background: #eef2fd;
+                border-color: #cddafb;
+                color: #22407f;
+            }
+            .cbtn.vbtn:hover {
+                background: #e3ebfc;
+            }
+            .cpanel {
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                width: 340px;
+                max-height: min(70vh, 520px);
+                display: none;
+                flex-direction: column;
+                background: rgba(38, 38, 41, 0.97);
+                backdrop-filter: blur(20px);
+                border-radius: 15px;
+                box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+                overflow: hidden;
+                z-index: 400;
+            }
+            .cbox.open .cpanel {
+                display: flex;
+            }
+            .csearch {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                padding: 13px 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .csearch svg {
+                flex: 0 0 auto;
+                opacity: 0.5;
+            }
+            .csearch input {
+                flex: 1;
+                font: inherit;
+                font-size: 14.5px;
+                color: #fff;
+                background: none;
+                border: 0;
+                outline: none;
+            }
+            .csearch input::placeholder {
+                color: rgba(255, 255, 255, 0.42);
+            }
+            .clist {
+                overflow-y: auto;
+                padding: 7px 7px 9px;
+                flex: 1 1 auto;
+            }
+            .clist::-webkit-scrollbar {
+                width: 9px;
+            }
+            .clist::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.22);
+                border-radius: 9px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+            .cgrp {
+                font-size: 12px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.45);
+                padding: 9px 11px 4px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .cgrp:hover {
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .copt {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                padding: 8px 11px;
+                border-radius: 9px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .copt:hover,
+            .copt.kb {
+                background: rgba(255, 255, 255, 0.11);
+            }
+            .copt .box {
+                width: 17px;
+                height: 17px;
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.16);
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: #fff;
+            }
+            .copt.sel .box {
+                background: var(--brand);
+                color: #fff;
+                font-weight: 900;
+            }
+            .copt.radio .box {
+                border-radius: 50%;
+            }
+            .copt .lb {
+                font-size: 14.5px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .copt .lb mark.hl {
+                background: rgba(79, 125, 243, 0.5);
+                color: #fff;
+            }
+            .copt .sub {
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+                line-height: 1.45;
+            }
+            .copt .col {
+                flex: 1;
+                min-width: 0;
+            }
+            .copt .tagn {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1px 6px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.14);
+                color: rgba(255, 255, 255, 0.75);
+                white-space: nowrap;
+            }
+            .cfoot {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .cfoot .n {
+                flex: 1;
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .cfoot button {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                color: #fff;
+                background: rgba(255, 255, 255, 0.13);
+                border: 0;
+                border-radius: 7px;
+                padding: 4px 10px;
+                cursor: pointer;
+            }
+            .cfoot button:hover {
+                background: rgba(255, 255, 255, 0.22);
+            }
+            .cempty {
+                color: rgba(255, 255, 255, 0.45);
+                font-size: 13px;
+                padding: 16px 11px;
+            }
+
+            /* ---------- version bar ---------- */
+            .vinfo {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                color: var(--muted);
+                padding: 2px 0 0;
+            }
+            .vinfo .lbl {
+                font-weight: 800;
+                color: var(--brandText);
+                white-space: nowrap;
+            }
+            .vinfo .note {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .vinfo .diffs {
+                white-space: nowrap;
+                font-weight: 700;
+            }
+            .vinfo button {
+                font: inherit;
+                font-size: 11.5px;
+                font-weight: 700;
+                color: var(--brandText);
+                background: #eef2fd;
+                border: 0.5px solid #cddafb;
+                border-radius: 7px;
+                padding: 2px 9px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .vinfo button:hover {
+                background: #e3ebfc;
+            }
+            .vinfo button.off {
+                color: var(--muted);
+                background: #f4f2ef;
+                border-color: var(--line);
+            }
+
+            /* ---------- layout ---------- */
+            .wrap {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 22px 22px 90px;
+            }
+            .view {
+                display: none;
+            }
+            .view.on {
+                display: block;
+            }
+            h1 {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.4px;
+                margin: 6px 0 4px;
+            }
+            .lead {
+                color: var(--muted);
+                font-size: 14px;
+                max-width: 800px;
+                margin: 0 0 22px;
+            }
+            h2.grp {
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #a09c95;
+                margin: 30px 0 12px;
+                padding-bottom: 7px;
+                border-bottom: 1px solid var(--line);
+                scroll-margin-top: 80px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 20px 16px;
+            }
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+            .item .cap {
+                margin-top: 9px;
+            }
+            .item .nm {
+                font-size: 12.5px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .item .ds {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                margin-top: 2px;
+            }
+            .shot {
+                background: #e6e3dd;
+                border-radius: 10px;
+                padding: 14px 0;
+                display: flex;
+                justify-content: center;
+            }
+            .pair {
+                display: flex;
+                gap: 8px;
+            }
+            .pair > div {
+                flex: 1;
+                min-width: 0;
+            }
+            .pair .vl {
+                font-size: 9.5px;
+                font-weight: 800;
+                color: var(--muted);
+                text-align: center;
+                margin-bottom: 5px;
+                letter-spacing: 0.03em;
+            }
+            .pair .vl.b {
+                color: var(--brandText);
+            }
+            .noneleft {
+                color: var(--muted);
+                font-size: 13.5px;
+                padding: 26px 0;
+            }
+            .pend {
+                background: #fdf3f0;
+                border-left: 3px solid #c05746;
+                padding: 9px 13px;
+                border-radius: 0 6px 6px 0;
+                font-size: 12px;
+                line-height: 1.55;
+                margin: 0 0 13px;
+                max-width: 840px;
+            }
+            .tag {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1.5px 7px;
+                border-radius: 20px;
+                white-space: nowrap;
+            }
+            .tag.changed {
+                background: #fff4e0;
+                color: #8a5a10;
+            }
+            .tag.onlyHere {
+                background: #e6f4ee;
+                color: #0b6b4f;
+            }
+            .tag.onlyThere {
+                background: #fdecea;
+                color: #a3302a;
+            }
+            .tag.ver {
+                background: #eef2fd;
+                color: #2f55b8;
+            }
+
+            /* ---------- flows ---------- */
+            /* ghosts: present in the compared version, absent here */
+            .item.ghost .shot,
+            .el.ghost .demo {
+                opacity: 0.5;
+                outline: 1px dashed #c7a9a4;
+                outline-offset: -1px;
+            }
+            .item.ghost .nm,
+            .el.ghost .nm,
+            .flow.ghost .fh {
+                text-decoration: line-through;
+                text-decoration-color: #c7a9a4;
+            }
+            .flowlayout {
+                display: grid;
+                grid-template-columns: 216px 1fr;
+                gap: 26px;
+                align-items: start;
+            }
+            .side {
+                position: sticky;
+                top: 80px;
+            }
+            .sbox {
+                position: relative;
+                margin-bottom: 14px;
+            }
+            .search {
+                width: 100%;
+                font: inherit;
+                font-size: 13px;
+                padding: 9px 40px 9px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #faf9f7;
+                outline: none;
+            }
+            .search:focus {
+                border-color: var(--brandText);
+                background: #fff;
+            }
+            .sbox .hint {
+                position: absolute;
+                display: none;
+                right: 9px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+            .sbox .hint-slash {
+                display: block;
+            }
+            .sbox.focused .hint-slash,
+            .sbox.dirty .hint-slash {
+                display: none;
+            }
+            .sbox.dirty .hint-esc {
+                display: block;
+            }
+            .side a {
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--muted);
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border-left: 2px solid transparent;
+            }
+            .side a:hover {
+                background: #f5f4f1;
+                color: var(--ink);
+            }
+            .side a.cur {
+                color: var(--brandText);
+                background: #eef2fd;
+                font-weight: 800;
+                border-left-color: var(--brandText);
+            }
+            .side .sh {
+                font-size: 10.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                color: #b9b6b0;
+                margin: 16px 0 5px;
+                padding-left: 10px;
+            }
+            .flow {
+                margin-bottom: 38px;
+                scroll-margin-top: 88px;
+            }
+            .flow .fh {
+                font-size: 15.5px;
+                font-weight: 800;
+                margin: 0 0 3px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                flex-wrap: wrap;
+            }
+            .flow .fd {
+                font-size: 12.5px;
+                color: var(--muted);
+                margin: 0 0 13px;
+                max-width: 780px;
+            }
+            .flow .vrow {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--muted);
+                margin: 0 0 5px;
+                letter-spacing: 0.03em;
+            }
+            .flow .vrow.b {
+                color: var(--brandText);
+            }
+            .steps {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            .step {
+                flex: 0 0 auto;
+                width: 170px;
+            }
+            .step .shot {
+                border-radius: 9px;
+                padding: 11px 0;
+            }
+            .step .sn {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--brandText);
+                margin-bottom: 5px;
+            }
+            .step .sc {
+                font-size: 10.5px;
+                color: var(--muted);
+                line-height: 1.45;
+                margin-top: 7px;
+                padding-right: 8px;
+            }
+            .arrow {
+                flex: 0 0 auto;
+                width: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #c9c5be;
+                font-size: 17px;
+                padding-bottom: 40px;
+            }
+
+            /* ---------- elements ---------- */
+            .egrid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+                gap: 16px;
+            }
+            .el {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .el .demo {
+                background: #f2f0ec;
+                padding: 20px 18px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 96px;
+            }
+            .el .body {
+                padding: 12px 15px 14px;
+            }
+            .el .nm {
+                font-size: 13px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .el .ds {
+                font-size: 11.5px;
+                color: var(--muted);
+                line-height: 1.55;
+                margin-top: 3px;
+            }
+            .el .ds b {
+                color: #c05746;
+            }
+
+            /* ================================================================
+   SECTION 1b: DEVICE / FRAME STYLES.
+
+   **Scale is 1pt = 1px.** Every metric below is the number that appears in
+   the Dart source, so a value can be checked by reading it here, and
+   verify.py asserts the load-bearing ones still match the code. `--pt` is
+   the only scale knob — compare mode and flow steps shrink it and nothing
+   else changes, so the numbers stay honest at every size.
+
+   These are sheet CROPS, not whole phones: the sheet is what is being
+   designed, and a 390x844 phone drawn small enough to fit the grid makes
+   17pt type unreadable. A phone bezel would be decoration.
+   ================================================================ */
+            .dev {
+                --pt: 1px;
+                width: calc(390 * var(--pt));
+                display: flex;
+                flex-direction: column;
+                background: var(--page);
+                /* `outline`, not `border`: with box-sizing:border-box a 1px
+       border makes the CONTENT 388pt wide, so the header's inner
+       width measured 348 when the whole page claims 350. An outline
+       is drawn outside the box model and costs nothing. */
+                outline: 1px solid rgba(0, 0, 0, 0.16);
+                outline-offset: -1px;
+                border-radius: 13px;
+                overflow: hidden;
+                position: relative;
+                flex: 0 0 auto;
+                font-variant-numeric: tabular-nums;
+            }
+            /* Compare mode passes sm:true; flow steps are narrower again. */
+            .dev.sm {
+                --pt: 0.62px;
+            }
+            .step .dev {
+                --pt: 0.72px;
+            }
+            .dev.dark {
+                --page: #121212; /* app_theme.dart:115 */
+                --surface: #1e1e1e; /*              :116 */
+                --variant: #2c2c2e; /*              :117 */
+                --text: #f1f3f5; /*                 :118 */
+                --text2: #949599; /*                :124 */
+                --divider: #3a3a3c; /*              :125 */
+                --brandText: #09bc8a; /*            :128 */
+                --sheet: #171d1a; /*                :130 */
+                --iosFill: var(--iosFillDark);
+                /* brandFill is deliberately NOT overridden: it stays #067657 in
+                   dark (app_theme.dart:129) while brandText goes vivid. That is
+                   why the Confirm pill and the wheel's centred number are
+                   different greens in dark mode. */
+            }
+
+            /* ---------- the crop above the sheet ---------- */
+            .crop {
+                padding: 0;
+            }
+            .scrim {
+                background: rgba(0, 0, 0, 0.32);
+            }
+
+            /* ---------- the sheet itself ----------
+               kSheetCornerRadius = 24, top corners only (app_theme.dart:220,
+               :280-284). Background is sheetBackground, set on BOTH
+               backgroundColor and modalBackgroundColor (:272-277).
+               There is NO drag handle: nothing sets showDragHandle, so Flutter
+               resolves it to false (material/bottom_sheet.dart:362-363). Do not
+               draw a pill here. */
+            .sheet {
+                background: var(--sheet);
+                border-radius: calc(24 * var(--pt)) calc(24 * var(--pt)) 0 0;
+                overflow: hidden;
+            }
+
+            /* ---------- sheet header ----------
+               Padding symmetric(horizontal: 20, vertical: 16)
+               (select_percent_bottom_sheet.dart:81), spaceBetween (:82-83). */
+            .sh-hdr {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: calc(8 * var(--pt));
+                padding: calc(16 * var(--pt)) calc(20 * var(--pt));
+            }
+            .sh-title {
+                /* AppTextStyles.subtitle: Pretendard 17/w600, height 1.25,
+                   tracking -0.2 (app_text_styles.dart:291-299). */
+                font-size: calc(17 * var(--pt));
+                font-weight: 600;
+                letter-spacing: calc(-0.2 * var(--pt));
+                line-height: 1.25;
+                color: var(--text);
+                white-space: nowrap;
+            }
+            /* ElevatedActionButton, Material path: 92x32, radius 50 (so fully
+               round at this height), brandFill ground, label 13/w600 in white
+               (buttons.dart:98-138; width/height at
+               select_percent_bottom_sheet.dart:87-88). */
+            .pill {
+                width: calc(92 * var(--pt));
+                height: calc(32 * var(--pt));
+                border-radius: 999px;
+                background: var(--brandFill);
+                color: #fff;
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                display: grid;
+                place-items: center;
+                flex: 0 0 auto;
+            }
+            /* The recovered sheet's action was a bare tappable word, not a pill:
+               14/bold in brandText (a89ce73 select_date_bottom_sheet.dart:98-106). */
+            .pill.plain {
+                width: auto;
+                background: none;
+                color: var(--brandText);
+                font-size: calc(14 * var(--pt));
+                font-weight: 700;
+            }
+            .pill.wide {
+                width: calc(132 * var(--pt));
+            }
+
+            /* ---------- the mode segment ---------- */
+            .segwrap {
+                padding: 0 calc(20 * var(--pt)) calc(16 * var(--pt));
+            }
+            .sh-hdr .segwrap {
+                padding: 0;
+                /* Deliberately NOT shrinkable below a usable width: a segment
+       allowed to shrink to nothing would hide the very overflow
+       `seg-header` exists to show. It overflows the frame instead,
+       and .dev's overflow:hidden clips it — which is the finding. */
+                flex: 0 0 auto;
+                min-width: calc(110 * var(--pt));
+            }
+            .sh-hdr .sh-title {
+                flex: 0 0 auto;
+            }
+            .seg {
+                display: flex;
+                height: calc(32 * var(--pt));
+                padding: calc(2 * var(--pt));
+                gap: calc(2 * var(--pt));
+                border-radius: calc(9 * var(--pt));
+                background: var(--iosFill);
+            }
+            .seg s {
+                flex: 1 1 0;
+                min-width: 0;
+                display: grid;
+                place-items: center;
+                text-decoration: none;
+                border-radius: calc(7 * var(--pt));
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                color: var(--text);
+                white-space: nowrap;
+                padding: 0 calc(10 * var(--pt));
+            }
+            .seg s.on {
+                background: var(--surface);
+                box-shadow: 0 calc(1 * var(--pt)) calc(3 * var(--pt))
+                    rgba(0, 0, 0, 0.14);
+            }
+            .seg.tight s {
+                padding: 0 calc(6 * var(--pt));
+            }
+            .seg.over {
+                /* Marks "no margin left", not "overflowing" — see seg-header's
+       note, which measures it rather than asserting it. */
+                outline: calc(1 * var(--pt)) dashed var(--bad);
+                outline-offset: calc(2 * var(--pt));
+            }
+
+            /* ---------- the wheel ----------
+               A CupertinoPicker fades off-centre rows by the framework's own
+               _kOverAndUnderCenterOpacity = 0.447
+               (flutter/lib/src/cupertino/picker.dart:26). That constant is the
+               ONLY thing distinguishing the centre in the shipped wheel. */
+            .wheel {
+                position: relative;
+                height: calc(var(--wh) * var(--pt));
+                overflow: hidden;
+                /* `.stops` is absolutely positioned, so it contributes no
+       intrinsic width. In a shrink-to-fit context (an element demo)
+       that collapses the wheel to zero and the rows vanish. */
+                min-width: calc(160 * var(--pt));
+            }
+            .stops {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+            .stop {
+                height: calc(var(--ext) * var(--pt));
+                display: flex;
+                align-items: baseline;
+                justify-content: center;
+                gap: calc(1 * var(--pt));
+                color: var(--text);
+                white-space: nowrap;
+            }
+            .stop.off {
+                opacity: 0.447;
+            }
+            .stop .unit {
+                font-weight: inherit;
+            }
+
+            /* Item type, per candidate. */
+            .w-shipped .stop {
+                /* Every one of the 101 items is AppTextStyles.subtitle with no
+                   selected/unselected distinction at all
+                   (select_percent_bottom_sheet.dart:107-114). */
+                font-size: calc(17 * var(--pt));
+                font-weight: 600;
+                letter-spacing: calc(-0.2 * var(--pt));
+            }
+            .w-recovered .stop {
+                font-size: calc(20 * var(--pt));
+                font-weight: 700;
+            }
+            .w-recovered .stop.mid {
+                font-size: calc(28 * var(--pt));
+                color: var(--brandText);
+            }
+            .w-recovered .stop.mid .unit {
+                font-size: calc(20 * var(--pt));
+            }
+            /* Rebuilt from AppTextStyles, because test/text_style_test.dart
+               forbids literal fontSize/fontWeight anywhere in lib/ui. */
+            .w-figure .stop {
+                font-size: calc(17 * var(--pt)); /* subtitle */
+                font-weight: 600;
+            }
+            .w-figure .stop.mid {
+                font-size: calc(30 * var(--pt)); /* figure 30/w700 */
+                font-weight: 700;
+                letter-spacing: calc(-0.6 * var(--pt));
+                color: var(--brandText);
+            }
+            .w-figure .stop.mid .unit {
+                font-size: calc(17 * var(--pt));
+            }
+            .w-titleuser .stop {
+                font-size: calc(15 * var(--pt)); /* body 15/w400 */
+                font-weight: 400;
+            }
+            .w-titleuser .stop.mid {
+                font-size: calc(22 * var(--pt)); /* titleUser 22/w600 */
+                font-weight: 600;
+                letter-spacing: calc(-0.4 * var(--pt));
+                color: var(--brandText);
+            }
+            .w-titleuser .stop.mid .unit {
+                font-size: calc(15 * var(--pt));
+            }
+
+            /* Selection overlay, two candidates. */
+            .ovl {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 50%;
+                height: calc(var(--ext) * var(--pt));
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+            /* Flutter's default: tertiarySystemFill capsule, horizontal margin 9,
+               radius 8 (picker.dart:418,438,441). This is what ships today. */
+            .ovl.ios {
+                left: calc(9 * var(--pt));
+                right: calc(9 * var(--pt));
+                background: var(--iosFill);
+                border-radius: calc(8 * var(--pt));
+            }
+            /* The recovered wheel: 0.5pt brandText hairlines, top and bottom
+               only, no fill, no radius, full width
+               (a89ce73 select_date_bottom_sheet.dart:120-133). */
+            .ovl.rules {
+                border-top: calc(0.5 * var(--pt)) solid var(--brandText);
+                border-bottom: calc(0.5 * var(--pt)) solid var(--brandText);
+            }
+            /* A static column label, the way an iOS picker labels its columns.
+               Sidesteps the p./쪽 asymmetry entirely — see el-unit. */
+            .collabel {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(calc(46 * var(--pt)), -50%);
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                color: var(--text2);
+                pointer-events: none;
+            }
+
+            /* ---------- the rider ----------
+               _PageRider: a fixed 36pt box whether or not there is a page, so
+               the sheet is 320 either way (select_percent_bottom_sheet.dart:
+               146-159). label 13/w600 in secondaryText, centred. */
+            .rider {
+                height: calc(36 * var(--pt));
+                display: grid;
+                place-items: center;
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                color: var(--text2);
+            }
+            .rider.empty {
+                /* Drawn so the reserved height is visible when there is no
+                   pageCount to print. */
+                outline: calc(1 * var(--pt)) dashed rgba(0, 0, 0, 0.14);
+                outline-offset: calc(-3 * var(--pt));
+            }
+
+            /* ---------- the typed display + keypad ---------- */
+            .disp {
+                height: calc(56 * var(--pt));
+                display: flex;
+                align-items: baseline;
+                justify-content: center;
+                gap: calc(4 * var(--pt));
+                color: var(--brandText);
+            }
+            .disp .n {
+                font-size: calc(30 * var(--pt)); /* AppTextStyles.figure */
+                font-weight: 700;
+                letter-spacing: calc(-0.6 * var(--pt));
+            }
+            .disp .of {
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                color: var(--text2);
+            }
+            .disp .caret {
+                display: inline-block;
+                width: calc(2 * var(--pt));
+                height: calc(26 * var(--pt));
+                background: var(--brandText);
+                transform: translateY(calc(3 * var(--pt)));
+            }
+            .disp.bad {
+                color: var(--bad);
+            }
+            .disp.bad .caret {
+                background: var(--bad);
+            }
+            .badmsg {
+                text-align: center;
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                color: var(--bad);
+                padding-bottom: calc(6 * var(--pt));
+            }
+            /* The clamp is not an error, so it does not get the error colour. */
+            .badmsg.calm {
+                color: var(--text2);
+            }
+            .kp {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: calc(8 * var(--pt));
+                padding: 0 calc(20 * var(--pt)) calc(12 * var(--pt));
+            }
+            .kp b {
+                height: calc(44 * var(--pt));
+                border-radius: calc(10 * var(--pt));
+                background: var(--surface);
+                display: grid;
+                place-items: center;
+                font-size: calc(22 * var(--pt));
+                font-weight: 600;
+                color: var(--text);
+            }
+            .kp b.fn {
+                background: none;
+                color: var(--text2);
+                font-size: calc(15 * var(--pt));
+                font-weight: 600;
+            }
+            /* The system keyboard, drawn as a slab because its exact rows are
+               the platform's business, not ours. Height is what viewInsets.bottom
+               actually reports, and getting it wrong is what caused the one
+               shipped overflow in this feature: it was drawn at 216, the value
+               for a bare digit grid, but iOS gives the number pad letter
+               sub-captions (2 ABC, 3 DEF) and sits it above the home indicator.
+               ~290 on a large iPhone. Treat it as unknowable and let the sheet
+               size to it, which is what isScrollControlled is for. */
+            .syskb {
+                height: calc(290 * var(--pt));
+                background: #d1d3d9;
+                display: grid;
+                place-items: center;
+                font-size: calc(12 * var(--pt));
+                font-weight: 700;
+                color: #6a6c73;
+                letter-spacing: 0.04em;
+            }
+            .dev.dark .syskb {
+                background: #2b2b2e;
+                color: #9a9ca3;
+            }
+
+            /* ---------- the band (book details), for the landing states ----------
+               surfaceVariant ground, bottom corners kBookBandCornerRadius = 30
+               (band_progress_edge.dart:12), inner padding fromLTRB(30, 8, 30, 2)
+               when the progress row shows (book_details_tab_view.dart:444-455). */
+            .band {
+                position: relative;
+                background: var(--variant);
+                border-radius: 0 0 calc(30 * var(--pt)) calc(30 * var(--pt));
+                padding: calc(8 * var(--pt)) calc(30 * var(--pt))
+                    calc(2 * var(--pt));
+            }
+            .band .bt {
+                font-size: calc(17 * var(--pt));
+                font-weight: 600;
+                letter-spacing: calc(-0.2 * var(--pt));
+                color: var(--text);
+                height: calc(24 * var(--pt));
+            }
+            .band .ba {
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                color: var(--text2);
+                height: calc(20 * var(--pt));
+                margin-top: calc(10 * var(--pt));
+            }
+            .band .prow {
+                display: flex;
+                align-items: center;
+                height: calc(30 * var(--pt));
+                margin-top: calc(10 * var(--pt));
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+            }
+            /* kBandProgressRowTextInset = 10, applied to BOTH states so the text
+               does not jump when the reader answers (band_progress_row.dart:37,
+               :29-32). */
+            .band .prow .lead {
+                margin-left: calc(10 * var(--pt));
+                color: var(--brandText);
+            }
+            .band .prow .lead.ask {
+                color: var(--text2);
+            }
+            .band .prow .of {
+                opacity: 0.6; /* band_progress_row.dart:153-157 */
+            }
+            .band .prow .pct {
+                margin-left: auto;
+                color: var(--brandText);
+            }
+            /* NOT `.chev` — the page's own version button already uses that
+               class, and SECTION 1b wins the cascade over the top chrome. */
+            .bchev {
+                font-size: calc(20 * var(--pt));
+                line-height: 1;
+                color: var(--text2);
+                margin-left: calc(2 * var(--pt));
+                /* Stands in for Icon(Icons.chevron_right, size: 20)
+                   (band_progress_row.dart:192-199). */
+            }
+            /* BandProgressEdge: 4pt, clipped to the band's bottom corners, track
+               brandText @ 0.16, fill brandText (band_progress_edge.dart:15,
+               :59-62, :95-104). */
+            .band .edge {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: calc(4 * var(--pt));
+                background: color-mix(
+                    in srgb,
+                    var(--brandText) 16%,
+                    transparent
+                );
+            }
+            .band .edge i {
+                display: block;
+                height: 100%;
+                width: var(--fill);
+                background: var(--brandText);
+            }
+
+            /* ---------- field rows in the status sheet ----------
+               surfaceVariant, radius 10, padding symmetric(14, 10), body 15/w400,
+               and NO chevron (progress_field_row.dart:47-66). */
+            .frow {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: var(--variant);
+                border-radius: calc(10 * var(--pt));
+                padding: calc(10 * var(--pt)) calc(14 * var(--pt));
+                font-size: calc(15 * var(--pt));
+                color: var(--text);
+            }
+            .frow .v.ph {
+                color: var(--text2);
+            }
+            /* _Mark from read_today_field_row.dart:82-109 — 22x22, 1.5pt border,
+   brandFill when ticked, Icons.check at 14 in white. Drawn properly
+   because it is real UI: a plain dot would be the documented
+   "drawing the product wrong" pitfall. */
+            .mark {
+                width: calc(22 * var(--pt));
+                height: calc(22 * var(--pt));
+                border-radius: 50%;
+                border: calc(1.5 * var(--pt)) solid var(--brandFill);
+                background: var(--brandFill);
+                color: #fff;
+                font-size: calc(14 * var(--pt));
+                line-height: 1;
+                display: grid;
+                place-items: center;
+                flex: 0 0 auto;
+            }
+            .mark.off {
+                background: transparent;
+                border-color: var(--text2);
+                color: transparent;
+            }
+            .statusbody {
+                padding: calc(24 * var(--pt));
+                display: flex;
+                flex-direction: column;
+                gap: calc(8 * var(--pt));
+            }
+            .statusbody .st {
+                font-size: calc(17 * var(--pt));
+                font-weight: 600;
+                color: var(--text);
+                margin-bottom: calc(12 * var(--pt));
+            }
+            .savebtn {
+                height: calc(44 * var(--pt));
+                border-radius: 999px;
+                background: var(--brandFill);
+                color: #fff;
+                font-size: calc(13 * var(--pt));
+                font-weight: 600;
+                display: grid;
+                place-items: center;
+                margin-top: calc(12 * var(--pt));
+            }
+
+            /* ---------- annotations drawn INSIDE a frame ---------- */
+            .ann {
+                font-size: calc(11 * var(--pt));
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: var(--muted);
+                padding: calc(6 * var(--pt)) calc(20 * var(--pt));
+            }
+
+            /* ---------- grid overrides for 390-wide frames ---------- */
+            .grid {
+                grid-template-columns: repeat(auto-fill, minmax(424px, 1fr));
+            }
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+            }
+            .step {
+                width: 300px;
+            }
+            .egrid {
+                grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+            }
+            .el .demo {
+                padding: 16px 14px;
+                overflow-x: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="top-in">
+                <div class="cbox" id="vbox">
+                    <button class="cbtn vbtn hk" id="vbtn" data-key="v">
+                        <span class="branch">&#9095;</span
+                        ><span id="vbtn-label">main</span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="vsearch"
+                                placeholder="Search versions&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="vlist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="vfoot-n"></span
+                            ><button id="vcmp-clear">Stop comparing</button>
+                        </div>
+                    </div>
+                </div>
+                <span class="sep"></span>
+                <span class="brand"
+                    >PRODUCT &mdash; <span>design mockups</span></span
+                >
+                <div class="vtabs">
+                    <button data-v="screens" data-key="1" class="on">
+                        Screens
+                    </button>
+                    <button data-v="elements" data-key="2">UI Elements</button>
+                    <button data-v="flows" data-key="3">Flows</button>
+                </div>
+                <span class="sep"></span>
+                <div class="cbox" id="cbox">
+                    <button class="cbtn hk" id="cbtn" data-key="/">
+                        <span id="cbtn-label">Screens</span
+                        ><span class="badge" id="cbtn-badge" hidden></span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="csearch"
+                                placeholder="Search screens&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="clist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="cfoot-n"></span
+                            ><button id="cclear">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="count" id="cnt"></div>
+                <div class="vinfo">
+                    <span class="lbl" id="vinfo-lbl"></span>
+                    <span class="note" id="vinfo-note"></span>
+                    <span class="diffs" id="vinfo-diffs"></span>
+                    <button id="difftoggle" class="off">
+                        Only differences
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="view on" id="v-screens">
+                <h1>Screens</h1>
+                <p class="lead">
+                    <b>Letting a reader say which page they are on.</b> Nothing
+                    here is built. Scale is <b>1pt&nbsp;=&nbsp;1px</b>, so every
+                    number drawn is the number in the Dart source, and
+                    <code>verify.py</code> re-derives the load-bearing ones from
+                    the code. Sourced values:
+                    <code>sheetBackground&nbsp;#EFF5EF</code>,
+                    <code>brandText&nbsp;#067657</code>,
+                    <code>secondaryText&nbsp;#626A72</code>,
+                    <code>kSheetCornerRadius&nbsp;24</code> (top corners only,
+                    and <b>no drag handle</b> &mdash; nothing sets
+                    <code>showDragHandle</code>), sheet <code>320pt</code> =
+                    header&nbsp;64 + wheel&nbsp;220 + rider&nbsp;36,
+                    <code>_kItemExtent&nbsp;34</code>,
+                    <code>kProgressWheelStops&nbsp;101</code>, Confirm
+                    <code>92&times;32</code>,
+                    <code>kBandProgressRowTextInset&nbsp;10</code>.
+                    <b>Caveat:</b> type here is <code>system-ui</code>, not
+                    Pretendard &mdash; the app's font cannot be loaded from
+                    disk, so <i>glyph widths</i> (Korean especially) are
+                    indicative only. Every <i>layout</i> number above is exact
+                    and browser-measured. Filter with
+                    <span class="kbd">/</span>, change view with
+                    <span class="kbd">1</span> <span class="kbd">2</span>
+                    <span class="kbd">3</span>.
+                </p>
+                <div id="screens"></div>
+                <div class="noneleft gone" id="screens-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-elements">
+                <h1>UI elements</h1>
+                <p class="lead">
+                    The wheel row in all four candidate treatments, the two
+                    selection overlays, and the unit problem that decides how
+                    the number is drawn at all.
+                </p>
+                <div id="elements"></div>
+                <div class="noneleft gone" id="elements-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-flows">
+                <h1>UX flows</h1>
+                <p class="lead">
+                    Three journeys: setting an exact page, the majority path for
+                    a book with no page count, and the bookmark that currently
+                    walks backwards when you agree with the wheel.
+                </p>
+                <div class="flowlayout">
+                    <div class="side">
+                        <div class="sbox" id="sbox">
+                            <input
+                                class="search"
+                                id="fsearch"
+                                placeholder="Search flows&hellip;"
+                                autocomplete="off"
+                            />
+                            <span class="hint hint-slash"
+                                ><span class="kbd">/</span></span
+                            >
+                            <span class="hint hint-esc"
+                                ><span class="kbd">Esc</span></span
+                            >
+                        </div>
+                        <div id="sidenav"></div>
+                    </div>
+                    <div>
+                        <div id="flows"></div>
+                        <div class="noneleft gone" id="flows-none">
+                            No flows match that search.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            /* ==================================================================
+   SECTION 2: FRAME RENDERER — one bottom sheet of THIS product.
+
+   Screens are declared as DATA and drawn here. The sheet's chrome (radius
+   24, sheetBackground, no drag handle) and the header (padding 20/16, a
+   92x32 Confirm pill) are defined exactly once, so a decision that moves
+   the segment or renames the action is edited in one place.
+
+   Everything is 1pt = 1px; see SECTION 1b.
+   ================================================================== */
+
+            /* ---- measured/derived geometry, so the notes can argue from numbers
+                    instead of adjectives. verify.py re-derives every one of these
+                    from the Dart source. ---- */
+            const SHEET_H = 320; /* select_percent_bottom_sheet.dart:73 */
+            const HDR_PAD_V = 16; /* :81  */
+            const CONFIRM_H = 32; /* :88  */
+            const CONFIRM_W = 92; /* :87  */
+            const HDR_H = HDR_PAD_V * 2 + CONFIRM_H; /* 64 — the pill is taller
+                                    than the 17/1.25 title line, so it sets the row */
+            const RIDER_H = 36; /* :146 */
+            const WHEEL_H = SHEET_H - HDR_H - RIDER_H; /* 220 */
+            const EXTENT = 34; /* _kItemExtent, :26 */
+            const STOPS = 101; /* kProgressWheelStops, :21 */
+            const OLD_EXTENT = 80; /* a89ce73 …select_date_bottom_sheet.dart:119 */
+            const OLD_WHEEL_H = 220; /* …:110 — the same 220, independently */
+            const SEG_H = 32; /* matched to the Confirm pill on purpose */
+            const SEG_GAP = 16; /* to the wheel below it */
+            const SEG_COST = SEG_H + SEG_GAP; /* 48 */
+            const SHEET_H_SEG = SHEET_H + SEG_COST; /* 368 */
+            /* Non-scroll-controlled modal ceiling: scrollControlDisabledMaxHeightRatio
+               is 9/16 (cupertino_native_better bottom_sheet.dart:59) of a 844pt phone. */
+            const SHEET_MAX = (844 * 9) / 16; /* 474.75 */
+            const SHEET_W = 390;
+            const HDR_PAD_H = 20; /* :81 */
+            const HDR_INNER = SHEET_W - HDR_PAD_H * 2; /* 350 */
+
+            const PAGES = 432; /* the running example */
+            const PAGES_LONG = 912;
+            const PAGES_BAND = 320; /* matches the band row's own p.147 / 320 */
+
+            /* Percent quantisation, exactly as the code does it: the wheel writes
+               `selected / 100` (:91) and a page is `(progress * pageCount).round()`
+               (models/book.dart:55-58). */
+            const pageAt = (stop, total) => Math.round((total * stop) / 100);
+            const stopFor = (page, total) => Math.round((page / total) * 100);
+            const roundTrip = (page, total) =>
+                pageAt(stopFor(page, total), total);
+            const reachable = (total) => {
+                const s = new Set();
+                for (let i = 0; i < STOPS; i++) s.add(pageAt(i, total));
+                return s.size;
+            };
+            const REACH = reachable(PAGES); /* 101 of 432 */
+            const REACH_LONG = reachable(PAGES_LONG);
+            const REACH_BAND = reachable(PAGES_BAND);
+            const RT200 = roundTrip(200, PAGES); /* 199 */
+            const RT201 = roundTrip(201, PAGES); /* 203 */
+            const STEP432 = (PAGES / (STOPS - 1)).toFixed(2); /* 4.32 */
+            const TRAVEL = PAGES * EXTENT; /* 14688pt of scroll in page mode */
+            const TRAVEL_LONG = PAGES_LONG * EXTENT;
+            const ROWS_34 = +(WHEEL_H / EXTENT).toFixed(2); /* 6.47 */
+            const ROWS_80 = +(WHEEL_H / OLD_EXTENT).toFixed(2); /* 2.75 */
+
+            /* One wheel row. `v` is a plain string, or an object so the unit can be
+               drawn as its own span at its own size — which is what the recovered
+               wheel did (…:167-180), and where the p./쪽 problem lives. */
+            function stopHTML(v, isMid, unitOnMid) {
+                if (typeof v === "string")
+                    return `<span class="num">${v}</span>`;
+                const showUnit = !unitOnMid || isMid;
+                return (
+                    (v.p && showUnit
+                        ? `<span class="unit pre">${v.p}</span>`
+                        : "") +
+                    `<span class="num">${v.n}</span>` +
+                    (v.u && showUnit ? `<span class="unit">${v.u}</span>` : "")
+                );
+            }
+
+            function wheel(b) {
+                const ext = b.ext || EXTENT;
+                const h = b.h || WHEEL_H;
+                const mid = (b.vals.length - 1) / 2;
+                const rows = b.vals
+                    .map((v, i) => {
+                        const isMid = i === mid;
+                        return `<div class="stop${isMid ? " mid" : " off"}">${stopHTML(
+                            v,
+                            isMid,
+                            b.unitOnMid,
+                        )}</div>`;
+                    })
+                    .join("");
+                return (
+                    `<div class="wheel w-${b.style || "shipped"}" style="--wh:${h};--ext:${ext}">` +
+                    `<div class="stops">${rows}</div>` +
+                    `<div class="ovl ${b.ovl || "ios"}"></div>` +
+                    (b.collabel
+                        ? `<div class="collabel">${b.collabel}</div>`
+                        : "") +
+                    `</div>`
+                );
+            }
+
+            const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+            function block(b) {
+                switch (b.t) {
+                    case "hdr":
+                        return (
+                            `<div class="sh-hdr"><span class="sh-title">${b.title}</span>` +
+                            (b.mid ? block(b.mid) : "") +
+                            (b.action === null
+                                ? ""
+                                : `<span class="pill${b.plain ? " plain" : ""}">${
+                                      b.action || "Confirm"
+                                  }</span>`) +
+                            `</div>`
+                        );
+                    case "seg":
+                        return (
+                            `<div class="segwrap"><div class="seg${b.tight ? " tight" : ""}${
+                                b.over ? " over" : ""
+                            }">` +
+                            b.items
+                                .map(
+                                    (x) =>
+                                        `<s class="${x === b.on ? "on" : ""}">${x}</s>`,
+                                )
+                                .join("") +
+                            `</div></div>`
+                        );
+                    case "wheel":
+                        return wheel(b);
+                    case "rider":
+                        return `<div class="rider${b.v ? "" : " empty"}">${b.v || ""}</div>`;
+                    case "disp":
+                        return (
+                            `<div class="disp${b.bad ? " bad" : ""}">` +
+                            (b.pre ? `<span class="of">${b.pre}</span>` : "") +
+                            `<span class="n">${b.v}</span>` +
+                            (b.caret ? `<span class="caret"></span>` : "") +
+                            (b.of ? `<span class="of">${b.of}</span>` : "") +
+                            `</div>` +
+                            (b.msg
+                                ? `<div class="badmsg${b.calm ? " calm" : ""}">${b.msg}</div>`
+                                : "")
+                        );
+                    case "kp":
+                        return (
+                            `<div class="kp">` +
+                            KEYS.map((k) => `<b>${k}</b>`).join("") +
+                            `<b class="fn">${b.clear || "Clear"}</b><b>0</b><b class="fn">&#9003;</b>` +
+                            `</div>`
+                        );
+                    case "syskb":
+                        return `<div class="syskb">SYSTEM NUMBER PAD &middot; ~290pt &middot; the platform’s to choose</div>`;
+                    case "band":
+                        return (
+                            `<div class="band">` +
+                            `<div class="bt">${b.title}</div>` +
+                            `<div class="ba">${b.authors}</div>` +
+                            `<div class="prow">` +
+                            (b.ask
+                                ? `<span class="lead ask">How far in?</span>`
+                                : `<span class="lead">p.${b.page}<span class="of"> / ${b.total}</span></span>`) +
+                            (b.ask
+                                ? ""
+                                : `<span class="pct">${b.pct}%</span>`) +
+                            (b.door
+                                ? `<span class="bchev">&#8250;</span>`
+                                : "") +
+                            `</div>` +
+                            (b.fill === undefined
+                                ? ""
+                                : `<div class="edge"><i style="--fill:${b.fill}%"></i></div>`) +
+                            `</div>`
+                        );
+                    case "frow":
+                        return (
+                            `<div class="frow"><span>${b.label}</span>` +
+                            (b.mark === undefined
+                                ? `<span class="v${b.ph ? " ph" : ""}">${b.value}</span>`
+                                : `<span class="mark${b.mark ? "" : " off"}">&#10003;</span>`) +
+                            `</div>`
+                        );
+                    case "status":
+                        return (
+                            `<div class="statusbody"><div class="st">${b.title}</div>` +
+                            blocks(b.rows) +
+                            `<div class="savebtn">Save</div></div>`
+                        );
+                    case "ann":
+                        return `<div class="ann">${b.v}</div>`;
+                    case "gap":
+                        return `<div style="height:calc(${b.h} * var(--pt))"></div>`;
+                    default:
+                        return "";
+                }
+            }
+            function blocks(list) {
+                return (list || []).map(block).join("");
+            }
+
+            /** Draw one screen from its spec. */
+            function frame(s) {
+                let h = `<div class="dev${s.sm ? " sm" : ""}${s.dark ? " dark" : ""}">`;
+                if (s.crop) h += `<div class="crop">${blocks(s.crop)}</div>`;
+                if (s.sheet) {
+                    h += `<div class="scrim" style="height:calc(${
+                        s.sheet.above === undefined ? 40 : s.sheet.above
+                    } * var(--pt))"></div>`;
+                    h += `<div class="sheet">${blocks(s.sheet.body)}</div>`;
+                }
+                return h + `</div>`;
+            }
+            /* ==================================================================
+   SECTION 3: DATA — exact-page entry. NOTHING HERE IS BUILT.
+
+   Two decisions are already taken and are not re-litigated below:
+     1. a segment chooses the input mode, offered only when page_count exists;
+     2. the control is the emphasised-centre wheel recovered from a89ce73,
+        given a tap-to-type keypad.
+   What is still open is drawn as an OPEN callout rather than quietly settled.
+
+   The spec this overrides says, in as many words, "One native wheel. No
+   chips, no rail, no unit segment, no page/percent toggle"
+   (docs/superpowers/specs/2026-09-12-reading-streaks-design.md). The
+   override is deliberate: that objection was that percent needs no fallback
+   for the ~65% of the corpus with no page_count, and a segment shown only
+   when page_count exists leaves exactly that majority untouched.
+   ================================================================== */
+
+            /* Window builders. A wheel is drawn as the rows that actually fit:
+               7 at extent 34 (238 into a 220 box, so the outer two clip, which is
+               what a real wheel does) and 3 at extent 80. */
+            const win = (n, f) =>
+                Array.from({ length: n }, (_, i) => f(i - (n - 1) / 2));
+            /* Both windows blank the rows past their ends, the way a real
+               CupertinoPicker does at index 0. Without it the wheel at p.1 drew
+               p.-2/-1/0, and the wheel at 0% drew -3%..-1% — or, worse, got
+               "fixed" by centring it on 3%, which then disagreed with its own
+               rider. Asserted against in verify.py. */
+            const pctWin = (pct, n = 7) =>
+                win(n, (d) => {
+                    const v = pct + d;
+                    return v < 0 || v > 100 ? "" : `${v}%`;
+                });
+            /* Rows past either end of the range render EMPTY, the way a real
+               CupertinoPicker does at index 0. Without this the wheel at p.1
+               cheerfully drew p.-2, p.-1 and p.0, which was visible in the
+               `set-exact` flow and is asserted against below. */
+            const pageWin = (page, n = 7, u, total) =>
+                win(n, (d) => {
+                    const v = page + d;
+                    if (v < 1 || (total && v > total)) return "";
+                    return u ? { n: String(v), ...u } : String(v);
+                });
+
+            const PCT = stopFor(200, PAGES); /* 46 — the stop p.200 snaps to */
+
+            /* The status sheet, which is what opens the wheel. Its rows are real:
+               surfaceVariant, radius 10, padding 14/10, and no chevron
+               (progress_field_row.dart:47-66). */
+            const STATUS_ROWS = (progressValue, ph) => [
+                { t: "frow", label: "Start date", value: "12 Sep 2026" },
+                {
+                    t: "frow",
+                    label: "How far in?",
+                    value: progressValue,
+                    ph: ph,
+                },
+                { t: "frow", label: "I read today", mark: true },
+            ];
+
+            const SCREENS = [
+                [
+                    "Today, and what it costs",
+                    [
+                        [
+                            "today",
+                            "Percent wheel &middot; as shipped",
+                            `<b>CURRENT.</b> ${SHEET_H}pt decomposes exactly: header ${HDR_H} (${HDR_PAD_V}+${HDR_PAD_V} around a ${CONFIRM_H}pt pill, which is taller than the 17/1.25 title line and therefore sets the row), wheel ${WHEEL_H}, rider ${RIDER_H}. Extent ${EXTENT}, so ${ROWS_34} rows are visible. <b>All ${STOPS} items are the same widget</b> — <code>AppTextStyles.subtitle</code>, no selected/unselected distinction at all (<code>select_percent_bottom_sheet.dart:107-114</code>); the only thing marking the centre is the framework fading the others to <code>0.447</code>. The overlay is Flutter's default <code>tertiarySystemFill</code> capsule, inset 9 with radius 8.<br><br><b>The cost, in numbers.</b> On a ${PAGES}-page book the ${STOPS} stops land on ${REACH} distinct pages, one every ${STEP432}. A reader on p.200 cannot say so: 200 snaps to stop ${PCT}, which stores <code>0.${PCT}</code>, which reads back as <b>p.${RT200}</b>. p.201 reads back as p.${RT201}. So p.200, p.201 and p.202 are all unsayable, and the spec admits it — "a reader who knows they are on page 431 exactly cannot say so".`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "wheel",
+                                            vals: pctWin(PCT),
+                                            style: "shipped",
+                                            ovl: "ios",
+                                        },
+                                        { t: "rider", v: `&#8776; p.${RT200}` },
+                                    ],
+                                },
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "Where the mode selector goes",
+                    [
+                        [
+                            "seg-header",
+                            "Segment in the header &middot; no margin left",
+                            `<b>REJECTED — and the first draft of this note was wrong, which is why the frame is drawn rather than described.</b> I claimed the Korean title pushed the Confirm pill off the sheet. It does not. Measured in the browser: title <b>129</b> + 8 gap + segment <b>110</b> + 8 + pill <b>${CONFIRM_W}</b> = <b>347 into ${HDR_INNER}pt</b> of header. It fits, by three points.<br><br><b>Three points is the finding.</b> There is no margin for anything: not a longer locale, not Dynamic Type, not a wider glyph set. And the segment is already at its floor — 110pt forces the labels down to <code>%</code> and <code>Page</code> rather than words, which is why <code>seg-under</code> can say <i>Percent</i> and this cannot.<br><br><b>The one number this page cannot measure is the important one.</b> The mockup renders in <code>system-ui</code>; the app renders in Pretendard, which sets CJK at a full em, so <span lang="ko">어디까지 읽었나요?</span> is nearer <b>150pt</b> there than the 129 drawn here — which would be ~368 into ${HDR_INNER}, i.e. genuinely over. Treat that as an estimate needing a device, not as proven.<br><br>Independent of width: a segment wedged between a title and a filled pill reads as a third button in a row of buttons, which is the one thing a mode switch must not look like.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        {
+                                            t: "hdr",
+                                            title: '<span lang="ko">어디까지 읽었나요?</span>',
+                                            mid: {
+                                                t: "seg",
+                                                items: ["%", "Page"],
+                                                on: "Page",
+                                                tight: true,
+                                                over: true,
+                                            },
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200),
+                                            style: "figure",
+                                            ovl: "rules",
+                                            collabel: "Page",
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "seg-under",
+                            "Segment on its own row &middot; recommended",
+                            `<b>DECIDED, and the default is Percent — always</b>, on every book, including one that has a page count. Page is one tap away and never presumed, so the sheet a reader already knows opens exactly as it does today and the new capability costs them no relearning. It also means the 101-stop wheel stays the <i>opening</i> state of this control in every case.<br><br><b>The row itself is confirmed:</b> the segment gets a row of its own beneath the header: ${SEG_H}pt tall (matched to the Confirm pill so the two read as the same weight of control) plus a ${SEG_GAP}pt gap to the wheel = <b>${SEG_COST}pt</b>. The sheet grows ${SHEET_H} &rarr; <b>${SHEET_H_SEG}</b>.<br><br><b>That is affordable, and the ceiling is known.</b> A non-scroll-controlled modal is capped at <code>scrollControlDisabledMaxHeightRatio</code> = 9/16 of the screen, i.e. <b>${SHEET_MAX}pt</b> on a 844pt phone. ${SHEET_H_SEG} clears it by ${(SHEET_MAX - SHEET_H_SEG).toFixed(2)}pt, so no flag has to change and the wheel keeps its full ${WHEEL_H}. The alternative — holding ${SHEET_H} and shrinking the wheel to ${WHEEL_H - SEG_COST} (${((WHEEL_H - SEG_COST) / EXTENT).toFixed(2)} rows) — buys nothing, because the height is available.<br><br>Full width also means the segment can be labelled in words rather than squeezed to glyphs, and in Korean it has room.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200),
+                                            style: "figure",
+                                            ovl: "rules",
+                                            collabel: "Page",
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "seg-none",
+                            "No page count &middot; unchanged",
+                            `<b>CURRENT, and this is the majority.</b> Roughly <b>65% of the corpus has no <code>page_count</code></b> (168 of 293 measured; sourced from <code>docs/superpowers/plans/2026-08-16-phase-3-library-card-plan.md:112</code>, <i>not re-measured</i>, cause still live in <code>book_info_bottom_sheet.dart:162-164</code>). For those books there is no second mode to offer, so <b>no segment is drawn at all</b> — not a disabled one, which would advertise a feature the book cannot have.<br><br>The sheet is then byte-for-byte today's: ${SHEET_H}pt, percent wheel, and the rider's ${RIDER_H}pt <b>still reserved but empty</b> (dashed here), which is exactly what <code>_PageRider</code> already does so the height does not depend on the data (<code>select_percent_bottom_sheet.dart:146-147</code>).<br><br>This is the whole answer to the original objection: the toggle costs the majority nothing.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "wheel",
+                                            vals: pctWin(PCT),
+                                            style: "shipped",
+                                            ovl: "ios",
+                                        },
+                                        { t: "rider" },
+                                    ],
+                                },
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "Page mode: drawing the centred number",
+                    [
+                        [
+                            "page-recovered",
+                            "Superseded &middot; recovered verbatim, extent 80",
+                            `<b>SUPERSEDED on extent — 34 was chosen, not 80.</b> The wheel shows ±3 rather than ±1, which gives up the pure nudge-by-one framing and buys agreement with the date picker beside it. Kept as the faithful record of what was actually built.<br><br><b>The widget as it actually was</b>, from <code>git show a89ce73:lib/ui/widgets/bottom_sheets/select_date_bottom_sheet.dart</code> — deleted in <code>604871f</code> when the year capsules replaced it. Centre <b>28/bold in brandText</b>, siblings <b>20/bold in primaryText</b>, overlay <b>0.5pt brandText hairlines, top and bottom only</b>, no fill and no radius (<code>a89ce73&hellip;:120-133</code>, <code>:167-180</code>). Extent <b>${OLD_EXTENT}</b> in a ${OLD_WHEEL_H}pt box — and that 220 is independently the same 220 the percent sheet's wheel gets today, which is a pleasing coincidence rather than a shared constant.<br><br><b>What extent ${OLD_EXTENT} does.</b> ${ROWS_80} rows visible, so exactly one sibling each side: p.199 and p.201. For <i>nudging</i> that is ideal — the neighbours are the ±1 you want. For <i>travelling</i> it is hopeless: ${PAGES} stops at ${OLD_EXTENT}pt is ${(PAGES * OLD_EXTENT).toLocaleString()}pt of scroll.<br><br>Also note the unit behaviour: unselected rows pass <code>children: null</code>, so <b>the suffix exists only on the centred row</b> and appears and disappears as the wheel turns. Charming for <span lang="ko">년</span>/<span lang="ko">월</span>. <b>The suffix drawn here is the Korean <span lang="ko">쪽</span>, because it is the only real page suffix we have</b> — English has none at all, it has the prefix <code>p.</code>. That asymmetry is what <code>page-bare</code> settles, and it is why this pattern cannot meet both locales unchanged.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        {
+                                            t: "hdr",
+                                            title: "How far in?",
+                                            action: "Done",
+                                            plain: true,
+                                        },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200, 3, {
+                                                u: "&#51413;",
+                                            }),
+                                            style: "recovered",
+                                            ovl: "rules",
+                                            ext: OLD_EXTENT,
+                                            unitOnMid: true,
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "page-recovered-34",
+                            "Superseded &middot; recovered sizes at extent 34",
+                            `<b>SUPERSEDED on the type, adopted on the extent.</b> 34 is the chosen row height, but these are the historical 28/20 literals, which cannot ship (<code>test/text_style_test.dart</code>). <code>page-bare</code> is this geometry with token sizes.<br><br><b>The same emphasis at the shipped extent</b>, so the one variable is the row height. ${ROWS_34} rows instead of ${ROWS_80}, siblings p.197&ndash;p.203 instead of p.199&ndash;p.201, and travel drops to ${TRAVEL.toLocaleString()}pt.<br><br><b>Honest verdict, having drawn both:</b> at extent ${EXTENT} a 28pt centred number nearly fills its own row, so the emphasis starts to feel cramped rather than deliberate, and the hairlines sit very close to the glyphs. At extent ${OLD_EXTENT} the emphasis has air and looks like the thing the reader remembered building. <b>Neither extent fixes travel</b> — that is what the keypad is for — so the choice should be made on looks, and on looks the taller row wins.<br><br>Keeping ${EXTENT} has one real argument: it is what the date picker beside it uses, and the two sheets sit one tap apart (<code>select_percent_bottom_sheet.dart:23-25</code>).`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200, 7, {
+                                                u: "&#51413;",
+                                            }),
+                                            style: "recovered",
+                                            ovl: "rules",
+                                            unitOnMid: true,
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "page-figure",
+                            "Type adopted &middot; figure + subtitle",
+                            `<b>DECIDED on the type, superseded on the unit.</b> The 30-over-17 pairing here is what ships; the Korean suffix riding on the centre row is not — see <code>page-bare</code>, which is this frame with the unit lifted out of the wheel. Kept because the argument for the pairing lives here.<br><br><b>The reason is tabular figures, not taste.</b> The recovered sizes cannot be copied: <code>test/text_style_test.dart</code> forbids literal <code>fontSize</code>/<code>fontWeight</code> anywhere in <code>lib/ui</code>, and <code>.copyWith()</code> may set colour only. So 28/20 has to land on real tokens.<br><br><b>Only three tokens carry <code>FontFeature.tabularFigures()</code></b>: <code>display</code> (46), <code>figure</code> (30) and <code>label</code> (13) (<code>app_text_styles.dart:123</code>). <code>subtitle</code>, <code>body</code> and <code>titleUser</code> do not. On a wheel that matters more than anywhere else in the app: <b>without tabular figures the centred number changes width as it counts</b>, so the digits shuffle sideways under a fixed overlay while you scroll. <code>figure</code> is the only mid-sized tabular token, so the centre is <code>figure</code> (30/w700) and the siblings are <code>subtitle</code> (17/w600).<br><br><b>The consequence is a 30/17 = 1.76 ratio</b> against the historical 28/20 = 1.40 — more emphatic than the original. That is a side effect of a correctness requirement, not a preference, which is why it is the recommendation despite being the less faithful reproduction. Siblings are non-tabular and will jitter, but they sit at 0.447 opacity and are already moving.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200, 7, {
+                                                u: "&#51413;",
+                                            }),
+                                            style: "figure",
+                                            ovl: "rules",
+                                            unitOnMid: true,
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "page-titleuser",
+                            "Superseded &middot; titleUser + body",
+                            `<b>SUPERSEDED.</b> <code>figure</code>+<code>subtitle</code> was chosen, so the centred number keeps its tabular figures and this pairing is not built. Kept as the honest counter-argument, and as the thing to come back to if 1.76 reads as shouting on a device.<br><br><b>It was the faithful-ratio alternative</b>, drawn so the trade is looked at rather than asserted. <code>titleUser</code> (22/w600) over <code>body</code> (15/w400) is 1.47 — almost exactly the historical 1.40, and it reads closer to what the reader remembers.<br><br><b>What it gives up is the thing that matters.</b> <code>titleUser</code> is not tabular (<code>app_text_styles.dart:280-288</code>), so the centred number — the one glyph run the reader is actually looking at — shifts horizontally as it changes. On a 3-digit page count that is a visible wobble against a fixed overlay.<br><br>It is the right choice only if the wobble turns out to be invisible in practice, which is a device question, not a drawing question. Worth a side-by-side on hardware before <code>page-figure</code> is committed.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200, 7, {
+                                                u: "&#51413;",
+                                            }),
+                                            style: "titleuser",
+                                            ovl: "rules",
+                                            unitOnMid: true,
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "page-bare",
+                            "THE CHOSEN DESIGN &middot; figure + subtitle, extent 34, bare numeral",
+                            `<b>DECIDED — this is the design.</b> Centre <code>figure</code> 30/w700 in <code>brandText</code> over <code>subtitle</code> 17/w600 siblings, <code>itemExtent</code> <b>34</b> so the wheel shows ±3 and matches the date picker one tap away, the recovered 0.5pt <code>brandText</code> hairlines, and a <b>bare tabular numeral</b> with the unit as a static column label. Every other frame in this group is comparison material.<br><br><b>The unit treatment is the part that needed arguing, and it solves a real localization break.</b> The recovered pattern is "numeral span, then unit span" — it assumes the unit <i>follows</i> the number. Our page string does not: <code>progressPage</code> is <b><code>p.{page}</code> in English</b> (<code>app_en.arb:60</code>) and <b><code>{page}쪽</code> in Korean</b> (<code>app_ko.arb:36</code>). The unit is a <i>prefix</i> in one shipped locale and a <i>suffix</i> in the other, so there is no "suffix span" to make small.<br><br>Worse, a prefix breaks the centring the wheel depends on: <code>p.</code> is dead weight to the left of the numeral, so the digits sit off-centre under the overlay, and they move as the page count grows a digit.<br><br><b>The fix is to stop putting the unit in the row.</b> The row is a bare tabular numeral; the unit becomes a <b>static label beside the wheel</b>, the way an iOS picker labels its columns. It never moves, it is localised once, it is identical in both locales, and the numeral stays centred and tabular. <br><br>This needs a new ARB key (a column label, not <code>progressPage</code>, which keeps its <code>p.</code> for the band row where a prefix is correct). Note also that <code>yearSuffix</code>/<code>monthSuffix</code> are <b>empty strings in English</b> — so the original wheel showed a bare <code>2025</code> in English and only Korean ever saw the suffix. The bare numeral is what that widget effectively already was in English.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200),
+                                            style: "figure",
+                                            ovl: "rules",
+                                            collabel: "Page",
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "page-long",
+                            "912 pages &middot; why the wheel cannot be the only path",
+                            `<b>The case that decides the keypad.</b> A ${PAGES_LONG}-page book needs ${PAGES_LONG} stops. At extent ${EXTENT} that is <b>${TRAVEL_LONG.toLocaleString()}pt of scroll</b>; at the recovered ${OLD_EXTENT} it is ${(PAGES_LONG * OLD_EXTENT).toLocaleString()}pt. A flick throws on the order of a thousand points, so reaching an arbitrary page is <i>tens</i> of flicks either way. This — not aesthetics — is the argument the original rejection got right, and it is why a page wheel alone was never viable.<br><br><b>So the division of labour is:</b> the keypad is how you <i>arrive</i>, and the wheel is how you <i>adjust</i>. Once the number is typed the wheel is sitting on it, and its neighbours are the ±1 nudge you actually want the next evening. That reframes the extent question too: a wheel used for nudging wants the tall row (<code>page-recovered</code>), because travel is no longer its job.<br><br>In percent mode this book is worse than the ${PAGES}-page one: ${STOPS} stops over ${PAGES_LONG} pages reaches ${REACH_LONG} distinct pages, roughly one in nine.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(604),
+                                            style: "figure",
+                                            ovl: "rules",
+                                            collabel: "Page",
+                                        },
+                                        { t: "rider", v: "66%" },
+                                    ],
+                                },
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "Tap-to-type",
+                    [
+                        [
+                            "kp-inplace",
+                            "Self-drawn keypad in place &middot; superseded",
+                            `<b>SUPERSEDED by <code>kp-system</code>, on accessibility.</b> Tapping the centred number swaps the wheel for a display and a self-drawn keypad <i>in the same sheet</i>, animated by the <code>AnimatedSize</code> the status sheet already uses (220ms <code>easeOutCubic</code>, <code>book_status_bottom_sheet.dart:90-95</code>).<br><br><b>It fits, and the arithmetic was right:</b> header ${HDR_H} + segment ${SEG_COST} + display 56 + keypad (4&times;44 + 3&times;8 gaps + 12 bottom = 212) + rider ${RIDER_H} = <b>416pt</b> against the ${SHEET_MAX}pt ceiling. Fitting was never the problem.<br><br><b>What it gave up.</b> This was built, and then removed. 173 lines of <code>GestureDetector</code> keys with no <code>Semantics</code> on any of them: VoiceOver read bare &ldquo;1&rdquo;&hellip;&ldquo;9&rdquo; as text rather than buttons, <code>&#9003;</code> as a glyph name, and a hardware or Bluetooth keyboard could not enter a page <i>at all</i>. No dictation, no paste, no key clicks, no respect for the reader's keyboard settings. Re-implementing the OS badly, in other words — and below this app's own bar, since it uses <code>Semantics</code> in about ten widgets.<br><br><b>What survives from this frame</b> is its real insight, and the built version keeps it: the value being edited stays in the spot it occupied a moment ago, and the mode switch and Confirm never move. The reader edits one number in one sheet. Losing the wheel's context while typing is the honest cost either way, mitigated by the rider.<br><br>Its closing claim — that a custom keypad means &ldquo;the sheet keeps its own geometry instead of being shoved by <code>viewInsets</code>&rdquo; — is the assumption that made the mistake. Being lifted by <code>viewInsets</code> is what nine sheets here already do.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "disp",
+                                            v: "200",
+                                            caret: true,
+                                            of: `of ${PAGES}`,
+                                        },
+                                        { t: "kp" },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "kp-below",
+                            "Keypad below a dimmed wheel &middot; does not fit",
+                            `<b>REJECTED on height.</b> Keeping the wheel visible for context and putting the keypad under it is the obvious way to lose nothing — and it does not fit: ${HDR_H} + ${SEG_COST} + wheel ${WHEEL_H} + keypad 212 + rider ${RIDER_H} = <b>580pt</b> against a ${SHEET_MAX}pt ceiling. It would need <code>isScrollControlled: true</code>, and then a sheet that is 69% of the screen for one number.<br><br>Shrinking the wheel to fit would leave it at about 60pt — two rows — which is no longer a wheel, just a cramped label. <b>So the context cannot be kept this way</b>, and <code>kp-inplace</code>'s trade is forced rather than chosen.<br><br>Drawn at the height it wants, overflowing its frame, because the failure is the point.`,
+                            {
+                                sheet: {
+                                    above: 0,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200),
+                                            style: "figure",
+                                            ovl: "rules",
+                                            h: 120,
+                                            collabel: "Page",
+                                        },
+                                        { t: "disp", v: "200", caret: true },
+                                        { t: "kp" },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "kp-sheet",
+                            "Keypad as a third nested sheet",
+                            `<b>The historical precedent, and the reason to be wary of it.</b> The recovered wheel was itself a nested sheet — <code>showYearMonthFilterBottomSheet</code> returned <code>Future&lt;({int year, int month})?&gt;</code> from a <code>CNBottomSheet</code> opened out of the filter (<code>a89ce73&hellip;:16-21</code>) — and the pattern is already live today: <code>select_percent_bottom_sheet.dart:71</code> is presented from <code>book_status_bottom_sheet.dart:77</code>. So "tap a value, get a sheet" is proven in this codebase.<br><br><b>But it would be the third.</b> Status sheet &rarr; progress sheet &rarr; keypad sheet, and each modal barrier compounds: one scrim at 0.32 gives 0.32, two give 0.54, <b>three give 0.69</b>. The book behind the thing you are editing is essentially black, and dismissing gets ambiguous — one swipe down from the keypad should return to the wheel, not to the book, and a stack this deep makes that a guess.<br><br>Keep as the fallback if the in-place swap turns out to fight the <code>AnimatedSize</code>, since it needs no animation at all.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        {
+                                            t: "hdr",
+                                            title: "Page",
+                                            action: "Set",
+                                        },
+                                        {
+                                            t: "disp",
+                                            v: "200",
+                                            caret: true,
+                                            of: `of ${PAGES}`,
+                                        },
+                                        { t: "kp" },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "kp-system",
+                            "Real text field + system number pad &middot; BUILT",
+                            `<b>BUILT — and this frame was wrongly rejected the first time round.</b> A real <code>CupertinoTextField</code> with <code>TextInputType.number</code> is a few lines and gets dictation, paste, select-all, key clicks, hardware-keyboard input and a VoiceOver-legible control for free.<br><br><b>The rejection was an arithmetic error, and it is worth naming precisely.</b> The original note computed header ${HDR_H} + segment ${SEG_COST} + wheel ${WHEEL_H} + keyboard 216 = <b>548</b> against ${SHEET_MAX} and called it a non-starter. But that sum <i>keeps the wheel on screen</i> — which is <code>kp-below</code>'s layout, not this one. When the pad replaces the wheel the way a keypad would, the sheet is ${HDR_H} + ${SEG_COST} + field 56 + clamp 18 + rider ${RIDER_H} = <b>222pt</b>, and the pad is <code>viewInsets</code> rather than sheet content.<br><br><b>It fits — but only with <code>isScrollControlled: true</code>, and that is the one thing neither this frame nor <code>kp-inplace</code> got right.</b> The 9/16 cap applies to the sheet <i>including</i> its keyboard inset, and the pad is <b>not 216pt</b>: with the letter sub-captions and the home indicator it is nearer <b>290</b>. 290 + 222 = 512 against a ${SHEET_MAX} cap, so the field’s column overflowed by ~32pt on device — the only defect this feature shipped, caught by eye and by no test, because the tests ran with no keyboard at all. With the flag the cap lifts and the sheet is its own 222 with the pad below it, at any pad height the platform picks. <b>The lesson is not the number but that the number is not ours:</b> do not budget for a keyboard, size to it.<br><br>The second objection — that <code>viewInsets.bottom</code> would shove the sheet — is contradicted by this codebase: nine sheets already lift themselves that way, including <code>book_status_bottom_sheet.dart</code>, the sheet this one is presented from. The third — that the numeric pad has <b>no Done key</b> — is real, and the answer is the one the keypad frame already gave: Confirm is in the header and never moves. Dismissing the pad (tap the sheet around the field) returns to the wheel.<br><br><b>What the self-drawn keypad actually cost</b> is why this was reversed: 173 lines, and it shipped with no <code>Semantics</code> on any key, so VoiceOver read bare &ldquo;1&rdquo;&hellip;&ldquo;9&rdquo; as text rather than buttons and a Bluetooth keyboard could not enter a page at all. That is below this app's own bar — it uses <code>Semantics</code> in about ten widgets. Clamping moved to a <code>TextInputFormatter</code>, which also handles the paste and dictation cases a key grid never sees.`,
+                            {
+                                sheet: {
+                                    above: 0,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "disp",
+                                            v: "200",
+                                            caret: true,
+                                            of: `of ${PAGES}`,
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                        { t: "syskb" },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "kp-invalid",
+                            "Typed past the last page &middot; clamps",
+                            `<b>DECIDED: clamp.</b> On a ${PAGES_BAND}-page book the digit that would take the number past the end simply does not take. The display holds at <b>${PAGES_BAND}</b> and says so quietly, in <code>secondaryText</code> — not in red, because being stopped at the last page is not an error.<br><br><b>What that buys over the alternative this frame used to draw</b> (refuse, explain, and hold Confirm inert) is that there is <i>no error state at all</i>: three pieces of UI disappear because the mistake becomes unreachable. Clamping does invent a value the reader did not type, which was the argument against it — the answer is that it invents it <i>while they are still typing and can see it</i>, rather than silently at Confirm.<br><br><b>Still to settle: a typed <code>0</code>.</b> p.0 does not exist, but 0% does, and null is not 0 here (<code>progress_field_row.dart:31-35</code>): a book at 0% has been opened and got nowhere, which is not the same as a book with no position. So page mode must either refuse 0 or mean null by it, and those are different products. See the callout.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "disp",
+                                            v: `${PAGES_BAND}`,
+                                            caret: true,
+                                            of: `of ${PAGES_BAND}`,
+                                            calm: true,
+                                            msg: `Clamped &mdash; this book ends at ${PAGES_BAND}`,
+                                        },
+                                        { t: "kp" },
+                                    ],
+                                },
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "Where the value lands",
+                    [
+                        [
+                            "band-answered",
+                            "The band, answered exactly",
+                            `<b>What the whole feature is for.</b> Exact page <i>storage</i> needs <b>no migration</b>: <code>page / pageCount</code> as <code>real</code> round-trips perfectly — 200/${PAGES} stores 0.462963, and <code>bookProgressPage</code> reads it back as <b>p.200</b>, not p.${RT200}. Tested across 432/320/912/1000 with zero failures. <b>The display rule decided on <code>row-progress</code> does need a migration, though</b> — for provenance, not for the number.<br><br>The row is unchanged from what ships: text inset <code>kBandProgressRowTextInset</code> = 10 (applied to <i>both</i> states so it does not jump when answered), <code>p.200</code> at full <code>brandText</code>, <code>/ ${PAGES}</code> at 60% of it, the percent right-aligned, chevron at size 20 in <code>secondaryText</code>. The 4pt edge is <code>BandProgressEdge</code>, track <code>brandText</code>&nbsp;@&nbsp;0.16 and fill <code>brandText</code>, clipped to the band's 30pt bottom corners.<br><br><b>The percent still reads ${PCT}%</b>, because ${PCT}% is what 200/${PAGES} is. Nothing about the display changes — only the truth of the number behind it.`,
+                            {
+                                crop: [
+                                    { t: "gap", h: 12 },
+                                    {
+                                        t: "band",
+                                        title: "The Name of the Rose",
+                                        authors: "Umberto Eco",
+                                        page: 200,
+                                        total: PAGES,
+                                        pct: PCT,
+                                        fill: PCT,
+                                        door: true,
+                                    },
+                                    { t: "gap", h: 16 },
+                                ],
+                            },
+                        ],
+                        [
+                            "row-progress",
+                            "The status sheet's row, on the way in",
+                            `<b>The door, and it is already built.</b> <code>ProgressFieldRow</code> is <code>surfaceVariant</code>, radius 10, padding 14/10 &mdash; about 41pt tall &mdash; with <code>body</code> 15/w400 for both halves and <b>no chevron</b> (the chevron in this feature lives only on the band row). Its value prints <code>${PCT}%</code>, or the placeholder <code>Select</code> in <code>secondaryText</code> when null.<br><br><b>An open question this drawing raises:</b> once a page can be stored exactly, should this row print <code>${PCT}%</code> or <code>p.200</code>? The band row already prefers pages when it has a count, and the two sit one tap apart, so printing a percent here and a page there is the kind of small disagreement that reads as a bug. Printing <code>p.200</code> when <code>page_count</code> exists would make them agree &mdash; at the cost of a row whose label asks "How far in?" and whose answer changes unit per book.<br><br><b>DECIDED: print the page only when there is a page count <i>and</i> the reader entered a page.</b> A percent stays a percent. The row then always shows a reader their own answer in their own unit, which is also why this row and the band row are allowed to disagree.<br><br><b>This is the only decision here that costs a migration</b>, because the rule needs to know <i>how</i> the value was entered and the stored double cannot say. Inference is tempting — percent mode writes <code>stop/100</code>, so <code>progress × 100</code> lands on a whole number — but it collapses precisely where books are commonest. Counted over every page, a page entry is indistinguishable from a percent for <b>0.9%</b> of a 432-page book, <b>6.25%</b> of a 320-page one, <b>50%</b> of a 200-page one and <b>100%</b> of a 50- or 100-page one. So provenance has to be stored, and the shape of that is the remaining open question.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        {
+                                            t: "status",
+                                            title: "Change reading status",
+                                            rows: STATUS_ROWS(`${PCT}%`, false),
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        [
+                            "page-dark",
+                            "Page mode &middot; dark",
+                            `<b>Drawn because the two greens diverge here.</b> In dark, <code>brandText</code> goes vivid (<code>#09BC8A</code>, <code>app_theme.dart:128</code>) while <code>brandFill</code> stays <code>#067657</code> (<code>:129</code>). So the centred number and the overlay hairlines are bright green, and the Confirm pill behind them is the same deep green it is in light. That is intentional in the theme &mdash; <code>brandText</code> is chosen for contrast on a surface, <code>brandFill</code> for a white label on top of it &mdash; but this sheet is the first place both appear within 60pt of each other.<br><br>Verdict by eye: it reads as two deliberate weights rather than a mismatch, because the pill is a solid shape and the number is a glyph. Worth confirming on hardware; if it does jar, the pill is the one to move, not the number.<br><br>Sheet ground is <code>sheetBackground</code> <code>#171D1A</code> &mdash; the pinned near-black mint, not <code>surface</code>.`,
+                            {
+                                dark: true,
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "seg",
+                                            items: ["Percent", "Page"],
+                                            on: "Page",
+                                        },
+                                        {
+                                            t: "wheel",
+                                            vals: pageWin(200),
+                                            style: "figure",
+                                            ovl: "rules",
+                                            collabel: "Page",
+                                        },
+                                        { t: "rider", v: `${PCT}%` },
+                                    ],
+                                },
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "The bug this fixes on the way past",
+                    [
+                        [
+                            "noop",
+                            "Confirm, having moved nothing",
+                            `<b>A live regression, independent of everything above.</b> Confirm unconditionally writes <code>selected / 100</code> (<code>select_percent_bottom_sheet.dart:91</code>). Open the sheet on a book stored at exactly 200/${PAGES} = 0.462963: the wheel snaps to stop ${PCT} (<code>:65-68</code>), and confirming writes <code>0.${PCT}</code> &mdash; <b>p.${RT200}</b>. <i>Merely opening the sheet and agreeing with it moves the bookmark back a page.</i> Do it again and it stays at p.${RT200}, so the loss is silent and once-only.<br><br><b>The fix is small and worth doing regardless of whether page mode is ever built:</b> remember whether the reader actually changed the selection, and if not, pop without calling <code>onProgressSelected</code>. That is a no-op guard, not a redesign, and it becomes <i>required</i> once exact pages exist &mdash; otherwise every visit to the sheet quantises a stored exact page back onto the 101-stop grid.<br><br>Drawn as the wheel sitting on ${PCT}% with nothing touched, because that is the whole scenario: there is no state to see, which is exactly why it went unnoticed.`,
+                            {
+                                sheet: {
+                                    above: 40,
+                                    body: [
+                                        { t: "hdr", title: "How far in?" },
+                                        {
+                                            t: "wheel",
+                                            vals: pctWin(PCT),
+                                            style: "shipped",
+                                            ovl: "ios",
+                                        },
+                                        { t: "rider", v: `&#8776; p.${RT200}` },
+                                    ],
+                                },
+                            },
+                        ],
+                    ],
+                ],
+            ];
+
+            const FLOWS = [
+                [
+                    "Setting a position",
+                    [
+                        [
+                            "set-exact",
+                            "Say p.200 exactly",
+                            "The path the feature exists for, from the band to a stored exact page. Every step is a real state from the Screens tab.",
+                            [
+                                [
+                                    "Band asks",
+                                    "The prompt state: <code>How far in? &rsaquo;</code> at the 10pt inset, and deliberately no bar — an empty track would be a claim about a position we do not have.",
+                                    {
+                                        crop: [
+                                            { t: "gap", h: 10 },
+                                            {
+                                                t: "band",
+                                                title: "The Name of the Rose",
+                                                authors: "Umberto Eco",
+                                                ask: true,
+                                                door: true,
+                                            },
+                                            { t: "gap", h: 10 },
+                                        ],
+                                    },
+                                ],
+                                [
+                                    "Status sheet",
+                                    "The band row opens the status sheet, where the progress row shows <code>Select</code> in <code>secondaryText</code>.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "status",
+                                                    title: "Change reading status",
+                                                    rows: STATUS_ROWS(
+                                                        "Select",
+                                                        true,
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Percent, by default",
+                                    "The second sheet always opens on <b>Percent</b>, even though this book has a count, so the opening state is exactly today's. Note the rider: an unstarted book sits at 0% and the shipped rider dutifully prints <code>&#8776; p.0</code> — a page no book has.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "hdr",
+                                                    title: "How far in?",
+                                                },
+                                                {
+                                                    t: "seg",
+                                                    items: ["Percent", "Page"],
+                                                    on: "Percent",
+                                                },
+                                                {
+                                                    t: "wheel",
+                                                    vals: pctWin(0),
+                                                    style: "shipped",
+                                                    ovl: "ios",
+                                                },
+                                                {
+                                                    t: "rider",
+                                                    v: "&#8776; p.0",
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Tap Page",
+                                    "One tap switches the control, not the unit: the 101-stop wheel becomes a page wheel starting at p.1. Nothing is written yet, and switching back is free.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "hdr",
+                                                    title: "How far in?",
+                                                },
+                                                {
+                                                    t: "seg",
+                                                    items: ["Percent", "Page"],
+                                                    on: "Page",
+                                                },
+                                                {
+                                                    t: "wheel",
+                                                    vals: pageWin(
+                                                        1,
+                                                        7,
+                                                        undefined,
+                                                        PAGES,
+                                                    ),
+                                                    style: "figure",
+                                                    ovl: "rules",
+                                                    collabel: "Page",
+                                                },
+                                                { t: "rider", v: "0%" },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Tap the number",
+                                    "The centred number is the target — the affordance the reader remembered, now actually built. The wheel is on p.1, so travelling to 200 is 199 rows; typing is the only sane route.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "hdr",
+                                                    title: "How far in?",
+                                                },
+                                                {
+                                                    t: "seg",
+                                                    items: ["Percent", "Page"],
+                                                    on: "Page",
+                                                },
+                                                {
+                                                    t: "wheel",
+                                                    vals: pageWin(
+                                                        1,
+                                                        7,
+                                                        undefined,
+                                                        PAGES,
+                                                    ),
+                                                    style: "figure",
+                                                    ovl: "rules",
+                                                    collabel: "Page",
+                                                },
+                                                { t: "rider", v: "TAP" },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Keypad",
+                                    "Wheel swaps for display + keypad in place, 220ms easeOutCubic. The rider keeps translating: 200 of 432 is 46%.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "hdr",
+                                                    title: "How far in?",
+                                                },
+                                                {
+                                                    t: "seg",
+                                                    items: ["Percent", "Page"],
+                                                    on: "Page",
+                                                },
+                                                {
+                                                    t: "disp",
+                                                    v: "200",
+                                                    caret: true,
+                                                    of: `of ${PAGES}`,
+                                                },
+                                                { t: "kp" },
+                                                {
+                                                    t: "rider",
+                                                    v: `${PCT}%`,
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Stored exactly",
+                                    "Confirm writes 200/432 = 0.462963, and the band reads it back as p.200 — not p.199. The percent still says 46%, because it is 46%.",
+                                    {
+                                        crop: [
+                                            { t: "gap", h: 10 },
+                                            {
+                                                t: "band",
+                                                title: "The Name of the Rose",
+                                                authors: "Umberto Eco",
+                                                page: 200,
+                                                total: PAGES,
+                                                pct: PCT,
+                                                fill: PCT,
+                                                door: true,
+                                            },
+                                            { t: "gap", h: 10 },
+                                        ],
+                                    },
+                                ],
+                            ],
+                        ],
+                        [
+                            "pct-only",
+                            "A book with no page count",
+                            "The majority path, and it must be untouched. No segment, no page mode, no new affordance — the only difference from today is that the rider has nothing to print.",
+                            [
+                                [
+                                    "Row",
+                                    "Identical row, identical placeholder.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "status",
+                                                    title: "Change reading status",
+                                                    rows: STATUS_ROWS(
+                                                        "Select",
+                                                        true,
+                                                    ),
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Percent only",
+                                    "No segment is drawn at all — not a disabled one, which would advertise something the book cannot do. The rider's 36pt stays reserved and empty.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "hdr",
+                                                    title: "How far in?",
+                                                },
+                                                {
+                                                    t: "wheel",
+                                                    vals: pctWin(PCT),
+                                                    style: "shipped",
+                                                    ovl: "ios",
+                                                },
+                                                { t: "rider" },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Band, percent only",
+                                    "With no count there is no <code>p.N / total</code> to draw, so the row's left half is empty by design and only the percent and the edge carry the value.",
+                                    {
+                                        crop: [
+                                            { t: "gap", h: 10 },
+                                            {
+                                                t: "band",
+                                                title: "Infinite Jest",
+                                                authors: "David Foster Wallace",
+                                                ask: true,
+                                                door: true,
+                                                fill: PCT,
+                                            },
+                                            { t: "gap", h: 10 },
+                                        ],
+                                    },
+                                ],
+                            ],
+                        ],
+                        [
+                            "noop-flow",
+                            "The bookmark that walks backwards",
+                            "Today's behaviour, drawn as a sequence because the defect is only visible over time. Independent of exact-page entry and worth fixing on its own.",
+                            [
+                                [
+                                    "Stored p.200",
+                                    "However it got there, the book is at 0.462963 and the band reads p.200.",
+                                    {
+                                        crop: [
+                                            { t: "gap", h: 10 },
+                                            {
+                                                t: "band",
+                                                title: "The Name of the Rose",
+                                                authors: "Umberto Eco",
+                                                page: 200,
+                                                total: PAGES,
+                                                pct: PCT,
+                                                fill: PCT,
+                                                door: true,
+                                            },
+                                            { t: "gap", h: 10 },
+                                        ],
+                                    },
+                                ],
+                                [
+                                    "Opened, untouched",
+                                    "The wheel snaps to the nearest stop, 46. The reader agrees with what they see and taps Confirm.",
+                                    {
+                                        sheet: {
+                                            above: 20,
+                                            body: [
+                                                {
+                                                    t: "hdr",
+                                                    title: "How far in?",
+                                                },
+                                                {
+                                                    t: "wheel",
+                                                    vals: pctWin(PCT),
+                                                    style: "shipped",
+                                                    ovl: "ios",
+                                                },
+                                                {
+                                                    t: "rider",
+                                                    v: `&#8776; p.${RT200}`,
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                                [
+                                    "Now p.199",
+                                    "0.46 is written over 0.462963 and the bookmark has moved back a page. Silent, and once-only, so nothing ever looks wrong.",
+                                    {
+                                        crop: [
+                                            { t: "gap", h: 10 },
+                                            {
+                                                t: "band",
+                                                title: "The Name of the Rose",
+                                                authors: "Umberto Eco",
+                                                page: RT200,
+                                                total: PAGES,
+                                                pct: PCT,
+                                                fill: PCT,
+                                                door: true,
+                                            },
+                                            { t: "gap", h: 10 },
+                                        ],
+                                    },
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+
+            const ELEMENTS = [
+                [
+                    "The wheel row",
+                    [
+                        [
+                            "el-stop-shipped",
+                            "Stop &middot; as shipped",
+                            "All 101 rows are one widget: <code>AppTextStyles.subtitle</code>, 17/w600, <code>primaryText</code>. No emphasis is authored at all — the centre is distinguished only by the framework fading everything else to <code>0.447</code>.",
+                            `<div class="dev" style="width:220px;border:0;background:none">${block({ t: "wheel", vals: pctWin(PCT, 3), style: "shipped", ovl: "ios", h: 102 })}</div>`,
+                        ],
+                        [
+                            "el-stop-recovered",
+                            "Stop &middot; recovered verbatim",
+                            "Centre 28/bold <code>brandText</code>, siblings 20/bold <code>primaryText</code>, and the unit exists <b>only on the centre row</b> at the siblings' 20pt. Cannot ship as-is: <code>test/text_style_test.dart</code> forbids literal sizes in <code>lib/ui</code>.",
+                            `<div class="dev" style="width:220px;border:0;background:none">${block({ t: "wheel", vals: pageWin(200, 3, { u: "&#51413;" }), style: "recovered", ovl: "rules", ext: OLD_EXTENT, unitOnMid: true, h: 240 })}</div>`,
+                        ],
+                        [
+                            "el-stop-figure",
+                            "Stop &middot; figure + subtitle",
+                            "The token rebuild. 30/w700 over 17/w600 — a 1.76 ratio, chosen because <code>figure</code> is the only mid-sized token carrying <code>tabularFigures()</code> and a wheel is where non-tabular digits shuffle most visibly.",
+                            `<div class="dev" style="width:220px;border:0;background:none">${block({ t: "wheel", vals: pageWin(200, 3), style: "figure", ovl: "rules", ext: 46, h: 138, collabel: "Page" })}</div>`,
+                        ],
+                        [
+                            "el-stop-titleuser",
+                            "Stop &middot; titleUser + body",
+                            "22/w600 over 15/w400 = 1.47, almost the historical 1.40 — but <code>titleUser</code> is not tabular, so the centred number wobbles horizontally as it counts. Faithful, and technically worse.",
+                            `<div class="dev" style="width:220px;border:0;background:none">${block({ t: "wheel", vals: pageWin(200, 3), style: "titleuser", ovl: "rules", ext: 46, h: 138, collabel: "Page" })}</div>`,
+                        ],
+                    ],
+                ],
+                [
+                    "Chrome",
+                    [
+                        [
+                            "el-ovl",
+                            "Selection overlay &middot; both candidates",
+                            "Left: Flutter’s default <code>CupertinoPickerDefaultSelectionOverlay</code> — <code>tertiarySystemFill</code> capsule, inset 9, radius 8 — which is what <i>used to</i> ship. Right: the recovered 0.5pt <code>brandText</code> hairlines, top and bottom only, full width. The hairlines brand the control and read as a measuring line; the capsule reads as a system picker.<br><br><b>Both modes now wear the right-hand one.</b> The hairlines, the <code>figure</code>/<code>subtitle</code> pairing and the bare-numeral-plus-static-unit were built for the page wheel, and percent was left on the stock look — so the two halves of one control looked like two controls. Percent keeps the static unit even though <code>%</code> <i>is</i> a suffix in both locales, because the other half of that argument still holds: <code>100</code> is wider than <code>55</code>, so an inline unit slides as the wheel turns.",
+                            `<div style="display:flex;gap:10px">${block({ t: "wheel", vals: pctWin(PCT, 3), style: "shipped", ovl: "ios", h: 102 })}${block({ t: "wheel", vals: pctWin(PCT, 3), style: "shipped", ovl: "rules", h: 102 })}</div>`,
+                        ],
+                        [
+                            "el-seg",
+                            "Mode segment",
+                            "<b>REVERSED — it is the native <code>CNSegmentedControl</code> after all</b>, via the shared <code>GlassSegmentedControl</code>: Liquid Glass on iOS 26+, the app’s pill chips everywhere else. The same control the reading-status sheet uses, which is the point — two segmented controls one sheet apart should not be two different controls.<br><br><b>The old objection was a non-sequitur.</b> It said the native one is a platform view with no Flutter hit target so a widget test cannot tap it — true, and irrelevant: <code>useNativeGlass</code> is false under <code>flutter test</code>, which reports Android, so tests drive the chip fallback. “Untappable in tests” is a reason the fallback must stay tappable, not a reason to avoid the native control. A <code>CupertinoSlidingSegmentedControl</code> shipped briefly on that reasoning and matched nothing else in the app.",
+                            `<div class="dev" style="width:340px;border:0;background:none">${block({ t: "seg", items: ["Percent", "Page"], on: "Page" })}</div>`,
+                        ],
+                        [
+                            "el-key",
+                            "Keypad",
+                            "<b>Not shipped — kept as the record of what was removed.</b> 44pt keys on <code>surface</code>, radius 10, 8pt gutters, digits at 22/w600. 4 rows + gaps + bottom padding = 212pt. Clear and backspace are <code>secondaryText</code> at 15/w600 with no ground, so the ten digits are the only filled shapes. It was built, then replaced by the platform number pad: every key here was a bare <code>GestureDetector</code> with no <code>Semantics</code>, and no arrangement of them lets a hardware keyboard type a page. See <code>kp-system</code>.",
+                            `<div class="dev" style="width:340px;border:0;background:none">${block({ t: "kp" })}</div>`,
+                        ],
+                        [
+                            "el-rider",
+                            "Rider, three states",
+                            "A fixed 36pt box so the sheet's height never depends on the data. Percent mode prints <code>&#8776; p.N</code> — the tilde is where the 101-stop quantisation is admitted. Page mode prints the exact percent with <b>no tilde</b>, because nothing was approximated. With no page count it is reserved and empty.",
+                            `<div class="dev" style="width:200px;border:0;background:none">${block({ t: "rider", v: `&#8776; p.${RT200}` })}${block({ t: "rider", v: `${PCT}%` })}${block({ t: "rider" })}</div>`,
+                        ],
+                        [
+                            "el-confirm",
+                            "Sheet action, both eras",
+                            "Today: <code>ElevatedActionButton</code> 92&times;32, radius 50 so fully round, <code>brandFill</code> ground, <code>label</code> 13/w600 in white. 92 because 60 clipped it to &ldquo;Co&hellip;&rdquo;. The recovered sheet instead used a bare tappable <code>Done</code> at 14/bold in <code>brandText</code> — lighter, and it would let the header carry a segment, which is the one argument for reviving it.",
+                            `<div style="display:flex;gap:12px;flex-wrap:wrap"><div class="dev" style="width:300px;border:0;background:var(--sheet);border-radius:8px">${block({ t: "hdr", title: "How far in?" })}</div><div class="dev" style="width:300px;border:0;background:var(--sheet);border-radius:8px">${block({ t: "hdr", title: "Filter", action: "Done", plain: true })}</div></div>`,
+                        ],
+                    ],
+                ],
+                [
+                    "The unit problem",
+                    [
+                        [
+                            "el-unit",
+                            "p. vs &#51413; vs bare",
+                            "<b>Left, English:</b> <code>progressPage</code> is <code>p.{page}</code> — the unit is a <i>prefix</i>, so there is no suffix span to shrink, and <code>p.</code> pushes the digits off centre. <b>Middle, Korean:</b> <code>{page}쪽</code> — a suffix, which is what the recovered widget assumed. <b>Right:</b> a bare tabular numeral with a static column label, which is identical in both locales, never moves, and keeps the digits centred under the overlay. The recovered widget was <i>already</i> the bare version in English, because <code>yearSuffix</code> is an empty string there.",
+                            `<div style="display:flex;gap:10px">${block({ t: "wheel", vals: pageWin(200, 3, { p: "p." }), style: "figure", ovl: "rules", ext: 46, h: 138, unitOnMid: true })}${block({ t: "wheel", vals: pageWin(200, 3, { u: "&#51413;" }), style: "figure", ovl: "rules", ext: 46, h: 138, unitOnMid: true })}${block({ t: "wheel", vals: pageWin(200, 3), style: "figure", ovl: "rules", ext: 46, h: 138, collabel: "Page" })}</div>`,
+                        ],
+                    ],
+                ],
+            ];
+
+            /* Mark an id as an unresolved decision; renders inline as a red callout. */
+            const OPEN = {
+                "page-bare":
+                    "<b>Built.</b> The column label got its own ARB key, <code>progressPageColumn</code> — &ldquo;Page&rdquo; / <span lang=\"ko\">㠭</span> — in both locales. <code>progressPage</code> kept its <code>p.</code> for the band row, where a prefix is correct, so the two do not share a string. Note the consequence in English: <code>progressModePage</code> and <code>progressPageColumn</code> are both &ldquo;Page&rdquo;, which is why the widget tests scope their finder to the segment.",
+                "kp-invalid":
+                    "<b>Built — a typed <code>0</code> is refused.</b> Clamping settled the upper bound; the lower one was a product question, because 0% is a real position and null is not 0. The proposal carried: the page range is 1–${'$'}{total}, a reader who means 0% says so in Percent mode, and page mode never has to express a page no book has. <code>kProgressPageFloor = 1</code> in the sheet, mirrored by the <code>books_progress_page_positive</code> CHECK so the rule survives a UI refactor. Enforced by a <code>TextInputFormatter</code> rather than by key handlers, which also covers the paste and dictation cases a key grid never sees. One state the drawing did not anticipate: the field can be <i>emptied</i>, and an empty field is not an answer — Confirm writes nothing from there rather than falling back to what was in it.",
+                "row-progress":
+                    "<b>Built as proposed — a nullable <code>progress_page int</code></b>, not a boolean. It records what the reader actually typed, keeps the float round-trip out of the read path, and survives a later correction to <code>page_count</code>, where a stored fraction would silently re-point at a different page. The display rule needed one more term than <code>progress_page IS NOT NULL</code>: the row prints a page only when <code>page_count</code> is <i>also</i> known, so a book whose count goes missing under a stored page falls back to the percent rather than showing a <code>p.200</code> nothing else in the app can corroborate.<br><br>The predicted cost is real and is paid in one place: <code>updateBookStatus</code> writes both columns or neither, inside the existing <code>if (progress != null)</code> branch. Inside it, <code>null</code> is a genuine instruction — answering in percent must <i>clear</i> the stored page — which is the opposite of what <code>null</code> means for <code>progress</code> itself.",
+            };
+
+            /* ==================================================================
+   SECTION 4: VERSIONS — single root.
+
+   The alternatives here are not parallel *designs* to be browsed as whole
+   variants; they are competing treatments of one control, which is what the
+   Screens groups above already show side by side. A second version would
+   duplicate that and invite the drift the patch model exists to prevent.
+   With one entry the selector hides itself, so versioning costs nothing.
+   ================================================================== */
+            const VERSIONS = [
+                [
+                    "main",
+                    "main",
+                    "Exact-page entry, as drawn — and now built, matching this drawing.",
+                    null,
+                    {},
+                ],
+            ];
+            /* ==================================================================
+   SECTION 5: ENGINE — behaviour is load-bearing.
+   See reference/pitfalls.md in this skill before changing it.
+   ================================================================== */
+            function stripTags(s) {
+                return String(s)
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&[a-z]+;/g, " ");
+            }
+            /* Every query term must appear somewhere (order-independent AND), so
+   "cover book" finds "Book cover". Haystack must be pre-lowercased. */
+            function matchWords(haystack, query) {
+                return query
+                    .trim()
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .every((t) => haystack.includes(t));
+            }
+            function escapeReg(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+            function highlightText(text, query) {
+                const terms = query
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(escapeReg);
+                if (!terms.length) return text;
+                return text.replace(
+                    new RegExp(`(${terms.join("|")})`, "gi"),
+                    '<mark class="hl">$1</mark>',
+                );
+            }
+            function flowSearchText(g, nm, ds, steps) {
+                return stripTags(
+                    [
+                        nm,
+                        g,
+                        ds,
+                        steps.map(([sn, sc]) => `${sn} ${sc}`).join(" "),
+                    ].join(" "),
+                )
+                    .toLowerCase()
+                    .replace(/["&<>]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            /* ---- version resolution ---------------------------------------- */
+            const VMAP = new Map(VERSIONS.map((v) => [v[0], v]));
+            const VROOT = VERSIONS[0][0];
+
+            function chainOf(vid) {
+                const out = [];
+                let cur = vid;
+                const seen = new Set();
+                while (cur && VMAP.has(cur) && !seen.has(cur)) {
+                    seen.add(cur);
+                    out.unshift(cur);
+                    cur = VMAP.get(cur)[3];
+                }
+                return out;
+            }
+            /* payload key per view: what a patch entry carries */
+            const PAYLOAD = {
+                screens: "spec",
+                flows: "steps",
+                elements: "demo",
+            };
+
+            /** Resolve one view for a version into [group, [[id,nm,ds,payload],...]]. */
+            function resolveView(vid, kind) {
+                const base =
+                    kind === "screens"
+                        ? SCREENS
+                        : kind === "flows"
+                          ? FLOWS
+                          : ELEMENTS;
+                // flat map of id -> {group,nm,ds,payload}, preserving group order
+                const groups = base.map(([g]) => g);
+                const items = new Map();
+                base.forEach(([g, list]) =>
+                    list.forEach(([id, nm, ds, payload]) =>
+                        items.set(id, { group: g, nm, ds, payload }),
+                    ),
+                );
+
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {})[kind] || {};
+                    for (const [id, val] of Object.entries(patch)) {
+                        if (val === null) {
+                            items.delete(id);
+                            continue;
+                        }
+                        const prev = items.get(id);
+                        const group =
+                            val.group ||
+                            prev?.group ||
+                            `Added in ${VMAP.get(step)[1]}`;
+                        if (!groups.includes(group)) groups.push(group);
+                        items.set(id, {
+                            group,
+                            nm: val.name ?? prev?.nm ?? id,
+                            ds: val.note ?? prev?.ds ?? "",
+                            payload: val[PAYLOAD[kind]] ?? prev?.payload,
+                        });
+                    }
+                }
+                return groups
+                    .map((g) => [
+                        g,
+                        [...items.entries()]
+                            .filter(([, v]) => v.group === g)
+                            .map(([id, v]) => [id, v.nm, v.ds, v.payload]),
+                    ])
+                    .filter(([, l]) => l.length);
+            }
+            function resolveOpen(vid) {
+                let out = { ...OPEN };
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {}).open || {};
+                    for (const [id, val] of Object.entries(patch))
+                        val === null ? delete out[id] : (out[id] = val);
+                }
+                return out;
+            }
+            /** id -> 'changed' | 'onlyHere' | 'onlyThere', reading a against b. */
+            function diffMap(a, b, kind) {
+                const A = new Map(),
+                    B = new Map();
+                resolveView(a, kind).forEach(([, l]) =>
+                    l.forEach((it) => A.set(it[0], it)),
+                );
+                resolveView(b, kind).forEach(([, l]) =>
+                    l.forEach((it) => B.set(it[0], it)),
+                );
+                const out = new Map();
+                for (const [id, it] of A) {
+                    if (!B.has(id)) out.set(id, "onlyHere");
+                    else if (
+                        JSON.stringify(it[3]) !== JSON.stringify(B.get(id)[3])
+                    )
+                        out.set(id, "changed");
+                }
+                for (const id of B.keys())
+                    if (!A.has(id)) out.set(id, "onlyThere");
+                return out;
+            }
+
+            let activeV = VROOT,
+                compareV = null,
+                onlyDiff = false;
+            let view = "screens",
+                cbOpen = false,
+                kbIndex = -1,
+                kbId = null,
+                vbOpen = false,
+                vkbIndex = -1,
+                vkbId = null;
+            const sel = { screens: new Set(), elements: new Set() };
+
+            /**
+             * One list per group of entries to draw, for the active version.
+             *
+             * In compare mode this also emits "ghost" entries for items the
+             * compared version has and the active one doesn't. Without them a
+             * removal is invisible: render only walks the active version, so a
+             * deleted screen just silently isn't there.
+             */
+            function viewModel(kind) {
+                const A = resolveView(activeV, kind);
+                const cmp = compareV && compareV !== activeV;
+                const d = cmp ? diffMap(activeV, compareV, kind) : new Map();
+                const B = cmp ? resolveView(compareV, kind) : [];
+                const bItem = new Map(),
+                    bGroup = new Map();
+                B.forEach(([g, l]) =>
+                    l.forEach((it) => {
+                        bItem.set(it[0], it);
+                        bGroup.set(it[0], g);
+                    }),
+                );
+                const groups = A.map(([g]) => g);
+                if (cmp)
+                    for (const [g] of B)
+                        if (!groups.includes(g)) groups.push(g);
+
+                return groups
+                    .map((g) => {
+                        const own = (A.find(([n]) => n === g)?.[1] || []).map(
+                            ([id, nm, ds, payload]) => ({
+                                id,
+                                nm,
+                                ds,
+                                payload,
+                                diff: d.get(id) || null,
+                                ghost: false,
+                                other: bItem.get(id)?.[3] ?? null,
+                            }),
+                        );
+                        const ghosts = cmp
+                            ? [...d.entries()]
+                                  .filter(
+                                      ([id, k]) =>
+                                          k === "onlyThere" &&
+                                          bGroup.get(id) === g,
+                                  )
+                                  .map(([id]) => {
+                                      const it = bItem.get(id);
+                                      return {
+                                          id,
+                                          nm: it[1],
+                                          ds: it[2],
+                                          payload: it[3],
+                                          diff: "onlyThere",
+                                          ghost: true,
+                                          other: null,
+                                      };
+                                  })
+                            : [];
+                        return [g, own.concat(ghosts)];
+                    })
+                    .filter(([, l]) => l.length);
+            }
+
+            /* ---- render (re-runnable; version changes call this) ------------ */
+            let CB = {},
+                nScreens = 0,
+                nFlows = 0,
+                nEls = 0;
+
+            function render() {
+                const SM = viewModel("screens");
+                const EM = viewModel("elements");
+                const FM = viewModel("flows");
+                const openMap = resolveOpen(activeV);
+                const cmp = compareV && compareV !== activeV;
+                const bLabel = cmp ? VMAP.get(compareV)[1] : "";
+                const aLabel = VMAP.get(activeV)[1];
+
+                // Labels read from the point of view of the version on screen.
+                const TAGTEXT = {
+                    changed: "changed",
+                    onlyHere: "only here",
+                    onlyThere: `only in ${bLabel}`,
+                };
+                const tagFor = (d) =>
+                    d ? `<span class="tag ${d}">${TAGTEXT[d]}</span>` : "";
+                const keep = (e) => !(onlyDiff && cmp && !e.diff);
+
+                const count = (m) =>
+                    m.reduce((a, [, l]) => a + l.filter(keep).length, 0);
+                nScreens = count(SM);
+                nEls = count(EM);
+                nFlows = count(FM);
+
+                document.getElementById("screens").innerHTML = SM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map((e) => {
+                                let shot;
+                                if (cmp && e.diff === "changed")
+                                    shot = `<div class="pair"><div><div class="vl">${aLabel}</div><div class="shot">${frame({ ...e.payload, sm: true })}</div></div><div><div class="vl b">${bLabel}</div><div class="shot">${frame({ ...(e.other || e.payload), sm: true })}</div></div></div>`;
+                                else
+                                    shot = `<div class="shot">${frame(e.payload)}</div>`;
+                                return `<div class="item${e.ghost ? " ghost" : ""}" data-id="${e.id}">${shot}<div class="cap"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`;
+                            })
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="grid${cmp ? " cmp" : ""}">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                document.getElementById("elements").innerHTML = EM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<div class="el${e.ghost ? " ghost" : ""}" data-id="${e.id}"><div class="demo">${e.payload}</div><div class="body"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div></div></div>`,
+                            )
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="egrid">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                const stepRow = (steps) =>
+                    `<div class="steps">${steps
+                        .map(
+                            ([sn, sc, spec], i) =>
+                                (i ? '<div class="arrow">&rarr;</div>' : "") +
+                                `<div class="step"><div class="sn">${String(i + 1).padStart(2, "0")} &middot; ${sn}</div><div class="shot">${frame(spec)}</div><div class="sc">${sc}</div></div>`,
+                        )
+                        .join("")}</div>`;
+
+                document.getElementById("flows").innerHTML = FM.map(
+                    ([g, entries]) =>
+                        entries
+                            .filter(keep)
+                            .map((e) => {
+                                const rows =
+                                    cmp && e.diff === "changed"
+                                        ? `<div class="vrow">${aLabel}</div>${stepRow(e.payload)}<div class="vrow b">${bLabel}</div>${stepRow(e.other || e.payload)}`
+                                        : stepRow(e.payload);
+                                return `<div class="flow${e.ghost ? " ghost" : ""}" id="f-${e.id}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}"><p class="fh">${e.nm}${tagFor(e.diff)}</p><p class="fd">${e.ds}</p>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }${rows}</div>`;
+                            })
+                            .join(""),
+                ).join("");
+
+                document.getElementById("sidenav").innerHTML = FM.map(
+                    ([g, entries]) => {
+                        const links = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<a href="#f-${e.id}" data-id="${e.id}" data-nm="${stripTags(e.nm)}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}">${stripTags(e.nm)}</a>`,
+                            )
+                            .join("");
+                        return links
+                            ? `<div class="sh">${g}</div>${links}`
+                            : "";
+                    },
+                ).join("");
+
+                const cbGroups = (m) =>
+                    m
+                        .map(([g, entries]) => [
+                            g,
+                            entries.filter(keep).map((e) => [e.id, e.nm, e.ds]),
+                        ])
+                        .filter(([, l]) => l.length);
+
+                CB = {
+                    screens: {
+                        label: "Screens",
+                        placeholder: "Search screens…",
+                        container: "screens",
+                        itemSel: ".item",
+                        none: "screens-none",
+                        groups: cbGroups(SM),
+                    },
+                    elements: {
+                        label: "UI Elements",
+                        placeholder: "Search elements…",
+                        container: "elements",
+                        itemSel: ".el",
+                        none: "elements-none",
+                        groups: cbGroups(EM),
+                    },
+                };
+                // drop filter selections for ids this version doesn't have
+                for (const k of ["screens", "elements"]) {
+                    const live = new Set(
+                        CB[k].groups.flatMap(([, l]) => l.map(([id]) => id)),
+                    );
+                    [...sel[k]].forEach((id) => {
+                        if (!live.has(id)) sel[k].delete(id);
+                    });
+                }
+
+                const total = cmp
+                    ? ["screens", "elements", "flows"].reduce(
+                          (a, k) => a + diffMap(activeV, compareV, k).size,
+                          0,
+                      )
+                    : 0;
+                document.getElementById("vinfo-lbl").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document.getElementById("vinfo-note").innerHTML = cmp
+                    ? `${VMAP.get(activeV)[2]}`
+                    : VMAP.get(activeV)[2];
+                document.getElementById("vinfo-diffs").textContent = cmp
+                    ? total
+                        ? `${total} difference${total === 1 ? "" : "s"}`
+                        : "identical"
+                    : "";
+                document
+                    .getElementById("difftoggle")
+                    .classList.toggle("gone", !cmp);
+                document.getElementById("vbtn-label").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document
+                    .getElementById("vcmp-clear")
+                    .classList.toggle("gone", !cmp);
+                if (view !== "flows") applyFilter();
+                else updateCount(0);
+                if (view === "flows" && fsearch.value)
+                    fsearch.dispatchEvent(
+                        new Event("input", { bubbles: true }),
+                    );
+                spy();
+            }
+
+            /* ---- filter combobox ---- */
+            const cbox = document.getElementById("cbox"),
+                cbtn = document.getElementById("cbtn"),
+                cbtnLabel = document.getElementById("cbtn-label"),
+                cbtnBadge = document.getElementById("cbtn-badge"),
+                csearch = document.getElementById("csearch"),
+                clist = document.getElementById("clist"),
+                cfootN = document.getElementById("cfoot-n"),
+                cclear = document.getElementById("cclear");
+
+            function visibleOpts() {
+                const q = csearch.value.trim().toLowerCase();
+                if (!q) return CB[view].groups;
+                return CB[view].groups
+                    .map(([g, items]) => [
+                        g,
+                        // A group's own name pulls in its whole contents (browse by category);
+                        // otherwise an item needs every query word in its name or note.
+                        matchWords(g.toLowerCase(), q)
+                            ? items
+                            : items.filter(([, nm, ds]) =>
+                                  matchWords(
+                                      stripTags(
+                                          `${nm} ${ds || ""}`,
+                                      ).toLowerCase(),
+                                      q,
+                                  ),
+                              ),
+                    ])
+                    .filter(([, items]) => items.length);
+            }
+            function renderList() {
+                const groups = visibleOpts(),
+                    q = csearch.value.trim();
+                if (!groups.length) {
+                    kbIndex = -1;
+                    kbId = null;
+                    clist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                clist.innerHTML = groups
+                    .map(
+                        ([g, items]) =>
+                            `<div class="cgrp" data-group="${g}">${g}</div>` +
+                            items
+                                .map(
+                                    ([id, nm]) =>
+                                        `<div class="copt${sel[view].has(id) ? " sel" : ""}" data-id="${id}"><span class="box">${
+                                            sel[view].has(id) ? "&#10003;" : ""
+                                        }</span><span class="lb">${highlightText(stripTags(nm), q)}</span></div>`,
+                                )
+                                .join(""),
+                    )
+                    .join("");
+                // Keep keyboard focus on the same option across a re-render, so toggling
+                // with Enter doesn't fling focus back to the top.
+                const opts = [...clist.querySelectorAll(".copt")];
+                let idx = kbId
+                    ? opts.findIndex((o) => o.dataset.id === kbId)
+                    : -1;
+                if (idx < 0) idx = 0;
+                if (opts.length) {
+                    kbIndex = idx;
+                    kbId = opts[idx].dataset.id;
+                    opts[idx].classList.add("kb");
+                } else {
+                    kbIndex = -1;
+                    kbId = null;
+                }
+            }
+            function applyFilter() {
+                const cfg = CB[view],
+                    s = sel[view],
+                    root = document.getElementById(cfg.container);
+                let shown = 0;
+                root.querySelectorAll(cfg.itemSel).forEach((el) => {
+                    const on = s.size === 0 || s.has(el.dataset.id);
+                    el.classList.toggle("gone", !on);
+                    if (on) shown++;
+                });
+                root.querySelectorAll(".gsec").forEach((g) =>
+                    g.classList.toggle(
+                        "gone",
+                        !g.querySelector(cfg.itemSel + ":not(.gone)"),
+                    ),
+                );
+                document
+                    .getElementById(cfg.none)
+                    .classList.toggle("gone", shown > 0);
+                const total = view === "screens" ? nScreens : nEls;
+                cbtnBadge.hidden = s.size === 0;
+                cbtnBadge.textContent = s.size;
+                cfootN.textContent =
+                    s.size === 0
+                        ? `Showing all ${total}`
+                        : `Showing ${shown} of ${total}`;
+                updateCount(shown);
+            }
+            function updateCount(shown) {
+                const s = sel[view] ? sel[view].size : 0;
+                document.getElementById("cnt").textContent = [
+                    `${view === "screens" && s ? shown + " of " : ""}${nScreens} screens`,
+                    `${nFlows} flows`,
+                    `${view === "elements" && s ? shown + " of " : ""}${nEls} elements`,
+                ].join(" · ");
+            }
+            function openCB(focus) {
+                if (view === "flows") return;
+                closeVB(); // only one dropdown at a time
+                cbOpen = true;
+                cbox.classList.add("open");
+                kbId = null;
+                renderList();
+                if (focus) csearch.focus();
+            }
+            function closeCB() {
+                cbOpen = false;
+                cbox.classList.remove("open");
+                csearch.blur();
+            }
+
+            cbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                cbOpen ? closeCB() : openCB(true);
+            });
+            csearch.addEventListener("input", () => {
+                clist.scrollTop = 0;
+                renderList();
+            });
+            clist.addEventListener("click", (e) => {
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    // stopPropagation is required: renderList() replaces clist.innerHTML,
+                    // detaching this node before the click finishes bubbling, which would
+                    // make the document listener below see a detached target and close.
+                    e.stopPropagation();
+                    const id = opt.dataset.id;
+                    sel[view].has(id)
+                        ? sel[view].delete(id)
+                        : sel[view].add(id);
+                    renderList();
+                    applyFilter();
+                    return;
+                }
+                const grp = e.target.closest(".cgrp");
+                if (grp) {
+                    e.stopPropagation();
+                    const ids = CB[view].groups
+                        .find(([n]) => n === grp.dataset.group)[1]
+                        .map(([id]) => id);
+                    const allOn = ids.every((id) => sel[view].has(id));
+                    ids.forEach((id) =>
+                        allOn ? sel[view].delete(id) : sel[view].add(id),
+                    );
+                    renderList();
+                    applyFilter();
+                }
+            });
+            cclear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                sel[view].clear();
+                csearch.value = "";
+                renderList();
+                applyFilter();
+            });
+            document.addEventListener("click", (e) => {
+                if (cbOpen && !cbox.contains(e.target)) closeCB();
+                if (vbOpen && !vbox.contains(e.target)) closeVB();
+            });
+
+            /* ---- version combobox (single-select, plus compare) ---- */
+            const vbox = document.getElementById("vbox"),
+                vbtn = document.getElementById("vbtn"),
+                vsearch = document.getElementById("vsearch"),
+                vlist = document.getElementById("vlist"),
+                vfootN = document.getElementById("vfoot-n"),
+                vcmpClear = document.getElementById("vcmp-clear"),
+                diffToggle = document.getElementById("difftoggle");
+
+            function renderVList() {
+                const q = vsearch.value.trim(),
+                    ql = q.toLowerCase();
+                const rows = VERSIONS.filter(
+                    ([id, label, note]) =>
+                        !ql ||
+                        matchWords(
+                            stripTags(`${label} ${note} ${id}`).toLowerCase(),
+                            ql,
+                        ),
+                );
+                if (!rows.length) {
+                    vkbIndex = -1;
+                    vkbId = null;
+                    vlist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                vlist.innerHTML =
+                    `<div class="cgrp" style="cursor:default">Show version</div>` +
+                    rows
+                        .map(
+                            ([id, label, note, parent]) =>
+                                `<div class="copt radio${id === activeV ? " sel" : ""}" data-v="${id}">
+        <span class="box">${id === activeV ? "&#10003;" : ""}</span>
+        <span class="col"><span class="lb">${highlightText(label, q)}</span>${
+            note
+                ? `<div class="sub">${parent ? `from ${VMAP.get(parent)[1]} &middot; ` : ""}${note}</div>`
+                : ""
+        }</span>
+        ${id !== activeV ? `<span class="tagn" data-cmp="${id}">${compareV === id ? "comparing" : "compare"}</span>` : ""}
+      </div>`,
+                        )
+                        .join("");
+                // Keep keyboard focus on the same version across a re-render
+                // (toggling compare re-renders this list), falling back to the
+                // first row only when the focused version is filtered out.
+                const vopts = [...vlist.querySelectorAll(".copt")];
+                let vi = vkbId
+                    ? vopts.findIndex((o) => o.dataset.v === vkbId)
+                    : -1;
+                if (vi < 0) vi = 0;
+                if (vopts.length) {
+                    vkbIndex = vi;
+                    vkbId = vopts[vi].dataset.v;
+                    vopts[vi].classList.add("kb");
+                } else {
+                    vkbIndex = -1;
+                    vkbId = null;
+                }
+
+                const legend = "&#8629; show &middot; &#8679;&#8629; compare";
+                vfootN.innerHTML = compareV
+                    ? `Comparing with ${VMAP.get(compareV)[1]} &middot; ${legend}`
+                    : `${VERSIONS.length} version${VERSIONS.length === 1 ? "" : "s"} &middot; ${legend}`;
+            }
+            function openVB(focus) {
+                closeCB(); // only one dropdown at a time, or they fight over the arrow keys
+                vbOpen = true;
+                vbox.classList.add("open");
+                vkbId = activeV; // open focused on where you already are
+                renderVList();
+                if (focus) vsearch.focus();
+            }
+            function closeVB() {
+                vbOpen = false;
+                vbox.classList.remove("open");
+                vsearch.blur();
+            }
+
+            vbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                vbOpen ? closeVB() : openVB(true);
+            });
+            vsearch.addEventListener("input", () => {
+                vlist.scrollTop = 0;
+                renderVList();
+            });
+            vlist.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const cmpBtn = e.target.closest("[data-cmp]");
+                if (cmpBtn) {
+                    const id = cmpBtn.dataset.cmp;
+                    compareV = compareV === id ? null : id;
+                    renderVList();
+                    render();
+                    return;
+                }
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    activeV = opt.dataset.v;
+                    if (compareV === activeV) compareV = null;
+                    renderVList();
+                    render();
+                    closeVB();
+                }
+            });
+            vcmpClear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                compareV = null;
+                onlyDiff = false;
+                diffToggle.classList.add("off");
+                renderVList();
+                render();
+            });
+            diffToggle.addEventListener("click", () => {
+                onlyDiff = !onlyDiff;
+                diffToggle.classList.toggle("off", !onlyDiff);
+                render();
+            });
+
+            /* ---- view switching ---- */
+            function switchView(v) {
+                const btn = document.querySelector(
+                    `.vtabs button[data-v="${v}"]`,
+                );
+                if (!btn || view === v) return;
+                view = v;
+                document
+                    .querySelectorAll(".vtabs button")
+                    .forEach((x) => x.classList.toggle("on", x === btn));
+                document
+                    .querySelectorAll(".view")
+                    .forEach((el) =>
+                        el.classList.toggle("on", el.id === "v-" + view),
+                    );
+                closeCB();
+                const isFlows = view === "flows";
+                cbox.classList.toggle("hide", isFlows);
+                if (!isFlows) {
+                    cbtnLabel.textContent = CB[view].label;
+                    csearch.placeholder = CB[view].placeholder;
+                    csearch.value = "";
+                    applyFilter();
+                } else updateCount(0);
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }
+            document
+                .querySelectorAll(".vtabs button")
+                .forEach((b) =>
+                    b.addEventListener("click", () => switchView(b.dataset.v)),
+                );
+
+            /* ---- flow search + scroll-spy ---- */
+            const fsearch = document.getElementById("fsearch"),
+                sbox = document.getElementById("sbox");
+            fsearch.addEventListener("focus", () =>
+                sbox.classList.add("focused"),
+            );
+            fsearch.addEventListener("blur", () =>
+                sbox.classList.remove("focused"),
+            );
+            fsearch.addEventListener("input", () => {
+                sbox.classList.toggle("dirty", fsearch.value.length > 0);
+                const q = fsearch.value.trim().toLowerCase();
+                let any = false;
+                document.querySelectorAll(".flow").forEach((f) => {
+                    const show = !q || matchWords(f.dataset.f, q);
+                    f.classList.toggle("gone", !show);
+                    if (show) any = true;
+                });
+                document.querySelectorAll("#sidenav a").forEach((a) => {
+                    a.classList.toggle(
+                        "gone",
+                        !(!q || matchWords(a.dataset.f, q)),
+                    );
+                    a.innerHTML = highlightText(
+                        a.dataset.nm,
+                        fsearch.value.trim(),
+                    );
+                });
+                document.querySelectorAll("#sidenav .sh").forEach((h) => {
+                    let n = h.nextElementSibling,
+                        on = false;
+                    while (n && n.tagName === "A") {
+                        if (!n.classList.contains("gone")) on = true;
+                        n = n.nextElementSibling;
+                    }
+                    h.classList.toggle("gone", !on);
+                });
+                document
+                    .getElementById("flows-none")
+                    .classList.toggle("gone", any);
+                spy();
+            });
+
+            /* Highlights whichever flow is under the header as you scroll, not only on
+   click. Filter-aware, and clamps to the last section at the page bottom. */
+            let spyRAF = null;
+            function spy() {
+                if (spyRAF) return;
+                spyRAF = requestAnimationFrame(() => {
+                    spyRAF = null;
+                    if (view !== "flows") return;
+                    const flows = [
+                        ...document.querySelectorAll(".flow:not(.gone)"),
+                    ];
+                    if (!flows.length) return;
+                    let cur = flows[0];
+                    for (const f of flows)
+                        if (f.getBoundingClientRect().top <= 100) cur = f;
+                    if (
+                        window.innerHeight + window.scrollY >=
+                        document.body.scrollHeight - 4
+                    )
+                        cur = flows[flows.length - 1];
+                    const id = cur.id.replace(/^f-/, "");
+                    document
+                        .querySelectorAll("#sidenav a")
+                        .forEach((a) =>
+                            a.classList.toggle("cur", a.dataset.id === id),
+                        );
+                });
+            }
+            window.addEventListener("scroll", spy, { passive: true });
+            window.addEventListener("resize", spy);
+
+            /* ---- hotkeys: 1/2/3 views, v versions, / search, Esc clear-then-close ---- */
+            function isTyping(el) {
+                return (
+                    el &&
+                    (el.tagName === "INPUT" ||
+                        el.tagName === "TEXTAREA" ||
+                        el.isContentEditable)
+                );
+            }
+            document.addEventListener("keydown", (e) => {
+                const free =
+                    !isTyping(document.activeElement) &&
+                    !e.metaKey &&
+                    !e.ctrlKey;
+                if (["1", "2", "3"].includes(e.key) && free) {
+                    e.preventDefault();
+                    switchView(
+                        { 1: "screens", 2: "elements", 3: "flows" }[e.key],
+                    );
+                    return;
+                }
+                if ((e.key === "v" || e.key === "V") && free) {
+                    e.preventDefault();
+                    vbOpen ? closeVB() : openVB(true);
+                    return;
+                }
+                if (e.key === "/" && free) {
+                    e.preventDefault();
+                    if (view === "flows") {
+                        fsearch.focus();
+                        fsearch.select();
+                    } else openCB(true);
+                    return;
+                }
+                if (e.key === "Escape") {
+                    if (vbOpen) {
+                        if (vsearch.value) {
+                            vsearch.value = "";
+                            renderVList();
+                        } else closeVB();
+                        return;
+                    }
+                    if (cbOpen) {
+                        if (csearch.value) {
+                            csearch.value = "";
+                            renderList();
+                        } else closeCB();
+                        return;
+                    }
+                    if (isTyping(document.activeElement)) {
+                        const el = document.activeElement;
+                        el.value = "";
+                        el.dispatchEvent(new Event("input", { bubbles: true }));
+                        el.blur();
+                    }
+                    return;
+                }
+                if (
+                    vbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const vopts = [...vlist.querySelectorAll(".copt")];
+                    if (!vopts.length) return;
+                    if (e.key === "Enter") {
+                        if (vkbIndex < 0) return;
+                        e.preventDefault();
+                        const id = vopts[vkbIndex].dataset.v;
+                        if (e.shiftKey) {
+                            // Shift+Enter compares instead of switching. A letter
+                            // key can't be used here: the search field has focus,
+                            // so it would just be typed.
+                            if (id !== activeV) {
+                                compareV = compareV === id ? null : id;
+                                renderVList();
+                                render();
+                            }
+                        } else {
+                            activeV = id;
+                            if (compareV === activeV) compareV = null;
+                            renderVList();
+                            render();
+                            closeVB();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    vkbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(vkbIndex + 1, vopts.length - 1)
+                            : Math.max(vkbIndex - 1, 0);
+                    vkbId = vopts[vkbIndex].dataset.v;
+                    vopts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === vkbIndex),
+                    );
+                    vopts[vkbIndex].scrollIntoView({ block: "nearest" });
+                    return;
+                }
+                if (
+                    cbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const opts = [...clist.querySelectorAll(".copt")];
+                    if (!opts.length) return;
+                    if (e.key === "Enter") {
+                        if (kbIndex >= 0) {
+                            e.preventDefault();
+                            opts[kbIndex].click();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    kbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(kbIndex + 1, opts.length - 1)
+                            : Math.max(kbIndex - 1, 0);
+                    kbId = opts[kbIndex].dataset.id;
+                    opts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === kbIndex),
+                    );
+                    opts[kbIndex].scrollIntoView({ block: "nearest" });
+                }
+            });
+
+            /* one version means versioning is unused: hide the selector entirely */
+            if (VERSIONS.length < 2) {
+                vbox.classList.add("hide");
+                document.querySelector(".vinfo").classList.add("gone");
+            }
+            renderVList();
+            render();
+        </script>
+    </body>
+</html>

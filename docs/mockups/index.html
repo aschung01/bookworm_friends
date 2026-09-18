@@ -142,16 +142,469 @@
             </p>
 
             <h2>Open questions</h2>
+            <a class="row" href="store-links/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Where to read this &mdash; opening a book in Kindle,
+                        Apple Books, Play Books or Libby</span
+                    >
+                    <span class="badge open"
+                        >decided: <code>bar-sheet</code> &middot; 2 superseded
+                        &middot; 4 open</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>Decided: an app-bar icon opening a sheet.</b> It costs
+                    the hero and the tab body nothing, resolves availability
+                    where a spinner is already unremarkable, and is the only
+                    option reachable from both tabs because the bar is pinned by
+                    <code>SliverPersistentHeader</code>. The two it beat are
+                    kept browsable as superseded branches, since what rejected
+                    them is the useful part.
+                    <br /><br />
+                    <b>The two intents have inverted reliability, and that is
+                    the whole design problem.</b> Of six cells in the store
+                    &times; intent matrix, only two are exact per-book links:
+                    Play Books for both, Apple Books for buying. Amazon
+                    publishes no per-book deep link at all, so Kindle can only
+                    ever be a <i>search</i>, and <code>kindle://</code> opens
+                    the app&rsquo;s library rather than a title.
+                    <br /><br />
+                    So a row&rsquo;s <b>second line is load-bearing rather than
+                    decorative</b>, and <b>the verb carries the capability</b>:
+                    <i>Read in Play Books</i> promises a book, <i>Open
+                    Kindle</i> promises an app. Drawing the chips layout is what
+                    settled the first point &mdash; a chip has no second line,
+                    so Kindle can be marked but never explained. Both are
+                    asserted rather than left to a copy review.
+                    <br /><br />
+                    Ownership is unknowable &mdash; <code>canLaunchUrl</code>
+                    proves an app is installed, never that the book is in it
+                    &mdash; so the design <b>infers it from a tap</b> and the
+                    sheet collapses to <i>Your copy</i> afterwards. Status and
+                    <code>isSelf</code> conditionality then fall out for free
+                    instead of needing rules like
+                    <code>_ReactButton</code>&rsquo;s <code>status != 2</code>.
+                    Costs one nullable column, in the shape
+                    <code>book_cover_color.sql</code> already uses.
+                    <br /><br />
+                    Still open: a tap is not a purchase; whether the glyph
+                    should change when a store is known (copy cannot substitute
+                    &mdash; the tooltip is equally true either way); text labels
+                    or brand marks; and the <b>ko store set</b>, which is a
+                    correctness problem rather than a wording one &mdash; Libby
+                    maps to US and UK library systems and Korean readers use
+                    리디북스, 밀리의서재, 예스24 and 교보.
+                    <br /><br />
+                    Forked from <code>praise-region</code>, whose
+                    <code>secondaryText</code> token was stale &mdash;
+                    <code>#ADB5BD</code> at 2.07:1, replaced in
+                    <code>app_theme.dart</code> by <code>#626A72</code>. Fixed
+                    here, because every store row puts real information on it.
+                </div>
+            </a>
+            <a class="row" href="empty-states/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Empty-state art &mdash; five vector families, three
+                        chalk treatments, and the generated chalk art</span
+                    >
+                    <span class="badge open"
+                        >14 versions &middot; 7 screens &middot; shipped</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    An inventory of every moment the product comes up
+                    empty-handed, and three candidate art families. Today:
+                    <code>sadCharacter.svg</code> covers both library empty
+                    states in hardcoded <code>#ADB5BD</code> &mdash; the exact
+                    grey <code>secondaryText</code> was demoted from for
+                    washing out &mdash; with a literal-white face that glows on
+                    the dark theme, and a frown aimed at a brand-new reader the
+                    copy is trying to invite in. The add-book sheet uses
+                    <code>Icons.menu_book_outlined</code> at 100pt and the
+                    Notes tab <code>Icons.note_outlined</code> at 48 &mdash;
+                    stock glyphs doing illustration duty. The search misses and
+                    the scan dead-end are text only.<br /><br />
+                    <b>Four branches, one per identity position.</b>
+                    <code>worm-family</code> re-inks the pre-rename mascot with
+                    <code>AppColors</code> tokens &mdash; kept honest with a
+                    caveat, since the logo review retired the worm
+                    (&ldquo;that silhouette is Bugdroid&rdquo;) and the
+                    shipping icon is now <code>m4-single-book</code>.
+                    <code>stack-family</code> speaks that icon's own language:
+                    the p1 offset back board, the ribbon cut in as a notch,
+                    the s3j fanned stack, a dashed board as &ldquo;the book
+                    that isn't here yet / wasn't found&rdquo;.
+                    <code>line-family</code> is the quiet floor: bespoke
+                    3.5px-stroke glyphs in the register the Material icons
+                    occupy today, one brand accent each.
+                    <code>chalk-family</code> is the icon's mark in its own
+                    colours: a white (surface) chalk mass with the hand
+                    contour in ink and the green ribbon &mdash; which is how
+                    the icon's knockout actually <i>reads</i> &mdash; so the
+                    page plays the plate and nothing looks like an app icon
+                    dropped into the UI. On the dark theme the light mass on
+                    the dark page literally becomes chalk on a board. Wobble
+                    baked into the paths, no SVG filters, so
+                    <code>flutter_svg</code> renders it as-is. Three further
+                    treatments branch off chalk-family and change only how
+                    the edge is drawn, converging on the icon's actual hand:
+                    <code>chalk/dry-line</code> replaces the ruled contour
+                    with a breathing dry stroke (per-segment widths, a tilt
+                    fringe, edge grain), <code>chalk/grain-edge</code> drops
+                    the contour entirely &mdash; torn silhouette, ghost line,
+                    speckle band, the icon-literal reading &mdash; and
+                    <code>chalk/torn-soft</code> keeps one thin torn contour
+                    as the quiet middle. <code>solid-mass</code> abandons
+                    line work altogether for the icon's literal read: one
+                    bold solid silhouette &mdash; spine slab, lip over the
+                    top, ribbon cut in &mdash; in <code>secondaryText</code>
+                    ink with on-mass details knocked out in surface colour;
+                    the construction that actually survives at 48px.<br /><br />
+                    <b>Then vectors stop being the only option.</b> The icon is
+                    an AI-generated raster
+                    (<code>ai-moodboard/m4-single-book.png</code>), so its chalk
+                    grain cannot be hand-written as SVG &mdash; but it can be
+                    <i>transferred</i>.
+                    <code>scripts/chalkify_empty_state_art.py</code> converts
+                    each <code>cmass-*</code> vector into the icon's own
+                    polarity (white masses on its green plate, ribbon knocked
+                    out) and runs it through Bedrock
+                    <code>stable-style-transfer</code> with the icon as style
+                    image: our composition, the icon's real hand. Polarity is
+                    the whole trick &mdash; feeding grey-on-white art in makes
+                    the model invert the drawing.
+                    <code>bedrock-raster</code> shows the results as generated,
+                    which immediately reports that a baked green plate reads as
+                    an app icon dropped into the UI;
+                    <code>bedrock-ink</code> keys the plate out (luminance to
+                    alpha) and re-tints to <code>secondaryText</code>, the only
+                    form that could ship. Two upstream defects are visible and
+                    noted per screen: the ribbon reads as a crown, and green
+                    details get knocked out to the plate and vanish. The
+                    measured finding: <b>chalk texture dies at 34&ndash;48pt</b>,
+                    so raster belongs on the 100pt heroes and vectors on the
+                    spots.<br /><br />
+                    <b>Then the seeding assumption turns out to be the
+                    problem.</b> Style-transfer needs one of our vectors as its
+                    content, so output quality is capped by that vector's
+                    geometry &mdash; it faithfully reproduced the crown-shaped
+                    ribbon and deleted every green detail. The three
+                    <code>grok-*</code> versions stop seeding:
+                    <code>scripts/gen_empty_state_art.py</code> asks xAI Grok
+                    Imagine to draw a <i>new</i> illustration with the app icon
+                    supplied only as a texture reference, explicitly told to
+                    ignore its colours. That is the first art a reviewer
+                    accepted as matching the icon.
+                    <code>grok-plate</code> shows it as generated, still on the
+                    green plate. <code>grok-cutout</code> regenerates on a flat
+                    white field &mdash; drawn that way so it can be keyed &mdash;
+                    and <code>scripts/cutout_bg.py</code> strips it to real
+                    RGBA, necessary because <b>the xAI endpoint returns JPEG,
+                    which has no alpha channel</b>. That version meets every
+                    stated constraint but needs one file per theme, and the two
+                    independent generations drifted into different drawings.
+                    <code>grok-stencil</code> resolves it:
+                    <code>scripts/png_probe.py</code> measured the cutouts as
+                    ~1% partial alpha over a fully opaque mass, so a
+                    <code>srcIn</code> tint would have flattened the grain;
+                    <code>scripts/alpha_from_luma.py</code> therefore bakes
+                    chalk coverage <i>into</i> alpha, and one file per piece
+                    then tints per theme with the texture intact &mdash; six
+                    assets instead of twelve, and light/dark cannot drift
+                    because they are the same geometry.<br /><br />
+                    <b>Shipped.</b> Cut to <code>assets/icons/empty/</code> with
+                    2x/3x density variants
+                    (<code>scripts/cut_empty_state_assets.py</code>) and wired at
+                    all seven call sites through one
+                    <code>EmptyStateArt</code> widget, replacing
+                    <code>sadCharacter.svg</code> and the two Material glyphs.
+                    Drawing the states also answered the open question about the
+                    combined search miss: it gets a spot, but only when
+                    <i>both</i> scopes came up empty. Still open &mdash; surfaced
+                    by the worm caveat &mdash; whether the auth-page hero keeps
+                    the retired mascot. Rendered samples in
+                    <code>empty-states/art/</code>, generated rasters and their
+                    prompts/costs in <code>empty-states/art/gen/</code> (see
+                    <code>manifest.json</code>) and
+                    <code>empty-states/PROMPTS.md</code>.
+                </div>
+            </a>
+            <a class="row" href="library-search/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Library search &mdash; finding a book you already
+                        have</span
+                    >
+                    <span class="badge open"
+                        >3 versions &middot; 1 superseded by its own drawing</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    The orb reaches the <b>catalogue only</b>. Nothing in the app
+                    searches the reader&rsquo;s own library, and the Add Book grid
+                    has no idea what they already own &mdash; nothing in
+                    <code>add_to_library_sheet.dart</code> or
+                    <code>LibraryActions.addBook</code> checks, so tapping a book
+                    you shelved months ago writes a second row.
+                    <br /><br />
+                    <b>The first draft is in here as a superseded version, and
+                    drawing it is what killed it.</b> A filter field in the read
+                    sheet&rsquo;s expanded header looked right &mdash; a text
+                    filter is the same job as the year rail, so it belongs beside
+                    it, and calling it a filter rather than search avoided a
+                    second magnifying glass. But that surface is
+                    <code>finishedBooksProvider</code>, i.e.
+                    <code>.eq('status',&nbsp;bookStatusFinished)</code>. Of a
+                    reader&rsquo;s three 한강 books it can see <b>one</b>; the
+                    other two are drawn on the shelves <i>behind the very sheet
+                    the field sits in</i>, because
+                    <code>withoutFinishedBooks</code> strips only status&nbsp;2.
+                    <code>verify.js</code> pins exactly that: one cover in the
+                    month grid, nine unreachable ones behind it.
+                    <br /><br />
+                    <b>Interested is the status the feature is for</b>, and it is
+                    the biggest group &mdash; <code>book_status_badge.dart</code>
+                    measured <b>133 of 472</b> books at it. You remember what you
+                    read; you forget what you meant to read.
+                    <code>main</code> puts one field in the orb with two sections
+                    ordered by scope, so ordering replaces a mode and the app
+                    keeps exactly <b>one tappable magnifier</b>. Duplicates are
+                    tiered by match confidence: an <b>identical ISBN is dropped</b>
+                    from the catalogue section, a title-and-author match is kept
+                    and tagged &mdash; because hiding a book the reader wanted
+                    has no recourse, while showing one costs a cover they ignore.
+                    Verified with
+                    <code>node docs/mockups/library-search/verify.js</code>.
+                </div>
+            </a>
             <a class="row" href="streaks/index.html">
                 <div class="nm">
                     <span class="t"
                         >Reading streaks &mdash; the bookmark, the card, the
                         list</span
                     >
-                    <span class="badge open">superseded in part &middot; ribbon drawn wrong, page_count answered</span>
+                    <span class="badge open">spec written &middot; collapsed to 1 version &middot; merged into the shipped status sheet</span>
                     <span class="arrow">&rarr;</span>
                 </div>
                 <div class="ds">
+                    <b>Current proposal: <code>stamp-a</code> &mdash; the tap
+                    keeps meaning “open the book”, and the day is stamped by a
+                    one-word chip on the reading-period card.</b>
+                    Field research (Fable, Goodreads, Life Reset via Mobbin)
+                    showed nobody ships the bookmark as the input device, which
+                    is why the six drag versions never satisfied. What replaced
+                    them was still too much — a sheet with chips, a wheel, a note
+                    and a checkbox — so <code>tap-target</code> cuts it to
+                    <b>one wheel</b> for the position (no delta chips, and no
+                    Page/Percent segment: page if <code>page_count</code> exists,
+                    percent if not, which is two books in three) and draws the
+                    day's gesture as an <b>open question with five answers</b>:
+                    tap opens the book and the stamp is a button on it (A); tap
+                    the ribbon (B, whose 44pt target is 52% of an 84.4pt cover);
+                    long-press for a two-item menu (C); one pill for the whole
+                    row, naming no book (D); or the cover's own tap (E, which
+                    makes one row behave unlike every other row). <b>A won</b>
+                    &mdash; it invents no gesture and can become B or C later,
+                    where E cannot be walked back &mdash; and
+                    <code>stamp-a</code> then drew A's five possible homes
+                    against the real chrome, measuring each: a full-width band
+                    button costs <b>58pt</b> off the top of both tabs, the
+                    period card wraps for <b>32pt</b>, and the same chip cut to
+                    <b>“Today” costs 2pt</b> and stays on one line beside the
+                    date range. The app bar is free but icon-only next to
+                    <b>delete</b>; the FAB is already the Notes composer's; and
+                    making the streak chip the target repeats B's target problem.
+                    <b>And the reader's own count now has somewhere to live:</b>
+                    it always had a numeric home on the <b>Library Card</b> (big
+                    figure plus the month's stamp grid), but the library screen
+                    carried only states &mdash; lamp, tick, moved ribbon &mdash;
+                    so <code>streak-home</code> draws every slot that could hold
+                    it and proposes a <b>&#9635; 12 chip in the library bar</b>,
+                    grey until today is stamped and green after, which costs no
+                    vertical space and points at the Card rather than becoming a
+                    second home for the number. It also draws the collision that
+                    follows: the Card's hero figure is already
+                    <code>finishedCount</code>, so days-in-a-row and books-read
+                    end up as two identical brand-green numbers &mdash; one of
+                    them has to be smaller, and books read should stay the hero.
+                    <b>And <code>streak-counter</code> draws the streak the way
+                    Duolingo actually builds one</b> &mdash; not a number but
+                    <b>six moments</b>: the counter in chrome (four states:
+                    green recorded, grey open, amber late, blue frozen), the
+                    celebration on increment, the milestone, the evening
+                    warning, the freeze, and the break. Translated rather than
+                    copied: <b>no flame</b>, because the app already owns the ink
+                    stamp, the lamp and the wax seal. The warning is amber and
+                    states the 4am deadline instead of threatening; the freeze
+                    draws a forgiven day differently from a read one; and the
+                    break shows <b>the record, not a zero</b>, with an honest
+                    repair (“I read Tuesday — fix it”) rather than a purchase.
+                    The same version settles the page wheel: a page wheel is
+                    fine at 320 stops and <b>absurd at 912 (~91 flicks)</b>, so
+                    <b>the wheel spins percent — 101 stops for every book ever
+                    printed</b> — with the page as a derived label underneath
+                    (≈ p.429 of 912). That is also the unit the app ought to
+                    store, so
+                    the unit segment, the no-page-count fallback and the
+                    resolution cliff all disappear at once. The stamp itself is now
+                    specified in <code>el-stamp-write</code>: one row per reader
+                    per day, upserted, on a <b>4am rollover</b>, with the streak
+                    derived rather than stored — and it deliberately touches
+                    neither the position nor <code>start_date</code>. Position
+                    becomes a <b>fraction</b>, drawn as each shelf ribbon's
+                    horizontal offset so every row shows how far along its book
+                    is &mdash; and <b>that needs a new column</b>, because
+                    <code>books.position</code> turns out to be the <i>shelf
+                    ordering</i> index (max 25 across all 473 books, duplicated
+                    within a shelf), so there is today nowhere to put a reading
+                    position at all. All eight earlier versions stay browsable.
+                    <b>And <code>streak-flows</code> settles what a recorded day
+                    must remember.</b> Going back to the reference showed that
+                    Duolingo's streak is mostly a <i>screen</i>, and that its
+                    calendar <b>joins consecutive days into one continuous
+                    capsule</b> rather than drawing them as separate marks
+                    &mdash; a detail this set had missed for twelve versions.
+                    Thirty isolated stamps read as confetti; a ligature reads as
+                    a thread you would not want to cut, and a gap in it is
+                    visibly a cut. Once the run is one object, the only question
+                    left is what colour it is: <code>cal-plain</code> and
+                    <code>cal-books</code> draw the same twelve days, the same
+                    run and the same streak, and differ only in that one throws
+                    the book away. Days-only is a handsome tally that cannot say
+                    one word about what was read; coloured by
+                    <code>books.cover_color</code> it is a legible history — so
+                    <b><code>reading_days.book_id</code> should exist</b>, which
+                    also gives the three dead tables
+                    (<code>book_memos</code>, <code>book_compliments</code>,
+                    <code>poke_events</code>, all empty in production) something
+                    to be about. Six flows are drawn end to end, including the
+                    night the reader nearly missed and the one they did.
+                    <b>And <code>state-sheet</code> is the correction all of that
+                    needed.</b> Versions 6&ndash;13 designed a nightly control, a
+                    bespoke position picker and a two-figure Library Card
+                    <i>next to</i> the shipped UI instead of out of it. The app
+                    already has
+                    <code>showBookStatusBottomSheet</code> &mdash; reached from
+                    the details page's <code>edit_outlined</code> action, and
+                    already &ldquo;update this book's state&rdquo;, with an
+                    <code>AnimatedSize</code> that reveals the dates each status
+                    has meaning for. <b>So the position and the day become two
+                    more fields on that sheet</b>, revealed at
+                    <code>status&nbsp;==&nbsp;1</code>, under one Save &mdash;
+                    which deletes the &ldquo;Today&rdquo; chip, the whole +58/+32/+2
+                    placement measurement, the separate wheel sheet, and the
+                    question of whether saving a position should stamp the day.
+                    The wheel is not a new control either: it is
+                    <code>showSelectDateBottomSheet</code>'s sibling, the same
+                    320pt sheet with a 92&times;32 Confirm and
+                    <code>CupertinoPicker</code> in place of the date picker. And
+                    the real Library Card is a hero <code>StatTile</code> carrying
+                    <code>booksRead</code> at 46pt over a board of covers, then
+                    tiles that have something true to say &mdash; so the streak is
+                    a peer of <i>Pace</i>, <b>books read stays the hero</b>, and
+                    the tile is <b>omitted rather than zero-filled</b>. Two things
+                    fall out: <b>freezes are deferred</b> (the month is redrawn
+                    without one, and the run falls from 12 to 3, which is the cost
+                    made visible), and <b>the month grid has no home</b> &mdash; the
+                    card is year-scoped, so a month pager would put two time scopes
+                    on one surface. The remaining open question is the cheap nightly
+                    path: the sheet is right for the truth and four taps too long
+                    for a habit.
+                    <b>And the last group asks whether the progress row in the band
+                    should itself be the control</b> &mdash; it is
+                    <b>333&times;30pt in the thumb's arc against the pencil's
+                    48&times;48 in the top-right corner, over four times the
+                    area</b>, for an act done ~30&times; a book. Three treatments:
+                    <b>A</b> wraps the row in the app's tap-to-edit field ground,
+                    <b>C</b> arms it in place with a thumb, &minus;/+ and Done, and
+                    <b>D</b> opens the 320pt wheel. Drawing them corrected the prose
+                    four times over: A costs <b>27pt, not 14</b> (<code>PROG_H</code>
+                    30 is the <i>slot</i>, so 44&minus;30 double-counts the gap above
+                    the row); A only reaches the 44pt floor if it adopts
+                    <code>DateFieldRow</code>'s 15pt body as well as its ground;
+                    copying that ground verbatim renders an <b>invisible</b> field,
+                    since the widget is <code>surfaceVariant</code> and so is the
+                    band (<code>bar-a-naive</code> keeps the trap on the record); and
+                    <b>A's ground is already spoken for</b> &mdash; the
+                    read-only period card 4pt above has the same white ground and the
+                    same radius, so the chevron is carrying the affordance in all
+                    three and A does not win by default if the chevron fails, it
+                    fails with them. <b>And the group's own blind spot: A had only
+                    ever been drawn at rest</b>, while C and D each had a rest frame
+                    and an opened one &mdash; so the one thing A proposed, a door, was
+                    the one thing never shown. Drawing it collapses the choice from
+                    three to two: <code>DateFieldRow</code> opens
+                    <code>showSelectDateBottomSheet</code>, so A's field opens the
+                    percent wheel &mdash; <b>the same sheet D opens</b>. A is not a
+                    third treatment, it is <b>D plus a permanent 27pt tax</b>, most of
+                    which the sheet then covers. <b>The reader chose D</b>, the
+                    bottom sheet &mdash; so C stays browsable as the rejected inline
+                    path, and the whole remaining question became <b>what the row
+                    looks like at rest</b>. Eight more treatments answer that
+                    (<code>cl-*</code>), and the winner reframes the problem: the rest
+                    state has <b>two jobs</b>, and every earlier attempt made one
+                    signal do both. “This is a door” is an interface
+                    question &mdash; so <b>join the period card and the progress row
+                    into one grouped section</b>, which turns the fatal adjacency into
+                    the mechanism, because a row in a list with a chevron is the one
+                    contract nobody has to learn. “You are here in this book”
+                    is a reading question &mdash; so end the fill in <b>the ribbon
+                    every cover already carries</b>, which is free. Merging is
+                    <b>cheaper than <code>bar-a</code>, 22pt against 27</b>, since the
+                    10pt gap between the two cards buys a 1pt separator. Also drawn: the value as a small white button, which keeps the
+                    streak chip but costs 10pt to build a 27pt target; and a
+                    full-bleed row, free but 20pt out of alignment with everything
+                    else in the band. Two findings from looking: <b>the bookmark only
+                    works white</b> (solid brandText merged into its own fill and read
+                    as a blob), and <b>two treatments pitched as free were not</b>
+                    until measured.
+                    <b>And the reader picked the band's own bottom edge as the
+                    look &mdash; <i>linear</i>, ends clipped by the 30pt radius.</b>
+                    Which is where a correction belongs: on finding that a linear bar
+                    below ~8% sits entirely inside that radius (at p.13 of 320 it shows
+                    <b>nothing</b>), the bar was redrawn to <i>trace</i> the border,
+                    arcs included &mdash; and that is a <b>different look, not a fix</b>,
+                    so it was not a substitution to make. The traced frames stay
+                    browsable and are not the decision. The trade is now stated instead:
+                    full-bleed keeps the edge-to-edge look and goes blind below ~8%;
+                    spanning only the flat bottom (x30&ndash;x363) is visible at 1% and
+                    stops being an edge. Nothing sits in between, because <i>the clipping
+                    is the look</i> &mdash; and the blindness may well be fine, since the
+                    numbers sit directly above the bar, so an empty bar beside a legible
+                    <code>4%</code> degrades rather than lies.
+                    <b>DECIDED (<code>pd-align</code>): linear bar at the band's
+                    bottom edge, the progress row left alone on the grey band, the
+                    period card turned into a door, and the pencil retired.</b>
+                    The card change is what earns the last of those: <code>showBookStatusBottomSheet</code> edits status,
+                    start and finish &mdash; exactly what that row displays &mdash; so
+                    once the row opens it, <code>edit_outlined</code> has no job and
+                    the app bar keeps only <code>delete</code>. The original complaint,
+                    a 48&times;48 target in the top-right dead zone, is solved twice
+                    over. <b>But a chevron alone does not make the row look
+                    tappable</b>, and the reason is grammatical: a list row reads
+                    <i>label → value → chevron</i>, and the period row packed
+                    its three pieces at the left so the chevron floated alone with a
+                    void between it and them. The fix is <b>one rule</b> &mdash;
+                    <code>margin-left: auto</code> on the value &mdash; giving the card
+                    <code>DateFieldRow</code>'s shape verbatim, and it costs <b>2pt</b>
+                    (the card draws 42, and the touch floor is 44). The pressed state is
+                    drawn too, being the half of “does it look tappable” that
+                    no resting frame can show &mdash; and it must not darken to the
+                    band's own <code>surfaceVariant</code>, or the card vanishes into
+                    it. <b>Note what stops applying:</b> <code>bar-a</code> failed
+                    because a white card here already meant “read-only”, and
+                    that card <i>was</i> the period card &mdash; once it is the door,
+                    there is no read-only white card left to confuse it with. All three
+                    frames leave the progress row untouched, which is asserted
+                    character-for-character rather than trusted.
+                    <b>Written up as
+                    <code>docs/superpowers/specs/2026-09-12-reading-streaks-design.md</code>.</b>
+                    <br /><br />
                     <b>A streak needs a daily signal and the schema has
                     none.</b>
                     Books carry a <code>start_date</code> and a
@@ -197,6 +650,79 @@
                     backwards drag has three readings and no chosen one; and the
                     friend row's trailing slot is <b>already spoken for</b> by
                     <code>FriendReading.finishedCount</code>.
+                </div>
+            </a>
+            <a class="row" href="page-progress/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Exact-page entry &mdash; the segment, the recovered
+                        wheel, the keypad</span
+                    >
+                    <span class="badge open">nothing built &middot; overrides the streaks spec's &ldquo;no page/percent toggle&rdquo; &middot; design settled, 3 questions open &middot; needs a provenance migration</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>Follow-up to the row above, and a deliberate override of
+                    it.</b> The streaks spec says &ldquo;one native wheel &hellip;
+                    no page/percent toggle&rdquo;, on the grounds that percent
+                    needs no fallback for the ~65% of books with no
+                    <code>page_count</code>. A segment offered <i>only</i> when
+                    <code>page_count</code> exists leaves exactly that majority
+                    untouched, so the objection does not defeat it &mdash; and
+                    the cost it was protecting is real: on a 432-page book the
+                    101 stops reach <b>101 distinct pages</b>, so p.200, p.201
+                    and p.202 are unsayable, and <b>p.200 round-trips to
+                    p.199</b>. Storing <code>page / pageCount</code> as
+                    <code>real</code> needs <b>no migration</b> (exact for
+                    320/432/912/1000).
+                    <b>The control is the emphasised-centre wheel recovered from
+                    <code>a89ce73</code></b> &mdash; the year/month filter sheet
+                    deleted in <code>604871f</code>, centre 28/bold in
+                    <code>brandText</code> over 20/bold siblings with 0.5pt
+                    hairlines &mdash; given the tap-to-type keypad it never
+                    actually had. It cannot be copied verbatim:
+                    <code>text_style_test.dart</code> bans literal sizes in
+                    <code>lib/ui</code>, and only <code>figure</code> (30) is a
+                    mid-sized <b>tabular</b> token, so a wheel built from
+                    <code>titleUser</code> would wobble as it counts. Drawn at
+                    <b>1pt = 1px</b>, so the rendered geometry <i>is</i> the
+                    claim: <code>320</code> = 64+220+36, seg-under
+                    <code>368</code>, keypad-in-place <code>416</code>, all under
+                    the <code>474.75</code> non-scroll-controlled ceiling &mdash;
+                    while keypad-below (<b>580</b>) and the system keyboard
+                    (<b>548</b>) provably do not fit. Two findings the drawing
+                    produced rather than confirmed: the header segment
+                    <b>fits by 3pt</b> (measured 129+8+110+8+92), which is the
+                    argument against it, and <code>progressPage</code> is
+                    <code>p.{page}</code> in English but
+                    <code>{page}&#51413;</code> in Korean &mdash; a prefix in one
+                    shipped locale and a suffix in the other &mdash; so the unit
+                    leaves the row and becomes a static column label. Also
+                    documents a <b>live regression</b>: Confirm rewrites
+                    <code>selected/100</code> unconditionally, so merely opening
+                    the sheet and agreeing with it walks the bookmark back a
+                    page.
+                    <b>The design is settled:</b> the wheel's centred number is <code>AppTextStyles.figure</code> 30/w700 in <code>brandText</code> over <code>subtitle</code> 17/w600 siblings — chosen because <code>figure</code> is the only mid-sized <b>tabular</b> token and a non-tabular centre shifts sideways as it counts — at <code>itemExtent</code> <b>34</b>, matching the date picker one tap away, with the recovered 0.5pt <code>brandText</code> hairlines and a <b>bare numeral</b> beside a static <code>Page</code> label. The segment gets its own row and
+                    <b>Percent is always the default</b>, on every book, so the
+                    sheet's opening state stays exactly today's; typing past the
+                    last page <b>clamps</b>, quietly and in
+                    <code>secondaryText</code>, which removes the error state
+                    entirely; and <code>ProgressFieldRow</code> prints a page
+                    <b>only when a page count exists and the reader typed a
+                    page</b>. That last one is the expensive one — it has to know
+                    how the value was entered, and the stored double cannot say.
+                    Inference by &ldquo;is
+                    <code>progress&nbsp;&times;&nbsp;100</code> a whole
+                    number?&rdquo; collapses exactly where books are commonest:
+                    counted over every page it is ambiguous for <b>0.9%</b> of a
+                    432-page book, <b>6.25%</b> of a 320-page one, <b>50%</b> of
+                    a 200-page one and <b>100%</b> of a 50- or 100-page one — so
+                    provenance must be stored, and its shape (a boolean, or a
+                    nullable <code>progress_page int</code> recording what was
+                    actually typed) is the open question. Verified with
+                    <code>python3 docs/mockups/page-progress/verify.py</code>
+                    and
+                    <code>python3 docs/mockups/page-progress/falsify.py</code>.
                 </div>
             </a>
             <a class="row" href="spine-type/index.html">
@@ -900,6 +1426,172 @@
                 <code>docs/superpowers/plans/</code> for what shipped, what
                 deviated, and the twelve bugs building it surfaced.
             </p>
+            <a class="row" href="reading-shelf/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >The reading shelf &mdash; a shelf for the books you have
+                        open</span
+                    >
+                    <span class="badge"
+                        >3 versions &middot; 43 screens &middot; 7 shelf devices
+                        &middot; <code>s-lit</code> shipped, without the
+                        lean</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    A book at <code>bookStatusReading</code> used to stay on its
+                    shelf and be pulled to the head of that row by
+                    <code>withReadingFirst</code>. It is taken <b>off</b> the
+                    shelf now, onto one shelf of its own at the top of the
+                    library &mdash; the move <code>withoutFinishedBooks</code>
+                    already made for a book that has been read. Shelves are
+                    therefore a <i>queue</i>: a shelf means &ldquo;books I have
+                    not started&rdquo;, status decides where a book is drawn, and
+                    <code>shelf_id</code> only places it while its status is 0.
+                    The reading shelf takes <i>no drops</i> &mdash; status
+                    changes only from the book&rsquo;s own sheet.<br /><br />
+                    <b>The case for it was the <code>spines</code> screen, and
+                    it paid.</b> A row was two regions with a barrier between
+                    them; <code>readingHeadCount</code> found the boundary,
+                    <code>clampDropIndex</code> defended it, and five branches
+                    in <code>shelf_row.dart</code> drew across it. All of that
+                    is gone: <code>withReadingFirst</code> and
+                    <code>readingHeadCount</code> are deleted,
+                    <code>clampDropIndex</code> takes one argument,
+                    <code>ShelfBookDrag</code> no longer carries a
+                    <code>reading</code> flag, and every queue row is one
+                    homogeneous region. It also retired the wart that function
+                    documented on itself &mdash; the first drag on a shelf
+                    persisted the promotion into <code>position</code>, so
+                    clearing a book&rsquo;s status left it where the promotion
+                    put it. A book now keeps the position the reader filed it
+                    in.<br /><br />
+                    <b>What shipped is <code>s-lit</code>, minus its lean:</b> a
+                    white board with the Library Card&rsquo;s own warm bloom
+                    washing down over it, upright covers, the white ribbon, and a
+                    <code>D+n</code> stamp from <code>start_date</code> in the
+                    one corner the ribbon cannot reach. Zero state is
+                    <code>vanish</code>. The tab is <code>brandText</code>,
+                    counts every book on the plank with
+                    <code>books.length</code>, and neither it nor the plank
+                    flies:
+                    <code>book_details_tab_view.dart</code> now withholds its own
+                    pair for status&nbsp;1 as well as status&nbsp;2, for the same
+                    reason it always did for a finished book.<br /><br />
+                    <b
+                        >The lean was built at <code>even</code> as this record
+                        chose, rendered, and then removed &mdash; and the frames
+                        are the reason, which is the whole point of having
+                        them.</b
+                    >
+                    Three findings no arithmetic on this page had produced.
+                    <i>The rows stopped lining up:</i> a cover tipped by &theta;
+                    overhangs its slot leftward by <code>h&nbsp;sin&nbsp;&theta;</code>
+                    &mdash; 15.2pt &mdash; which the row&rsquo;s leading padding
+                    had to absorb, so the reading shelf&rsquo;s first cover stood
+                    15pt right of every queue shelf&rsquo;s first cover and the
+                    whole row read as indented from the library.
+                    <i>It made the hero flight dishonest:</i> a <code>Hero</code>
+                    takes its rect from the axis-aligned bounding box of its
+                    subtree, so a rotated cover flew from a box ~15pt wider than
+                    the book and the tilt vanished on the first frame instead of
+                    unwinding &mdash; standing the books up removes that rather
+                    than documenting it. <i>And it was the one channel saying
+                    something already said:</i> the ribbon says the book is open,
+                    the stamp says how long, and the tilt said &ldquo;in
+                    progress&rdquo;. This record had already conceded the tilt
+                    could claim nothing stronger, since with no
+                    <code>last_opened</code> and no page position &ldquo;the one I
+                    am actually reading&rdquo; could only ever have meant
+                    &ldquo;first by shelf order&rdquo;. So the lamp and the
+                    tab&rsquo;s colour carry &ldquo;this shelf is
+                    different&rdquo; alone, which is what <code>s-lit</code>&rsquo;s
+                    own note argued was doing the work anyway &mdash; and the row
+                    is ~9pt shorter, since it no longer reserves headroom for a
+                    corner it was lifting. The Lean scope group stays browsable:
+                    it is the record of a decision that was made twice.<br /><br />
+                    <b>The lamp was rebuilt three times after shipping, and the
+                    last two rounds are the ones that mattered.</b>
+                    <code>s-lit</code>'s note claimed the device &ldquo;costs no
+                    height&rdquo;, which was true of the gradient's paint and
+                    false about its layout. Draft one painted the reach
+                    <em>outside</em> the Reading shelf's box with a negative
+                    <code>Positioned.top</code> under <code>Clip.none</code>, on
+                    the reasoning that it fell into &ldquo;the 26pt gap the shelf
+                    above already leaves&rdquo; — fiction for this shelf, which is
+                    always <em>first</em> in the library, so what is above it is
+                    scroll content next to the app bar rather than a reserved
+                    gap. Draft two folded the reach into real height inside the
+                    row, which fixed the overflow and left the actual complaint
+                    untouched: <b>the bloom was still part of the scrolling
+                    content, so it slid up the screen with the books</b>, and it
+                    now had a strip of bare <code>surfaceVariant</code> above it
+                    where the library's own top padding showed through.<br /><br />
+                    <b>The lamp is a fixture now</b> — a layer in
+                    <code>LibraryPane</code> pinned to the top of the library,
+                    behind the shelves and <em>outside</em> the scroll view, so
+                    the shelves move under it and the light does not. It starts at
+                    the library's own top edge, immediately under the bar, with no
+                    gap; it is drawn only when something is actually open, so the
+                    library is unlit exactly when the Reading shelf is absent. The
+                    row keeps what the light <em>lands on</em>: the
+                    <code>brightness</code>/<code>saturate</code> multiply on each
+                    cover and the warm pool on the plank. <b>The third round paid
+                    the fixture's own cost:</b> a light that stays put does not
+                    stop lighting things when its shelf leaves, so scrolled far
+                    enough the bloom sat over a <em>queue</em> shelf and the device
+                    read as &ldquo;the library is lit from above&rdquo; rather than
+                    &ldquo;this row is lit&rdquo;. So it dims &mdash; linearly with
+                    the scroll offset, out by the time the Reading shelf's covers
+                    have cleared the library's top edge, clamped so a
+                    pull-to-refresh cannot brighten it past full. It is still a
+                    fixture; it is a fixture with nothing left to illuminate.
+                    <code>readingLampIntensity</code> is the rule and
+                    <code>scroll_1_dimmed.png</code> /
+                    <code>scroll_2_out.png</code> are the frames.<br /><br />
+                    <b>The shelf reorders and removes now, which reverses
+                    <code>edit-mode</code> twice over.</b> It shipped inert on the
+                    grounds that a book gets here by having its status set in the
+                    bottom sheet and there is no other way in or out &mdash; still
+                    true of every way in and out, but it also left the
+                    <em>arrangement</em> unreachable, and
+                    <code>readingBooksOf</code>'s own doc admitted as much: the
+                    order was &ldquo;a consequence of where the books came from,
+                    which is the one thing a reader cannot change about it&rdquo;.
+                    So a hold enters edit mode from this row too and the covers
+                    drag within it, using the shelves' own single-hold trick.
+                    <b>The badges came a step later, and the first answer was
+                    wrong.</b> They were withheld on the grounds that this shelf
+                    &ldquo;is not a place the reader arranges&rdquo; &mdash; a
+                    sentence that had just stopped being true. A cover that wobbles
+                    under a hold and then answers half the gestures a wobbling
+                    cover answers on every other row is not a restraint a reader
+                    can learn; it reads as the badge having failed to draw. So an
+                    open cover now wobbles and carries the same
+                    <code>DeleteBookBadge</code> at its top-left, which is
+                    extracted out of <code>shelf_row.dart</code> precisely so the
+                    two rows cannot drift apart. What is still absent is the
+                    <em>shelf's</em> own editing &mdash; no rename, no delete,
+                    because the reader did not make this shelf &mdash; and any drop
+                    from or to anywhere else, enforced by a payload <em>type</em>,
+                    <code>ReadingBookDrag</code>, rather than by a shelf-id check
+                    somebody could forget. Order lives in a new column,
+                    <code>books.reading_shelf_index</code>, and never in
+                    <code>position</code>, so clearing a book's status still
+                    puts its cover back on its own plank where it was filed.<br /><br />
+                    <b>Three of the page&rsquo;s open callouts are resolved in
+                    place</b> (the hero flight, overflow, edit mode) and the
+                    Library-Card grammar question with them: <code>D+n</code> is
+                    drawn on the shelf and deliberately <i>not</i> on the card,
+                    where an open book is still marked by the <i>absence</i> of a
+                    stamp. <code>collision</code> and <code>origin</code> stay
+                    open. The Treatments group keeps the rejected options and the
+                    notes on why &mdash; the timber board, the runner, the
+                    alcove, the green edge, the bookend props. Verify with
+                    <code>node docs/mockups/reading-shelf/verify.js</code>.
+                </div>
+            </a>
             <a class="row" href="library-card-share/index.html">
                 <div class="nm">
                     <span class="t">Library Card &mdash; sharing</span>

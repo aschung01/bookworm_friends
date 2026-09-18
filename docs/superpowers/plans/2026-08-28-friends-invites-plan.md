@@ -532,60 +532,60 @@ hours'`.
       neither a link nor a code on theirs, and after three corrections neither does this.
 
       > **Two of three "gaps" I closed on 2026-08-31 were reverted on the same day, and the
-                          > pattern is worth more than the code was.** Both were built on internal reasoning
-                          > without checking the reference the whole design is modelled on — and the reference
-                          > settles both against me.
-                          >
-                          > 1. **`Turn off this link` — removed.** Flighty has no revoke control. I added one
-                          >    because `revoke_invite()` existed and was unwired, and treated "an RPC with no
-                          >    caller" as a gap to fill. It is not: the fine print promising a 48-hour link is
-                          >    the design's answer to a mis-sent invite, and a link that expires on its own
-                          >    needs no button. The RPC stays for a future settings surface.
-                          > 2. **Reuse of a live link — reverted** (`20260831130000_revert_invite_reuse.sql`).
-                          >    Justified as making revoke coherent; with revoke gone, what remained was that a
-                          >    sender "cannot reason about their outstanding invites", which the app never asks
-                          >    them to do — there is no list of links, only the code on the sheet. The reference
-                          >    mints a new id per share, which was *observed*, not assumed. Case 10 of
-                          >    `invites_test.sql` now pins mint-always, because re-adding reuse is one line and
-                          >    nothing else would notice.
-                          > 3. **The fake notification toggles — removed, and this one stands.** See Task 7.
-                          > 4. **The code on the sheet — removed.** "Or read them the code: K7M2QP4X", tappable
-                          >    to copy, defended in the class doc as a deliberate divergence because "a sender may
-                          >    need to read it down a phone". The copy did not parse — *them* refers to nobody on
-                          >    a screen the sender is looking at alone — and the premise was invented: **the
-                          >    recipient gets the code from the landing page, not from the sender.**
-                          >    `libstack.app/i/<token>` prints it and copies it inside the tap that leaves for the
-                          >    App Store, and `InviteCodePage` reads it back. The typed tier is complete and none
-                          >    of it passes through the sender's eyes. The sheet is now the reference's shape
-                          >    exactly.
-                          > 5. **The link is minted on tap, not on open** — which fixed a real bug reported from
-                          >    the device: **the button arrived greyed out and came alive a second or more later.**
-                          >    `create()` ran in `initState` and `activated` was gated on its result, so the
-                          >    sheet's only action was dead on arrival for as long as an RPC took.
-                          >
-                          >    The eager call was justified by "the code has to be on screen before anyone decides
-                          >    how to send it", which stopped being true at (4). What remained was a fear of a
-                          >    spinner between the intention and the share sheet — backwards: **latency belongs
-                          >    after the commitment, not before it.** Two things fell out: opening and closing the
-                          >    sheet no longer writes a row to `friend_invites`, which matters now that reuse is
-                          >    reverted; and it matches the reference, which mints on button press.
-                          >
-                          > The common fault: four times in this phase I built past the reference on the strength
-                          > of an argument that sounded tidy — and in the last case invented the user scenario that
-                          > justified it. Cost: two migrations, two widgets, six strings and a test file.
-                          > **Check the drawings and the reference before adding a control.**
+                              > pattern is worth more than the code was.** Both were built on internal reasoning
+                              > without checking the reference the whole design is modelled on — and the reference
+                              > settles both against me.
+                              >
+                              > 1. **`Turn off this link` — removed.** Flighty has no revoke control. I added one
+                              >    because `revoke_invite()` existed and was unwired, and treated "an RPC with no
+                              >    caller" as a gap to fill. It is not: the fine print promising a 48-hour link is
+                              >    the design's answer to a mis-sent invite, and a link that expires on its own
+                              >    needs no button. The RPC stays for a future settings surface.
+                              > 2. **Reuse of a live link — reverted** (`20260831130000_revert_invite_reuse.sql`).
+                              >    Justified as making revoke coherent; with revoke gone, what remained was that a
+                              >    sender "cannot reason about their outstanding invites", which the app never asks
+                              >    them to do — there is no list of links, only the code on the sheet. The reference
+                              >    mints a new id per share, which was *observed*, not assumed. Case 10 of
+                              >    `invites_test.sql` now pins mint-always, because re-adding reuse is one line and
+                              >    nothing else would notice.
+                              > 3. **The fake notification toggles — removed, and this one stands.** See Task 7.
+                              > 4. **The code on the sheet — removed.** "Or read them the code: K7M2QP4X", tappable
+                              >    to copy, defended in the class doc as a deliberate divergence because "a sender may
+                              >    need to read it down a phone". The copy did not parse — *them* refers to nobody on
+                              >    a screen the sender is looking at alone — and the premise was invented: **the
+                              >    recipient gets the code from the landing page, not from the sender.**
+                              >    `libstack.app/i/<token>` prints it and copies it inside the tap that leaves for the
+                              >    App Store, and `InviteCodePage` reads it back. The typed tier is complete and none
+                              >    of it passes through the sender's eyes. The sheet is now the reference's shape
+                              >    exactly.
+                              > 5. **The link is minted on tap, not on open** — which fixed a real bug reported from
+                              >    the device: **the button arrived greyed out and came alive a second or more later.**
+                              >    `create()` ran in `initState` and `activated` was gated on its result, so the
+                              >    sheet's only action was dead on arrival for as long as an RPC took.
+                              >
+                              >    The eager call was justified by "the code has to be on screen before anyone decides
+                              >    how to send it", which stopped being true at (4). What remained was a fear of a
+                              >    spinner between the intention and the share sheet — backwards: **latency belongs
+                              >    after the commitment, not before it.** Two things fell out: opening and closing the
+                              >    sheet no longer writes a row to `friend_invites`, which matters now that reuse is
+                              >    reverted; and it matches the reference, which mints on button press.
+                              >
+                              > The common fault: four times in this phase I built past the reference on the strength
+                              > of an argument that sounded tidy — and in the last case invented the user scenario that
+                              > justified it. Cost: two migrations, two widgets, six strings and a test file.
+                              > **Check the drawings and the reference before adding a control.**
 
-                          Also fixed, and this one was a real defect: **a link tapped while the app was already
-                          running did nothing.** `pendingInviteTokenProvider` was read only by `SplashPage` and
-                          `AuthPage`, both startup-only, so the *common* arrival case was the broken one.
-                          `InviteLinkListener` fixes it; `test/invite_link_listener_test.dart` pins it.
+                              Also fixed, and this one was a real defect: **a link tapped while the app was already
+                              running did nothing.** `pendingInviteTokenProvider` was read only by `SplashPage` and
+                              `AuthPage`, both startup-only, so the *common* arrival case was the broken one.
+                              `InviteLinkListener` fixes it; `test/invite_link_listener_test.dart` pins it.
 
-                          **The CTA is `Continue`, not `Share invite`** — the reference's label. It reads wrong
-                          for a second, which is why `invite_sheet.dart` carries a note: this sheet is an
-                          explainer standing between the reader and the system share sheet, so the button
-                          advances past the explanation rather than naming the destination. "Share invite" made
-                          the tap feel like the commitment, and then the real share sheet asked again — two
-                          share-shaped buttons in a row, the first of which does not share.
+                              **The CTA is `Continue`, not `Share invite`** — the reference's label. It reads wrong
+                              for a second, which is why `invite_sheet.dart` carries a note: this sheet is an
+                              explainer standing between the reader and the system share sheet, so the button
+                              advances past the explanation rather than naming the destination. "Share invite" made
+                              the tap feel like the commitment, and then the real share sheet asked again — two
+                              share-shaped buttons in a row, the first of which does not share.
 
 - [x] Consent screen: full-screen, one button. **No Decline** — `✕` is the refusal.
 - [x] Success screen with the seal, `Done`, and the outlined per-friend notification action.
@@ -684,17 +684,37 @@ hours'`.
       over a single-use PKCE code. `inviteTokenFromUri` refuses every other URI, including
       the custom-scheme callback, and the test asserts that case first: a regression presents
       as intermittent sign-in failure, not as an invite bug.
-- [x] **Give `InviteCodePage` a route.** Offered once after sign-in from `AuthPage` only,
-      gated by a persisted flag. Not after a tapped link (that path burns the chance — the
-      reader has already spent a token), and never from the splash page, whose branch is an
-      _existing_ session and would ambush every current user with a "One last thing" signup
-      step on first launch.
+- [x] ~~**Give `InviteCodePage` a route.**~~ **Reverted, and the page deleted.** See the
+      note at the end of this task.
 
-      Building it surfaced a design fault worth recording: the first version read
-                              `sharedPreferencesProvider`, which throws unless overridden, so `AuthPage` — and
-                              three of its existing tests, which have no reason to know invites exist — broke.
-                              That was the coupling being wrong, not the tests. `InviteCodePrompt` now reads the
-                              `SharedPreferences` singleton directly and sign-in depends on nothing new.
+      Offered once after sign-in from `AuthPage` only, gated by a persisted flag. Not
+          after a tapped link (that path burned the chance — the reader had already spent a
+          token), and never from the splash page, whose branch is an _existing_ session and
+          would ambush every current user with a "One last thing" signup step on first launch.
+
+          Building it surfaced a design fault worth recording: the first version read
+                                  `sharedPreferencesProvider`, which throws unless overridden, so `AuthPage` — and
+                                  three of its existing tests, which have no reason to know invites exist — broke.
+                                  That was the coupling being wrong, not the tests. `InviteCodePrompt` read the
+                                  `SharedPreferences` singleton directly and sign-in depended on nothing new.
+
+> **Superseded: the typed-code tier is gone entirely.** `InviteCodePage`,
+> `InviteCodePrompt`, the `/invite_code` route and their l10n strings were deleted. **Do
+> not re-add them.** Two reasons, in order:
+>
+> 1. **"Invite code" is the shape a referral code will want.** Those are different things
+>    with different lifetimes and different server logic, and one eight-character field
+>    cannot serve both without rejecting the other's input under a misleading error. The
+>    name is reserved for referrals.
+> 2. A per-install "offered once" flag cannot tell a new reader from a new _device_, so
+>    every reinstall and every second phone met an existing user with a signup step. The
+>    fix for that (comparing `auth.users.created_at` against `last_sign_in_at`) was
+>    written and then deleted with the rest of the tier.
+>
+> **A friendship is now created by following a link and by nothing else.** The accepted
+> cost is the deferred tier: a reader who installs from `libstack.app/i/<token>` and opens
+> the app cold has no invite until they tap the link again. The landing page's
+> copy-to-clipboard (in `~/dev/libstack-web`) is now vestigial and should be dropped there.
 
 - [ ] iOS Universal Links: `associated-domains` in `Runner.entitlements`, which today holds only
       `aps-environment`. Bundle ID `com.unicorn.bookwormFriends` is permanently frozen

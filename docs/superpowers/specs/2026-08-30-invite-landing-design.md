@@ -397,19 +397,21 @@ else is built and verified locally.
    invites unchanged at 11 and 10, the 6-case suite passes against production, and an
    `anon` probe of a live token returned the real inviter (`독서하는 유니콘`, 🦄) with
    `used_count` unmoved — a preview spends nothing.
-4. ~~**`InviteCodePage` has no route.**~~ **Done.** Offered once after a sign-in, from
-   `AuthPage` only, gated by `InviteCodePrompt` (persisted in `SharedPreferences`).
-   Three rules, all tested:
+4. ~~**`InviteCodePage` has no route.**~~ **Moot — the page is gone.** It briefly had one
+   (offered once after a sign-in from `AuthPage`, gated by `InviteCodePrompt`), and then
+   the whole typed-code tier was deleted: "invite code" is the shape a _referral_ code
+   will want, and a per-install flag could not tell a new reader from a new device, so
+   reinstalls and second phones met existing users with a signup step.
 
-   - **Once per install**, surviving relaunch — continuing with an empty field _is_ the
-     skip, so re-offering it would turn a decline into nagging.
-   - **Never after a tapped link.** That path routes straight to consent and burns the
-     one chance, because asking "have you got a code?" of someone who just spent one is
-     asking them to repeat themselves.
-   - **Never from the splash page.** That branch is a reader who already had a session,
-     and the screen opens with "One last thing" — signup language. Offering it there
-     would ambush every existing user with a signup step on their first launch after
-     this ships.
+   **A friendship is created by following a link and by nothing else.** Consequences for
+   this spec:
+
+   - **The clipboard handoff has no landing point and never will.** `/i/<token>` copying
+     the code inside the store tap is now vestigial — drop it from the landing page.
+   - **The deferred tier is gone**, not merely unbuilt. A reader who installs from the
+     landing page and opens the app cold has no invite until they tap the link again,
+     which makes the Universal Link and the AASA file load-bearing rather than an
+     optimisation.
 
 > **Removed 2026-08-30: the `NEXT_PUBLIC_STORE_READY` gate.** An earlier version of this
 > spec had the page hide the store CTA and say "Libstack is about to land on the App

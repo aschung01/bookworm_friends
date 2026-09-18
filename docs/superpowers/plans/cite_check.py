@@ -21,6 +21,8 @@ DOCS = [
     "docs/superpowers/plans/2026-08-28-friends-invites-plan.md",
     "docs/superpowers/specs/2026-09-08-shelf-density-design.md",
     "docs/superpowers/plans/2026-09-08-shelf-density-plan.md",
+    "docs/superpowers/specs/2026-09-12-reading-streaks-design.md",
+    "docs/superpowers/plans/2026-09-16-reading-streaks-plan.md",
 ]
 
 CITE = re.compile(

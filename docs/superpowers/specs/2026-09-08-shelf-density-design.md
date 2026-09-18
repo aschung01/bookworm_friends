@@ -1,8 +1,15 @@
-# Shelf density: three ways to draw a shelf, and reading first on all of them
+# Shelf density: ways to draw a shelf, and reading first on all of them
 
-Status: decided, not built.
+Status: built. **`leaning` was withdrawn after it shipped** — see "Withdrawn:
+`leaning`" below. What is built is `covers` and `spines`.
 Prior drawing: `docs/mockups/shelf-overflow/index.html` — same problem, three
 different (wrapping) answers. See "What this supersedes".
+
+**Read this document knowing that one of its three states is gone.** The `leaning`
+sections are kept rather than deleted, marked as withdrawn, because the analysis in
+them is the reason not to bring it back and the hit-testing lesson in it applies to
+any future overlapping drawing. Nothing below describes code that exists unless it
+says `covers` or `spines`.
 
 ## Context
 
@@ -18,12 +25,12 @@ face-out, or cap the wrap and push the remainder onto a shelf page. This design
 spends **horizontal** space instead, by drawing a non-reading book smaller than a
 face-out cover.
 
-Three states, cycled from one button in the library bar:
+States, cycled from one button in the library bar:
 
 1. `covers` — today's row, unchanged but for the reading-first order. The
    default.
-2. `leaning` — reading books face-out; everything else shingled at a fixed step,
-   leaning right so the leftmost book is frontmost.
+2. ~~`leaning` — reading books face-out; everything else shingled at a fixed step,
+   leaning right so the leftmost book is frontmost.~~ **Withdrawn.**
 3. `spines` — reading books face-out; everything else spine-on, per
    `BookVertical`.
 
@@ -42,8 +49,9 @@ books the shelf has _in progress_, because a face-out cover is expensive: at
 The working, so it can be checked:
 
 - `covers`: `84.4n + 15(n−1) ≤ 340.5` → 3.57.
-- `leaning`, none reading: the group is `(m−1)·20.3 + 84.4`, because the last
-  book is overlapped by nothing and draws its full cover → 13.6.
+- `leaning`, none reading: the group is `(m−1)·20.3 + 84.4`, because the group
+  ends where the last cover ends and that cover starts `(m−1)` steps along → 13.6.
+  (The book drawn in full is the _first_, not the last — see "Left on top".)
 - `leaning`, one reading: `84.4 + 15 + (m−1)·20.3 + 84.4 ≤ 340.5` → 8.7
   shingled, 9.7 total.
 - `spines`, none reading: `340.5 / 37` → 9.2.
@@ -96,28 +104,62 @@ they conflict. This is why reading books are never compressed, why the emphasis
 in `leaning` sits at the left end of the row, and why no cap is placed on the
 face-out head block.
 
+## Withdrawn: `leaning`
+
+It was built, it was fixed twice, and it was then removed. Both fixes are worth
+reading before anyone proposes an overlapping shelf again, because neither was a
+coding slip — each was a consequence of the overlap that the design had not
+reasoned through:
+
+1. **The hit slots were on the wrong edge.** A cascade that leans right paints book
+   _i_ _under_ book _i−1_, so the visible part of each book is its **trailing**
+   edge. The slots were placed at the leading edge, which is the part hidden under
+   the neighbour — so every target sat under a book and taps landed on whoever
+   happened to span the point. Tapping one book surfaced another.
+2. **Bringing a book forward had to push both ways.** The book to the left of the
+   revealed one is painted _on top_ of it, so pushing only the followers left the
+   reveal half-covered and read as the tap having done nothing.
+
+Both were fixed and the state worked. It was withdrawn anyway, and the reason is
+not the bugs — it is what the bugs were symptoms of. **The overlap is the thing a
+reader has to reason about in order to use the shelf.** At a quarter of a cover the
+recognition is being done by colour rather than by type; a tap has to be aimed at a
+20pt strip whose position is not where the drawing suggests; and the reveal needs
+air opened on both sides just to make one book legible. A spine is a thing readers
+already know how to look at, and it needs none of that.
+
+What it cost to remove: about two books of density per row (`leaning` fit ~9.7 with
+one book in progress against `spines`' ~7.5), and the `Stack` that came with it —
+`spines` is a lazy `ListView`, so a sixty-book shelf builds about four tiles where
+`leaning` built sixty. The density was the thing `leaning` was better at, and it was
+the only thing.
+
 ## The model
 
 ```dart
-enum ShelfDensity { covers, leaning, spines }
+enum ShelfDensity { covers, spines } // `leaning` was here; see "Withdrawn"
 ```
 
 A new enum, **not** a widening of `LibraryMode`. `LibraryMode { library,
 editLibrary }` is about what the reader is doing; this is about how books are
-drawn. They are orthogonal — edit mode always draws face-out, from any density —
-so fusing them would produce six states of which three are aliases.
+drawn. They are orthogonal — edit mode draws each density as itself — so fusing
+them would produce four states of which two are aliases.
 
-`leaning` rather than `stacked` or `shingled`, because it names the physical
-thing being drawn (books leaning right onto each other) and this codebase names
-drawings after what they depict: `BookVertical`, `ReadingBookmark`,
-`kReadSpinePose`.
+`leaning` rather than `stacked` or `shingled`, because it named the physical thing
+being drawn (books leaning right onto each other) and this codebase names drawings
+after what they depict: `BookVertical`, `ReadingBookmark`, `kReadSpinePose`. (Kept
+for the naming principle, which outlived the state.)
 
 ### Where the state lives
 
 New file `lib/providers/shelf_density_provider.dart`, shaped exactly like
 `ThemeModeNotifier`: a `Notifier` whose `build()` reads
 `sharedPreferencesProvider` and whose `set()` writes a string key and then
-assigns `state`. An unparsable stored value falls back to `covers`.
+assigns `state`. An unparsable stored value falls back to `covers` — except a stored
+`'leaning'`, which migrates to `spines`. That is deliberate rather than lazy: the
+withdrawn state was the _other_ compressed one, so a reader who had chosen it asked
+for a shelf that fits, and dropping them to `covers` would answer a question they did
+not ask.
 
 **Persisted per reader, and applied to every library including friends'.** This
 is a statement about how _you_ like to see books — the same category as theme
@@ -148,7 +190,7 @@ without disturbing anything here.
 
 ## Reading first
 
-**In all three states, and in edit mode.** Reading books come first on every
+**In every state, and in edit mode.** Reading books come first on every
 shelf. This is a property of the library rather than of a density state.
 
 New `withReadingFirst(List<Shelf>)` in `library_provider.dart`, directly beside
@@ -194,7 +236,7 @@ one they saw would persist an arrangement nobody chose.
 
 - **No reading books.** No head block and no leading gap; the compressed group
   starts at the row's left padding. Promotion is a no-op.
-- **All books reading.** Nothing is compressed, so all three states render
+- **All books reading.** Nothing is compressed, so both states render
   identically. Correct rather than broken — though it does mean the toggle
   visibly does nothing on such a shelf.
 - **Many reading books.** Five face-out covers overflow the row on their own and
@@ -208,7 +250,7 @@ sits at `top: 0, right: kReadingBookmarkInset` — outside its cover's box — a
 would be mangled by a neighbour leaning over it. It can never collide with
 anything.
 
-## `leaning`
+## `leaning` (withdrawn — see "Withdrawn: `leaning`")
 
 Head block: reading books, face-out at full width, 15pt gaps, authored order
 among themselves. Then one 15pt gap. Then the shingle group: every non-reading
@@ -245,22 +287,35 @@ is that the leading book matters most. That is the tiebreaker firing.
 
 `ListView` paints in child order, so a lazy list gives right-on-top — the
 opposite of what is wanted. So the shingle group is a `Stack` inside a
-horizontal `SingleChildScrollView`, children emitted **highest index first**
-with `Positioned(left: i * step)`, so book 0 paints last and lands on top.
-`clipBehavior: Clip.none`.
+horizontal `SingleChildScrollView`, children emitted **highest index first**, so
+book 0 paints last and lands on top. `clipBehavior: Clip.none`.
 
-**Each `Positioned` is `step` wide, and the cover overflows it to the right.** This
-is the part that is easy to get wrong. A `RenderBox` hit-tests its whole rect
-regardless of what is painted there, so a `Positioned` sized to the full cover
-would let book 0 — hit-tested first, being frontmost — claim taps landing on the
-visible strip of book 3, which sits well inside book 0's rect. Sizing the slot to
-the exposed strip makes the hit area exactly the part of the book a reader can see.
-The last book in the group gets a full-cover-width slot, because all of it is
-visible.
+**Each `Positioned` is `step` wide and anchored to its cover's _right_ edge, with
+the cover overflowing it to the left.** This is the part that is easy to get
+wrong, and the first implementation got it wrong in both halves.
+
+A `RenderBox` hit-tests its whole rect regardless of what is painted there, so a
+slot sized to the full cover would let book 0 — hit-tested first, being frontmost
+— claim taps landing on the visible strip of book 3, which sits well inside book
+0's rect. Sizing the slot to the exposed strip fixes that.
+
+But _which_ strip matters just as much. The cascade leans **right**, so book _i_
+is painted **under** book _i−1_: the part of book _i_ a reader can see is its
+trailing edge, and the part hidden under the neighbour is its leading one. A slot
+at `i * step` — the cover's left edge — therefore sits entirely under book _i−1_
+and collects no tap anyone ever aimed at it, while the tap they did make falls
+through to whichever box happens to span that point. The symptom is tapping one
+book and surfacing another. So each slot's left edge is
+`i * step + cover − slotWidth`, and the cover is aligned `bottomRight` inside it.
+
+**The first book of the group draws in full, not the last.** Nothing is painted on
+top of book 0, so all of it is visible and it gets a full-cover slot. The last
+book is covered from the left like every other book but that one. (An earlier
+version of this section had this backwards.)
 
 So paint order and hit order end up saying the same thing: emitted in reverse, book
-0 paints last and is hit-tested first, and its hit rect is only the strip it
-actually shows.
+0 paints last and is hit-tested first, and every other book's hit rect is only the
+trailing strip it actually shows.
 
 **A `Stack` can hold draggables**, which is what lets `leaning` keep the
 one-gesture lift the rest of the app has — each `Positioned` child is the same
@@ -268,12 +323,27 @@ one-gesture lift the rest of the app has — each `Positioned` child is the same
 this is the one density needing the `slotExtent` override described under "Edit
 mode".
 
-The `Stack` needs an explicit width, and the last book's true cover width is not
-knowable before decode, so it is computed from `kDefaultCoverAspect` plus
-trailing slack. This is the same approximation `readSpineMetrics` already makes
-and documents — "resolved at `kDefaultCoverAspect` rather than at the cover's
-true ratio, which the pile could not know without decoding every cover" — so it
-is a precedent being followed rather than a new liberty being taken.
+The `OverflowBox` inside each slot must set `minWidth: 0`. It inherits its
+parent's `minWidth`, and a `Positioned` with a `width` makes that tight — so the
+child would be forced to fill the slot and `ShelfBookTile` would bottom-_centre_
+the cover inside it, undoing the right-anchoring on exactly the full-cover slots
+where it matters.
+
+The `Stack` needs an explicit width, and a cover's true width is not knowable
+before decode, so it is computed from `kDefaultCoverAspect`. This is the same
+approximation `readSpineMetrics` already makes and documents — "resolved at
+`kDefaultCoverAspect` rather than at the cover's true ratio, which the pile could
+not know without decoding every cover" — so it is a precedent being followed
+rather than a new liberty being taken.
+
+**Right-anchoring turns the height jitter from a defect into nothing.** Book
+heights jitter ±6% (`BookJitter`), so a cover's real width is not
+`base · kDefaultCoverAspect`. Because a strip is the distance between two right
+edges, anchoring on the right makes every visible strip exactly `step` whatever
+the heights are; anchoring on the left would have made the strips ragged by the
+jitter, which is the version a reader would notice. What is left is a leading
+overhang of at most 4% of the base height on the group's first book, which lands
+in the margin the row already keeps in front of the cascade.
 
 ### The one real risk
 
@@ -291,26 +361,46 @@ measured rather than assumed.
 
 ### Surfacing
 
-The tapped book's slot animates from `step` to its full cover width, pushing
-later books right, and it moves to the top of the z-order. 220ms `easeOutCubic`,
-in the family of `_kPartDuration` (280) and `_hiddenWhileEditing` (260). One
-surfaced book per row; tapping another surfaces that one instead.
+The tapped book's slot animates from `step` to its full cover width and it moves
+to the top of the z-order. 220ms `easeOutCubic`, in the family of
+`_kPartDuration` (280) and `_hiddenWhileEditing` (260). One surfaced book in the
+whole library — see "One book forward in the library" under Interaction — so
+tapping another, on this shelf or any other, surfaces that one instead.
+
+**It has to open air on _both_ sides, not just the trailing one.** The book to the
+left of the surfaced one is painted _on top_ of it, so pushing only the books
+after it leaves the revealed book still half-covered by its left neighbour —
+which reads as the tap having done nothing. So the revealed book moves right by
+one clearance to step out from under the book in front of it, and everything
+after it moves by two.
+
+A clearance is `cover − step + kTurnMargin`: enough to undo the overlap, plus the
+same 8pt the read pile puts either side of a book it turns out, for the same
+reason — flush reads as a book wedged in place rather than one taken off the
+shelf. That 8pt also absorbs the height jitter, whose worst case is about 5pt, so
+the revealed book keeps air on both sides whichever books it lands between.
+
+A reveal splits one cascade into three, and every cascade has a leading book that
+nothing covers — so the book _after_ the revealed one shows its whole cover too,
+by the same rule rather than by a special case. That is what makes the row read as
+a gap with books standing either side of it.
 
 ### Retained, and one addition
 
 - `_EdgeFades` stays. A thirty-book shelf still overflows.
 - `shelvedBookCount` and `ShelfLabel` are untouched, so the shelf-tab hero keeps
   the same width at both ends of its flight.
-- **Added:** trailing room in `leaning` and `spines` equal to `ShelfLabel`'s
+- **Added:** trailing room in each compressed state equal to `ShelfLabel`'s
   measured width. Today 3.4 books means the tail is always off-screen and the
   label floats over bare plank; once a row fits, the last book lands under the
-  label — a new problem created by success.
+  label — a new problem created by success. (This one **survived** the withdrawal:
+  `spines` still reserves it.)
 
-  Reserved **unconditionally** in the two compressed states rather than only
-  when the row fits, because "does it fit" is a post-layout fact and a reserve
-  that appears and disappears across a decode would shift the row. On an
-  overflowing row the reserve simply sits at the far end where nobody sees it.
-  `covers` is untouched, since its tail is never on screen.
+  Reserved **unconditionally** rather than only when the row fits, because "does
+  it fit" is a post-layout fact and a reserve that appears and disappears across a
+  decode would shift the row. On an overflowing row the reserve simply sits at the
+  far end where nobody sees it. `covers` is untouched, since its tail is never on
+  screen.
 
 ## `spines`
 
@@ -388,6 +478,42 @@ a 20pt strip is that the wrong book comes forward, which costs nothing.
 
 `covers` is unaffected and remains one tap.
 
+### One book forward in the library, not one per shelf
+
+The surfaced book is **one id for the whole library**, held in
+`surfacedBookProvider`. Bringing a book forward on any shelf puts back whatever was
+forward on any other.
+
+It began as a `_surfacedBookId` field on `_ShelfRowState`, which made "at most one"
+true of each row independently — so a five-shelf library could stand five covers
+among its spines at once. That is not a stricter version of this rule, it is a
+different rule: a cover among spines reads as _the_ book being looked at, and five
+of them read as a library that has half-changed density. It was reported as the
+feature functioning oddly, which is the right reading of it.
+
+It also carries the delete-badge argument below, which was only ever coherent
+because **one** book is face-out. One badge per _shelf_ was already several 44pt
+discs per screen.
+
+The reset belongs to the state rather than to any view of it: the provider watches
+`shelfDensityProvider` and clears itself when the density changes, because a book
+brought forward stops being forward when the density changes what "forward" means.
+A row clearing it from `didUpdateWidget` would instead be mutating a provider from
+inside a widget lifecycle callback, once per shelf, in the frame that is already
+handling the change.
+
+Nothing clears it when a book leaves its shelf, which the per-row version did.
+With one id there is nothing to go stale: a book dragged to another shelf is still
+the book being looked at and the receiving row draws it forward, and a deleted book
+matches no row at all. Ids are unique, so a dangling one can never name a different
+book.
+
+**Reduced motion still turns the book out.** `TurningBook` draws a spine at
+progress 0 and a cover at 1, so "skip the animation" cannot mean leaving the
+controller alone — that left a reader with Reduce Motion on tapping a spine, getting
+a spine, and then a details page on the second tap. The controller jumps to 1
+instead.
+
 ### Hero tags only on face-out books
 
 Reading books and the currently surfaced or turned one. This is the read pile's
@@ -395,18 +521,24 @@ own rule ("only that book carries the tag"), and it guarantees a flight always
 starts from a cover that is fully on screen rather than from one three-quarters
 hidden behind a neighbour.
 
-### Edit mode: spine-native in `spines`, face-out in `leaning`
+### Edit mode: every density is edited as itself
 
-| density   | edit mode draws       |
-| --------- | --------------------- |
-| `covers`  | covers (unchanged)    |
-| `spines`  | **spines, draggable** |
-| `leaning` | covers                |
+| density       | edit mode draws       |
+| ------------- | --------------------- |
+| `covers`      | covers (unchanged)    |
+| `spines`      | **spines, draggable** |
+| ~~`leaning`~~ | ~~covers~~            |
 
 An earlier draft of this design said "edit mode always draws face-out, regardless
 of the active density", and gave three reasons. **Two of them were wrong about
-`spines` and one was arithmetic on a number that did not exist.** The rule is now
-per-density, because that is where its reasons actually hold.
+`spines` and one was arithmetic on a number that did not exist.** The rule became
+per-density, because that is where its reasons actually hold — and with `leaning`
+withdrawn, both remaining densities are edited as themselves, so there is nothing
+left to decide. `_effectiveDensity`, the getter that held the fallback, is gone with
+it, as is the `slotExtent` override below.
+
+That is worth knowing before adding a third density: one whose drawing _changes_ on
+entering edit mode brings the whole problem back.
 
 **Why `spines` edits as spines.**
 
@@ -431,8 +563,8 @@ at `top: -22, left: -22` — outside its cover — so a 44pt disc on a 37pt spin
 blankets its neighbours, and in `spines` the neighbours are touching. The answer
 is already in this design: **in spine edit mode, delete is reached by tapping a
 spine to turn it out, and the turned-out cover carries the badge.** One book is
-face-out at a time, so one badge exists at a time and nothing can collide. The
-two-step tap does double duty and no new affordance is invented.
+face-out at a time in the whole library, so one badge exists at a time and nothing
+can collide. The two-step tap does double duty and no new affordance is invented.
 
 **A lifted spine stays a spine.** Its drag feedback is not turned out to a cover:
 it is picked up where it stood, it lands in a spine-width gap, and `_liftScale`
@@ -448,22 +580,76 @@ width — so the measured `slotExtent` is wrong in exactly the way described abo
 shingled row, `slotExtent` is computed from the face-out cover width rather than
 measured. Confined to one density, for a reason that does not generalise.
 
-### Transitions are a cross-fade, not a per-book turn
+### Transitions are a per-book turn, not a cross-fade
 
-Switching density is a **180ms cross-fade of the row**. So is entering edit mode
-from `leaning`, which is the one density whose drawing changes on entry;
-`covers` and `spines` do not change drawing at all and so need no transition.
+**Revised, and the earlier version of this section argued the opposite.** It is
+kept below, because the reason it was wrong is worth having on the record.
 
-An earlier draft of this design had spines turning to covers per book on entering
-edit mode. That is withdrawn twice over: `spines` no longer redraws on entry at
-all, and a per-book turn would need a `BookChassis` per book, which is the exact
-cost rejected when a chassis-based `leaning` variant was turned down. Spending it
-on a transition after refusing to spend it on the drawing would be incoherent.
+Switching density is **every compressed book rotating on its binding**, hinged at
+its left edge, from cover-on to spine-on — in a wave from the left, with the row
+narrowing as they turn. One book's turn takes `kBookTurnDuration` (260ms), which
+is what a book turning takes everywhere else in this app; the wave adds 0.35 of
+the total, so the row takes **400ms**. A book in progress does not turn, in
+either direction, because it is face-out at both densities. See
+`shelf_density_turn.dart`.
 
-A fade needs no chassis and no decode, still reads as "the same books, drawn
-differently", and keeps the toggle cheap enough to flick back and forth — which
-is how it will actually be used. The expensive, convincing turn is kept for
-surfacing, one book at a time, where a reader is looking directly at it.
+The narrowing is the point. A book seen edge-on takes about a fifth of the width,
+and watching the row close up _is_ the answer to "why is this state denser" — the
+reader is shown the trade rather than told about it.
+
+#### What the fade got wrong
+
+The first implementation faded the row out over 90ms, swapped the drawing while
+nothing was visible, and faded back. It was honest about being a cop-out: nothing
+moved, so nothing was explained. A reader saw one shelf replaced by a different
+shelf and had to work out what had happened to their books. "The same books,
+drawn differently" is exactly the claim a cross-fade **cannot** make, because a
+cross-fade is the transition you use for two unrelated things.
+
+The cost argument was also wrong, in a way that is only visible with the code in
+front of you. It said a per-book turn "would need a `BookChassis` per book, which
+is the exact cost rejected when a chassis-based `leaning` variant was turned
+down". But `leaning` would have paid that cost **at rest, forever, on every shelf
+in the library**. The turn pays it for 400ms, on the one row a reader is looking
+at, and hands back to `ShelfSpineTile` — whose width comes from the page count, so
+`spines` still needs no cover decode and the row stays a lazy `ListView`. Those
+are not the same cost, and conflating them cost the transition its meaning.
+
+Nothing new had to be built. `BookWidget` already takes a `turnRadians` pose and a
+`spine` face, `BookChassis` already renders a book at any angle, and the read pile
+has turned single books out of a row of spines since it was written. This is that
+turn applied to every book at once instead of to one.
+
+#### Two things the turn does need
+
+**Ratios, not points.** A cover's width follows its _decoded_ aspect ratio, so
+nothing above `BookWidget` knows it, and every previous attempt at compressed
+shelf geometry had to approximate it at `kDefaultCoverAspect` and then document
+the approximation. Dividing the projection through by the cover width cancels the
+unknown and leaves only `BookJitter.thicknessFactor`, which is hashed from the
+ISBN and page count and so is known before anything loads —
+`turningBookWidthFactor` and `turningBookHingeFraction` in `turning_book.dart`.
+Fed to `Align.widthFactor` and `FractionalTranslation`, the box is the _exact_
+projection of whatever width the cover turned out to be.
+
+**A flag, not a controller reading.** The row's `build` chooses which tile each
+book gets, and it runs on the frame the density changed — which is the frame the
+controller was started on, when it still stands at the endpoint it is leaving. Ask
+the controller _where it is_ and every book is chosen as a resting cover, nothing
+ever re-chooses, and the row animates its margins closed around books that never
+turn. Hence `_densityTurning`, raised before the controller starts. The bug was
+found in a rendered frame, not by reasoning about it, which is the second time
+this row has been saved that way.
+
+One seam is accepted: `BookVertical.arch` is false on a chassis face, because a
+notch cut into the head of one face of a solid object cannot exist beside a
+full-height cover. So the arched heads appear at the instant the turn lands. This
+is the tradeoff `BookVertical.arch` already documents and `TurningBook` already
+lives with, at the other end of the same turn.
+
+The withdrawn per-book turn on **entering edit mode** stays withdrawn, for the
+reason that always applied: `spines` no longer redraws on entry at all, so there
+is nothing there to transition.
 
 ## The control
 
@@ -471,13 +657,16 @@ In `_LibraryBar`, inboard of `GlassAvatarButton`, with an `AdaptiveIconButtonGap
 between them — the same slot relationship the gear has to Poke in the visit
 state. `AdaptiveIconButton.svg` at `diameter: 44`.
 
-**One cycling button**, `covers → leaning → spines → covers`. At three states
-cycling costs at most two taps, and the feedback is unmissable because the
-entire library redraws — so the effect _is_ the affordance in a way it would not
-be for eight states. A three-glyph segmented pill was rejected: it costs
-110–130pt of a 56pt bar whose own doc calls it "the most valuable row on screen"
-and records that Edit and `+` were deleted from it for being duplicate entry
-points.
+**One cycling button**, `covers → spines → covers` (it was
+`covers → leaning → spines` while there were three). The feedback is unmissable
+because the entire library redraws — so the effect _is_ the affordance in a way it
+would not be for eight states. A segmented pill was rejected: it costs 110–130pt of a
+56pt bar whose own doc calls it "the most valuable row on screen" and records that
+Edit and `+` were deleted from it for being duplicate entry points.
+
+It stays a _cycle_ rather than becoming a boolean now that there are two states,
+because that is where a third goes if one is ever added — `ShelfDensityCycle.next` is
+a modulo over `values`, so the control never learns how many there are.
 
 It shows **the state you are in**, not the state you would get. This is a mode
 indicator, and with a two-tap-maximum cycle "what am I looking at" matters more
@@ -489,12 +678,34 @@ applies to both libraries. Absent while editing, where density does not apply.
 
 ### Strings and glyphs
 
-Three semantic labels in `app_en.arb` and `app_ko.arb`, one per state.
+One semantic label per state in `app_en.arb` and `app_ko.arb`.
 
-Three icon pairs in `svg_icons.dart` following the `kStretchHorizontalIcon*`
-pattern exactly: a stroked SVG for Flutter (with an explicit stroke, so
-renderers need not resolve Lucide's upstream `currentColor`), plus a raster PNG
-for UIKit.
+**Built with SF Symbols plus Material fallbacks, not with bundled SVGs** — the plan below
+was written before checking the catalogs, and both have marks for both states, so there
+was no reason to take the raster/mask trap on at all.
+
+| state    | SF Symbol        | Material          |
+| -------- | ---------------- | ----------------- |
+| `covers` | `book.closed`    | `Icons.book`      |
+| `spines` | `books.vertical` | `Icons.view_week` |
+
+`book.closed` and not `book`: the latter's SF Symbol is an _open_ book, which says
+"reading" rather than "cover". It needs iOS 14 and the floor is 15. The first version
+used `rectangle.portrait`/`Icons.crop_portrait`, which was accurate about the geometry
+and said nothing about books — and shared `Icons.crop_portrait` with the share card's
+Fill toggle.
+
+**Known collision:** `books.vertical` is also the Library tab's mark in
+`shell_tab_bar.dart`, so in the `spines` state this button and that tab carry the same
+glyph two rows apart meaning different things. Unresolved; replacing it is a design call.
+
+---
+
+The original plan, kept because the rasterisation trap in it is real and the next
+bundled glyph will hit it. Three icon pairs in `svg_icons.dart` following the
+`kStretchHorizontalIcon*` pattern exactly: a stroked SVG for Flutter (with an explicit
+stroke, so renderers need not resolve Lucide's upstream `currentColor`), plus a raster
+PNG for UIKit.
 
 **The PNG must be transparent outside the glyph**, and must be produced with a
 real rasteriser:
@@ -508,9 +719,6 @@ Not `qlmanage`, which bakes Quick Look's opaque backdrop in. iOS tints an
 makes the mask the whole canvas and the button renders as a solid square. This
 is documented at `kStretchHorizontalIconNativeAsset` and has already been hit
 once.
-
-Lucide `gallery-horizontal`, `gallery-horizontal-end` and `library` are the
-closest candidates. They need eyeballing at 22pt before being committed to.
 
 ## Decomposition
 
@@ -530,12 +738,12 @@ supplies the widget that goes inside the slot plus the slot's width.
 
 ```
 lib/providers/shelf_density_provider.dart     enum + persisted Notifier
+lib/providers/library_shell_provider.dart     + surfacedBookProvider: the one
+                                              book forward in the library
 lib/ui/widgets/shelf/shelf_book_tile.dart     today's _buildBookContent: cover,
                                               bookmark, delete badge
 lib/ui/widgets/shelf/shelf_spine_tile.dart    a BookVertical spine, and the slot
                                               width that goes with it
-lib/ui/widgets/shelf/shelf_lean_metrics.dart  the step, and the Stack cascade's
-                                              offsets and reversed paint order
 lib/ui/widgets/book/turning_book.dart         _turnedBook, shared with the pile
 ```
 
@@ -570,7 +778,7 @@ Following the repo's existing naming:
   at `readingHeadCount` and never before; a head book cannot leave the head; a
   cross-shelf drop lands in its own zone.
 - `library_bar_test` extended — the button is present in the self and visit
-  states, absent while editing, and cycles through three states.
+  states, absent while editing, and cycles through every state.
 - Edit mode renders face-out at every density.
 - `shelf_density_render_preview.dart`, in the style of
   `library_sheet_render_preview.dart` — this is a visual feature and the repo

@@ -1,0 +1,812 @@
+SECTION 1b: DEVICE / FRAME STYLES.
+
+   Not a phone: a *crop* of the book-details page, from the back button down
+   into the first rows of the Book info tab. That is the unit under review —
+   a "where to read this" control cannot be judged apart from the hero it
+   competes with for prominence, or from the description it sits above.
+
+   Forked from docs/mockups/praise-region/_build/frame.css, which measured
+   the hero against the widgets. The hero, cover, shelf, band, status card
+   and tab strip below are that file's values unchanged; the reaction pill
+   and capsule are kept because they really are in this corner and any
+   store control has to coexist with them. What is new here is everything
+   from `.tabbody` down.
+
+   The frame is 393px wide and 1px == 1pt, so every number below is the
+   real Flutter value and can be checked against the widget. Contexts that
+   need it smaller set --z (zoom shrinks the layout box, unlike transform,
+   so the grid still packs correctly).
+   ================================================================ */
+            /* Wider columns than the shell's default: a 393pt frame does not
+               fit in a 210px cell. */
+            .grid {
+    grid-template-columns: repeat(auto-fill, minmax(415px, 1fr));
+}
+.grid.cmp {
+    grid-template-columns: repeat(auto-fill, minmax(478px, 1fr));
+}
+.grid.cmp .fr {
+    --z: 0.56;
+}
+.step {
+    width: 262px;
+}
+.step .fr {
+    --z: 0.62;
+}
+.shot {
+    align-items: flex-start;
+}
+
+.fr {
+    width: 393px; /* iPhone 15 logical width */
+    zoom: var(--z, 1);
+    background: var(--page);
+    border: 1px solid #d9d6d0;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    flex: 0 0 auto;
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    line-height: 1.3;
+}
+
+/* ---------- chrome above the hero ---------- */
+.fr .nav {
+    height: 54px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 8px;
+}
+.fr .back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+/* AppBar actions. IconButton(icon size 24) in primaryText, pushed right.
+   On the shipped build this whole group is behind `isSelf`, so a friend's
+   book has an empty bar — which is exactly why the appbar-sheet version
+   has to add the group back rather than append to it. */
+.fr .acts {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 19px;
+    color: var(--text);
+}
+.fr .acts .ai {
+    width: 24px;
+    text-align: center;
+}
+/* The store entry point when it lives in the bar. Tinted so the drawing
+   distinguishes "new control" from the two that already ship; it is
+   primaryText like its neighbours in the real thing. */
+.fr .acts .ai.newctl {
+    color: var(--brandText);
+    position: relative;
+}
+/* The proposed "a store is already known" marker — an open decision.
+   A dot rather than a second glyph, because the action is identical and
+   only its outcome differs; swapping the symbol would imply a different
+   control. 5pt on brandFill, which is the smallest mark elsewhere in the
+   app that is still meant to be noticed. */
+.fr .acts .ai.newctl .dot {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--brandText);
+}
+
+/* ---------- hero: cover, right column, corner, shelf ----------
+               Container(color: surfaceVariant, padding: only(top 20, l/r 20)).
+               No bottom padding, which is what lets the corner's `bottom: 0`
+               land on the shelf. */
+.fr .hero {
+    background: var(--variant);
+    padding: 20px 20px 0;
+    position: relative;
+}
+.fr .hrow {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+/* Positioned(bottom: 0, right: 0) inside the hero's Stack. */
+.fr .corner {
+    position: absolute;
+    right: 20px;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+/* ShelfWidget: 8pt, surface, shadow offset(0,2) blur 2 black@25%. */
+.fr .shelf {
+    height: 8px;
+    background: var(--surface);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- the book ----------
+               height 180 (BookWidget height: 180), width 120 from
+               kDefaultCoverAspect 2/3. Binding is 8.2% of width with the
+               overlay blend _BlendMask applies. The cover art is a stand-in
+               for the real thumbnail — deliberately crude, so nobody reads it
+               as a rendering of the artwork. */
+.fr .cover {
+    width: 120px;
+    height: 180px;
+    flex: 0 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: #e12a20;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.fr .cover .k1 {
+    position: absolute;
+    left: 13px;
+    top: 24px;
+    right: 10px;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: #fff;
+    line-height: 1.05;
+}
+.fr .cover .k3 {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 34px;
+    background: rgba(0, 0, 0, 0.2);
+}
+.fr .cover .bind {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 9.84px;
+    mix-blend-mode: overlay;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.26) 0%,
+        rgba(0, 0, 0, 0.07) 34%,
+        rgba(255, 255, 255, 0.3) 78%,
+        rgba(0, 0, 0, 0.11) 100%
+    );
+}
+.fr .cover .hair {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+/* ---------- right column ----------
+               Expanded(Column(crossAxisAlignment: end)). 217pt wide at 393:
+               393 - 40 padding - 120 cover - 16 gap. */
+.fr .rcol {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* BookStatusBadge, as it ships today. Read/Reading take a 10% fill and a
+   40% border; Interested has NO fill and a 55% border, which is the
+   repair book_status_badge.dart documents — the old Interested and Read
+   tints composited to two near-identical greys. Only the three shipped
+   forms are here; the exploration that produced them is in
+   docs/mockups/praise-region. */
+.fr .sbadge {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.fr .sbadge.read {
+    color: var(--text);
+    background: rgba(33, 37, 41, 0.1);
+    border: 1px solid rgba(33, 37, 41, 0.4);
+}
+.fr .sbadge.reading {
+    color: var(--brandText);
+    background: rgba(6, 118, 87, 0.1);
+    border: 1px solid rgba(6, 118, 87, 0.4);
+}
+.fr .sbadge.interested {
+    color: var(--text);
+    background: transparent;
+    border: 1px solid rgba(33, 37, 41, 0.55);
+}
+/* ShelfLabel: surface, top radius 3 only, h9/v5, bold 14, max 140. */
+.fr .slab {
+    background: var(--surface);
+    border-radius: 3px 3px 0 0;
+    padding: 5px 9px;
+    font-size: 14px;
+    font-weight: 700;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- the reaction pill and capsule ----------
+   Not under review here, but present: on a friend's finished book they own
+   the hero's right column, so a store control in the hero (the hero-row
+   version) has to fit beside them. ElevatedButton.icon: brandFill, white,
+   radius 20, h12/v6, label 13 w600, icon 18. */
+.fr .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--brandText);
+    color: #fff;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+}
+.fr .pill .em {
+    font-size: 15px;
+}
+.fr .caprow {
+    margin-top: 8px;
+}
+.fr .rcol > .caprow:first-child {
+    margin-top: 0;
+}
+.fr .cap {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--page);
+    border: 1px solid rgba(9, 188, 138, 0.3);
+    padding: 0 9px;
+    white-space: nowrap;
+}
+.fr .cap .e {
+    font-size: 15px;
+    line-height: 1;
+}
+.fr .cap .chev {
+    font-size: 14px;
+    color: var(--text);
+    margin-left: 1px;
+    margin-right: -2px;
+}
+
+/* ---------- title band ----------
+               surfaceVariant, bottom radius 30, padding fromLTRB(30,8,30,16).
+               Title 20 bold height 1; author 13 with 10 above; period card 12
+               above. */
+.fr .band {
+    background: var(--variant);
+    border-radius: 0 0 30px 30px;
+    padding: 8px 30px 16px;
+}
+.fr .btitle {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+}
+.fr .bauth {
+    font-size: 13px;
+    margin-top: 10px;
+}
+/* ReadingPeriodRow's card. The badge stands in for the old "Reading
+   period" label rather than sitting beside it. */
+.fr .period {
+    margin-top: 12px;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 8px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+}
+.fr .period i {
+    font-style: normal;
+    color: var(--brandText);
+    font-weight: 600;
+}
+/* Status 0 has no dates, so no card: Align(centerLeft, BookStatusBadge).
+   Same vertical position the card would occupy. */
+.fr .barebadge {
+    margin-top: 12px;
+}
+
+/* ---------- tab strip ---------- */
+.fr .tabs {
+    background: var(--surface);
+    display: flex;
+}
+.fr .tabs s {
+    flex: 1;
+    text-decoration: none;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    padding: 15px 0 13px;
+    position: relative;
+}
+.fr .tabs s.on {
+    color: var(--text);
+}
+.fr .tabs s.on:after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 62px;
+    height: 2px;
+    background: var(--text);
+}
+.fr .tail {
+    height: 24px;
+    background: var(--surface);
+}
+
+/* ==================================================================
+   NEW BELOW: the Book info tab body, and the store controls.
+   ================================================================== */
+
+/* _BookInfoTab: Container(color: surface) wrapping a
+   SingleChildScrollView(padding: EdgeInsets.all(24)). The 24 is why no
+   row below carries its own horizontal padding. */
+.fr .tabbody {
+    background: var(--surface);
+    padding: 24px;
+}
+/* The tab's existing headings — "Book description", "Publisher", the
+   literal 'ISBN' — are all AppTextStyles.subtitle, 17/w600/-0.2. A store
+   section heading takes the same token so it reads as a peer of them and
+   not as a promotion. */
+.fr .h3 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    line-height: 1.25;
+}
+/* SizedBox(height: 8) under every heading, 24 between blocks. */
+.fr .h3 + * {
+    margin-top: 8px;
+}
+.fr .blk + .blk {
+    margin-top: 24px;
+}
+.fr .prose {
+    font-size: 15px;
+    line-height: 1.4;
+}
+.fr .prose.clip {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ---------- the store list, `rows` layout ----------
+   48pt rows on a hairline divider. Not ListTile: ListTile with a leading
+   icon is 56pt in M3 and carries its own 16pt horizontal padding, which
+   would either double the tab's 24 or have to be stripped. Four 56pt
+   rows is 224pt of a 393-wide frame, and drawn at 1:1 that pushed the
+   description entirely off screen — which is the whole argument this
+   layout has to win. 48 with no inset is the compromise. */
+.fr .srow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 48px;
+    border-top: 1px solid var(--divider);
+}
+.fr .srow:last-child {
+    border-bottom: 1px solid var(--divider);
+}
+/* A single neutral glyph for every store, rather than brand marks. The
+   logos-or-text decision is drawn as an element; this is the text side. */
+.fr .sico {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    border-radius: 7px;
+    background: var(--variant);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+.fr .stx {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.fr .slbl {
+    display: block;
+    font-size: 15px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* The supporting line, and the load-bearing part of the whole design:
+   it is where a search-only destination admits to being one.
+
+   **15pt, not the 13 this was first drawn at.** `AppTextStyles` has no
+   13/w400 step, and `text_style_test.dart` scans `lib/ui` for any line
+   spelling out its own `fontSize`/`fontWeight` — so `label.copyWith(
+   fontWeight: w400)` is not available either. The shipped row therefore
+   uses `body` in `secondaryText`, which is what every other supporting
+   line in the app already does (`delete_book_bottom_sheet.dart`).
+   Corrected here rather than left at 13, because a mockup that
+   contradicts the code is worse than no mockup.
+
+   secondaryText is #626A72 — 4.63:1 on surface. Unreadable at the
+   #ADB5BD this frame was forked from. */
+.fr .ssub {
+    display: block;
+    font-size: 15px;
+    color: var(--text2);
+    line-height: 1.4;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* Icons.north_east / arrow.up.right: leaves the app. Distinct from the
+   chevron the app uses for in-app drill-ins (ReactionCapsule, the memo
+   menu), which is the point — these all leave. */
+.fr .sgo {
+    font-size: 15px;
+    color: var(--text2);
+    flex: 0 0 auto;
+    transform: translateY(-1px);
+}
+
+/* ---------- the store list, `chips` layout ----------
+   34pt capsules in surfaceVariant, which is what that token is for
+   ("subtle filled areas: chips, avatars, input fills"). Wraps rather
+   than scrolls: a horizontally scrolling row hides its own overflow, and
+   four items is not enough to be worth a gesture nobody is told about. */
+.fr .schips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.fr .schip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    border-radius: 17px;
+    background: var(--variant);
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.fr .schip .g {
+    font-size: 13px;
+    color: var(--text2);
+}
+/* Chips cannot carry the supporting line, so a search-only store has
+   nowhere to say so. Drawn to make that visible rather than argued in
+   prose — this is the layout's real cost. */
+.fr .schip.searchonly {
+    border: 1px dashed rgba(33, 37, 41, 0.3);
+    background: transparent;
+}
+
+/* ---------- the remembered state ----------
+   One primary action instead of a list. brandFill on white text, 44pt —
+   the height ElevatedActionButton uses for Save in the add-book sheet —
+   fully rounded at 22. */
+.fr .openbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    border-radius: 22px;
+    background: var(--brandText);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+/* The quieter alternative. Padding is reduced by exactly the border
+   width so the box stays 44pt — the Border.all inset trap AvatarCircle
+   and .pill.out both already hit. */
+.fr .openbtn.quiet {
+    background: transparent;
+    color: var(--brandText);
+    border: 1.5px solid var(--brandText);
+    height: 44px;
+    box-shadow: none;
+}
+/* "Get it elsewhere" — the escape hatch that keeps a wrong guess from
+   being a trap. A text button, deliberately not a second filled one. */
+.fr .ovf {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brandText);
+}
+
+/* ---------- loading and empty ----------
+   Availability is a network answer, so both of these are real states and
+   not edge cases. Shimmer base is surfaceVariant per the token doc. */
+.fr .sload {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.fr .sload i {
+    display: block;
+    height: 47px;
+    border-top: 1px solid var(--divider);
+    background: linear-gradient(
+        90deg,
+        var(--variant) 0%,
+        var(--page) 50%,
+        var(--variant) 100%
+    );
+}
+.fr .sempty {
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--text2);
+}
+
+/* ---------- the hero-row version ----------
+   A full-width control inside the band, under the status card. 40pt
+   rather than 44: it is permanent header height on every book, and the
+   collapse threshold _handleScroll measures is the title's own height,
+   so anything added here has to be fixed-height or the fade point moves
+   between books. */
+.fr .herostores {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    border-radius: 20px;
+    background: var(--surface);
+    font-size: 13px;
+    font-weight: 600;
+}
+.fr .herostores .g {
+    font-size: 14px;
+    color: var(--text2);
+}
+
+/* ---------- sheets ----------
+   CNBottomSheet with the app's pinned kSheetCornerRadius = 24 and
+   sheetBackground #EFF5EF. showMenuBottomSheet's own title is
+   AppTextStyles.subtitle with symmetric(vertical: 20) around it. */
+.fr .scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+.fr .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    background: var(--sheet);
+    border-radius: 24px 24px 0 0;
+    padding: 0 20px 20px;
+    box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.18);
+}
+.fr .sheet .st {
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 20px 0;
+}
+/* In a sheet the rows get ListTile's real 56pt: there is no competing
+   content to buy space from, and 56 is what showMenuBottomSheet already
+   draws for every other menu in the app. */
+.fr .sheet .srow {
+    height: 56px;
+    border-top: 0;
+}
+.fr .sheet .srow:last-child {
+    border-bottom: 0;
+}
+.fr .sheet .srow .sico {
+    background: rgba(33, 37, 41, 0.06);
+}
+/* MenuAction.isSelected: a trailing check in brandText. */
+.fr .sheet .srow .chk {
+    color: var(--brandText);
+    font-size: 15px;
+    font-weight: 700;
+}
+/* MenuAction.isDestructive: cancelRedColor. "Forget where I read this"
+   is not destructive in the delete-a-book sense, so it is NOT drawn
+   red — noted because the sheet's own API makes red one flag away. */
+.fr .sheet .srow.clear .slbl {
+    color: var(--text);
+}
+
+/* ---------- the sheet's own loading and empty states ----------
+   Both are real states rather than edge cases, and both live here in the
+   chosen design: availability resolves after the sheet is up, where a
+   spinner is unremarkable and nothing above it moves. */
+.fr .sheet .sload i {
+    height: 55px;
+    border-top: 1px solid rgba(33, 37, 41, 0.06);
+}
+/* "Checking the stores…" under the shimmer rather than over them: the
+   rows are already the progress indicator, so the line is a caption and
+   not a headline. */
+.fr .sfoot {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    padding: 14px 0 4px;
+}
+/* Title plus body, on the scanNoMatchTitle/Body pattern: what happened,
+   why, and no blame. The title takes subtitle (17/w600) so it reads as
+   the sheet's answer rather than as a row that failed to draw. */
+.fr .snone {
+    padding: 4px 4px 12px;
+}
+.fr .snt {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    line-height: 1.25;
+}
+.fr .snb {
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--text2);
+}
+
+/* ---------- element gallery panels ---------- */
+.el .demo {
+    background: var(--variant);
+}
+.demopanel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.demorow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+/* Side-by-side for the logos-or-text decision. */
+.logocmp {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+.logocmp > div {
+    flex: 1 1 200px;
+    min-width: 190px;
+}
+.logocmp h5 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+/* Brand-mark stand-ins. Flat discs with an initial, deliberately crude:
+   embedding real Amazon/Apple/Google marks in a mockup would be both a
+   licensing question and a claim to have checked their brand guidelines. */
+.fr .sico.logo {
+    border-radius: 50%;
+    color: #fff;
+}
+
+/* ==================================================================
+   Library picker — the `libby-library` version only.
+
+   Reuses the sheet's own chrome: same 24px radius, same 20px gutter,
+   same 56pt rows as every other menu in the app. Nothing new is
+   invented here, which is the point — the picker is one more sheet.
+   ================================================================== */
+.fr .sheet .lsearch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: var(--surfaceVariant);
+    color: var(--text2);
+    font-size: 15px;
+}
+.fr .sheet .lsearch .mag {
+    font-size: 14px;
+    opacity: 0.7;
+}
+.fr .sheet .lsearch.typed {
+    color: var(--text);
+}
+/* A library result: name over the system it belongs to. Two lines for
+   the same reason the store rows have two — the second line is what
+   tells two similarly-named library systems apart. */
+.fr .sheet .lrow {
+    display: flex;
+    align-items: center;
+    height: 56px;
+    gap: 12px;
+}
+.fr .sheet .lrow .lico {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 8px;
+    background: rgba(33, 37, 41, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+.fr .sheet .lrow .ltx {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+.fr .sheet .lrow .lname {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fr .sheet .lrow .lmeta {
+    font-size: 13px;
+    color: var(--text2);
+}
+.fr .sheet .lhint {
+    font-size: 13px;
+    color: var(--text2);
+    padding: 4px 0 12px;
+    line-height: 1.45;
+}

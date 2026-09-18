@@ -1,0 +1,22 @@
+                /* ---- SECTION 1a: product tokens.
+                   Copied verbatim from AppColors.light in
+                   lib/constants/app_theme.dart. Not eyeballed — the pitfall
+                   that wasted three review rounds on the library set was
+                   invented brand colours. ---- */
+                --page: #f8f9fa; /* pageBackground   */
+                --surface: #ffffff; /* surface          */
+                --variant: #e9ecef; /* surfaceVariant — the hero's background */
+                --text: #212529; /* primaryText      */
+                /* secondaryText. #626A72, NOT the #ADB5BD the praise-region
+                   set (which this frame is forked from) still carries — that
+                   value measured 2.07:1 on white and was replaced in
+                   app_theme.dart, whose doc now names surfaceVariant the
+                   binding surface at 4.63:1. Corrected here rather than
+                   inherited, because the store rows below use it for their
+                   supporting line and a stale token would make an unreadable
+                   row look acceptable in the drawing. */
+                --text2: #626a72;
+                --divider: #e9ecef; /* divider          */
+                --brand: #09bc8a; /* decoration only, 2.45:1 on white */
+                --brandText: #067657; /* brandText == brandFill */
+                --sheet: #eff5ef; /* sheetBackground, the pinned mint tint */
