@@ -388,13 +388,90 @@
                         >Reading streaks &mdash; the bookmark, the card, the
                         list</span
                     >
-                    <span class="badge open">spec written &middot; collapsed to 1 version &middot; merged into the shipped status sheet</span>
+                    <span class="badge open">spec written &middot; collapsed to 1 version &middot; merged into the shipped status sheet &middot; cheap nightly path drawn &middot; streak page, flame, mandatory position &middot; <b>built: the page, the month at <code>patch</code>, the 44&times;66 picker, the celebration</b></span>
                     <span class="arrow">&rarr;</span>
                 </div>
                 <div class="ds">
-                    <b>Current proposal: <code>stamp-a</code> &mdash; the tap
-                    keeps meaning “open the book”, and the day is stamped by a
-                    one-word chip on the reading-period card.</b>
+                    <b>Where it landed: the day is a field on the status sheet
+                    that already ships, and the remaining question was how to do
+                    it cheaply every night.</b> <code>cheap-path</code>, the tip,
+                    draws five candidates against the code as it now stands.
+                    <b>The long-press menu is available</b> — iOS commits to
+                    reorder on the <i>drag</i>, not on the hold, so a menu in the
+                    first half of the press costs the shelf nothing; what it costs
+                    to build is moving the edit-mode commit from the timer to the
+                    first drag update. <b>The lamp cannot be tapped at all</b>
+                    (<code>IgnorePointer</code>, behind the covers, and
+                    <code>lit</code> already means &ldquo;a book is open&rdquo;),
+                    and the row pill it degrades into is withdrawn for being the
+                    one control that can never name a book. <b>Recommended: the
+                    streak chip opens a streak page</b> &mdash; a full-screen cover
+                    rather than a sheet, for the reason <code>app_routes.dart</code>
+                    already argues (a sheet route scales the presenting page down
+                    behind it), so it carries an ✕ and no grab handle while the
+                    sheets that open on it do. Run, week, month, record, one button,
+                    every figure already computable and no new chrome anywhere,
+                    which also gives the month grid the home it has been missing
+                    &mdash; <b>plus the menu</b> for the reader holding the book.
+                    A 21:00 notification with the act on it is drawn too: the only
+                    zero-tap path, and opt-in or nothing.
+                    <b>Two reversals to read before building:</b> the run's mark is
+                    now <b>Phosphor Fill's <code>fire</code></b> (U+E242, named
+                    directly as an <code>IconData</code> — the package cannot be
+                    imported, because <code>PhosphorIconData extends IconData</code>
+                    and <code>IconData</code> is now <code>final</code>), and
+                    <b>recording a day now requires a position</b>: a book picker
+                    and the shipped percent wheel, both mandatory, which takes the
+                    chip's door to four taps and leaves the cover's at a hold and a
+                    tap. The argument is <i>not</i> that
+                    <code>books.progress</code> is sparse — that column is two days
+                    old and has never shipped — but that nobody moves a bookmark
+                    for fun. Confirming raises a <b>Duolingo-grammar celebration in
+                    the library's own candlelight</b>, animated for real on the page.
+                    <b>Two comparisons were drawn rather than argued, and both are
+                    now decided:</b> the
+                    month's <code>tone</code>, now <b>seven weights through one
+                    renderer</b> in two families. The four <i>band</i> tones
+                    re-weight the fill — bold (the cover colour IS the day), tint
+                    (the same gradient at a fifth), rule (neutral capsule, colour
+                    as a 3pt edge), ink (no colour at all, legend only). The three
+                    <i>mark</i> tones answer the same complaint the other way, by
+                    taking the colour off the band entirely and putting it on a
+                    small object per day: a <b>6pt dot</b> at full strength on a 2pt
+                    thread, a <b>little bookmark tab</b> hung from each day it
+                    marks, or an <b>ink patch</b> filling the cell at a fifth and
+                    tilted by the day's own number (<code>((d * 7) % 9) - 4</code>,
+                    the rule <code>.lweek s.on</code> already tilts stamps by).
+                    Seven pages differing in one key, because &ldquo;the colours
+                    are too much&rdquo; is a judgement a still settles and prose
+                    cannot. <b>Patch is applied</b> — it borrows the app's
+                    <i>gesture</i> rather than an asset (<code>cardHTML</code>
+                    already tilts the Library Card's own stamps by that same
+                    expression), so it costs nothing to render, survives being
+                    resized, and gives the two grids a reason to converge on one
+                    weight. <code>tab</code> is the runner-up it beat, on the risk
+                    that 30 notched ribbons read as a fringe; <code>rule</code> is
+                    the best of the band tones, <code>dot</code> the fallback if the
+                    tilt ever grates, bold the control. The Library Card's own month
+                    is still on bold, which is flagged — with the recommendation now
+                    to move it too. And the book picker is drawn <b>three ways</b>: a
+                    26&times;39 chip list; <b>the same list at 44&times;66 with the
+                    ribbon</b> placed by <code>card_cover_row.dart</code>'s rule,
+                    <b>which is the one chosen</b>, because the step sits between
+                    <i>which book</i> and <i>how far in</i>, so the reader should be
+                    able to see the answer to the next question on the thing they are
+                    tapping; and — not a list at all — <b>the shelf layout</b>, every
+                    figure taken from <code>add_book_bottom_sheet.dart</code>'s own
+                    <code>_catalogueSlivers</code> arithmetic (covers 127.8pt tall
+                    and 79.9pt wide at the sheet's own 1.6 ratio — deliberately
+                    <i>not</i> <code>kDefaultCoverAspect</code> — three to a line,
+                    each line on a <code>ShelfWidget</code>), with <code>.lbk</code>'s real cover
+                    structure rather than a coloured rectangle. That one is <b>not
+                    taken</b>: it is the right shape for browsing a catalogue, which
+                    is the add-book sheet's own job, and the wrong shape for a
+                    two-item decision on an ordinary night.
+                    <b>The history below is kept because the reasoning still
+                    holds; the proposals in it are superseded.</b>
                     Field research (Fable, Goodreads, Life Reset via Mobbin)
                     showed nobody ships the bookmark as the input device, which
                     is why the six drag versions never satisfied. What replaced

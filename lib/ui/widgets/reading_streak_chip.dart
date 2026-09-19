@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/providers/reading_days_provider.dart';
 
 /// The mark that leads the chip: a flame.
@@ -26,20 +26,52 @@ import 'package:bookworm_friends/providers/reading_days_provider.dart';
 /// calendar lands it draws recorded days as numerals in a connected ligature — the
 /// stamp metaphor's actual territory — rather than thirty flames.
 ///
-/// A `Icons.` glyph rather than an SVG in `assets/icons/`, because the app already uses
-/// Material icons in 69 places, the chip needs it in two tints (so it must be
-/// recolourable, which rules out anything with baked-in colour), and hand-authoring
-/// vector art for this app has a documented history of costing ten rounds and being
-/// rejected — see `docs/mockups/empty-states/PROMPTS.md`.
-const IconData kReadingStreakIcon = Icons.local_fire_department_rounded;
+/// **Phosphor Fill's `fire`, U+E242 — and it is constructed rather than imported,
+/// which is not a style preference.** This was
+/// `Icons.local_fire_department_rounded` first, on the reasoning that the app
+/// already uses Material icons in 69 places. That reasoning was about
+/// *availability* and it picked the wrong family: Material's rounded flame has a
+/// hollow notch at the base that closes into a blob at 19pt, where Phosphor's fill
+/// weight keeps one solid silhouette with a visible inner tongue.
+///
+/// **`import 'package:phosphor_flutter/phosphor_flutter.dart'` does not compile on
+/// this SDK**, so `PhosphorIconsFill.fire` is not available and nothing should try
+/// it again. `phosphor_flutter` 2.1.0 — the newest release, and already a
+/// dependency in `pubspec.yaml` — declares `class PhosphorIconData extends
+/// IconData`, and Flutter made `IconData` **final**: on 3.44.8 that is a hard
+/// compile error inside the package. That is almost certainly why the dependency
+/// has sat in `pubspec.yaml` unused.
+///
+/// The *font* is unaffected, and the font is all that was ever needed. The package
+/// declares `PhosphorFill` in its own pubspec, so Flutter bundles it for any
+/// package in the graph and `fontPackage` addresses it — no asset declaration of
+/// ours, no import, and no dependency on the broken class. The codepoint is read
+/// out of `Phosphor-Fill.ttf`'s cmap rather than transcribed from a website.
+///
+/// It is still a font glyph rather than an SVG in `assets/icons/`, which is the
+/// part of the original argument that holds: the chip needs it in two tints, so it
+/// must be recolourable (ruling out anything with baked-in colour), and
+/// hand-authoring vector art for this app has a documented history of costing ten
+/// rounds and being rejected — see `docs/mockups/empty-states/PROMPTS.md`.
+///
+/// **Not the same flame as the share card's**, deliberately. That one
+/// (`share_card_page.dart`) is a candlelight *toggle* — it names a lighting mode,
+/// not a run — so it is not this constant and must not become it. If the two are
+/// ever unified it should be because the card's lighting design says so, not
+/// because they happen to both be flames.
+const IconData kReadingStreakIcon = IconData(
+  0xe242,
+  fontFamily: 'PhosphorFill',
+  fontPackage: 'phosphor_flutter',
+);
 
 /// The reader's run, in the library bar.
 ///
-/// **A pointer, not a second home for the number.** The Library Card is where the
-/// figure lives; this is the everyday glance on the screen the reader opens most, and
-/// tapping it goes to the Card. A number displayed in two places is a number that will
-/// eventually disagree with itself — the only thing that makes two safe here is that
-/// both read the same derived value and neither stores one.
+/// **A pointer, not a second home for the number.** The streak page is where the figure
+/// lives; this is the everyday glance on the screen the reader opens most, and tapping it
+/// opens that page. A number displayed in two places is a number that will eventually
+/// disagree with itself — the only thing that makes two safe here is that both read the
+/// same derived value and neither stores one.
 ///
 /// **It draws at zero, and that reversed the original rule.** The chip used to return
 /// `SizedBox.shrink()` for an empty run, following the Library Card's
@@ -114,18 +146,17 @@ class ReadingStreakChip extends ConsumerWidget {
       label: l10n.readingStreakChip(streak),
       child: GestureDetector(
         onTap: () {
-          // Straight to the Card, which is where the figure and its history live.
+          // **The destination the figure now has, and this replaced a stopgap.** This used
+          // to switch the library's tab to the Library Card, because the streak had no
+          // surface of its own and the Card was the nearest thing that showed the number.
+          // The Card was always the wrong home for it: it is *year-scoped* and says so in
+          // its own label, so the month grid could not sit inside it. The streak page is
+          // year-agnostic, holds the month, and is what this chip's own comment was asking
+          // for — see `docs/superpowers/specs/2026-09-12-reading-streaks-design.md`.
           //
-          // **A stopgap, and known to be one.** The streak has no destination of its
-          // own yet; the Card is the nearest surface that shows the figure. The design
-          // record's own recommendation is a month calendar as its own destination that
-          // this chip opens — see `docs/superpowers/specs/2026-09-12-reading-streaks-design.md`,
-          // "The month grid has no home yet". Until that exists, this points at the
-          // number rather than at nothing.
-          ref.read(friendsSheetLevelProvider.notifier).state =
-              FriendsSheetLevel.list;
-          ref.read(selectedFriendProvider.notifier).state = null;
-          ref.read(libraryTabProvider.notifier).state = LibraryTab.card;
+          // Pushed on the root navigator's own table rather than switching shell state, so
+          // the library is still exactly as the reader left it underneath.
+          Navigator.pushNamed(context, AppRoutes.readingStreak);
         },
         behavior: HitTestBehavior.opaque,
         // **The chip is not grown to 44pt; the target is.** A 44pt ring drawn around

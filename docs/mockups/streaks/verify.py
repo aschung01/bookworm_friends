@@ -13,6 +13,7 @@ past earlier versions of this script — a `box-shadow` clipped away by
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -143,6 +144,210 @@ _ok = re.search(r"\.hid \{[^}]*user-select: all", css) is not None
 print(("PASS  " if _ok else "FAIL  ") + "and a handle can be selected in one drag")
 _cssbad += 0 if _ok else 1
 
+# `cheap-path` draws two candidates that are only interesting because the code has
+# since taken both slots. If either upstream fact stops being true, those frames
+# become an argument about an app that no longer exists -- so they are asserted
+# against the Dart rather than restated in a note.
+_lamp = open("lib/ui/widgets/reading_shelf_lamp.dart").read()
+_libv = open("lib/ui/views/library_view.dart").read()
+_shelf = open("lib/ui/widgets/shelf_row.dart").read()
+_home = open("lib/ui/pages/home_page.dart").read()
+_rdays = open("lib/providers/reading_days_provider.dart").read()
+_sealsrc = open("lib/ui/widgets/library_card/shareable_library_card.dart").read()
+_calsrc = open("lib/ui/widgets/streak/read_calendar_month.dart").read()
+_upstream = [
+    (
+        '(c): the lamp is still a thing no finger can touch',
+        "IgnorePointer(" in _lamp and "Not a thing a finger can touch" in _lamp,
+    ),
+    (
+        '(c): and `lit` still means "a book is open", so the state is spoken for',
+        "lit: readingBooks.isNotEmpty" in _libv,
+    ),
+    (
+        "(c): the 16pt strip and the 0.82 extent the frames measure are shipped ones",
+        "const double kReadingLampSourcePadding = 16;" in _lamp
+        and "const double kReadingLampExtent = 0.82;" in _lamp
+        and "top: kReadingLampSourcePadding," in _libv,
+    ),
+    (
+        "(b): a completed hold still enters edit mode and starts the drag",
+        "if (!isEditMode) widget.onLongPress();" in _shelf,
+    ),
+    (
+        "(b): on the Reading shelf too, not only the queue rows",
+        re.search(r"ReadingShelfRow\(.{0,400}?onLongPress: onEnterEditMode", _libv, re.S)
+        is not None,
+    ),
+    (
+        "(b): and edit mode still takes the streak chip off the bar",
+        "if (isSelf && !isEditing) const ReadingStreakChip()" in _home,
+    ),
+    (
+        "both: one write, still an idempotent upsert that may name a book",
+        re.search(
+            r"Future<void> setRead\(\s*DateTime day,\s*\{\s*required bool read,"
+            r"\s*String\? bookId,",
+            _rdays,
+        )
+        is not None
+        and "onConflict: 'user_id,day'" in _rdays
+        # The key is sent even when null, on purpose: an omitted key leaves the
+        # stored value alone on an upsert that lands on an existing row, so a day
+        # stamped against a book could never be corrected back to "no book". The
+        # earlier form this check pinned (`if (bookId != null) 'book_id':`) is
+        # therefore asserted ABSENT, not just replaced.
+        and "'book_id': bookId," in _rdays
+        and "if (bookId != null) 'book_id': bookId," not in _rdays,
+    ),
+    (
+        "stamp/brand: the mockup's die is the Card's seal, one asset in both",
+        "const String kCardSealMarkAsset = 'assets/branding/app_icon_mark.png';"
+        in open("lib/ui/widgets/library_card/card_furniture.dart").read()
+        # The page carries the die embedded (a file:// mask fetch is CORS and
+        # painted a blank month), so the one-source-of-truth claim moves to the
+        # generator: it must read the SHIPPED asset, not a copy.
+        and 'BRAND_DIE = HERE / "../../../assets/branding/app_icon_mark.png"'
+        in open("docs/mockups/streaks/gen_patch_marks.py").read(),
+    ),
+    (
+        "stamp/oval: the oval is the round die squashed, not a second rule",
+        "rx=18.6, ry_ratio=0.68"
+        in open("docs/mockups/streaks/gen_patch_marks.py").read(),
+    ),
+    (
+        "shipped: the month grid draws the die this record chose, painted not bordered",
+        # The chosen tone is only a decision if the app draws it. A `BoxDecoration`
+        # circle would satisfy every other check here and be the exact thing
+        # `cp-f-stamp-double` rejects, so the painter is asserted by name — and the rim
+        # is asserted to be *sampled*, which is the thing a Border cannot do. (Note
+        # `BoxShape.circle` is not forbidden outright: the unrecorded day's hollow dot
+        # is legitimately one.)
+        "class ReadCalendarStampDie extends CustomPainter" in _calsrc
+        and "painter: ReadCalendarStampDie(" in _calsrc
+        and "const samples = 72;" in _calsrc
+        and "_band(path, rng, centre, u, radius: 17.6, width: 1.5, nicks: nicks);"
+        in _calsrc,
+    ),
+    (
+        "shipped: both bands fail at the same angles, because one press made them",
+        # The one detail that separates a drawn seal from two circles. Pinned as the
+        # shape of the call: nicks rolled once, handed to both bands.
+        re.search(
+            r"final nicks = \[.*?\];\s*.*?_band\(.*?nicks: nicks\).*?"
+            r"_band\(.*?nicks: nicks\)",
+            _calsrc,
+            re.S,
+        )
+        is not None,
+    ),
+    (
+        "shipped: the die is seeded from the day, so a month cannot reshuffle",
+        "math.Random(day % 3)" in _calsrc,
+    ),
+    (
+        "shipped: and the tilt is still the week strip's own rule, not a second one",
+        "double readCalendarPatchTilt(int day) => ((day * 7) % 9) - 4;" in _calsrc,
+    ),
+    (
+        "stamp/exact: the copied ratios are the shipped seal's own numbers",
+        # Every value the tone-stamp-exact CSS hardcodes, pinned to the Dart it
+        # was copied from — if _Seal changes its angle, die size or disc, this
+        # goes red rather than letting the "verbatim" claim rot.
+        "-9 * math.pi / 180" in _sealsrc
+        and "width: 10.5 * _u" in _sealsrc
+        and "width: 0.8 * _u" in _sealsrc
+        and "width: 0.4 * _u" in _sealsrc
+        and "const Color kCardInk = Color(0xFF1F2D27);" in _sealsrc
+        and "const double kCardSealUnits = 15;"
+        in open("lib/ui/widgets/library_card/card_shelf_plan.dart").read(),
+    ),
+]
+for _label, _ok in _upstream:
+    print(("PASS  " if _ok else "FAIL  ") + _label)
+    _cssbad += 0 if _ok else 1
+
+# The flame is the one mark on this page that is an icon from a font rather than
+# geometry, so "the drawing and the app show the same glyph" cannot be eyeballed --
+# it is a codepoint. Pinned in both directions.
+_chip = open("lib/ui/widgets/reading_streak_chip.dart").read()
+_pubspec = open("pubspec.yaml").read()
+_flame = [
+    (
+        "the app's streak mark is Phosphor Fill's fire, by codepoint",
+        "0xe242" in _chip
+        and "fontFamily: 'PhosphorFill'" in _chip
+        and "fontPackage: 'phosphor_flutter'" in _chip,
+    ),
+    (
+        "and the mockup draws that same U+E242, off the font's own outline",
+        "U+E242" in html and "M574 889Q" in html,
+    ),
+    (
+        "the font's package is a real dependency, so `fontPackage` resolves",
+        "phosphor_flutter:" in _pubspec,
+    ),
+    (
+        "the package is NOT imported anywhere -- its Dart cannot compile on this SDK",
+        not any(
+            re.search(r"^import 'package:phosphor_flutter", open(p).read(), re.M)
+            for p in [
+                "lib/ui/widgets/reading_streak_chip.dart",
+                "test/reading_streak_chip_test.dart",
+            ]
+        ),
+    ),
+    (
+        "and the constant itself is not Material's flame, whatever the prose recalls",
+        re.search(
+            r"const IconData kReadingStreakIcon = IconData\(\s*0xe242,", _chip
+        )
+        is not None,
+    ),
+]
+for _label, _ok in _flame:
+    print(("PASS  " if _ok else "FAIL  ") + _label)
+    _cssbad += 0 if _ok else 1
+
+# The mandatory pair is the one place this record overturns a settled rule, and every
+# load-bearing sentence in `el-mandatory` is a claim about shipped code: the rule it
+# reverses, the age of the column it fills, and the sheet it says is "unchanged".
+# Asserted here because the note argues FROM them -- if any stops being true the
+# argument is about a different app.
+_rtf = open("lib/ui/widgets/read_today_field_row.dart").read()
+_pct = open("lib/ui/widgets/bottom_sheets/select_percent_bottom_sheet.dart").read()
+_mand = [
+    (
+        "the rule being reversed is the one the code states: the day writes nothing else",
+        "nothing else" in _rtf,
+    ),
+    (
+        "`books.progress` is new -- the migration is dated, so its emptiness is not a verdict",
+        os.path.exists("supabase/migrations/20260916120000_book_progress.sql"),
+    ),
+    (
+        "the wheel is the shipped sheet: 101 stops, percent the default on every book",
+        "_Mode _mode = _Mode.percent;" in _pct and "101" in _pct,
+    ),
+    (
+        "and it really does draw a Page/Percent segment when the book has a page count",
+        re.search(r"if \(_hasPages\)\s*Padding\(", _pct) is not None
+        and "GlassSegmentedControl(" in _pct,
+    ),
+    (
+        "Confirm writes nothing when the reader only agreed, which is what makes a\n    "
+        "pre-answered wheel cheap rather than destructive",
+        "bool _touched = false;" in _pct,
+    ),
+    (
+        "the picker's field is the app's own SearchTextField, not a new control",
+        "class SearchTextField" in open("lib/ui/widgets/headers/search_header.dart").read(),
+    ),
+]
+for _label, _ok in _mand:
+    print(("PASS  " if _ok else "FAIL  ") + _label)
+    _cssbad += 0 if _ok else 1
+
 STUB = r"""
 const mk = () => ({
   _v: '', set innerHTML(v){this._v=v;}, get innerHTML(){return this._v;},
@@ -177,9 +382,15 @@ const ok = (cond, label, detail) => {
 };
 
 /* ---- the asset's real geometry, against reading_bookmark.dart ---- */
-/* One version now: every check targets the collapsed tip. */
-const V = 'state-sheet';
+/* One version now: every check targets the collapsed tip. `cheap-path` is that
+   tip as of the cheap nightly path; it inherits every frame `state-sheet` had,
+   so the checks below did not have to be repointed one by one. */
+const V = 'cheap-path';
 const css = CSS_TEXT;
+/* The script's own source, for the handful of claims that are about how a figure
+   is DERIVED rather than what it renders to -- a tilt taken from the day cannot be
+   told apart from a typed one by looking at the output. */
+const jsrc = JS_TEXT;
 
 console.log('--- asset ---');
 ok(A_RIB_W === 13.5 && A_RIB_H === 30, 'ribbon is 13.5x30 inside a 22x38 box');
@@ -236,8 +447,11 @@ ok(has(sHits('page_count'), ['nocount']), 'screens "page_count"', JSON.stringify
 ok(has(sHits('dead zone'), ['deadzone']), 'screens "dead zone"');
 ok(has(sHits('shelf_row'), ['logged']), 'screens "shelf_row"', JSON.stringify(sHits('shelf_row')));
 /* No screen mentions forgiveness any more — asserted the other way round now,
-   because a hit here would mean a deferred feature had leaked back in. */
-ok(sHits('freeze').every((id) => ['sh-bar', 'cal-plain', 'cal-books'].includes(id)),
+   because a hit here would mean a deferred feature had leaked back in. `cp-d-page`
+   is on the list because it names the empty space above its button as *where a
+   freeze chip would go if freezes ever ship*, which is the deferral being kept
+   rather than broken. */
+ok(sHits('freeze').every((id) => ['sh-bar', 'cal-plain', 'cal-books', 'cp-d-page'].includes(id)),
    'freezes are mentioned only where the deferral is explained',
    JSON.stringify(sHits('freeze')));
 ok(has(sHits('prompt'), ['ask-count']), 'screens "prompt"', JSON.stringify(sHits('prompt')));
@@ -258,14 +472,14 @@ console.log('--- the collapsed set ---');
 const ALLV = VERSIONS.map((v) => v[0]);
 ok(ALLV.length === 1 && ALLV[0] === V,
    'the page shows exactly one version', ALLV.join(', '));
-ok(VCHAIN.length === 14,
-   'the fourteen-step chain is kept as data, not as browsable versions',
+ok(VCHAIN.length === 15,
+   'the fifteen-step chain is kept as data, not as browsable versions',
    VCHAIN.length + ' steps');
 ok(VCHAIN.every((v) => GEO[v[0]]),
    'every step in the chain still has a GEO entry',
    Object.keys(GEO).length + ' entries');
-ok(cchain(V).length === 10 && cchain(V)[0] === 'mark-in-place' &&
-   cchain(V)[9] === V,
+ok(cchain(V).length === 11 && cchain(V)[0] === 'mark-in-place' &&
+   cchain(V)[10] === V,
    'and the tip resolves through its real ancestry',
    cchain(V).length + ' steps: ' + cchain(V).join(' \u2192 '));
 const ids = (v) => resolveView(v, 'screens').map(([g, items]) => items.map((i) => i[0])).flat();
@@ -493,9 +707,14 @@ ok(!/class="navlive"/.test(frame(specOf(V, 'due'))) &&
    deletion three steps up the chain. Checked against screens AND flows, because
    the later versions attach callouts to both. */
 const RESOLVED_OPEN = resolveOpen(V);
-/* Inlined rather than using `fids`, which is declared further down. */
+/* Inlined rather than using `fids`, which is declared further down. Elements are
+   in the list because the elements renderer consults `openMap` too (it is the
+   same three lines as the screens and flows renderers) — so a callout on an
+   element renders, and leaving elements out of this list made a legitimate one
+   read as an orphan. */
 const OPEN_TARGETS = ids(V).concat(
   resolveView(V, 'flows').map(([g, l]) => l.map((i) => i[0])).flat(),
+  resolveView(V, 'elements').map(([g, l]) => l.map((i) => i[0])).flat(),
 );
 const ORPHANS = Object.keys(RESOLVED_OPEN).filter((k) => !OPEN_TARGETS.includes(k));
 ok(ORPHANS.length === 0,
@@ -586,8 +805,17 @@ const SHBAR = frame(specOf(V, 'sh-bar'));
 const SHCOLD = frame(specOf(V, 'sh-bar-cold'));
 ok(/class="stkchip"/.test(SHBAR) && /stkchip cold/.test(SHCOLD),
    'recorded reads green and open reads grey, keyed on the day not the count');
-ok(/&#9635;/.test(SHBAR), 'the glyph is the stamp, not a flame');
-ok(!/&#128293;|&#127765;/.test(SHBAR), 'and no flame is smuggled in anywhere');
+/* **Reversed, and this is the assertion that used to say the opposite.** It read
+   `the glyph is the stamp, not a flame`, pinning a decision the shipped app had
+   already overturned: `reading_streak_chip.dart` leads with a flame and records
+   why — the stamp answers "what marks a day?" when the chip's job is "what kind of
+   number is this?". The page drew ▣ for fourteen versions after that. */
+ok(/class="fireg"/.test(SHBAR) && !/&#9635;/.test(SHBAR),
+   'the glyph is Phosphor\'s flame, and the stamp is gone from the chip');
+ok(/M574 889Q/.test(SHBAR),
+   'drawn from the font\'s own outline rather than a flame-shaped path');
+ok(!/&#128293;|&#127765;|\u{1F525}/u.test(SHBAR),
+   'and it is a glyph rather than an emoji, so it takes the chip\'s two tints');
 /* The Card is the numeric home; the chip must not become a second one. The
    conflict this version found is still live and is drawn in `sh-card-conflict`. */
 ok(SHIDS.includes('card-stamps') && SHIDS.includes('sh-card-conflict'),
@@ -601,12 +829,22 @@ for (const need of ['sc-increment', 'sc-milestone', 'sc-risk', 'sc-broken', 'sh-
   ok(SCIDS.includes(need), 'moment "' + need + '" is drawn');
 for (const need of ['pos-wheel', 'sc-wheel-long', 'sc-wheel-split', 'sc-wheel-pct', 'pos-wheel-pct'])
   ok(SCIDS.includes(need), 'wheel state "' + need + '" is drawn');
-/* No flame anywhere: the app's own vocabulary is the stamp, the lamp and the
-   seal, and a fifth metaphor would compete with four that work. */
+/* **The boundary, which is what replaced "no flame anywhere".** The rule
+   `reading_streak_chip.dart` states is that a flame names the RUN, never a day —
+   so it belongs on the chip and the run's own figures, and the month's days stay
+   numerals in a ligature. Asserted as a boundary rather than an absence, because
+   an absence is what went stale. */
 for (const id of SCIDS) {
   const h = frame(specOf(SC, id));
-  ok(!/🔥|&#128293;|flame/i.test(h), 'no flame in "' + id + '"');
+  ok(!/&#128293;|&#127765;/.test(h), 'no emoji flame in "' + id + '"');
+  /* No flame inside a day cell, and none in the month grid at all. */
+  const cells = (h.match(/class="cday[^"]*"[^>]*>[^<]*</g) || []).join('');
+  ok(!/fireg/.test(cells), 'no flame inside a day cell in "' + id + '"');
 }
+ok(/class="fireg"/.test(frame(specOf(SC, 'sh-bar'))),
+   'the chip that names the run does carry one');
+ok(!/class="fireg"/.test(frame(specOf(SC, 'card-stamps'))),
+   'and the month of stamps does not');
 /* 1. The increment: the fresh cell is what the eye lands on, not the total. */
 const SCUP = frame(specOf(SC, 'sc-increment'));
 ok(/class="moment"/.test(SCUP) && /class="big">12</.test(SCUP), 'the increment shows the count');
@@ -704,8 +942,13 @@ ok(Math.abs(derived - Math.round(0.47 * 912)) <= 1,
    derived + ' vs ' + Math.round(0.47 * 912));
 /* ...and so must the figure quoted in the prose. Typed once as p.431, which the
    control never draws — the "derive, don't type" rule, enforced. */
+/* Screens first, then elements: the cheap-path step attaches a long argument to an
+   ELEMENT (`el-mandatory`), and a reader of this file that only scanned screens
+   reported its prose as missing rather than as unchecked. */
 const noteOf = (v, id) => {
   for (const [g, items] of resolveView(v, 'screens'))
+    for (const it of items) if (it[0] === id) return it[2];
+  for (const [g, items] of resolveView(v, 'elements'))
     for (const it of items) if (it[0] === id) return it[2];
   return '';
 };
@@ -745,11 +988,23 @@ for (const v of ALLV)
 ok(drummed === drumWant, 'every screen that declares a drum draws exactly one',
    drummed + ' drawn, ' + drumWant + ' declared');
 /* The Page/Percent segment belonged to `band-scrubber`, which argued the unit was
-   the reader's choice. That version is withdrawn and the data chooses the unit, so
-   the segment must appear nowhere at all. */
+   the reader's choice. That version is withdrawn and this record's answer is that
+   the data chooses the unit — so the segment appears on no frame in that lineage.
+
+   It DOES appear on the two mandatory-wheel frames, and that is not a lapse: the
+   `exact-page` set overrode `one-tap` on purpose (a segment offered only when
+   `page_count` exists leaves the majority of books untouched), and that is what
+   shipped — `GlassSegmentedControl` under `if (_hasPages)`. The frames captioned
+   as that sheet draw that sheet. Asserted as an exact set so a third frame cannot
+   join it silently. */
 ok(!ids(V).includes('drum'), 'the scrubber\'s drum screen is gone');
-ok(!ids(V).some((id) => /class="seg"/.test(frame(specOf(V, id)))),
-   'and no frame offers a Page/Percent segment: the data chooses the unit');
+const SEGGED = ids(V).filter((id) => /class="seg"/.test(frame(specOf(V, id))));
+ok(SEGGED.length === 2 && SEGGED.every((id) => ['cp-b-prog', 'cp-d-progress'].includes(id)),
+   'the Page/Percent segment survives only where the frame claims to BE the shipped sheet',
+   SEGGED.join(', ') || 'none');
+ok(SEGGED.every((id) => /class="seg"><s class="">Page<\/s><s class="on">Percent</.test(
+     frame(specOf(V, id)))),
+   'and percent is the lit side, as _Mode.percent is the shipped default');
 ok(!/class="seg"/.test(frame(specOf(V, 'pos-wheel'))) &&
    !/class="seg"/.test(frame(specOf(V, 'pos-wheel-pct'))),
    'tap-target drops it: the data chooses the unit');
@@ -829,7 +1084,7 @@ CAL_TITLES.forEach((b) => ok(xCB.includes(b.c),
    'the ligature carries ' + b.t + "'s cover colour", b.c));
 ok(!xCP.includes(CAL_TITLES[0].c),
    'and the plain variant carries none of them');
-ok(/class="ckey"/.test(xCB) && !/class="ckey"/.test(xCP),
+ok(/class="ckey spines"/.test(xCB) && !/class="ckey/.test(xCP),
    'only the coloured month needs a legend, which is its honest cost');
 
 /* The tap is the cheapest test of the schema. The empty-popover frame was folded
@@ -1516,6 +1771,625 @@ ok(BAR_AREA / PENCIL_AREA > 4,
    'the bar is over four times the pencil\u2019s target area',
    Math.round(BAR_AREA) + ' vs ' + PENCIL_AREA + 'pt\u00b2');
 
+/* ---- cheap-path: the candidates, against the code that ships ----
+
+   The first draft of this step asserted a collision: the hold was spent, so (b)
+   was unavailable. That was wrong — iOS commits to reorder on the DRAG, not on
+   the hold — and the checks below now assert the two-stage split instead. What is
+   still read out of the Dart is where the app currently commits, because that is
+   the one change (b) actually asks for and the frames claim it is small. */
+console.log('');
+console.log('--- cheap-path: the cheap nightly path ---');
+const CP = ['cp-rest', 'cp-b-hold', 'cp-b-drag', 'cp-b-prog', 'cp-b-done',
+            'cp-c-fixture', 'cp-c-cord', 'cp-c-pill', 'cp-c-done',
+            'cp-d-chip', 'cp-d-rise', 'cp-d-page', 'cp-d-pick', 'cp-d-pick-big',
+            'cp-d-pick-shelf', 'cp-d-search', 'cp-d-progress', 'cp-d-up',
+            'cp-d-done', 'cp-e-push',
+            'cp-f-bold', 'cp-f-tint', 'cp-f-rule', 'cp-f-ink',
+            'cp-f-dot', 'cp-f-tab', 'cp-f-patch',
+            'cp-f-patch-level', 'cp-f-patch-third', 'cp-f-patch-chalk',
+            'cp-f-patch-torn', 'cp-f-patch-hollow', 'cp-f-patch-full',
+            'cp-f-patch-seam',
+            'cp-f-patch-blot', 'cp-f-patch-splat', 'cp-f-patch-stamp',
+            'cp-f-patch-swipe', 'cp-f-patch-dogear',
+            'cp-f-stamp-brand', 'cp-f-stamp-oval', 'cp-f-stamp-double',
+            'cp-f-stamp-disc', 'cp-f-stamp-exact'];
+CP.forEach((id) => ok(ids(V).includes(id), 'frame "' + id + '" is drawn'));
+ok(ids(V).includes('cp-rest') && !/class="lday"|class="lmenu"|class="lcord"|class="lsheet"/
+     .test(frame(specOf(V, 'cp-rest'))),
+   'the baseline offers no way at all to record the night');
+const CPH = {};
+CP.forEach((id) => (CPH[id] = frame(specOf(V, id))));
+
+/* (b) stage one: the menu, and iOS's "this one is held, the rest is dim". */
+ok(/class="lmenu"/.test(CPH['cp-b-hold']), 'stage one draws the menu');
+ok(CPH['cp-b-hold'].indexOf('Read today') < CPH['cp-b-hold'].indexOf('Open'),
+   'with the nightly act first and Open under it');
+ok(/class="first">Read today<i>&#10003;<\/i>/.test(CPH['cp-b-hold']),
+   'and a tick rather than a chevron, because it completes rather than navigates');
+ok(/class="del">Remove from library/.test(CPH['cp-b-hold']),
+   'remove is in the menu, so nothing is lost by the badges arriving later');
+ok(/class="lbk[^"]* hold"/.test(CPH['cp-b-hold']) &&
+   /lshelf reading low holding/.test(CPH['cp-b-hold']),
+   'the held cover is scaled and its row is the one that dims its own covers');
+ok(!/class="ldel"/.test(CPH['cp-b-hold']) && !/class="lbk[^"]* jiggle"/.test(CPH['cp-b-hold']),
+   'and stage one has NO badges and no jiggle, which is the whole correction');
+ok(/class="stkchip/.test(CPH['cp-b-hold']),
+   'the chip is still in the bar, because edit mode has not been entered');
+ok((CPH['cp-b-hold'].match(/class="scrim"/g) || []).length === 1,
+   'one scrim, not two — the hold dims and the menu does not dim again');
+
+/* (b) stage two: the drag commits, and only then. */
+ok(/class="lbk[^"]* lift"/.test(CPH['cp-b-drag']),
+   'stage two lifts the cover the drag is carrying');
+ok((CPH['cp-b-drag'].match(/class="ldel"/g) || []).length ===
+     LAMP_READING.length + LAMP_STARTUP.length + LAMP_IT.length,
+   'and arms EVERY shelf, because the mode belongs to the library',
+   (CPH['cp-b-drag'].match(/class="ldel"/g) || []).length + ' badges');
+ok(!/class="stkchip/.test(CPH['cp-b-drag']),
+   'the chip goes here — correctly, since the reader asked for reorder');
+ok(!/class="lmenu"/.test(CPH['cp-b-drag']),
+   'and the menu is gone, so the two stages are never on screen together');
+/* The lifted cover must not also be jiggling: three classes write `transform`. */
+ok(!/class="lbk[^"]*lift[^"]*jiggle|class="lbk[^"]*jiggle[^"]*lift/.test(CPH['cp-b-drag']),
+   'the carried cover is lifted OR jiggling, never both');
+ok((CPH['cp-b-drag'].match(/class="lbk[^"]* jiggle"/g) || []).length > 0,
+   'while the covers left standing do jiggle');
+/* Every other LIBRARY frame in the group keeps the chip, so the absence above is
+   the edit-mode guard rather than a spec that forgot to ask for it. The streak
+   page and the celebration are their own surfaces and have no app bar at all, so
+   they are excluded by kind rather than by name. */
+ok(CP.filter((id) => id !== 'cp-b-drag')
+     .every((id) => /class="stkchip/.test(CPH[id]) ||
+                    ['push', 'spage', 'up'].includes(specOf(V, id).kind)),
+   'every other library frame in the group still carries it');
+
+/* (b)'s second half: the mandatory wheel, and the picker that is NOT there. */
+const PROG_PCT = Math.round((PROG_BOOK.page / PROG_BOOK.pages) * 100);
+ok(/class="drum"/.test(CPH['cp-b-prog']),
+   'tapping Read today raises the wheel rather than writing the day outright');
+ok(!/class="psheet"/.test(CPH['cp-b-prog']),
+   'and no picker, because the press already said which book — (b)\'s whole advantage');
+ok(!/class="lmenu"/.test(CPH['cp-b-prog']),
+   'the menu is gone once its item has been chosen');
+ok(new RegExp('class="dbook"[\\s\\S]*?' + PROG_BOOK.t).test(CPH['cp-b-prog']),
+   'the sheet names the book it is recording, off the fixture');
+ok(new RegExp('class="sel">' + PROG_PCT + '%').test(CPH['cp-b-prog']),
+   'and opens at the position already stored, not at zero',
+   PROG_PCT + '% from ' + PROG_BOOK.page + '/' + PROG_BOOK.pages);
+ok(!/NaN/.test(CPH['cp-b-prog']) && !/NaN/.test(CPH['cp-d-progress']),
+   'neither wheel prints NaN — `posOf` prefers page/pages, so `pct` beside `pages` is a trap');
+ok(/class="drum"><div class="grab"/.test(CPH['cp-b-prog']),
+   'the wheel is a sheet and says so with a grab handle');
+ok(/>Confirm</.test(CPH['cp-b-prog']),
+   'and its affirmative is Confirm, not Done — it completes an act rather than closing a form');
+/* One wheel, two doors: assert the drum markup is byte-identical between the
+   cover's path and the page's, rather than asserting each looks about right. */
+const drumOf = (h) => (h.match(/<div class="drum">[\s\S]*$/) || [''])[0]
+                        .replace(/<\/div>\s*$/, '');
+ok(drumOf(CPH['cp-b-prog']) === drumOf(CPH['cp-d-progress']) &&
+   drumOf(CPH['cp-b-prog']).length > 0,
+   'both doors raise the SAME sheet, not two that resemble each other');
+ok(/class="ltick"/.test(CPH['cp-b-done']) && /class="lundo"/.test(CPH['cp-b-done']),
+   'and the press ends with a tick on the held cover and one undo pill');
+ok(!/Skip|skip/.test(CPH['cp-b-prog']) && !/Skip|skip/.test(CPH['cp-d-progress']) &&
+   !/Skip|skip/.test(CPH['cp-d-pick']),
+   'no Skip anywhere in the mandatory pair, because optional is where the field started');
+
+/* (c): the fixture's geometry, which the page derives rather than types. The
+   upstream half of these — that the lamp is still IgnorePointer and that `lit`
+   still means "a book is open" — is checked in Python against the Dart, because
+   this harness cannot read files. */
+ok(LAMP_PAD === 16,
+   'the reachable strip is kReadingLampSourcePadding',
+   LAMP_PAD + 'pt');
+ok(Math.abs(LAMP_H - (16 + 126.6 * 1.06 * 0.82)) < 0.01,
+   'and readingLampHeight is derived from the shipped extent, not typed',
+   LAMP_H.toFixed(1) + 'pt');
+ok(LAMP_FADE > LAMP_H,
+   'the light is never out while part of the row is still in its reach',
+   'fade ' + LAMP_FADE.toFixed(1) + ' > height ' + LAMP_H.toFixed(1));
+ok(LAMP_PAD < TOUCH_FLOOR,
+   'so the only reachable part of the fixture is under the touch floor',
+   LAMP_PAD + 'pt against ' + TOUCH_FLOOR);
+ok(/class="lfix"/.test(CPH['cp-c-fixture']) && /class="lgap"/.test(CPH['cp-c-fixture']),
+   'the fixture frame draws the box AND the strip, not just the bloom');
+ok(/readingLampHeight 126pt/.test(CPH['cp-c-fixture']),
+   'and labels the box with the figure it is measured from');
+/* Both overlays must be inert, exactly as the layer they describe is. */
+ok(/\.fr\.lamp \.lfix \{[^}]*pointer-events: none/.test(css) &&
+   /\.fr\.lamp \.lgap \{[^}]*pointer-events: none/.test(css),
+   'and both are pointer-events: none, which is the same statement the Dart makes');
+
+/* The cord: touchable, and the ring is bigger than the object. */
+ok(/class="lcord"/.test(CPH['cp-c-cord']), '(c) with a cord is drawn');
+ok(/\.fr\.lamp \.lcord u \{[^}]*width: 44px/.test(css),
+   'and its target is the 44pt the 3pt cord cannot be');
+ok(noteOf(V, 'cp-c-cord').includes(LAMP_FADE.toFixed(0)),
+   'its note quotes the scroll distance after which it is over the wrong row');
+
+/* The pill is drawn and withdrawn, which has to be legible in the record. */
+ok(/class="lday"/.test(CPH['cp-c-pill']) && !/class="lday done"/.test(CPH['cp-c-pill']),
+   'the row pill is still drawn, unstamped');
+ok(/class="lday done"/.test(CPH['cp-c-done']),
+   'and reads back rather than vanishing, so the day stays undoable');
+ok(/\.fr \.lshelf \.lday \{[^}]*bottom: -23px/.test(css),
+   'it sits in the row\'s gap, below the plank, so it belongs to no book');
+ok(/[Ww]ithdrawn/.test(resolveOpen(V)['cp-c-pill'] || ''),
+   'and its callout says withdrawn, not open, so it is not re-proposed');
+ok(/no way to recover/.test(noteOf(V, 'cp-c-pill')),
+   'with the reason on the frame: it is the only one that cannot recover the book');
+
+/* (d) the streak PAGE: no new chrome, a figure that cannot lie, and a cover that
+   is not a sheet. The cover/sheet distinction is asserted rather than described,
+   because the pair ✕-versus-grab-handle is the only thing telling a reader which
+   surface can be flicked away. */
+ok(/class="stkchip tgt/.test(CPH['cp-d-chip']),
+   'the chip is ringed at the footprint it already has');
+ok(/\.fr \.lbar \.stkchip\.tgt \{[^}]*outline/.test(css),
+   'drawn as an outline on the chip rather than a box around it');
+/* The rise: a cover climbing over a library that does NOT transform. */
+ok(/class="scover"/.test(CPH['cp-d-rise']),
+   'the page is drawn mid-rise, so the transition is a frame rather than a claim');
+ok(/class="lshelf reading low"/.test(CPH['cp-d-rise']) &&
+   !/class="lshelf reading low holding"/.test(CPH['cp-d-rise']),
+   'and the library behind it is untouched — not scaled, not dimmed, not held');
+ok(!/border-radius/.test((css.match(/\.fr\.lamp \.scover \{[^}]*\}/) || [''])[0]),
+   'square corners on the cover, which is what a fullscreenDialog gets');
+const PAGE_IDS = ['cp-d-page', 'cp-d-pick', 'cp-d-search', 'cp-d-progress', 'cp-d-done'];
+PAGE_IDS.forEach((id) =>
+  ok(/class="fr spg"/.test(CPH[id]), '"' + id + '" draws the streak page'));
+ok(/class="sbar"><span class="x">/.test(CPH['cp-d-page']),
+   'the page carries a ✕, because a cover cannot be dragged away on iOS');
+ok(!/class="grab"/.test(CPH['cp-d-page']) && !/class="grab"/.test(CPH['cp-d-done']),
+   'and no grab handle at all when nothing is stacked on it');
+ok(/class="psheet"><div class="grab"/.test(CPH['cp-d-pick']),
+   'while the sheets that open ON it do carry one');
+/* The tag is not the affordance: both handles were in the markup with no CSS box,
+   so the verifier passed and a reader saw nothing. Assert the rule exists. */
+ok(/\.fr \.psheet \.grab \{[^}]*height: 5px/.test(css) &&
+   /\.fr \.drum \.grab \{[^}]*height: 5px/.test(css),
+   'and each handle is a drawn box, not an empty div');
+ok(/class="cal books/.test(CPH['cp-d-page']),
+   'the month inside it is the same renderer the Card uses, coloured by book');
+/* The tone the (f) group settled on, asserted where the page draws it rather than
+   trusted — and asserted as a SET, so the page, its sheets and the celebration's
+   month cannot be on three different weights. */
+const TONE = 'stamp-double';
+const TONED = ids(V).filter((id) => /class="cal books tone-/.test(CPH[id] || ''));
+ok(TONED.length && TONED.every((id) =>
+     new RegExp('tone-' + TONE + '"').test(CPH[id]) || /^cp-f-/.test(id)),
+   'every month outside the tone groups is drawn at the chosen weight',
+   TONE + ', ' + TONED.length + ' toned frames');
+/* The chosen mark is a DRAWN die, not a shape composed from primitives: two bands
+   that fail at the same angles, tinted by the day's book, tilted by the day. */
+ok(/class="cmk" style="background:rgba\([^"]*mask-image:url\(data:image\/svg\+xml/
+     .test(CPH['cp-d-page']),
+   'and each read day carries its book\'s colour on a drawn die, not on a band',
+   'two bands, masked and tinted rather than bordered');
+ok(/\.fr \.cal\.tone-patch \.cmk \{[^}]*left: 1px;\s*right: 1px/.test(css),
+   'the retired patch is kept intact in its own frame, so the axis stays comparable');
+/* The tilt is the whole idea, so it must be DERIVED and it must be the rule the
+   week strip already uses -- a second tilt rule is how the two surfaces would come
+   to disagree about what a hand-stamped day looks like. */
+ok(/--r:\$\{\(\(d \* 7\) % 9\) - 4\}deg/.test(jsrc),
+   'and is tilted by the day\'s own number, so a re-render cannot reshuffle the month');
+ok(/\.fr \.lweek s\.on \{[^}]*\}/.test(css) &&
+   /transform: rotate\(var\(--r, 0deg\)\)/.test(css) &&
+   /--r:\$\{\(\(\(d \* 7\) % 9\) - 4\)\.toFixed\(0\)\}deg/.test(jsrc),
+   'by the SAME rule the card\'s own stamps use, not a second one that resembles it');
+/* The die's run carries no thread. The selector sits in a list, so the rule is found
+   by its block rather than by assuming the selector stands alone. */
+const THREADLESS = (css.match(/([^{}]*\.tone-stamp-double \.crun\.thread[^{}]*)\{([^}]*)\}/) || []);
+ok(/display: none/.test(THREADLESS[2] || '') &&
+     /class="crun thread t-stamp-double"/.test(CPH['cp-d-page']),
+   'and the run carries no thread at all, because the misalignments ARE the continuity');
+/* ---- the overnight batch: the patch itself, re-cut seven ways ----
+   Each frame is the shipped patch with ONE knob turned, so the checks are
+   about the discipline rather than the looks: every variant draws its own
+   tone and marks, every tilted variant reuses the SAME derived rule, and
+   the level one carries no tilt at all — that absence is its entire idea. */
+const PVAR = ['level', 'third', 'chalk', 'torn', 'hollow', 'full', 'seam'];
+PVAR.forEach((k) => {
+  const h = CPH['cp-f-patch-' + k] || '';
+  ok(new RegExp('class="cal books tone-patch-' + k + '"').test(h) &&
+       /class="cmk"/.test(h) && /class="crun thread t-patch-/.test(h),
+     'variant "' + k + '" draws its own tone, per-day marks and no capsule');
+});
+ok(/const patchTilt = \(d\) => \(\(d \* 7\) % 9\) - 4;/.test(jsrc),
+   'the variants tilt by the patch\'s own derived rule, not a second one');
+ok(!/class="cmk"[^>]*--r:/.test(CPH['cp-f-patch-level']),
+   'and "level" tilts no mark at all, which is its one variable');
+ok(/clip-path:polygon/.test(CPH['cp-f-patch-torn']) && /PATCH_TORN\[d % 3\]/.test(jsrc),
+   'the torn ends are derived from the day, so a re-render cannot reshuffle them');
+ok(/left: -3px;\s*right: -3px/.test(css),
+   'the seam variant inverts the side insets so neighbours actually meet');
+ok(/box-shadow:0 0 5px/.test(CPH['cp-f-patch-chalk']),
+   'the chalk variant dusts its edge instead of drawing it');
+ok(new RegExp('background:' + LAMP_READING[0].c).test(CPH['cp-f-patch-full']) &&
+     !/text-shadow: none/.test((css.match(/\.fr \.cal\.books\.tone-patch-full \.cday\.on \{[^}]*\}/) || [''])[0]),
+   'and "full" is jacket-strength with the bold tone\'s white numerals, the drawn ceiling of the axis');
+/* ---- the morning batch: the ink off the rectangle ----
+   The overnight review's verdict was that six of seven shared one silhouette,
+   so these five are checked on the SHAPE claim first: each must draw a mark
+   that is not the patch's rounded rectangle. */
+const PVAR2 = ['blot', 'splat', 'stamp', 'swipe', 'dogear'];
+PVAR2.forEach((k) => {
+  const h = CPH['cp-f-patch-' + k] || '';
+  ok(new RegExp('class="cal books tone-patch-' + k + '"').test(h) &&
+       /class="cmk"/.test(h) && /class="crun thread t-patch-/.test(h),
+     'shape "' + k + '" draws its own tone, per-day marks and no capsule');
+});
+ok(/border-radius:5[28]% |border-radius:45% /.test(CPH['cp-f-patch-blot']) &&
+     /PATCH_BLOB\[d % 3\]/.test(jsrc),
+   'the blot\'s silhouette is a derived blob radius, not the block\'s corner round');
+/* The splat and stamp were REDRAWN after review: CSS primitives (beads of
+   box-shadow, a border-radius circle) read as clip-art, so both now carry a
+   drawn stencil out of gen_patch_marks.py — seeded, masked, tinted by the
+   mark's own background. Assert the stencil, and assert the primitives GONE. */
+ok(/mask-image:url\(data:image\/svg\+xml/.test(CPH['cp-f-patch-splat']) &&
+     /PATCH_SPLAT_MASKS\[d % 3\]/.test(jsrc) &&
+     !/box-shadow/.test(CPH['cp-f-patch-splat']),
+   'the splat is a drawn stencil with real tendrils, not a blob wearing box-shadow beads');
+ok(/mask-image:url\(data:image\/svg\+xml/.test(CPH['cp-f-patch-stamp']) &&
+     /PATCH_STAMP_MASKS\[d % 3\]/.test(jsrc) &&
+     !/border-radius: 50%/.test((css.match(/\.fr \.cal\.tone-patch-stamp \.cmk \{[^}]*\}/) || [''])[0]),
+   'the stamp is a drawn ring with pressure nicks, not a border-radius circle');
+ok((jsrc.match(/PATCH_SPLAT_MASKS = \[[^\]]*\]/) || [''])[0].split('data:image').length === 4 &&
+     (jsrc.match(/PATCH_STAMP_MASKS = \[[^\]]*\]/) || [''])[0].split('data:image').length === 4,
+   'three seeded silhouettes each, so `d % 3` has a real set to draw from');
+ok(/gen_patch_marks\.py/.test(jsrc),
+   'and the stencils name their generator, so a re-roll has one place to go');
+/* ---- the stamp family: four more pressings of the die ----
+   The brand die is the reader's own ask, and its load-bearing property is
+   that the mask is the SHIPPED seal asset, not a redrawing — asserted here,
+   and asserted against the Dart below, so the mockup and the Card cannot
+   drift apart on what the die looks like. */
+const SFAM = ['brand', 'oval', 'double', 'disc', 'exact'];
+SFAM.forEach((k) => {
+  const h = CPH['cp-f-stamp-' + k] || '';
+  ok(new RegExp('class="cal books tone-stamp-' + k + '"').test(h) &&
+       /class="cmk"/.test(h) && /class="crun thread t-stamp-/.test(h),
+     'pressing "' + k + '" draws its own tone, per-day marks and no capsule');
+});
+ok(/mask-image:url\(data:image\/png;base64,/.test(CPH['cp-f-stamp-brand']) &&
+     /PATCH_BRAND_MASK/.test(jsrc),
+   'the brand die is embedded — a file:// mask fetch is CORS and painted a BLANK month');
+ok(/PATCH_OVAL_MASKS\[d % 3\]/.test(jsrc) &&
+     /PATCH_DOUBLE_MASKS\[d % 3\]/.test(jsrc) &&
+     /PATCH_DISC_MASKS\[d % 3\]/.test(jsrc),
+   'the other three pressings are seeded dies with a real set to draw from');
+/* ---- stamp/exact: the Card's seal verbatim, asserted as verbatim ----
+   “Exact” is checkable, so it is checked: the seal's own fixed angle, the
+   seal's own ink pair, and — the two absences that make it exact — no book
+   colour and no day tilt anywhere on the mark. */
+const XCT = (css.match(/\.fr \.cal\.tone-stamp-exact \.cmk \{[^}]*\}/) || [''])[0];
+ok(/transform: rotate\(-9deg\)/.test(XCT),
+   'the exact seal keeps the seal\'s own fixed -9°, not the day\'s tilt');
+ok(/rgba\(31, 45, 39, 0\.55\)/.test(XCT),
+   'and the seal\'s own ink — kCardInk #1F2D27 at the daylight 0.55');
+ok(/class="cmk" style="--die:url\(data:image\/png/.test(CPH['cp-f-stamp-exact']) &&
+     !/class="cmk"[^>]*rgba\(/.test(CPH['cp-f-stamp-exact']) &&
+     !/class="cmk"[^>]*--r:/.test(CPH['cp-f-stamp-exact']),
+   'each day supplies only the die: no book colour, no day tilt — one face');
+ok(/inset: 15%/.test(css) && /\.fr \.cal\.tone-stamp-exact \.cmk::before \{[^}]*border-radius: 50%/.test(css),
+   'with the die at the seal\'s own 10.5/15 and the double ring an emboss leaves');
+ok(/skewX\(-16deg\)/.test((css.match(/\.fr \.cal\.tone-patch-swipe \.cmk \{[^}]*\}/) || [''])[0]),
+   'the swipe leans the way a fast hand leans');
+ok(/clip-path: polygon\(0 0, 100% 0, 100% 100%\)/.test(css) &&
+     new RegExp('tone-patch-dogear[\\s\\S]*?background:' + LAMP_READING[0].c).test(CPH['cp-f-patch-dogear']) &&
+     !/class="cmk"[^>]*--r:/.test(CPH['cp-f-patch-dogear']),
+   'and the dogear is a full-strength fold, square to its page — the one unrotated mark');
+ok(/class="crun t-rule"[^>]*--bar:linear-gradient/.test(CPH['cp-f-rule']),
+   'the rule tone still carries the SAME per-day gradient, so it stays comparable');
+ok(/text-shadow: none/.test((css.match(/\.fr \.cal\.books\.tone-rule \.cday\.on \{[^}]*\}/) || [''])[0]),
+   'with ink numerals on paper, and the bold tone\'s shadow switched off with them');
+ok(/class="ckey spines"/.test(CPH['cp-d-page']),
+   'with the legend, drawn as spines rather than swatches');
+ok(/<u>5d<\/u>/.test(CPH['cp-d-page']),
+   'and each book carries its own day count, derived from the same stamps');
+ok(/class="cwe"/.test(CPH['cp-d-page']),
+   'the weekend wash is behind the grid, so a run does not change colour on a Saturday');
+ok(/class="cday gap"/.test(CPH['cp-d-page']) || /class="cday fut"/.test(CPH['cp-d-page']),
+   'and a missed day before today is not drawn the same as a day that has not happened');
+/* THE point of the page: the figure is derived from the grid, so assert they
+   agree rather than that the figure is some number. */
+const pageRun = (h) => Number((h.match(/class="fig">(\d+)</) || [])[1]);
+ok(pageRun(CPH['cp-d-page']) === 11 && pageRun(CPH['cp-d-done']) === 12,
+   'the run reads 11 with today open and 12 once it is recorded',
+   pageRun(CPH['cp-d-page']) + ' → ' + pageRun(CPH['cp-d-done']));
+ok(calRunTo(CAL_SHEET, 12) === 11 && calRunTo(CAL_SHEET_DONE, 13) === 12,
+   'and those are the fixture\'s own runs, not typed into the page');
+ok(!CAL_SHEET[13] && CAL_SHEET_DONE[13] === 'a',
+   'today is open in one month and attributed in the other');
+ok(Object.values(CAL_SHEET).every((v) => v !== 'f'),
+   'no freeze survives the page\'s month, since freezes are deferred');
+/* The figure and its label must not print the same number twice. */
+for (const id of ['cp-d-page', 'cp-d-done']) {
+  const big = (CPH[id].match(/class="fig">(\d+)</) || [])[1];
+  const lbl = (CPH[id].match(/class="lb"><b>([^<]*)<\/b>/) || [])[1] || '';
+  ok(!new RegExp('\\b' + big + '\\b').test(lbl),
+     '"' + id + '" does not print its figure twice');
+}
+ok(/shero cold/.test(CPH['cp-d-page']) && !/shero cold/.test(CPH['cp-d-done']),
+   'the figure is keyed on the day, never on the count — the chip\'s own rule');
+ok(/class="sgo2">/.test(CPH['cp-d-page']) && /class="sgo2 done"/.test(CPH['cp-d-done']),
+   'and the button reads back once the day is in, so the undo is where the act was made');
+ok(/Undo/.test(CPH['cp-d-done']) && !/class="moment"/.test(CPH['cp-d-done']),
+   'with no takeover sheet on the page, since the celebration already had its turn');
+
+/* The page is a whole phone, not the 740pt crop the library frames use, because it
+   is a `fullscreenDialog` cover like the scanner — nothing scrolls under it and
+   there is nothing below to window onto. Pinned to the set's own `PAGE_H` so the
+   two cannot drift apart, and asserted on both covers because they replace each
+   other in one flow. */
+ok(/\.fr\.spg \{[\s\S]*?height: 852px/.test(css) &&
+   /\.fr\.up \{[\s\S]*?height: 852px/.test(css),
+   'both full-screen covers are drawn at the full ' + PAGE_H + 'pt, not at a crop');
+ok(/\.fr\.lamp \{[\s\S]*?height: 740px/.test(css),
+   'while the library stays a crop, because it scrolls');
+
+/* Mandatory step one: the picker, its grouping, and its search. */
+ok(/Which book\?/.test(CPH['cp-d-pick']) && !/class="psheet"/.test(CPH['cp-d-page']),
+   'the book is asked for, on a sheet, and only when the act starts');
+ok(/class="grp">Reading now/.test(CPH['cp-d-pick']) &&
+   CPH['cp-d-pick'].indexOf('Reading now') < CPH['cp-d-pick'].indexOf('Everything else'),
+   'with the Reading shelf as its own group, first');
+ok((CPH['cp-d-pick'].match(/class="brow"/g) || []).length >= LAMP_READING.length,
+   'and every open book in it',
+   (CPH['cp-d-pick'].match(/class="brow"/g) || []).length + ' rows');
+ok(/class="sfield"/.test(CPH['cp-d-pick']),
+   'the field is the add-book sheet\'s SearchTextField, not a new control');
+ok(!/<mark>/.test(CPH['cp-d-pick']) && /<mark>/.test(CPH['cp-d-search']),
+   'nothing is marked until something is typed');
+/* The two cover sizes, and the numbers the notes quote must be the numbers the
+   stylesheet has — the note says 44×66 against 26×39, so assert both pairs and the
+   row heights rather than letting prose and CSS drift. */
+ok(/class="psheet big"/.test(CPH['cp-d-pick-big']) &&
+   !/class="psheet big"/.test(CPH['cp-d-pick']),
+   'the shelf-sized variant is one flag on the same renderer');
+ok(new RegExp('\\.fr \\.psheet \\.brow u \\{[^}]*width: ' + PK_W_SM + 'px[^}]*height: ' + PK_H_SM + 'px').test(css) &&
+   new RegExp('\\.fr \\.psheet\\.big \\.brow u \\{[^}]*width: ' + PK_W + 'px[^}]*height: ' + PK_H + 'px').test(css),
+   'both covers are drawn at the sizes the notes quote',
+   PK_W_SM + '×' + PK_H_SM + ' and ' + PK_W + '×' + PK_H);
+ok(Math.abs(PK_W / PK_H - 2 / 3) < 0.01,
+   'and the big one keeps kDefaultCoverAspect rather than being stretched',
+   (PK_W / PK_H).toFixed(3));
+ok(new RegExp('\\.fr \\.psheet\\.big \\.brow \\{[^}]*min-height: ' + PK_ROW + 'px').test(css) &&
+   new RegExp('\\.fr \\.psheet \\.brow \\{[^}]*min-height: ' + PK_ROW_SM + 'px').test(css),
+   'the row heights the cost is argued from are the CSS\'s own',
+   PK_ROW_SM + 'pt → ' + PK_ROW);
+/* The ribbon is placed from the fraction by the app's rule, so assert it moves
+   with the book rather than sitting at a fixed offset — and that it stays inside
+   the cover at both ends. */
+const RIBS = (CPH['cp-d-pick-big'].match(/class="rb" style="left:([\d.]+)px/g) || [])
+  .map((m) => Number(m.match(/([\d.]+)px/)[1]));
+ok(RIBS.length === LAMP_READING.length,
+   'every open book in the big picker wears its ribbon',
+   RIBS.length + ' ribbons');
+ok(new Set(RIBS).size === RIBS.length,
+   'and no two sit at the same place, because the position is the fraction');
+ok(RIBS.every((x) => x >= PK_GUT - 0.01 && x + PK_RIB_W <= PK_W + 0.01),
+   'each stays between the binding gutter and the fore-edge pin',
+   'gutter ' + PK_GUT.toFixed(1) + ', pin ' + PK_PIN.toFixed(1));
+ok(!/class="rb"/.test(CPH['cp-d-pick']),
+   'the chip-sized cover draws no ribbon, because 7pt of it on a 26pt cover is lint');
+
+/* The shelf layout is the add-book sheet's arithmetic or it is nothing: the whole
+   claim of that frame is “this is the layout the app already uses to choose a
+   book”, so the numbers are asserted against `_catalogueSlivers`'s formulas, and
+   the CSS against the numbers. */
+ok(/class="psheet shelved"/.test(CPH['cp-d-pick-shelf']),
+   'the shelf-layout picker is drawn');
+/* **The collision guard.** `class="psheet shelf"` inherited `.fr .shelf`'s
+   `height: 8px` — the plank's rule — and the sheet rendered 32pt tall with 615pt
+   of covers clipped below the frame. Nothing in the markup or the data was wrong,
+   so only looking caught it. Every modifier this file hangs on a surface is checked
+   against the single-class rules it could collide with. */
+for (const mod of ['big', 'shelved', 'thread', 'upcap', 'spg', 'up'])
+  ok(!new RegExp('\\.fr \\.' + mod + '(\\s|,|\\.|\\{)').test(css),
+     'the "' + mod + '" modifier collides with no single-class rule');
+ok(Math.abs(SR_H - PAGE_H * 0.15) < 0.01 &&
+   Math.abs(SR_W - SR_H / 1.6) < 0.01 &&
+   Math.abs(SR_GAP - SR_H / 8) < 0.01,
+   'its cover is screenHeight*0.15 by /1.6, with the sheet\'s own separator',
+   SR_W.toFixed(1) + '×' + SR_H.toFixed(1) + ', gap ' + SR_GAP.toFixed(1));
+ok(SR_PER === Math.max(Math.floor((FRAME - 50 + SR_W * 0.2) / (SR_W * 1.2)), 1) &&
+   SR_PER === 3,
+   'and perLine is the sheet\'s own floor(), not a number that looked right',
+   SR_PER + ' per line');
+/* Parsed out of the stylesheet and compared numerically rather than matched as a
+   string: `toFixed(2)` on a float that is 15.974999... rounds differently in
+   different engines, and the check is “the CSS is these numbers”, not “the CSS
+   spells them the way JS does”. */
+const cssNum = (sel, prop) => {
+  const blk = (css.match(new RegExp('\\.fr \\.psheet\\.shelved \\.' + sel + ' \\{[^}]*\\}')) || [''])[0];
+  const m = blk.match(new RegExp(prop + ': ([\\d.]+)px'));
+  return m ? Number(m[1]) : NaN;
+};
+ok(Math.abs(cssNum('pbk', 'width') - SR_W) < 0.02 &&
+   Math.abs(cssNum('pbk', 'height') - SR_H) < 0.02,
+   'the stylesheet draws exactly those sizes',
+   cssNum('pbk', 'width') + ' / ' + cssNum('pbk', 'height'));
+ok(Math.abs(cssNum('prow', 'gap') - SR_GAP) < 0.02,
+   'with the separator the sheet computes between them',
+   cssNum('prow', 'gap') + ' vs ' + SR_GAP.toFixed(3));
+ok((CPH['cp-d-pick-shelf'].match(/class="lplank"/g) || []).length ===
+     (CPH['cp-d-pick-shelf'].match(/class="prow"/g) || []).length,
+   'every line stands on a plank, because in the app the line IS a shelf',
+   (CPH['cp-d-pick-shelf'].match(/class="prow"/g) || []).length + ' lines');
+ok((CPH['cp-d-pick-shelf'].match(/class="prow"/g) || [])
+     .length === 3 &&
+   (CPH['cp-d-pick-shelf'].match(/class="pbk/g) || []).length === 9,
+   'the Reading shelf is exactly one line and two more follow',
+   (CPH['cp-d-pick-shelf'].match(/class="pbk/g) || []).length + ' covers');
+ok(LAMP_READING.length === SR_PER,
+   'which is not luck being drawn as a finding: the open books fit one line exactly',
+   LAMP_READING.length + ' open, ' + SR_PER + ' per line');
+/* The cover has to BE the library's cover, not a coloured rectangle: a card with a
+   colour block and the title in ink under it, and a photo jacket filling the box
+   with no title at all — which is `.lbk` / `.lbk.photo b` exactly. */
+ok(/class="pbk" style="--c:[^"]*"><b><\/b><em>/.test(CPH['cp-d-pick-shelf']),
+   'the cover prints its title under a colour block, as the shelf tile does');
+ok(/class="pbk photo"[^>]*><b><\/b><i class="rb"/.test(CPH['cp-d-pick-shelf']),
+   'and a photo jacket carries no title, the way .lbk.photo does not');
+ok(/\.fr \.psheet\.shelved \.pbk \{[^}]*background: var\(--surface\)/.test(css) &&
+   /\.fr \.psheet\.shelved \.pbk b \{[^}]*background: var\(--c\)/.test(css),
+   'the card is paper and the colour is the block inside it, as in .lbk');
+ok(/\.fr \.psheet\.shelved \.pbk em \{[^}]*padding: 6\.1% 6\.1% 0 14\.3%/.test(css),
+   'with .lbk em\'s own padding, so the title sits where the library sits it');
+ok(Math.abs(SR_RIB_W - A_RIB_W * (SR_H / 124)) < 0.01,
+   'and its ribbon is scaled coverHeight/124, the Card\'s own rule',
+   SR_RIB_W.toFixed(1) + '×' + SR_RIB_H.toFixed(1));
+const SRIBS = (CPH['cp-d-pick-shelf'].match(/class="rb" style="left:([\d.]+)px/g) || [])
+  .map((m) => Number(m.match(/([\d.]+)px/)[1]));
+ok(SRIBS.length === LAMP_READING.length && new Set(SRIBS).size === SRIBS.length,
+   'only the open books wear one, and each at its own position',
+   SRIBS.map((x) => x.toFixed(1)).join(', '));
+ok(SRIBS.every((x) => x >= SR_GUT - 0.01 && x + SR_RIB_W <= SR_W + 0.01),
+   'between the binding gutter and the fore-edge pin',
+   'gutter ' + SR_GUT.toFixed(1) + ', pin ' + SR_PIN.toFixed(1));
+/* The filter must actually filter, and the fixture must contain a book that the
+   Reading group does NOT cover — otherwise the search frame proves nothing. */
+const SEARCH_Q = specOf(V, 'cp-d-search').picker.q;
+ok(LAMP_READING.concat(LAMP_STARTUP, LAMP_IT).filter((b) => b.t.includes(SEARCH_Q)).length <
+     LAMP_READING.length + LAMP_STARTUP.length + LAMP_IT.length,
+   'the query removes rows rather than matching everything',
+   '“' + SEARCH_Q + '”');
+ok((CPH['cp-d-search'].match(/class="brow"/g) || []).length ===
+     LAMP_READING.concat(LAMP_STARTUP, LAMP_IT).filter((b) => b.t.includes(SEARCH_Q)).length,
+   'and exactly the matching rows survive, counted off the fixture');
+
+/* Mandatory step two, and the reversal it embodies. */
+ok(/class="drum"/.test(CPH['cp-d-progress']) &&
+   new RegExp('class="sel">' + PROG_PCT + '%').test(CPH['cp-d-progress']),
+   'the wheel opens at the stored position on the page\'s door too');
+ok(/101 stops/.test(CPH['cp-d-progress']),
+   'and it is the shipped percent sheet — 101 stops, whatever the book is');
+ok(new RegExp('p\\.' + Math.round((PROG_PCT / 100) * PROG_BOOK.pages) + ' of ' + PROG_BOOK.pages)
+     .test(CPH['cp-d-progress']),
+   'with the page as a derived label rather than a second unit to set');
+
+/* The celebration: Duolingo's grammar, the library's candle, and real motion. */
+ok(specOf(V, 'cp-d-up').kind === 'up' && /class="fr up"/.test(CPH['cp-d-up']),
+   'the celebration is a surface of its own rather than a sheet over the page');
+const upFig = Number((CPH['cp-d-up'].match(/class="upfig">(\d+)</) || [])[1]);
+ok(upFig === calRunTo(CAL_SHEET_DONE, 13),
+   'its figure is the run the grid it draws would compute',
+   upFig + ' = ' + calRunTo(CAL_SHEET_DONE, 13));
+ok(/#F2A93F/i.test(css) && /#FFE8C4/i.test(css),
+   'in kCandleFlame over kCandleGlow — the library\'s own candle');
+ok(!/\.fr\.up \{[^}]*#58CC02/i.test(css),
+   'and not Duolingo\'s green, which in this app is the brand colour');
+ok(/prefers-reduced-motion/.test(css),
+   'the motion is gated, the way MediaQuery.disableAnimationsOf gates the app\'s');
+ok((css.match(/@keyframes up[A-Za-z]+/g) || []).length >= 4,
+   'and it is staggered beats rather than one fade',
+   (css.match(/@keyframes up[A-Za-z]+/g) || []).length + ' keyframes');
+ok(/class="upgo">Keep it going/.test(CPH['cp-d-up']),
+   'with exactly one way out');
+
+/* (e) the notification: the only zero-tap path, and the only one that cannot
+   ship alone. Asserted on the copy, because the restraint IS the design here. */
+ok(specOf(V, 'cp-e-push').kind === 'push', 'the notification is its own surface');
+ok(/I read today/.test(CPH['cp-e-push']),
+   'the day can be recorded from the notification itself');
+ok(/4am/.test(CPH['cp-e-push']), 'the copy quotes the rollover deadline');
+ok(!/lose|Lose|don.t break|streak will|Hurry/i.test(CPH['cp-e-push']),
+   'and never threatens the reader with a loss');
+ok(new RegExp(LAMP_READING[0].t).test(CPH['cp-e-push']),
+   'it names the book — off the fixture, not typed — which is how it keeps the\n    book_id the pill loses');
+ok(/opt-in|opt\u2011in/.test(noteOf(V, 'cp-e-push')) ||
+   /opt-in/.test(resolveOpen(V)['cp-e-push'] || ''),
+   'and it is recorded as opt-in rather than assumed');
+
+/* The write, and the table that decides between the candidates. */
+const demoOf = (v, id) => {
+  for (const [g, items] of resolveView(v, 'elements'))
+    for (const it of items) if (it[0] === id) return it[3];
+  return '';
+};
+for (const id of ['el-cheap-write', 'el-cheap-compare', 'el-mandatory'])
+  ok(resolveView(V, 'elements').some(([g, l]) => l.some((i) => i[0] === id)),
+     'element "' + id + '" is drawn');
+ok(/the held book/.test(demoOf(V, 'el-cheap-write')) &&
+   />null</.test(demoOf(V, 'el-cheap-write')),
+   'the write table puts the one differing field side by side');
+ok(/books\.progress/.test(demoOf(V, 'el-cheap-write')),
+   'and carries the position now that the day writes one');
+ok(/no longer true/.test(noteOf(V, 'el-cheap-write')),
+   'and the clause the reversal falsified is marked, not left standing');
+/* The reversal has to be argued on something other than the row count, because
+   the column is two days old and has never shipped — the first draft of this note
+   read its emptiness as a verdict on its UI, which is the mistake. */
+const MAND = noteOf(V, 'el-mandatory');
+const CPOPEN_EARLY = resolveOpen(V);
+ok(/reversal/i.test(MAND) && /nothing else/.test(MAND),
+   'the mandatory note states which settled rule it overturns, in the code\'s own words');
+ok(/book_progress|2026-09-16/.test(MAND),
+   'and dates the column instead of reading its row count as demand');
+ok(/nobody moves a bookmark for fun/i.test(MAND),
+   'with the argument that survives: position and the day are one event');
+ok(/no <i>Skip<\/i>|no <b>Skip<\/b>|no Skip/.test(MAND),
+   'and says outright that there is no Skip, which is the cost it accepts');
+/* The reverse coupling is the half of this proposal that is NOT taken, and an
+   unstated rejection is one that gets re-proposed. */
+ok(/one way/.test(CPOPEN_EARLY['el-mandatory'] || ''),
+   'the reverse arrow — position stamping the day — is rejected in writing');
+ok(/2pm|inference/.test(CPOPEN_EARLY['el-mandatory'] || ''),
+   'with the case that decides it: an inference the reader never made');
+const CMP = demoOf(V, 'el-cheap-compare');
+ok(['(b)', '(c)', '(d)', '(e)'].every((k) => CMP.includes(k)),
+   'the comparison covers every candidate');
+ok(/already shipped/.test(CMP),
+   'including the status sheet checkbox that already exists, as the baseline');
+ok(/Recommended: \(d\) plus \(b\)/.test(CMP),
+   'and it states the recommendation rather than leaving it to be inferred');
+
+/* The flows. */
+ok(fsteps(V, 'y-b-hold').length === 6, '(b) is drawn end to end');
+ok(fsteps(V, 'y-d-page').length === 7, 'and so is (d), which is two steps longer');
+const bST = (n) => frame(fsteps(V, 'y-b-hold')[n][2]);
+ok(/class="lmenu"/.test(bST(1)) && !/class="ldel"/.test(bST(1)),
+   'the (b) flow holds without rearranging anything');
+ok(/class="drum"/.test(bST(2)) && !/class="psheet"/.test(bST(2)),
+   'then asks for the position and nothing else, because the book is known');
+ok(/class="fr up"/.test(bST(3)) && /class="ltick"/.test(bST(4)),
+   'celebrates once, and lands back on the shelf with the tick');
+ok(/class="ldel"/.test(bST(5)),
+   'with the drag branch kept last, where reorder lives');
+ok(/class="stkchip/.test(bST(1)) && !/class="stkchip/.test(bST(5)),
+   'so the chip survives the hold and goes only with the drag');
+const dST = (n) => frame(fsteps(V, 'y-d-page')[n][2]);
+ok(/stkchip tgt/.test(dST(0)) && /class="scover"/.test(dST(1)) &&
+   /class="fr spg"/.test(dST(2)) && /class="psheet"/.test(dST(3)) &&
+   /class="drum"/.test(dST(4)) && /class="fr up"/.test(dST(5)) &&
+   /class="sgo2 done"/.test(dST(6)),
+   'the (d) flow walks chip → rise → page → book → wheel → count → recorded');
+ok(frame(fsteps(V, 'y-b-hold')[3][2]) === frame(fsteps(V, 'y-d-page')[5][2]),
+   'and both doors reach the SAME celebration, drawn once');
+
+/* The callouts: the one this step answers, and the ones it opens. */
+const CPOPEN = resolveOpen(V);
+ok(!/none drawn yet/.test(CPOPEN['y-night'] || ''),
+   'y-night no longer says the candidates are undrawn, because they are drawn');
+ok(/cp-b-hold/.test(CPOPEN['y-night'] || ''),
+   'and points at where they start');
+ok(/page plus the menu/.test(CPOPEN['y-night'] || ''),
+   'with the recommendation named there too');
+ok(/re-spent|four taps/.test(CPOPEN['y-night'] || ''),
+   'and admits the four taps came back rather than claiming they were removed');
+['cp-b-drag', 'cp-c-pill', 'cp-c-cord', 'cp-d-page', 'cp-e-push', 'el-mandatory',
+ 'ss-card'].forEach((id) =>
+  ok(Object.keys(CPOPEN).includes(id),
+     'the open question on "' + id + '" is carried inline'));
+ok(/onDragUpdate/.test(CPOPEN['cp-b-drag']),
+   'and (b)\'s names the exact hook the commit has to move to');
+ok(/one permanent home|permanent home/.test(CPOPEN['cp-d-page']),
+   'while the page\'s confronts the one-home rule it changes');
+ok(/Answered/.test(CPOPEN['ss-card'] || ''),
+   'and the month grid\'s homelessness is marked answered rather than left open');
+
 console.log('');
 console.log(bad === 0 ? 'ALL CHECKS PASSED' : bad + ' CHECK(S) FAILED');
 """
@@ -1523,6 +2397,7 @@ console.log(bad === 0 ? 'ALL CHECKS PASSED' : bad + ' CHECK(S) FAILED');
 open("/tmp/m.js", "w").write(
     STUB
     + "const CSS_TEXT = " + json.dumps(css) + ";\n"
+    + "const JS_TEXT = " + json.dumps(js) + ";\n"
     + js
     + ASSERT
 )

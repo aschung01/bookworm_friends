@@ -31,11 +31,14 @@ library;
 ///
 /// [days] holds date-only values as produced by `readingDate`; a stray time
 /// component is stripped defensively, since `DateTime` keys only match as instants.
+/// An `Iterable` rather than a `Set` because the log this reads is keyed by day and
+/// carries a book alongside it — `map.keys` is the natural argument, and [_dayKeys]
+/// was already rebuilding a set of its own from whatever it was handed.
 /// [today] must be a reading date too — `readingDate(DateTime.now())`, not
 /// `DateTime.now()` — because only the caller knows what time it is, and the
 /// rollover cannot be applied twice: this function cannot re-derive it, because
 /// `readingDate` of a date-only midnight is the day _before_ it.
-int currentReadingRun(Set<DateTime> days, DateTime today) {
+int currentReadingRun(Iterable<DateTime> days, DateTime today) {
   final stamped = _dayKeys(days);
   if (stamped.isEmpty) return 0;
 
@@ -62,7 +65,7 @@ int currentReadingRun(Set<DateTime> days, DateTime today) {
 /// Returns `0` for an empty set, never `null`: unlike the Library Card's tiles,
 /// "no runs yet" and "a run of zero days" are the same fact here, so there is no
 /// absent case to distinguish.
-int longestReadingRun(Set<DateTime> days) {
+int longestReadingRun(Iterable<DateTime> days) {
   final stamped = _dayKeys(days);
   if (stamped.isEmpty) return 0;
 
@@ -100,7 +103,7 @@ DateTime _dayKey(DateTime day) {
 /// Rebuilt rather than trusted: one caller passing a `DateTime` with a time
 /// component would make every `contains` below miss, silently, and report a streak
 /// of zero to a reader who has one.
-Set<DateTime> _dayKeys(Set<DateTime> days) => days.map(_dayKey).toSet();
+Set<DateTime> _dayKeys(Iterable<DateTime> days) => days.map(_dayKey).toSet();
 
 /// [day] moved by [delta] calendar days.
 ///

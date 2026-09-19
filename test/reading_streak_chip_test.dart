@@ -10,7 +10,10 @@
 // (`▣`). Omitting at zero hid it from 136 of the 137 profiles in production — exactly
 // one has any reading day — so the tasteful default was the feature failing to exist.
 // And the stamp answered "what marks a day?" when the chip's job is "what kind of
-// number is this?"; beside a shelf-count badge, `▣ 12` read as a third count.
+// number is this?"; beside a shelf-count badge, `▣ 12` read as a third count. The
+// flame then changed *family* as well: Material's rounded flame became
+// `PhosphorIconsFill.fire`, off a dependency the app was already carrying and had
+// never called.
 //
 // The state rule is the part worth pinning, because getting it wrong inverts the
 // feature: the colour is keyed on whether **today** is recorded, never on the count.
@@ -40,29 +43,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/reading_date.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
-import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/providers/reading_days_provider.dart';
 import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 
 /// Serves a fixture instead of hitting Supabase.
+///
+/// Takes a set even though the notifier holds a day→book map: every case here is about the
+/// count and the day's status, not about what was read, so a null book keeps the fixtures
+/// one line each. It is a real state too — a row written before the column existed.
 class _FakeReadingDays extends ReadingDaysNotifier {
   _FakeReadingDays(this.days);
 
   final Set<DateTime> days;
 
   @override
-  Future<Set<DateTime>> build() async => days;
+  Future<Map<DateTime, String?>> build() async => {
+    for (final day in days) day: null,
+  };
 }
 
 /// Never resolves, so the chip can be caught mid-fetch.
 class _PendingReadingDays extends ReadingDaysNotifier {
   @override
-  Future<Set<DateTime>> build() => Completer<Set<DateTime>>().future;
+  Future<Map<DateTime, String?>> build() =>
+      Completer<Map<DateTime, String?>>().future;
 }
 
 /// A run of [length] days ending on [endingOn], as reading dates.
@@ -71,9 +81,26 @@ Set<DateTime> _run(int length, {required DateTime endingOn}) => {
     DateTime(endingOn.year, endingOn.month, endingOn.day - back),
 };
 
+/// Records what the chip asked the navigator for.
+///
+/// The chip's contract is a route *name*; the page behind it is tested in
+/// `reading_streak_page_test.dart`. Asserting the name here is what keeps this file about
+/// the chip — and it is what stops the chip's test from needing a library fixture to build
+/// a screen it is not about.
+class _RouteLog extends NavigatorObserver {
+  final List<String?> pushed = [];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushed.add(route.settings.name);
+    super.didPush(route, previousRoute);
+  }
+}
+
 Future<ProviderContainer> _pumpChip(
   WidgetTester tester, {
   required Set<DateTime> days,
+  List<NavigatorObserver> observers = const [],
 }) async {
   final container = ProviderContainer(
     overrides: [
@@ -91,6 +118,15 @@ Future<ProviderContainer> _pumpChip(
         locale: const Locale('en'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        navigatorObservers: observers,
+        // A stub for whatever the chip pushes. The real table sends this name to a
+        // full-screen cover holding the streak page; standing in for it here keeps this
+        // file from building that page, which wants a library fixture this one has no use
+        // for.
+        onGenerateRoute: (settings) => MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => const SizedBox(),
+        ),
         home: const Scaffold(body: Center(child: ReadingStreakChip())),
       ),
     ),
@@ -204,11 +240,25 @@ void main() {
     expect(find.text('12'), findsOneWidget);
   });
 
-  testWidgets('a flame rather than a stamp', (tester) async {
-    // Pinned as an identity, not a lookalike: `Icons.local_fire_department` and its
-    // `_outlined` sibling are both flames and only one is filled, and a filled glyph is
-    // what carries at the 13pt the `label` token sets.
-    expect(kReadingStreakIcon, Icons.local_fire_department_rounded);
+  testWidgets('a flame rather than a stamp, and Phosphor rather than Material', (
+    tester,
+  ) async {
+    // Pinned by family, package and codepoint rather than against
+    // `PhosphorIconsFill.fire` — **which cannot be referenced at all**. The package's
+    // Dart declares `PhosphorIconData extends IconData`, and `IconData` is final as of
+    // this SDK, so importing `phosphor_flutter` is a compile error. The font it ships
+    // is fine and is what the constant addresses; see `kReadingStreakIcon`.
+    //
+    // Three assertions rather than one because each can rot on its own: a wrong
+    // codepoint is a different icon, a wrong family is a different *weight* of the
+    // same icon (Phosphor ships `fire` in six, and only the filled one carries at the
+    // 13pt the `label` token sets), and a missing `fontPackage` renders a blank box
+    // while still comparing equal on the other two.
+    expect(kReadingStreakIcon.codePoint, 0xe242);
+    expect(kReadingStreakIcon.fontFamily, 'PhosphorFill');
+    expect(kReadingStreakIcon.fontPackage, 'phosphor_flutter');
+    // And it is no longer Material's, which is the thing that changed.
+    expect(kReadingStreakIcon, isNot(Icons.local_fire_department_rounded));
   });
 
   testWidgets(
@@ -365,27 +415,27 @@ void main() {
     );
   });
 
-  testWidgets('tapping it goes to the Card, which is the number\'s home', (
+  testWidgets('tapping it opens the streak page, which is the number\'s home', (
     tester,
   ) async {
-    final container = await _pumpChip(tester, days: _run(12, endingOn: today));
-    // Subscribed, not just read. These are `autoDispose`, so a bare `read` is disposed
-    // the instant it returns — the tap would then set state on a fresh instance that
-    // this test never sees, and the assertion would read the default back.
-    addTearDown(container.listen(libraryTabProvider, (_, _) {}).close);
-    addTearDown(container.listen(selectedFriendProvider, (_, _) {}).close);
-    addTearDown(container.listen(friendsSheetLevelProvider, (_, _) {}).close);
-
-    expect(container.read(libraryTabProvider), LibraryTab.library);
+    // **This assertion used to say the opposite, and the reversal is the record.** It read
+    // `tapping it goes to the Card`: the chip switched the library's tab to the Library
+    // Card, because the streak had no surface of its own and the Card was the nearest thing
+    // that showed the figure. The Card was always the wrong home — it is year-scoped and
+    // says so in its own label, so the month grid could not live inside it. The streak page
+    // is year-agnostic and holds the month, so the home moved there and the Card's streak
+    // tile becomes a second pointer.
+    final log = _RouteLog();
+    await _pumpChip(
+      tester,
+      days: _run(12, endingOn: today),
+      observers: [log],
+    );
 
     await tester.tap(find.byIcon(kReadingStreakIcon));
     await tester.pumpAndSettle();
 
-    expect(container.read(libraryTabProvider), LibraryTab.card);
-    // A tab switch also ends any visit, the way `ShellChrome._selectTab` does — all
-    // three tabs always mean *yours*.
-    expect(container.read(selectedFriendProvider), isNull);
-    expect(container.read(friendsSheetLevelProvider), FriendsSheetLevel.list);
+    expect(log.pushed, contains(AppRoutes.readingStreak));
   });
 
   testWidgets('carries a spoken label, since it draws a glyph and a numeral', (

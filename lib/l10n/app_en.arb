@@ -656,5 +656,106 @@
   },
   "removeFriendConfirmMessage": "Access to each other's libraries will be revoked for both of you. They will not get an alert.",
   "remove": "Remove",
-  "removeFriendFailed": "Couldn't remove this friend"
+  "removeFriendFailed": "Couldn't remove this friend",
+  "streakTitle": "Reading streak",
+  "streakDays": "{days, plural, =0{No streak yet} =1{day in a row} other{days in a row}}",
+  "@streakDays": {
+    "description": "Label under the streak page's hero figure. The figure is drawn separately, so the singular and plural carry no number of their own.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakTodayOpen": "A page is enough. Today counts until 4am.",
+  "streakTodayDone": "Today is recorded.",
+  "streakDaysOpen": "{days, plural, =0{No streak yet} =1{day, and today is open} other{days, and today is open}}",
+  "@streakDaysOpen": {
+    "description": "The hero label while the day is still open. Paired with streakDays, which is the recorded wording; the figure is drawn separately so neither carries a number.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakNothingYet": "Record a night and it starts here.",
+  "streakLongest": "Longest",
+  "streakDayCount": "{days, plural, =0{none} =1{1 day} other{{days} days}}",
+  "@streakDayCount": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakBooksThisMonth": "{count, plural, =0{No books} =1{1 book} other{{count} books}}",
+  "@streakBooksThisMonth": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakNightsThisMonth": "{count, plural, =0{no nights} =1{1 night} other{{count} nights}}",
+  "@streakNightsThisMonth": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakMonthDaysRead": "{count, plural, =0{No days} =1{1 day} other{{count} days}}",
+  "@streakMonthDaysRead": {
+    "description": "The figure on the month card's first stat tile: how many nights this month were recorded.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakMonthDaysReadCaption": "read this month",
+  "@streakMonthDaysReadCaption": {
+    "description": "The caption under the days-read figure on the month card."
+  },
+  "streakMonthBooksCaption": "this month",
+  "@streakMonthBooksCaption": {
+    "description": "The caption under the book-count figure on the month card."
+  },
+  "streakRecordToday": "I read today",
+  "streakUndoToday": "Undo",
+  "streakPickBookTitle": "What did you read?",
+  "streakPickBookReading": "Reading now",
+  "streakPickBookLibrary": "Everything else",
+  "streakPickBookEmpty": "Add a book and it will be here.",
+  "streakPickBookNoMatch": "Nothing matches that.",
+  "streakHowFar": "How far in?",
+  "streakCelebrationLabel": "{days, plural, =1{day in a row} other{days in a row}}",
+  "@streakCelebrationLabel": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakCelebrationFirst": "Day one. The rest is just tomorrow.",
+  "streakCelebrationMilestone": "{days, plural, =1{1 more day to the {target}-day seal.} other{{days} more days to the {target}-day seal.}}",
+  "@streakCelebrationMilestone": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "streakCelebrationSealed": "{target}-day seal earned.",
+  "@streakCelebrationSealed": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "streakCelebrationGo": "Keep it going"
 }

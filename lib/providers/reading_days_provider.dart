@@ -18,31 +18,42 @@ import 'package:bookworm_friends/services/notification_service.dart'
 /// so this could be dropped entirely the day someone gets close.
 const int kReadingDaysWindow = 400;
 
-/// The days the signed-in reader has recorded reading on.
+/// The days the signed-in reader has recorded reading on, and what they read.
 ///
-/// **A set, because the table is set membership.** `reading_days` is keyed on
-/// `(user_id, day)`, so a day is either in it or it is not; there is no magnitude and
-/// no third state. Every consumer — the chip, the tile, the sheet's checkbox — asks
-/// the same question of the same set rather than keeping its own counter, which is why
-/// none of them can disagree with another.
+/// **A map, because the table is set membership with one attribute.** `reading_days` is
+/// keyed on `(user_id, day)`, so a day is either in it or it is not; there is no
+/// magnitude and no third state. What the day *carries* is a nullable `book_id`, and that
+/// is what turns a tally into a history: the month grid draws each recorded day in its
+/// book's `cover_color`. Every consumer — the chip, the tile, the sheet's checkbox, the
+/// streak page's month — asks the same question of the same map rather than keeping its
+/// own counter, which is why none of them can disagree with another.
 ///
-/// Values are date-only, matching `readingDate`, so they are safe as `Set` keys:
+/// **It was a `Set<DateTime>` and the book is why it is not.** Reading the column in a
+/// second provider would have meant two queries against one table and two answers that
+/// can disagree about a day that was just written; membership and attribution arrive
+/// together or the grid colours a day the chip has not counted. Keys are what membership
+/// is asked of, so `containsKey` is the same test the `Set` answered and
+/// [currentReadingRun] takes the keys directly.
+///
+/// Keys are date-only, matching `readingDate`, so they are safe as map keys:
 /// `DateTime` equality is equality of instants, and a stray time component would make
 /// every lookup miss silently and report a streak of zero to a reader who has one.
 final readingDaysProvider =
-    AsyncNotifierProvider.autoDispose<ReadingDaysNotifier, Set<DateTime>>(
-      ReadingDaysNotifier.new,
-    );
+    AsyncNotifierProvider.autoDispose<
+      ReadingDaysNotifier,
+      Map<DateTime, String?>
+    >(ReadingDaysNotifier.new);
 
-class ReadingDaysNotifier extends AutoDisposeAsyncNotifier<Set<DateTime>> {
+class ReadingDaysNotifier
+    extends AutoDisposeAsyncNotifier<Map<DateTime, String?>> {
   @override
-  Future<Set<DateTime>> build() async {
+  Future<Map<DateTime, String?>> build() async {
     final userId = ref.watch(currentUserIdProvider);
     if (userId == null) return {};
 
     final rows = await supabase
         .from('reading_days')
-        .select('day')
+        .select('day, book_id')
         .eq('user_id', userId)
         .order('day', ascending: false)
         .limit(kReadingDaysWindow);
@@ -54,7 +65,7 @@ class ReadingDaysNotifier extends AutoDisposeAsyncNotifier<Set<DateTime>> {
         // in between, so the key a widget holds and the key a row carries are one
         // value. **Not `readingDate` of this**: pushing a midnight through the 4am
         // rollover a second time would move every day in the set back by one.
-        DateTime.parse(row['day'] as String),
+        DateTime.parse(row['day'] as String): row['book_id'] as String?,
     };
   }
 
@@ -73,9 +84,19 @@ class ReadingDaysNotifier extends AutoDisposeAsyncNotifier<Set<DateTime>> {
   /// can replay its whole backlog twice with no reconciliation, which is the property
   /// `(user_id, day)` was chosen for in the first place.
   ///
-  /// Writes nothing but the day. It does **not** touch the reading position, the
-  /// status, `start_date`, `finish_date` or the Reading shelf, and it posts nothing to
-  /// the friends feed. That separation is the single rule the whole design rests on.
+  /// Writes nothing but the day and what was read on it. It does **not** touch the
+  /// reading position, the status, `start_date`, `finish_date` or the Reading shelf, and
+  /// it posts nothing to the friends feed. That separation is the single rule the whole
+  /// design rests on — and it survives the streak page's mandatory wheel, which writes
+  /// the position through `books` in a second call rather than smuggling it through this
+  /// one.
+  ///
+  /// **Re-stamping a day with a different book is a real edit, not a no-op.** The early
+  /// return used to fire on membership alone, which was right while nothing but a
+  /// checkbox called this; now that recording a day names a book, a reader who records
+  /// today against the wrong book and comes back has to be able to correct it. So the
+  /// guard compares the attribution too, and only a write that would change nothing is
+  /// dropped.
   Future<void> setRead(
     DateTime day, {
     required bool read,
@@ -84,12 +105,13 @@ class ReadingDaysNotifier extends AutoDisposeAsyncNotifier<Set<DateTime>> {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
 
-    final previous = state.valueOrNull ?? const <DateTime>{};
-    if (previous.contains(day) == read) return;
+    final previous = state.valueOrNull ?? const <DateTime, String?>{};
+    final had = previous.containsKey(day);
+    if (had == read && (!read || previous[day] == bookId)) return;
 
     final next = {...previous};
     if (read) {
-      next.add(day);
+      next[day] = bookId;
     } else {
       next.remove(day);
     }
@@ -103,7 +125,13 @@ class ReadingDaysNotifier extends AutoDisposeAsyncNotifier<Set<DateTime>> {
           // What was read that night, which is what turns a tally into a history:
           // the month grid colours each day by the book's `cover_color`. Nullable,
           // and a day with two books has to pick one — the price of the primary key.
-          if (bookId != null) 'book_id': bookId,
+          //
+          // **Sent even when null**, unlike the first cut, which omitted the key. An
+          // omitted key leaves the stored value alone on an UPSERT that lands on an
+          // existing row, so a day stamped against a book could never be corrected
+          // back to "no book" — and the local map above would then claim an
+          // attribution the row still disagrees with.
+          'book_id': bookId,
         }, onConflict: 'user_id,day');
       } else {
         await supabase
@@ -144,7 +172,7 @@ class ReadingDaysNotifier extends AutoDisposeAsyncNotifier<Set<DateTime>> {
 final readTodayProvider = Provider.autoDispose<bool>((ref) {
   final days = ref.watch(readingDaysProvider).valueOrNull;
   if (days == null) return false;
-  return days.contains(readingDate(DateTime.now()));
+  return days.containsKey(readingDate(DateTime.now()));
 });
 
 /// The run that is still alive, or 0.
@@ -159,12 +187,12 @@ final currentStreakProvider = Provider.autoDispose<int>((ref) {
   // `readingDate` applied here and nowhere downstream — `currentReadingRun`
   // deliberately does not re-apply the rollover, because doing it twice shifts every
   // day back by one.
-  return currentReadingRun(days, readingDate(DateTime.now()));
+  return currentReadingRun(days.keys, readingDate(DateTime.now()));
 });
 
 /// The longest run on record, which a missed night does not erase.
 final longestStreakProvider = Provider.autoDispose<int>((ref) {
   final days = ref.watch(readingDaysProvider).valueOrNull;
   if (days == null) return 0;
-  return longestReadingRun(days);
+  return longestReadingRun(days.keys);
 });

@@ -726,6 +726,47 @@ class LibraryActions {
     }
   }
 
+  /// Moves a book's bookmark, and touches nothing else.
+  ///
+  /// **A second way to write the position, and the narrowness is the point.** The
+  /// position's home is the status sheet, where it leaves through one Save alongside a
+  /// status and two dates, and [updateBookStatus] is shaped for exactly that: it
+  /// *derives* `start_date` and `finish_date` from the status, so passing them null is a
+  /// real instruction and nulls the columns. Calling it to record a bookmark would
+  /// therefore throw away the date the reader started the book as a side effect of
+  /// saying where they are in it.
+  ///
+  /// So the streak page's mandatory wheel comes here instead. Two columns, one UPDATE,
+  /// no derivation: [progressPage] rides in the same statement as [progress] so the
+  /// stored fraction can never disagree with the unit it was given in, and null for it
+  /// is a real instruction that clears the provenance — the same asymmetry
+  /// [updateBookStatus] documents, for the same reason.
+  ///
+  /// **Deliberately does not stamp a day.** The arrow points one way: recording a day
+  /// writes a position, and setting a position records nothing. A reader nudging their
+  /// bookmark at lunchtime has said nothing about a day, and a day stamped with no
+  /// visible cause is the silent write this design has refused twice.
+  ///
+  /// Loud on failure, unlike [recordCoverColor]: the reader asked for this one, and they
+  /// are looking at the sheet they asked from.
+  Future<void> recordReadingPosition(
+    String bookId, {
+    required double progress,
+    int? progressPage,
+  }) async {
+    try {
+      await supabase
+          .from('books')
+          .update({'progress': progress, 'progress_page': progressPage})
+          .eq('id', bookId);
+      ref.invalidate(libraryProvider);
+    } catch (e) {
+      EasyLoading.showError(
+        AppLocalizations.of(navigatorKey.currentContext!).statusChangeFailed,
+      );
+    }
+  }
+
   /// Fills in `books.cover_color` from a cover that has just been decoded.
   ///
   /// The backfill for rows written before the column existed, and for every row

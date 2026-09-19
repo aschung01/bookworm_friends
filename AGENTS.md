@@ -13,6 +13,57 @@ Build-time API keys live in **`env.json`** (gitignored). Every build and run mus
 inject it, which is what `run.sh` / `build.sh` / `release_ios.sh` are for. A plain
 `flutter run` silently degrades book search.
 
+### A fresh worktree has neither, and that is not a missing file
+
+Both of the above are **gitignored, and gitignored files do not travel between git
+worktrees**. A new worktree under `.worktrees/` therefore starts without them, and
+`./run.sh` stops with `error: env.json not found` — which reads like a setup problem and
+is really just a copy:
+
+```bash
+cp ../../env.json env.json          # always; nothing builds without it
+cp ../../ios/asc.json ios/asc.json  # only to ship from this worktree
+```
+
+The same is true of anything else ignored: `ios/Pods`, `ios/Flutter/ephemeral` and
+`android/local.properties` all regenerate themselves, so those need no action.
+`GoogleService-Info.plist` **is** tracked, so Firebase config is never the problem.
+
+## The Crashlytics build phase is patched, and don't revert it
+
+`project.pbxproj`'s `FlutterFire: "flutterfire upload-crashlytics-symbols"` phase no
+longer matches what `flutterfire_cli` generates. Two deliberate changes, both of which a
+`flutterfire configure` run would silently undo:
+
+**It looks for the SDK where Flutter actually puts it.** The generated script searches
+only `DerivedData/<Runner-hash>/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run`,
+and its comment claims `BUILD_DIR` "doesn't have run script". That comment is out of date:
+Firebase arrives here through **SPM**, not CocoaPods, and Flutter's SPM integration passes
+`-clonedSourcePackagesDirPath`, so the checkout lives under the project's own
+`build/ios/SourcePackages` and `DerivedData/SourcePackages` is never created at all. The
+phase then dies with `ProcessException: No such file or directory` and
+`PhaseScriptExecution failed` — on any fresh checkout, worktree or CI machine. It appears
+to work in a long-lived checkout only because a stale _pre-SPM_ DerivedData still happens
+to hold the SDK. **`main` still has this latent bug**: clear its DerivedData and it breaks
+the same way.
+
+**It runs for Release only.** Symbol upload exists so a crash in a shipped build has
+readable traces; a debug build produces no dSYM anyone will symbolicate, so running it on
+every `flutter run` spends time and network on nothing and puts a network-dependent script
+in the inner loop. **Do not do this with `uploadDebugSymbols: false` in `firebase.json`**
+— the obvious knob and the wrong one: `upload_symbols.dart` reads that flag and returns
+early on _every_ configuration, so it would quietly stop uploading release symbols too.
+The flag means "upload dSYMs at all", not "… for debug builds".
+
+When debugging a failed iOS build, note that `DVTDeveloperAccountManager: Failed to load
+credentials … missing Xcode-Token` is **expected noise** (see below) and the real error is
+usually a thousand lines further down, past every plugin's deprecation warnings. Filter:
+
+```bash
+flutter build ios --simulator --debug --dart-define-from-file=env.json > /tmp/b.log 2>&1
+grep -nE "ProcessException|PhaseScriptExecution failed|error: .*\.(dart|swift|m):" /tmp/b.log
+```
+
 ## Shipping a TestFlight build
 
 ```bash

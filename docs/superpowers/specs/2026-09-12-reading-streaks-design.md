@@ -360,18 +360,18 @@ in 30 days and 0 books started in 30, the tile is missing for almost everybody o
 day one, so the card has to look right that way first — which it does, because
 omission is already how it behaves.
 
-### The month grid has no home yet
+### The month grid has no home yet — answered: its own page
 
-The finding that falls out of the above, and it is a genuine gap. **The Card is
+The finding that falls out of the above, and it was a genuine gap. **The Card is
 scoped by year** — `year == 0` is all time, and the hero says so in its own label.
 A month pager cannot sit inside it without putting two conflicting time scopes on
 one surface. So either:
 
 - the grid becomes **its own destination**, which the library-bar chip opens
-  (my recommendation — it keeps the Card's structure intact and gives the chip
-  somewhere to point); or
+  (chosen — it keeps the Card's structure intact and gives the chip somewhere to
+  point; drawn as `cp-d-page`, and see open question 8); or
 - the Card grows a **year-scoped** view of the same data — a 365-cell strip
-  rather than a month — which is a drawing nobody has made.
+  rather than a month — which is a drawing nobody has made, and is now not needed.
 
 The Card is also the preview for a share artifact (`shareable_library_card.dart`),
 so anything added to it has to survive being printed there too. A month grid
@@ -388,14 +388,46 @@ Not four tints of one fact:
 | amber           | today is open and the evening is late |
 | blue, snowflake | a freeze is covering a gap            |
 
-### No flame
+### No flame — overturned, and the reversal is the record
 
-The app already owns four working metaphors for "a day was recorded" — the ink
-stamp on the due-date card, the reading lamp, the wax seal, the library card
-itself. A flame would be a fifth, borrowed, competing with four that fit. So the
-counter's glyph is the stamp, the celebration is a stamp pressing into the card,
-and a milestone earns a **wax seal** in the vocabulary `card-seal` already
-established.
+The original rule, which is still the better argument about metaphors: the app
+already owns four working ones for "a day was recorded" — the ink stamp on the
+due-date card, the reading lamp, the wax seal, the library card itself. A flame
+would be a fifth, borrowed, competing with four that fit. So the counter's glyph
+was the stamp, the celebration a stamp pressing into the card, and a milestone a
+**wax seal** in the vocabulary `card-seal` established.
+
+**The counter now draws a flame, and the mockup set draws it everywhere the run
+is named.** What changed the answer is a different question. The stamp is the
+right metaphor for _the act_ — a day being recorded — and the wrong one for _the
+kind of number_. A reader glancing at `▣ 11` in the library bar cannot tell
+whether 11 is books, days, or unread somethings; `🔥 11` is legible at a glance
+in a way no invented mark is, because it is the category's one piece of shared
+vocabulary. The stamp keeps everything it was good at — the day cell in the
+month grid, the celebration's ink, the card — and the flame does one job: it says
+_this number is a streak_.
+
+So the division is: **the flame names the run, never a day.** A day is a stamp; a
+run is a flame. `verify.py` asserts that boundary directly (no flame inside a
+`.cday` and none in the card's stamp row) rather than trusting the prose.
+
+The glyph is **Phosphor Fill's `fire`, U+E242** — not a lookalike. Two findings
+worth keeping:
+
+- **`phosphor_flutter` cannot be imported on this SDK.** The package declares
+  `class PhosphorIconData extends IconData`, and `IconData` is `final` as of
+  Flutter 3.44, so any file that imports it fails to compile. That is why the
+  dependency sat in `pubspec.yaml` unused. The way through is to skip the
+  package's Dart entirely and name the font directly:
+  `IconData(0xe242, fontFamily: 'PhosphorFill', fontPackage: 'phosphor_flutter')`.
+  The font assets ship from the package's own `pubspec`, so nothing has to be
+  declared or vendored. **Do not re-add the import.**
+- The mockup's flame is the font's own outline, extracted from
+  `Phosphor-Fill.ttf` with fontTools, so the drawing and the app cannot show
+  different shapes. `verify.py` pins the codepoint in both directions.
+
+`share_card_page.dart`'s `Icons.local_fire_department` is left alone: it is the
+candlelight toggle, a different job with a different subject.
 
 ### Six moments, because a number is one sixth of the feature
 
@@ -922,6 +954,156 @@ Steps 1–5 are safe and self-contained. Step 6 onward is the part the corpus sa
 may not pay. **The cheap nightly path is not in this list** because it is not yet
 decided; it slots in beside step 6 and must write through the same call.
 
+## What is built, and what is still only drawn
+
+**Steps 1–9 shipped earlier. Steps 10 and 11 are now built, and the two comparisons
+that were blocking them are decided: the month's tone is `patch`, the picker is
+44×66.** What exists in Dart, with the deviations from the drawings stated rather
+than quietly absorbed:
+
+- **`lib/ui/pages/reading_streak_page.dart`** — the destination. A full-screen cover
+  on `AppRoutes.readingStreak`, generated in `onGenerateRoute` beside the scanner and
+  the share card because it wants their transition and their ✕. The chip's `onTap`
+  pushes it, which **retired the stopgap** that switched the library's tab to the
+  Library Card; `reading_streak_chip_test.dart` carries the reversal.
+- **`lib/ui/widgets/streak/read_calendar_month.dart`** — the month, at the `patch`
+  tone. `readCalendarPatchTilt` is the _only_ definition of the rake, so a Library
+  Card month must call it rather than restate the arithmetic. Geometry is derived from
+  the width it is given; the only typed number is the 5pt gap.
+- **`lib/ui/widgets/streak/read_week_row.dart`** — the week, drawn once for two
+  surfaces. The page and the celebration both needed the same seven days, in two
+  palettes, and two copies is how the week behind a celebration and the week inside it
+  come to disagree about which days are in. It therefore takes its palette from the
+  caller rather than reading the theme — the celebration paints its own cream
+  ground, where `context.colors` would hand back white type in dark mode. The rake is
+  keyed off the **date**, not the cell's index: off the index, every cell would be
+  re-raked at midnight as the days shuffled left. Tilt is off in the celebration, where
+  exactly one cell is allowed to arrive crooked.
+
+### The fidelity pass, and five things the first cut got wrong
+
+**Both drawings were built and then compared with the frames side by side, and the week
+row did not survive the comparison.** This is the section that exists because “looks a
+bit different” is a judgement no widget-test expectation settles, and because every one
+of the five was invisible to a green suite.
+
+1. **The week row drew a box on all seven days.** `.lweek` draws an outline only where
+   something happened or is about to: a stamped day is a wash inside a 1.5px edge, **today
+   before you read is that edge dashed** — the affordance, since the tap is what stamps it
+   — and a missed day gets **no box whatsoever**, only the 1px baseline the row shares.
+   Seven boxes reads as seven empty checkboxes and throws away the one signal that says
+   _this one is waiting for you_. The dashed state could not even be expressed: the widget
+   took a `(mark, ink)` pair, which spells “stamped in some colour” and “not, in some
+   ink”, so an unrecorded tonight and a missed Monday were the same cell. It now takes a
+   nine-role `ReadWeekPalette`.
+2. **Its cells were 30pt squares, spaced apart.** `.lweek s` is `flex: 1` at `height:
+34px`, so a cell is **wider than it is tall** and the seven share the content width.
+   Squares left a third of the row as gap.
+3. **The month's patch was inset a point on all four sides.** `.cal.tone-patch .cmk` is
+   `left/right: 1px` against `top/bottom: 6px` with a **7pt** corner — on a 42pt cell a
+   40×30 block. A uniform inset with a 2pt corner is a near-square tile, and a run of
+   tiles is a chart rather than tape pressed on by hand. This is the one the reader asked
+   about, and the shape was most of the answer.
+4. **The month was missing three of its own states.** The weekend columns take a 5% wash
+   — one box per column _behind_ the grid, because painted per cell it sits over the
+   patches and a run appears to change colour on a Saturday. A past day with nothing on it
+   now carries a hollow 4pt dot, where before it was drawn identically to next Tuesday, so
+   the one thing the grid exists to show — where the thread broke — could only be found by
+   counting. And the card carries the record's second stat tile, `N days read this month`.
+5. **The celebration's closing cell was a brighter stamp.** `.lweek s.fresh` _inverts_ —
+   solid fill, reversed-out letter, lifted by its own shadow. Against six neighbours
+   already in the accent colour, a seventh in the same wash is not somewhere for the eye to
+   land, which is the entire point of that beat.
+
+**Three reversals, recorded rather than deleted.**
+
+- **Today's rule in the month is `flame`, not `brandFill`.** It shipped green on the
+  reasoning that green is how the app marks its own things. The record draws it amber, and
+  the record is right twice: `flame` exists for exactly one purpose — to be the one warm
+  hue in an all-green palette — the run above this grid is already drawn in it, and a green
+  rule competes with a green patch on any day whose book has a green jacket.
+- **The legend is spines, not swatches.** A 12pt swatch in the patch's own 22%/50%
+  grammar was the obvious choice — make the key look like the thing it explains — and it is
+  wrong twice: at that size a fifth-strength wash is barely a colour, and the app's entire
+  vocabulary for _a book_ is a cover seen edge-on. Each entry is now a 5×15 spine at full
+  strength and the row wraps, so four books is a line and a half rather than four rows of
+  mostly empty space.
+- **The celebration's fresh cell arrives at −4°, not 14°, and its letter is the candle's
+  brown rather than its cream.** The steeper angle was argued as “this one is being pressed
+  on in front of them” and next to six square neighbours it read as a layout bug; the
+  record's own `fresh` is `rotate(-4deg) scale(1.12)`. The cream letter was a straight
+  mistake — the record inverts to white on `brandText`, a _dark_ green, and
+  [`kCandleFlame`] is a mid amber, so cream on it was barely a letter.
+
+**And three places the record was not followed, on the app's own authority.**
+`test/text_style_test.dart` forbids a call site stating its own `fontSize` or
+`fontWeight`, on the grounds that needing a size the scale lacks means the scale is wrong
+rather than that the call site needs an exception. So: the record's `font-weight: 800` on a
+stamped numeral is dropped (`label` is the only token with tabular figures, and the patch
+plus the ink already say which days are in); `.lweek`'s bold-vs-normal split between a
+stamped and a missed letter is dropped for the same reason, with the colour gap carrying
+it; and the month card's heading is `subtitle` — 17pt **sans** — where `.cnav b` is 15pt
+Georgia, because the scale's serif runs `spine` 12 then `titleVisit` 20, and 12 would put
+the card's heading below its own 13pt stat figures while 20 beside them is a shout. Worth
+revisiting if the scale ever grows a small serif head.
+
+**One thing in the record's month is deliberately absent: the ‹ › pagers.** They imply
+`readingDaysProvider` can be asked for an arbitrary month, and it cannot — it holds one
+window. Drawing the control before the query exists is an affordance for something that
+does nothing, which is the same mistake a grab handle on this page's cover would be.
+
+- **`lib/ui/widgets/bottom_sheets/pick_reading_book_sheet.dart`** — step one of the
+  pair. **One deviation, and the app's own rule forced it:** the drawing puts the
+  library's real cover on the row, and `BookWidget`'s coverless fallback prints the
+  title on the jacket. At 44pt wide that title sets at 5.9pt — under
+  `kGeneratedCoverMinWidth`, which exists to document exactly this smudge. So the row
+  draws the colour block alone, the way `CardCoverRow` and the add-book sheet's owned
+  rows do. That is also what the drawing asked for on its own grounds ("the jacket
+  stays untitled"), so the two agree; it is written down because the reason is the
+  constant and not the drawing.
+- **`lib/ui/widgets/streak/streak_celebration.dart`** — the moment. **Deviation:** the
+  spec says implicit animation only, and this uses one `AnimationController` with six
+  `Interval`s. Implicit animations have no delay, so a six-beat stagger means six
+  `Future.delayed` calls, each of which has to be cancelled on dispose; one controller
+  is core Flutter, is a single thing to dispose, and puts the timings in one readable
+  place. The `MediaQuery.disableAnimationsOf` gate is honoured as specified, and by
+  jumping to `value = 1` rather than running faster.
+- **`reading_days` carries its book.** `ReadingDaysNotifier`'s state went from
+  `Set<DateTime>` to `Map<DateTime, String?>`, because the month colours each night by
+  its book and a second provider reading the same table is two answers that can
+  disagree about a day just written. `currentReadingRun`/`longestReadingRun` now take
+  an `Iterable`, which cost nothing — they already rebuilt a normalised set internally.
+  `setRead` also stopped early-returning on membership alone: re-recording a day with a
+  _different_ book is a correction a reader has to be able to make, and it now sends
+  `book_id` even when null so that correction can clear it.
+- **`LibraryActions.recordReadingPosition`** — a second, narrow way to write the
+  bookmark. `updateBookStatus` could not be reused: it _derives_ `start_date` and
+  `finish_date` from the status, so calling it to record a position would throw away
+  the date the reader started the book.
+- **`onConfirmed` on `showSelectPercentBottomSheet`** — new, optional, and the pair
+  needs it. `onProgressSelected` is gated on `_touched` so that agreeing with a
+  pre-filled wheel rewrites nothing; but from outside, "confirmed without moving the
+  wheel" and "swiped the sheet away" then look identical, and treating the first as a
+  dismissal would refuse to record a night the reader just confirmed.
+
+**Two things in the drawing are deliberately absent from the build.** The page's bar
+draws a **Share** action beside the ✕, and there is nothing behind it: `cp-d-page`'s own
+note puts a share row in the page's slack "if either ships", so the bar's affordance is
+the drawing getting ahead of itself. A button that shares nothing is worse than no
+button. And the footer's done state is **not** the primary button read back: the first
+cut put "Undo today" in the green CTA slot, which advertises taking the night back as
+the thing to do next. What ships is the drawing's own `sgo2 done` — a confirmation that
+today is recorded, with the undo as a quiet secondary inside it.
+
+**Deliberately not built: the cover's long-hold menu** — the second, shorter door.
+The page is the door that shipped. The menu is still _open_ in the record rather than
+decided: `cp-b-drag` names three unresolved implementation questions (what slop
+commits the drag, where the menu lives given that `onDragEnd` fires while it must stay
+up, and what becomes of `BookWidget`'s existing turn-and-unwind), and answering them
+means moving the edit-mode commit inside `shelf_row.dart`'s `LongPressDraggable` — the
+most delicately documented gesture in the app, and the one that owns cross-shelf
+reorder. Deciding those three by implementing them is not a thing to do in passing.
+
 ## Testing
 
 - **`readingDate`** — 23:59, 00:00, 00:30, 03:59, 04:00; a DST boundary; a
@@ -944,10 +1126,32 @@ decided; it slots in beside step 6 and must write through the same call.
   scale, since the wrap is what costs 32pt.
 - **`verify.py`** stays green (385 checks) for as long as the drawing is the
   reference.
+- **The fidelity pass has its own cases**, because every one of the five defects it
+  found sat happily under a green suite. `read_week_row_test.dart` pins that a missed day
+  has _no_ box (only the shared baseline), that exactly one cell is dashed and only when
+  today is unrecorded, that `freshLast` inverts the closing cell, and that the seven cells
+  share the width rather than leaving a third of it as gap. `read_calendar_month_test.dart`
+  pins the patch's 40×30-at-42pt aspect and its 7pt corner, the hollow dot on a past
+  unrecorded day _and its absence_ on today and tomorrow, the weekend wash running the
+  height of the grid rather than of one cell, and today's rule being `flame`.
+  Its palette fixture is deliberately nine implausible colours: when the roles were two,
+  “stamped in the caller's colour” was all a case could say and the box-on-every-day bug
+  satisfied it perfectly.
 
 One non-automatable rule that caught every real defect in the drawing that the
 checks missed: **one value, printed once.** `72% … 72%` in the band and `12`
 above "12 days in a row" both shipped into the mockup and were found by eye.
+
+And a second one, which the fidelity pass above is the whole argument for: **build it,
+then put the frame and the build side by side and look at them.** Five defects, a green
+suite, and `verify.py` clean — because every check was written against what the code does
+rather than against what the drawing shows. The cheapest way to do the looking is a
+throwaway golden that renders the widgets at real size with the real fonts loaded off disk
+(`FontLoader`, reading bytes **synchronously** — a widget test's clock does not run the
+real event loop, so an awaited `readAsBytes` never completes and `load()` hangs until the
+harness times out). It is worth recreating and deleting each time rather than keeping:
+these goldens are font- and platform-sensitive, and the app's committed ones deliberately
+use the default test font.
 
 ## Open questions
 
@@ -978,19 +1182,227 @@ Ordered by how much they block the decomposition.
      `book_id`. Either the repair grows a book picker, or repaired days are the
      one kind of day with no book — and then the month needs a third cell
      treatment, which is one more than the design can carry.
-2. **The cheap nightly path — the one thing the merge leaves unsolved.** The state
-   sheet is the right home for the truth and the wrong home for a habit: four taps
-   and a form, behind a pencil icon. Candidates, none drawn yet:
+2. **The cheap nightly path — drawn, and the hold is available after all.** The
+   state sheet is the right home for the truth and the wrong home for a habit:
+   four taps and a form, behind a pencil icon. `cheap-path` in
+   `docs/mockups/streaks` draws five candidates against the code as shipped.
    - **(a) accept it.** Weakest — the reader opens their book in a reading app,
      not in this one, so "they're already here" is not true.
-   - **(b) a long-press on the shelf cover** offering _Read today_ as a single
-     item. Invents no chrome, and was already sketched once as `tap-target`'s
-     menu.
-   - **(c) the reading shelf's lamp is the target**, so the nightly act happens on
-     the library screen and never opens a book.
-     (b) and (c) are cheap and compatible. Whichever is chosen must **write through
-     the same call as the sheet's Save** and must never become a second place to
-     edit position. Recommendation: **(c)**, with (b) as the discoverable twin.
+   - **(b) a long-press on the shelf cover** offering _Read today_. **Available,
+     and it does not trade against reorder.** iOS splits one press into two
+     commitments: a hold that does not move scales the held icon, dims the rest
+     and raises a menu; the jiggle and the remove badges arrive only when the
+     finger starts to _drag_ from that state. Reorder lives in the second half, so
+     a per-book menu in the first half costs it nothing. **An earlier draft of this
+     entry called it a collision and that was wrong** — it compared the proposal
+     against where the code happens to commit rather than against the gesture.
+   - **What (b) costs to build, precisely.** Today
+     `LongPressDraggable(delay: kBookStageTwoDelay)` fires `onDragStarted` at the
+     timer and `_onLift` enters edit mode there. (b) needs stage one at the timer
+     (scale, dim, menu) and stage two at the first `onDragUpdate` past slop. The
+     pointer is still claimed at pointer-down by the same recognizer, so the
+     codebase's own constraint is untouched, and `dragAnchorStrategy:
+_anchorToPointer` already draws the "cover stays where it stood" half. Three
+     things to settle while doing it: the slop threshold; the
+     release-without-movement case, where `onDragEnd` fires while the menu must
+     stay up, so the menu cannot be owned by the drag's lifetime; and
+     `BookWidget`'s existing turn-out at `kBookHoldDelay`, whose unwind at stage
+     two should become the scale-up rather than a third animation.
+   - **(c) the reading shelf's lamp is the target.** **The lamp cannot be tapped
+     at all.** `ReadingLampLayer` pins an `IgnorePointer` wash to `top: 0` of the
+     library, outside the scroll view, under a `Positioned.fill(child)` — the
+     Dart's own words are "Not a thing a finger can touch, and never over the
+     shelves." Its box is `readingLampHeight` = 16 + 134.2 × 0.82 = **126pt**, and
+     every point in it has a cover or a plank on top except
+     `kReadingLampSourcePadding`, the **16pt** strip under the bar — 28pt short of
+     the 44pt floor. `lit` is also already spoken for: it means _a book is open_.
+     A **pull cord** makes the fixture touchable and costs invented chrome plus a
+     control that stays put after `readingLampFadeDistance`, 150pt, while its
+     shelf leaves. The **row pill** it degrades into works and is **withdrawn**:
+     it is the only candidate that can never name a book, and it rents 26pt of the
+     library permanently to save one tap over (d).
+   - **(d) the streak chip opens a streak page. Recommended, first.** The chip
+     ships, its 44pt footprint ships, and `reading_streak_chip.dart` already calls
+     its current destination "a stopgap, and known to be one", naming the wanted
+     thing outright: "a month calendar as its own destination that this chip
+     opens". The page holds the run, the week, the month, the record and one
+     button; every figure in it is already computable from
+     `currentStreakProvider`, `longestStreakProvider`, `readTodayProvider` and
+     `readingDaysProvider`. **No new chrome anywhere**, and it asks _which book_,
+     so the day keeps its `book_id`.
+   - **A page, not a sheet, and `app_routes.dart` already made the argument.**
+     `CupertinoPageRoute(fullscreenDialog: true)` — the scanner's and share card's
+     route — rises from the bottom without bringing
+     `UIModalPresentationPageSheet`'s personality with it: a sheet route stops
+     short of the top, takes rounded corners and **scales the presenting page down
+     behind it**, so the content reads as a panel belonging to a shrunken app. The
+     consequence to build: the page carries an **✕ and no grab handle**, because a
+     cover is not drag-dismissible, while the two sheets that open _on_ it do carry
+     one. That pair is the only thing telling a reader which surface can be flicked
+     away.
+   - **(e) a 21:00 notification with the act on the notification.** Zero taps
+     inside the app, `profiles.fcm_token` already exists, and it names the book it
+     was sent about. Also the most common reason people uninstall streak apps (see
+     open question 6). Opt-in, later, and never the only path — and note that the
+     mandatory position below costs (e) its whole advantage: an action that has to
+     collect a position is a notification that opens the app.
+   - **Recommendation: (d) plus (b).** (d) because it needs no gesture surgery and
+     answers question 8 in the same move; (b) because it is the short door — and
+     after the reversal below it is twice as short, since the press has already
+     said which book. They write the same row through the same call and neither
+     makes the other redundant.
+   - **Reversed: a day cannot be recorded without a position.** Marking the day
+     now raises two required sheets — a **book picker** (search field, Reading
+     shelf as its own group first) and the **shipped percent wheel**
+     (`select_percent_bottom_sheet.dart`, opened at the book's last known value).
+     The cover's menu skips the first, because the gesture answered it. This
+     overturns "ticking the box writes one `reading_days` row and **nothing
+     else**", and the argument for it is _not_ that `books.progress` is sparse:
+     that column is two days old (`20260916120000_book_progress.sql`) and has
+     never been in a build any reader has, so its row count measures the release,
+     not the demand. The argument is that **nobody moves a bookmark for fun** —
+     recording the night and knowing where you stopped are one event, and this is
+     the only moment the reader has the answer in hand. The payoff is that every
+     reading cover's ribbon becomes live, since `readingBookmarkInsetFor` already
+     draws it from a fraction that mostly does not exist.
+     - **Cost:** the chip's door goes from 2 taps to **4**; the cover's door stays
+       at a hold and a tap. Mitigations that are in the drawings rather than
+       promised: the wheel opens pre-answered (and `_touched` means agreeing writes
+       nothing), the picker groups the Reading shelf first.
+     - **What it gives up:** a reader who genuinely does not know their page —
+       audiobook, bedside skim, read on another device — cannot record a day they
+       did read. There is deliberately **no Skip**, because a skip makes the field
+       optional and optional is where it started. Open: whether the status sheet's
+       checkbox grows the same requirement, or stays the one door that writes less.
+     - **The arrow points one way only.** The tempting symmetry — setting the
+       position from the band also stamps the day — is **rejected**, and the two
+       directions are not alike: a reader who confirms this wheel has just said _I
+       read today_, while a reader nudging their bookmark at 2pm has said nothing
+       about a day. The first is a statement, the second an inference the app makes
+       on their behalf, and a wrongly stamped day has no visible cause. So
+       **stamping a day writes a position; setting a position stamps nothing.** If
+       revisited, it must ask rather than infer.
+   - **Duolingo's moment, once, at the end.** Confirming raises a full-screen
+     celebration: one figure, one label, the week, a milestone bar, one way out,
+     five staggered beats with today's cell stamping in last. In **`kCandleFlame`
+     over `kCandleGlow`** — the library's own candle — and explicitly _not_
+     Duolingo's green, which is this app's brand colour and means something else on
+     every other screen. Implicit animation only (`TweenAnimationBuilder`,
+     `AnimatedScale`/`AnimatedSlide`), gated by `MediaQuery.disableAnimationsOf`
+     the way every hold in `book_widget.dart` already is.
+   - **How loud the month is — a `tone` axis, now seven weights through one
+     renderer, in two families.** The original draws each day in its book's
+     `cover_color` at full strength, which is the most information per pixel on the
+     page and also the loudest thing on it: three saturated bands on a surface
+     otherwise made of paper and hairlines, with white numerals needing a text
+     shadow to survive on top of them. Every alternative re-weights the _same_
+     colours rather than replacing them (a quieter palette invented for the
+     calendar would stop matching the spines in the legend below it).
+
+     The four **band** tones weaken the fill: **tint** draws the per-day gradient
+     at 20%, **rule** puts a neutral capsule under a 3pt edge carrying that
+     gradient, **ink** drops colour from the grid entirely and leaves it to the
+     legend. The three **mark** tones answer the complaint the other way — the band
+     stops being the thing that carries the colour at all. The capsule becomes a
+     2pt neutral thread and each read day gets its own small object: **dot**, a 6pt
+     disc in the book's colour at _full_ strength (6pt of a 20% jacket is nothing,
+     so being small is what buys the saturation back) with the month reading as a
+     string of beads; **tab**, the reading ribbon hung from the day's top edge,
+     clipped with the asset's own notch; **patch**, an ink block filling the cell at
+     a fifth strength and _tilted by the day's own number_ — `((d * 7) % 9) - 4`,
+     the rule `.lweek s.on` already tilts its stamps by — so a run reads as tape
+     pressed on by hand rather than as a bar out of a chart.
+
+     **Patch is chosen, and this reverses both `rule` and `tab`.** The argument is
+     not charm, and it is not the ribbon either: the patch borrows the app's
+     _gesture_ where the tab borrows its _asset_. `cardHTML` already tilts every
+     slot in the Library Card's own stamp grid by `((d * 7) % 9) - 4` — the exact
+     expression this tone tilts a patch by — so the patch is the one weight that is
+     already in the app's vocabulary, costs nothing to render (a colour, a border
+     and a rotation), and cannot turn to mush when the surface it sits on is
+     resized or screenshotted. It also keeps the most information of any quiet tone:
+     full-cell area means two similar jackets stay apart, and a fifth strength means
+     the numeral sits on top in ordinary ink with no shadow. There is no capsule and
+     no thread at all — adjacent patches nearly touch, and the small misalignments
+     _are_ the continuity, the way a row of stamps in a passport is. What it risks:
+     the tilt is a mannerism and mannerisms age; derived rather than random is the
+     hedge, since it is stable across renders and can be tuned to zero by one
+     number. **`tab` is the runner-up it beat**, on that same risk taken seriously —
+     at 30 cells its fringe is the loudest thing the group produced and it is the
+     mark most likely to read as a sticker in a year. **`rule` is the best of the
+     band tones** — it split the two jobs one fill was doing (the capsule says
+     _these days held together_, the rule says _and this is what they were_) at
+     about a twelfth of the ink. **`dot` is the fallback** if the tilt grates: the
+     colour stays on a per-day object, just a smaller and squarer one. Bold stays
+     the control. Drawn as `cp-f-bold`/`tint`/`rule`/`ink`/`dot`/`tab`/`patch` —
+     seven pages differing in one key — and set once as `tone` on the shared spec,
+     so the page, both sheets over it, the celebration's month and every flow step
+     move together and switching it stays one word.
+
+     **Open, and the choice changes the question rather than just its wording:** the
+     Library Card's month is still bold, so one renderer still draws two weights —
+     but for the first time the two surfaces have a reason to _converge_. Because
+     the Card already tilts its own stamps by this expression, putting its month on
+     `patch` is not importing the page's taste into a print object; it is drawing
+     one gesture once. **So the recommendation is to move the Card too and delete
+     the axis.** What keeps it open is the one thing that gets worse: the Card would
+     then carry two tilted grids, its stamp row and the month under it, and a
+     mannerism used twice on one surface is how a mannerism becomes a tic. Judge it
+     on the Card, at the Card's size, before committing; the fallback is the Card on
+     `dot` and the page on `patch` — two weights again, but two quiet ones.
+
+   - **The picker, drawn three ways — and the third is not a list.** 26×39 chip
+     against **44×66**, the same 2:3 `kDefaultCoverAspect` as every other cover,
+     with the **ribbon** placed by `card_cover_row.dart`'s own rule (asset scaled
+     `coverHeight / 124`, gutter end at 8.2% of the width, fore-edge end
+     `kReadingBookmarkInset` in from the right). The ribbon is not decoration here:
+     the next step asks _how far are you now_, so the reader is looking at where the
+     app already thinks they are. The cost is the row — 44pt to 78 — which takes the
+     month behind the sheet out of view, weakens "this is a step on the streak
+     page", and makes a screenful five results instead of nine.
+
+     **The third drops the list entirely for the shelf layout the app already uses
+     for _choosing_ a book.** Every figure is `add_book_bottom_sheet.dart`'s
+     `_catalogueSlivers` arithmetic rather than a size that looked right:
+     `bookHeight = screenHeight * 0.15` = 127.8pt, `bookWidth = bookHeight / 1.6` =
+     79.9pt (the sheet's own ratio, deliberately _not_ `kDefaultCoverAspect`), a
+     `bookHeight / (5 * 1.6)` = 16.0pt separator, **three to a line** from
+     `floor((screenWidth - 50 + bookWidth * 0.2) / (bookWidth * 1.2))`, each line
+     sitting on a `ShelfWidget()` (8pt at 95% width) with 26pt between lines. And
+     the cover is the library's real cover at that size rather than a coloured
+     rectangle — a `surface` card, a colour block taking whatever the title leaves,
+     the title in ink at `BookWidget`'s own `6.1% 6.1% 0 14.3%`, and a photo jacket
+     that fills the box and carries no title at all — so it is the same object as
+     the shelves the sheet is covering. The case for it: a reader who has ever added
+     a book has chosen from this exact layout, recognition is by _picture_ (which is
+     how you identify the book in your hand), the ribbon means the position they are
+     about to be asked for is visible on the thing they are tapping, and Reading-now
+     is its own shelf and exactly one line — so on an ordinary night the answer is
+     the first shelf and nothing scrolls. The case against: three candidates a line
+     against nine rows, the exact % beside each book is gone (the ribbon carries it
+     approximately, the wheel exactly one step later), and the sheet is tall enough
+     that the page behind it is mostly covered — the 44×66 objection, one step
+     further. **Not taken.** `cp-d-pick-shelf` is the right shape for _browsing a
+     catalogue_ — which is exactly the add-book sheet's job, and why it is drawn
+     that way there — and the wrong shape for a two-item decision on an ordinary
+     night, where a titled row is read faster than three covers on a plank. Kept
+     drawn because the reasoning transfers: if this picker ever has to answer "which
+     of the 300 books in my library", this is the layout it should grow into, and
+     the cover structure worked out here (`.lbk`'s real card at shelf scale) is
+     reusable as-is.
+
+     **Chosen: 44×66.** The step sits between _which book_ and _how far in_, so the
+     reader should be able to see the answer to the next question on the thing they
+     are tapping — which is what the ribbon on a shelf-sized cover gives them.
+     Losing the month behind the sheet is the price, and it is acceptable because
+     the month is a receipt rather than a control: it is still there when the sheet
+     closes.
+
+   - Whichever ships must **write through the same call as the sheet's Save**
+     (`ReadingDaysNotifier.setRead`). The old second half of that rule — "and must
+     never become a second place to edit position" — is what the reversal spends;
+     what survives is that the position is written through the _same_ sheet the
+     band already opens, so there is one writer reached from more doors.
 3. **The freeze allowance — deferred, not decided.** Two a month accruing
    silently is the proposal, and nothing about it is built. Telling the reader
    creates a licence to skip; hiding it creates a pleasant surprise but a mechanic
@@ -1018,9 +1430,19 @@ Ordered by how much they block the decomposition.
 7. **The milestone ladder.** 7 / 30 / 100 is the obvious one. The constraint is
    that seals must stay rare enough to mean something on a card that will
    eventually carry several.
-8. **Where does the month grid live?** See "The month grid has no home yet". The
-   Card is year-scoped, so the grid needs its own destination. This blocks step 10
-   and nothing else.
+8. **Where does the month grid live? — Answered: the streak page.** See
+   "The month grid has no home yet", and question 2's candidate (d). The Card is
+   year-scoped, so the grid could not sit inside it without two time scopes on one
+   surface; a full-screen page the library-bar chip opens is year-agnostic, is the
+   destination `reading_streak_chip.dart` already asks for, and carries the
+   nightly act as well. Drawn as `cp-d-page`. **What it forces is a decision
+   about the number's home**: "exactly one permanent home" was settled as the
+   Library Card, and the proposal is to move it to this page, leaving the chip
+   and the Card's streak tile as two pointers to it. One home, two pointers — what
+   must not persist is today's state, where three surfaces draw the figure with no
+   stated primary. The page itself obeys that rule internally: its month card drops
+   the "longest this month" stat for a book count, because the hero above it is
+   already the run.
 9. **Does marking a book _Read_ also stamp the day?** Almost certainly it should
    — a reader finishing a book today read today — but silently means the sheet
    writes a `reading_days` row with no visible cause, and visibly means a third
