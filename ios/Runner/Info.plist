@@ -41,6 +41,19 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Export compliance, answered here so App Store Connect stops parking every
+	     upload at "Missing Compliance" until someone clicks through the encryption
+	     question. false is the declaration that this app uses no NON-EXEMPT
+	     encryption: the only cryptography it touches is HTTPS/TLS to Supabase,
+	     Firebase, Google Books and Kakao via the platform's own networking, which
+	     is exempt. There is no crypto dependency in pubspec.yaml and no cipher
+	     code in lib/.
+
+	     Revisit this if the app ever ships its own encryption -- bundling a cipher,
+	     encrypting stored data itself, or implementing a protocol rather than
+	     calling the OS. Then this becomes true and Apple wants export paperwork. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string></string>
 	<key>LSApplicationQueriesSchemes</key>

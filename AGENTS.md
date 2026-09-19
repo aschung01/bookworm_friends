@@ -32,6 +32,26 @@ To find the last shipped build without App Store Connect access, check
 `build/ios/archive/Runner.xcarchive/Info.plist` and
 `~/Library/Developer/Xcode/Archives/`.
 
+### Export compliance is already answered
+
+`ios/Runner/Info.plist` sets `ITSAppUsesNonExemptEncryption` to `false`, so new
+uploads skip the encryption question instead of parking at **Missing Compliance**
+(which blocks TestFlight distribution until answered). The declaration holds
+because the only cryptography here is HTTPS/TLS through the platform's own
+networking — no crypto dependency in `pubspec.yaml`, no cipher code in `lib/`.
+
+That key only affects builds uploaded _after_ it was added; it cannot retroactively
+answer for a build already on Apple's servers. For those, or to check state:
+
+```bash
+.venv/bin/python scripts/asc_compliance.py --version 1.1.0 --build 13        # report
+.venv/bin/python scripts/asc_compliance.py --version 1.1.0 --build 13 --set  # answer
+```
+
+It reads `ios/asc.json` like `release_ios.sh` does, and needs `PyJWT` +
+`cryptography` in `.venv` (`.venv/bin/python -m pip install PyJWT cryptography`).
+Build 13 was answered this way; 14 onward should come up clean on their own.
+
 ### Why `release_ios.sh` and not `flutter build ipa`
 
 `flutter build ipa` runs `xcodebuild -exportArchive` with no App Store Connect
