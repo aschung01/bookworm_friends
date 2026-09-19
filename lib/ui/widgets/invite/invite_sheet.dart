@@ -1,7 +1,6 @@
 import 'dart:developer' as developer;
 import 'dart:math';
 
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -21,6 +20,7 @@ import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/shell_tab_bar.dart';
+import '../bottom_sheets/app_sheet.dart';
 
 /// The base a token is appended to when a link is shared.
 ///
@@ -53,7 +53,7 @@ Future<void> showInviteSheet(BuildContext context) {
   // well as `padding.top`, so the same read inside the builder measures 0. Same trap,
   // same fix as `showAddBookBottomSheet`.
   final topInset = max(MediaQuery.viewPaddingOf(context).top, 24.0);
-  return CNBottomSheet.show<void>(
+  return AppSheet.show<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: context.colors.sheetBackground,

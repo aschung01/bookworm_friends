@@ -1,4 +1,3 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 
 import 'package:bookworm_friends/constants/app_text_styles.dart';
@@ -10,6 +9,7 @@ import 'package:bookworm_friends/ui/widgets/date_field_row.dart';
 import 'package:bookworm_friends/ui/widgets/progress_field_row.dart';
 import 'package:bookworm_friends/ui/widgets/read_today_field_row.dart';
 import 'package:bookworm_friends/ui/widgets/status_selector.dart';
+import 'app_sheet.dart';
 
 /// Everything one Save carries out of [showBookStatusBottomSheet].
 ///
@@ -88,7 +88,7 @@ Future<void> showBookStatusBottomSheet(
   int? positionPage = progressPage;
   bool readTonight = readToday;
 
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     isScrollControlled: true,
     builder: (_) => StatefulBuilder(

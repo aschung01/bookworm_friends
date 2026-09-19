@@ -1,4 +1,3 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -6,6 +5,7 @@ import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/services/store_links_service.dart';
+import 'app_sheet.dart';
 
 /// The "where to read this" sheet.
 ///
@@ -33,7 +33,7 @@ Future<void> showStoreLinksSheet(
   required VoidCallback onForget,
 }) {
   final l10n = AppLocalizations.of(context);
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     builder: (context) => SafeArea(
       child: Column(

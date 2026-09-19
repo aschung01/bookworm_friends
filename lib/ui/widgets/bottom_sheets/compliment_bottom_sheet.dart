@@ -1,11 +1,11 @@
 import 'package:awesome_emoji_picker/awesome_emoji_picker.dart';
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/headers/search_header.dart'
     show kSearchPillRadius;
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 
 /// The emoji praise the app used to offer, now only a starting point.
 ///
@@ -99,7 +99,7 @@ Future<void> showEmojiBottomSheet(
   await seedRecentEmojis();
   if (!context.mounted) return;
 
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     // The picker is a tall widget with its own scrolling grid, so the sheet has
     // to be told it may exceed the 9/16 of the screen `showModalBottomSheet`

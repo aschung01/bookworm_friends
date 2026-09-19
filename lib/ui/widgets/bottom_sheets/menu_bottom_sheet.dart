@@ -3,6 +3,7 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/constants/constants.dart';
 import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 
 /// One selectable row in [showMenuBottomSheet].
 class MenuAction {
@@ -35,14 +36,15 @@ class MenuAction {
 /// a consistent Material sheet reads as intentional rather than half-native.
 /// (Truly native, glass-capable menus come from [CNPopupMenuButton] instead.)
 ///
-/// Uses [CNBottomSheet] rather than [showModalBottomSheet] so native glass
-/// widgets on the page behind stay position-aware while the sheet is up.
+/// Uses [AppSheet] rather than [showModalBottomSheet] so native glass widgets on
+/// the page behind stay position-aware while the sheet is up, and so the sheet
+/// becomes a floating form sheet rather than a full-bleed column on a tablet.
 Future<void> showMenuBottomSheet({
   required BuildContext context,
   required String title,
   required List<MenuAction> actions,
 }) {
-  return CNBottomSheet.show<void>(
+  return AppSheet.show<void>(
     context: context,
     builder: (ctx) => SafeArea(
       child: Column(

@@ -43,6 +43,7 @@ import 'package:bookworm_friends/ui/widgets/bottom_sheets/store_links_sheet.dart
 import 'package:bookworm_friends/services/store_links_service.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../constants/app_layout.dart';
 
 final _bookInfoProvider = FutureProvider.autoDispose
     .family<BookSearchResult?, String>(
@@ -321,140 +322,145 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                       left: 20,
                       right: 20,
                     ),
-                    child: Column(
-                      children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  BookWidget(
-                                    height: 180,
-                                    imageUrl: book.thumbnail,
-                                    isbn: book.isbn,
-                                    title: book.title,
-                                    pageCount: book.pageCount,
-                                    heroTag: coverHeroTag,
-                                    // Up close, at about two and a half times
-                                    // this size and centred over a dimmed page.
-                                    // The 180pt hero is the largest cover in the
-                                    // app and still smaller than the jacket art
-                                    // it is showing, so there is genuinely more
-                                    // to see; and the enlarged book is a book
-                                    // rather than a picture of one, so it answers
-                                    // a hold with the same turn this one does.
-                                    onTap: () => showMagnifiedBook(
-                                      context,
-                                      book: book,
+                    // The band itself stays full-bleed — it is the page's
+                    // background. Only its contents are capped, or the status
+                    // row put 'Reading' at x=20 and its date at x=1010.
+                    child: CenteredContent(
+                      child: Column(
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    BookWidget(
+                                      height: 180,
+                                      imageUrl: book.thumbnail,
+                                      isbn: book.isbn,
+                                      title: book.title,
+                                      pageCount: book.pageCount,
                                       heroTag: coverHeroTag,
+                                      // Up close, at about two and a half times
+                                      // this size and centred over a dimmed page.
+                                      // The 180pt hero is the largest cover in the
+                                      // app and still smaller than the jacket art
+                                      // it is showing, so there is genuinely more
+                                      // to see; and the enlarged book is a book
+                                      // rather than a picture of one, so it answers
+                                      // a hold with the same turn this one does.
+                                      onTap: () => showMagnifiedBook(
+                                        context,
+                                        book: book,
+                                        heroTag: coverHeroTag,
+                                      ),
+                                      // A tap magnifies and a hold turns, so a hold
+                                      // must not also magnify on release. See the
+                                      // parameter's doc for why this is keyed on the
+                                      // turn completing rather than on it starting.
+                                      holdSuppressesTap: true,
+                                      // The largest cover in the app, so it is the
+                                      // one most likely to have decoded. Guarded
+                                      // inside the action, which matters here more
+                                      // than anywhere: this page renders a friend's
+                                      // book as readily as your own.
+                                      onCoverSampled: (color) => ref
+                                          .read(libraryActionsProvider)
+                                          .recordCoverColor(book, color),
                                     ),
-                                    // A tap magnifies and a hold turns, so a hold
-                                    // must not also magnify on release. See the
-                                    // parameter's doc for why this is keyed on the
-                                    // turn completing rather than on it starting.
-                                    holdSuppressesTap: true,
-                                    // The largest cover in the app, so it is the
-                                    // one most likely to have decoded. Guarded
-                                    // inside the action, which matters here more
-                                    // than anywhere: this page renders a friend's
-                                    // book as readily as your own.
-                                    onCoverSampled: (color) => ref
-                                        .read(libraryActionsProvider)
-                                        .recordCoverColor(book, color),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        // Hidden the moment you hold a reaction:
-                                        // you may only hold one, so a button
-                                        // still offering to add would be
-                                        // promising something it cannot do —
-                                        // what it actually does is replace or
-                                        // withdraw, and both of those belong to
-                                        // the reaction you already have. The
-                                        // capsule below owns them.
-                                        if (!isSelf) _ReactButton(book: book),
-                                        // Shown to the owner too: only the
-                                        // button adding a reaction is theirs to
-                                        // be denied. This is the recipient's
-                                        // only sight of what they were given —
-                                        // there is no notification and no
-                                        // history anywhere in the app.
-                                        complimentsAsync.when(
-                                          data: (compliments) =>
-                                              ReactionCapsule(
-                                                compliments: compliments,
-                                                currentUserId: ref.watch(
-                                                  currentUserIdProvider,
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          // Hidden the moment you hold a reaction:
+                                          // you may only hold one, so a button
+                                          // still offering to add would be
+                                          // promising something it cannot do —
+                                          // what it actually does is replace or
+                                          // withdraw, and both of those belong to
+                                          // the reaction you already have. The
+                                          // capsule below owns them.
+                                          if (!isSelf) _ReactButton(book: book),
+                                          // Shown to the owner too: only the
+                                          // button adding a reaction is theirs to
+                                          // be denied. This is the recipient's
+                                          // only sight of what they were given —
+                                          // there is no notification and no
+                                          // history anywhere in the app.
+                                          complimentsAsync.when(
+                                            data: (compliments) =>
+                                                ReactionCapsule(
+                                                  compliments: compliments,
+                                                  currentUserId: ref.watch(
+                                                    currentUserIdProvider,
+                                                  ),
+                                                  onTap: () =>
+                                                      _onReactionsPressed(
+                                                        book,
+                                                        compliments,
+                                                      ),
                                                 ),
-                                                onTap: () =>
-                                                    _onReactionsPressed(
-                                                      book,
-                                                      compliments,
-                                                    ),
-                                              ),
-                                          loading: () =>
-                                              const SizedBox.shrink(),
-                                          error: (_, __) =>
-                                              const SizedBox.shrink(),
-                                        ),
-                                      ],
+                                            loading: () =>
+                                                const SizedBox.shrink(),
+                                            error: (_, __) =>
+                                                const SizedBox.shrink(),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            // The shelf label, alone. The status badge used to
-                            // stack above it here and to be hoisted to the top
-                            // of the right-hand column on your own book — two
-                            // places for one thing, because this corner belonged
-                            // to a button the owner is never shown. It lives in
-                            // the reading-period card now, which has one rule
-                            // for both viewers.
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: ShelfLabel(
-                                label: shelfName,
-                                // **The count is part of the hero contract, not
-                                // decoration.** The tab shrink-wraps its
-                                // contents, so a library tab reading `IT 12`
-                                // flying to a details tab reading `IT` would
-                                // change size in the air — which is the one
-                                // thing `ShelfLabel`'s doc says must not happen,
-                                // because the box is squeezed onto its text and
-                                // a fraction of a point off ellipsizes the name
-                                // mid-flight. Both ends therefore derive it from
-                                // `shelvedBookCount` of the same shelf.
-                                //
-                                // Null when the shelf could not be resolved: the
-                                // name is empty then too, so the tab paints
-                                // nothing and there is no hero at either end.
-                                count: shelf == null
-                                    ? null
-                                    : shelvedBookCount(shelf),
-                                heroTag: flyShelfFromLibrary
-                                    ? shelfLabelHeroTag(book.shelfId)
-                                    : null,
+                              // The shelf label, alone. The status badge used to
+                              // stack above it here and to be hoisted to the top
+                              // of the right-hand column on your own book — two
+                              // places for one thing, because this corner belonged
+                              // to a button the owner is never shown. It lives in
+                              // the reading-period card now, which has one rule
+                              // for both viewers.
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: ShelfLabel(
+                                  label: shelfName,
+                                  // **The count is part of the hero contract, not
+                                  // decoration.** The tab shrink-wraps its
+                                  // contents, so a library tab reading `IT 12`
+                                  // flying to a details tab reading `IT` would
+                                  // change size in the air — which is the one
+                                  // thing `ShelfLabel`'s doc says must not happen,
+                                  // because the box is squeezed onto its text and
+                                  // a fraction of a point off ellipsizes the name
+                                  // mid-flight. Both ends therefore derive it from
+                                  // `shelvedBookCount` of the same shelf.
+                                  //
+                                  // Null when the shelf could not be resolved: the
+                                  // name is empty then too, so the tab paints
+                                  // nothing and there is no hero at either end.
+                                  count: shelf == null
+                                      ? null
+                                      : shelvedBookCount(shelf),
+                                  heroTag: flyShelfFromLibrary
+                                      ? shelfLabelHeroTag(book.shelfId)
+                                      : null,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        // The other half of the book's flight: the shelf comes in
-                        // from the library carrying the book that was standing on
-                        // it, rather than vanishing at one end while a different
-                        // one appears at this one.
-                        ShelfWidget(
-                          heroTag: flyShelfFromLibrary
-                              ? shelfHeroTag(book.shelfId)
-                              : null,
-                        ),
-                      ],
+                            ],
+                          ),
+                          // The other half of the book's flight: the shelf comes in
+                          // from the library carrying the book that was standing on
+                          // it, rather than vanishing at one end while a different
+                          // one appears at this one.
+                          ShelfWidget(
+                            heroTag: flyShelfFromLibrary
+                                ? shelfHeroTag(book.shelfId)
+                                : null,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   // Title + authors + reading period section with bottom radius
@@ -470,103 +476,110 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                         bottomRight: Radius.circular(kBookBandCornerRadius),
                       ),
                     ),
-                    child: Stack(
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            30,
-                            8,
-                            30,
-                            // The progress row's 44pt tap target is 14pt taller
-                            // than its ink, and those 14 come out of here rather
-                            // than being added to the band. So the band is exactly
-                            // as tall with the row as it was without it.
-                            showsProgressRow
-                                ? kBandProgressRowResidualPadding
-                                : 16,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                key: _titleKey,
-                                height: 24,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const ClampingScrollPhysics(),
-                                  child: Text(
-                                    book.title,
-                                    style: AppTextStyles.subtitle,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              if (authors.isNotEmpty)
+                    // The second of the two surfaceVariant bands. Capped for
+                    // the same reason as the first, and to the same width —
+                    // capping one and not the other is worse than capping
+                    // neither, because the cover then hangs over a title that
+                    // starts 120pt to its left.
+                    child: CenteredContent(
+                      child: Stack(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              30,
+                              8,
+                              30,
+                              // The progress row's 44pt tap target is 14pt taller
+                              // than its ink, and those 14 come out of here rather
+                              // than being added to the band. So the band is exactly
+                              // as tall with the row as it was without it.
+                              showsProgressRow
+                                  ? kBandProgressRowResidualPadding
+                                  : 16,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 SizedBox(
-                                  height: 20,
+                                  key: _titleKey,
+                                  height: 24,
                                   child: SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
+                                    physics: const ClampingScrollPhysics(),
                                     child: Text(
-                                      authors.join(', '),
-                                      style: AppTextStyles.label,
+                                      book.title,
+                                      style: AppTextStyles.subtitle,
                                     ),
                                   ),
-                                )
-                              // Holds the row's height while the fallback lookup is
-                              // in flight, so the hero does not resize under the
-                              // reader — which is also what the collapse threshold
-                              // is measured against.
-                              else if (authorsPending)
-                                const SizedBox(height: 20),
-                              // Always rendered now, because it carries the status
-                              // badge as well as the dates. The old guard
-                              // (`status >= 1 && startDate != null`) would have
-                              // taken the badge off screen entirely on an
-                              // Interested book, which is 133 of 472 books in
-                              // production. `ReadingPeriodRow` drops to a bare badge
-                              // when there are no dates rather than wrapping one
-                              // chip in a full-width card.
-                              const SizedBox(height: 12),
-                              ReadingPeriodRow(
-                                status: book.status,
-                                startDate: book.startDate,
-                                finishDate: book.finishDate,
-                                // The first of the band's two doors, and the one
-                                // that retired the app bar's pencil: it opens the
-                                // sheet that edits the three facts it displays.
-                                // Null on a friend's book — the card still reads,
-                                // but it draws no handle.
-                                onTap: isSelf
-                                    ? () => _onEditStatusPressed(book)
-                                    : null,
-                              ),
-                              if (showsProgressRow) ...[
+                                ),
                                 const SizedBox(height: 10),
-                                BandProgressRow(
-                                  progress: book.progress,
-                                  pageCount: book.pageCount,
-                                  // The second door. Straight to the wheel rather
-                                  // than through the status sheet: the row already
-                                  // shows the value, so a sheet in between would
-                                  // ask the reader to find it again.
+                                if (authors.isNotEmpty)
+                                  SizedBox(
+                                    height: 20,
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Text(
+                                        authors.join(', '),
+                                        style: AppTextStyles.label,
+                                      ),
+                                    ),
+                                  )
+                                // Holds the row's height while the fallback lookup is
+                                // in flight, so the hero does not resize under the
+                                // reader — which is also what the collapse threshold
+                                // is measured against.
+                                else if (authorsPending)
+                                  const SizedBox(height: 20),
+                                // Always rendered now, because it carries the status
+                                // badge as well as the dates. The old guard
+                                // (`status >= 1 && startDate != null`) would have
+                                // taken the badge off screen entirely on an
+                                // Interested book, which is 133 of 472 books in
+                                // production. `ReadingPeriodRow` drops to a bare badge
+                                // when there are no dates rather than wrapping one
+                                // chip in a full-width card.
+                                const SizedBox(height: 12),
+                                ReadingPeriodRow(
+                                  status: book.status,
+                                  startDate: book.startDate,
+                                  finishDate: book.finishDate,
+                                  // The first of the band's two doors, and the one
+                                  // that retired the app bar's pencil: it opens the
+                                  // sheet that edits the three facts it displays.
+                                  // Null on a friend's book — the card still reads,
+                                  // but it draws no handle.
                                   onTap: isSelf
-                                      ? () => _onEditProgressPressed(book)
+                                      ? () => _onEditStatusPressed(book)
                                       : null,
                                 ),
+                                if (showsProgressRow) ...[
+                                  const SizedBox(height: 10),
+                                  BandProgressRow(
+                                    progress: book.progress,
+                                    pageCount: book.pageCount,
+                                    // The second door. Straight to the wheel rather
+                                    // than through the status sheet: the row already
+                                    // shows the value, so a sheet in between would
+                                    // ask the reader to find it again.
+                                    onTap: isSelf
+                                        ? () => _onEditProgressPressed(book)
+                                        : null,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                        // The band's own bottom edge, inked in to the reader's
-                        // position. Positioned over the whole band rather than a 4pt
-                        // strip, because its ends are clipped by the corner arcs and
-                        // those are only expressible against the band's real height.
-                        if (book.progress != null &&
-                            book.status == bookStatusReading)
-                          Positioned.fill(
-                            child: BandProgressEdge(progress: book.progress),
-                          ),
-                      ],
+                          // The band's own bottom edge, inked in to the reader's
+                          // position. Positioned over the whole band rather than a 4pt
+                          // strip, because its ends are clipped by the corner arcs and
+                          // those are only expressible against the band's real height.
+                          if (book.progress != null &&
+                              book.status == bookStatusReading)
+                            Positioned.fill(
+                              child: BandProgressEdge(progress: book.progress),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -1222,7 +1235,12 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Material(color: context.colors.surface, child: tabBar);
+    // Capped to match the band above and the tab contents below, so the
+    // indicator sits under its own column rather than a window's width away.
+    return Material(
+      color: context.colors.surface,
+      child: CenteredContent(child: tabBar),
+    );
   }
 
   @override
@@ -1294,27 +1312,29 @@ class _BookInfoTab extends StatelessWidget {
     return Container(
       color: context.colors.surface,
       child: bookInfoAsync.when(
-        data: (info) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (info?.contents != null && info!.contents!.isNotEmpty) ...[
-                Text(l10n.bookDescription, style: AppTextStyles.subtitle),
+        data: (info) => CenteredContent(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (info?.contents != null && info!.contents!.isNotEmpty) ...[
+                  Text(l10n.bookDescription, style: AppTextStyles.subtitle),
+                  const SizedBox(height: 8),
+                  Text(info.contents!, style: AppTextStyles.body),
+                  const SizedBox(height: 24),
+                ],
+                if (info?.publisher != null) ...[
+                  Text(l10n.publisher, style: AppTextStyles.subtitle),
+                  const SizedBox(height: 8),
+                  Text(info!.publisher!, style: AppTextStyles.body),
+                  const SizedBox(height: 24),
+                ],
+                const Text('ISBN', style: AppTextStyles.subtitle),
                 const SizedBox(height: 8),
-                Text(info.contents!, style: AppTextStyles.body),
-                const SizedBox(height: 24),
+                Text(book.isbn, style: AppTextStyles.body),
               ],
-              if (info?.publisher != null) ...[
-                Text(l10n.publisher, style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
-                Text(info!.publisher!, style: AppTextStyles.body),
-                const SizedBox(height: 24),
-              ],
-              const Text('ISBN', style: AppTextStyles.subtitle),
-              const SizedBox(height: 8),
-              Text(book.isbn, style: AppTextStyles.body),
-            ],
+            ),
           ),
         ),
         loading: () => const Center(

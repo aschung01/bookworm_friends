@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,6 +10,7 @@ import 'package:bookworm_friends/providers/libby_library_provider.dart';
 import 'package:bookworm_friends/services/libby_library_lookup.dart';
 import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
 import 'package:bookworm_friends/ui/widgets/headers/search_header.dart';
+import 'app_sheet.dart';
 
 /// Asking which library the reader belongs to, once.
 ///
@@ -39,7 +39,7 @@ import 'package:bookworm_friends/ui/widgets/headers/search_header.dart';
 /// links and re-launch; doing half of it here would split one action across two
 /// files.
 Future<LibbyLibrary?> showLibbyLibrarySheet(BuildContext context) {
-  return CNBottomSheet.show<LibbyLibrary>(
+  return AppSheet.show<LibbyLibrary>(
     context: context,
     isScrollControlled: true,
     backgroundColor: context.colors.sheetBackground,

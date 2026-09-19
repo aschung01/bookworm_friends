@@ -1,9 +1,9 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 
 Future<void> showUpdateShelfNameBottomSheet(
   BuildContext context, {
@@ -12,7 +12,7 @@ Future<void> showUpdateShelfNameBottomSheet(
   bool update = true,
 }) {
   final l10n = AppLocalizations.of(context);
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     isScrollControlled: true,
     builder: (context) => Padding(

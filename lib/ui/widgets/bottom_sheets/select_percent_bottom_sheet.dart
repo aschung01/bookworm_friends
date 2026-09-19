@@ -1,4 +1,3 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
@@ -8,6 +7,7 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/glass_segmented_control.dart';
+import 'app_sheet.dart';
 
 /// How many stops the percent wheel has: 0% through 100% inclusive.
 ///
@@ -108,7 +108,7 @@ Future<void> showSelectPercentBottomSheet(
   required ValueChanged<ProgressAnswer> onProgressSelected,
   String? title,
 }) {
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     // **Required by the typing state, and by nothing else.**
     //

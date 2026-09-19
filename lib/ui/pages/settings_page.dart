@@ -31,6 +31,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../constants/app_layout.dart';
+import '../widgets/bottom_sheets/app_sheet.dart';
 
 /// The handle field, so a test types into a control rather than into the only `TextField`
 /// that happens to be on screen.
@@ -190,7 +192,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _onUpdateUsernamePressed() {
     final profile = ref.read(profileProvider).valueOrNull;
     _usernameController.text = profile?.username ?? '';
-    CNBottomSheet.show<void>(
+    AppSheet.show<void>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -257,7 +259,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _onUpdateHandlePressed() {
     final profile = ref.read(profileProvider).valueOrNull;
     _handleController.text = profile?.handle ?? '';
-    CNBottomSheet.show<void>(
+    AppSheet.show<void>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -530,155 +532,139 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         leading: const AdaptiveBackButton(),
       ),
       body: SafeArea(
-        child: ListView(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              // Not a fixed 60 (the avatar's height) any more: the handle line below
-              // the username is conditional, so the block has two legitimate heights and
-              // a fixed box would clip the taller one.
-              child: Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 20),
-                    child: AvatarCircle(
-                      emoji: profile?.emoji,
-                      avatarPath: profile?.avatarPath,
-                      diameter: 60,
-                      // 26, not half the diameter: this is the size the
-                      // header has always drawn its glyph at.
-                      emojiSize: 26,
+        // Without this the rows run the full width of the window, which on a 13-inch
+        // iPad put "Book search source" at x=20 and "Auto (device language)" at
+        // x=1010 — a label and its value a thousand points apart, with the divider
+        // between them spanning the same gulf. Landscape made it 1300. The cap is the
+        // same 640 the sheets over this page were already using.
+        child: CenteredContent(
+          child: ListView(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                // Not a fixed 60 (the avatar's height) any more: the handle line below
+                // the username is conditional, so the block has two legitimate heights and
+                // a fixed box would clip the taller one.
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 20),
+                      child: AvatarCircle(
+                        emoji: profile?.emoji,
+                        avatarPath: profile?.avatarPath,
+                        diameter: 60,
+                        // 26, not half the diameter: this is the size the
+                        // header has always drawn its glyph at.
+                        emojiSize: 26,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          profile?.username ?? '???',
-                          style: AppTextStyles.subtitle,
-                        ),
-                        // The one place a reader can *see* the handle they are told to
-                        // pick. `Change handle` in the Edit profile menu opens a field
-                        // seeded with the current value, but that is behind two taps, so
-                        // until now the identity printed on an exported card was
-                        // invisible from the app.
-                        //
-                        // Omitted rather than shown as a bare `@` when absent: `handle`
-                        // is `NOT NULL` and generated at signup, so the only way here is
-                        // a row read before the migration — a state where a lone `@`
-                        // would read as a bug rather than as "unset". The `@` is added
-                        // here and never stored, so it cannot end up inside the value.
-                        if (handle != null && handle.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              '@$handle',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.label.copyWith(
-                                color: context.colors.secondaryText,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            profile?.username ?? '???',
+                            style: AppTextStyles.subtitle,
+                          ),
+                          // The one place a reader can *see* the handle they are told to
+                          // pick. `Change handle` in the Edit profile menu opens a field
+                          // seeded with the current value, but that is behind two taps, so
+                          // until now the identity printed on an exported card was
+                          // invisible from the app.
+                          //
+                          // Omitted rather than shown as a bare `@` when absent: `handle`
+                          // is `NOT NULL` and generated at signup, so the only way here is
+                          // a row read before the migration — a state where a lone `@`
+                          // would read as a bug rather than as "unset". The `@` is added
+                          // here and never stored, so it cannot end up inside the value.
+                          if (handle != null && handle.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                '@$handle',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.label.copyWith(
+                                  color: context.colors.secondaryText,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 20, bottom: 24),
-              child: Center(
-                // No longer swapped for a blank box while a sheet is open. That
-                // branch existed because `_EditProfileButton` can be a *native*
-                // `CNPopupMenuButton`, which is a platform view and therefore paints
-                // above anything Flutter puts over it — including the follow-list
-                // sheet, which is now gone along with the only thing that covered
-                // this row.
-                child: isAuthenticated
-                    ? _EditProfileButton(
-                        width: min(MediaQuery.of(context).size.width - 60, 330),
-                        label: l10n.editProfile,
-                        actions: _profileEditActions(l10n),
-                        onFallbackPressed: _onEditProfilePressed,
-                      )
-                    : ElevatedActionButton(
-                        width: min(MediaQuery.of(context).size.width - 60, 330),
-                        height: 36,
-                        borderRadius: 50,
-                        textStyle: AppTextStyles.label.copyWith(
-                          color: Colors.white,
-                        ),
-                        buttonText: l10n.login,
-                        onPressed: () =>
-                            Navigator.pushNamed(context, AppRoutes.auth),
+                        ],
                       ),
-              ),
-            ),
-            _SettingsLabelItem(labelText: l10n.accountSection),
-            _SettingsMenuItem(
-              labelText: l10n.email,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (auth.user?.appMetadata['provider'] == 'apple')
-                    const AppleBlackIcon(width: 18, height: 18)
-                  else
-                    const GoogleIcon(width: 18, height: 18),
-                  const SizedBox(width: 10),
-                  Text(auth.user?.email ?? '', style: AppTextStyles.label),
-                ],
-              ),
-            ),
-            // The "Allow profile search" switch stood here and is gone.
-            //
-            // It wrote `profiles.is_private`, and it gated handle search. Both are gone
-            // with mutual friendship: visibility is friendship, and with no search there
-            // is no directory to be absent from. Renaming it to something honest — "Let
-            // anyone view my library" — was considered and rejected, because that is the
-            // `public-profiles` design and it is the branch we did not take.
-            const SizedBox(height: 12),
-            _SettingsLabelItem(labelText: l10n.preferencesSection),
-            _SettingsMenuItem(
-              labelText: l10n.bookSearchSource,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _bookSourceLabel(
-                      l10n,
-                      ref.watch(bookSourcePreferenceProvider),
                     ),
-                    style: AppTextStyles.label.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right, size: 20),
-                ],
+                  ],
+                ),
               ),
-              onTap: _showBookSourcePicker,
-            ),
-            // Sits beside the book-source picker because that row is already "which
-            // catalogue does this app talk to", so this needs no new section and
-            // nothing has to be explained twice.
-            //
-            // Shown only where a Libby row is offered at all: `storesForLocale('ko')`
-            // is `[play, kindle]`, and a setting for a shop the reader never sees
-            // would be a puzzle rather than a control.
-            if (storesForLocale(
-              Localizations.localeOf(context).languageCode,
-            ).contains(StoreId.libby))
+              Padding(
+                padding: const EdgeInsets.only(top: 20, bottom: 24),
+                child: Center(
+                  // No longer swapped for a blank box while a sheet is open. That
+                  // branch existed because `_EditProfileButton` can be a *native*
+                  // `CNPopupMenuButton`, which is a platform view and therefore paints
+                  // above anything Flutter puts over it — including the follow-list
+                  // sheet, which is now gone along with the only thing that covered
+                  // this row.
+                  child: isAuthenticated
+                      ? _EditProfileButton(
+                          width: min(
+                            MediaQuery.of(context).size.width - 60,
+                            330,
+                          ),
+                          label: l10n.editProfile,
+                          actions: _profileEditActions(l10n),
+                          onFallbackPressed: _onEditProfilePressed,
+                        )
+                      : ElevatedActionButton(
+                          width: min(
+                            MediaQuery.of(context).size.width - 60,
+                            330,
+                          ),
+                          height: 36,
+                          borderRadius: 50,
+                          textStyle: AppTextStyles.label.copyWith(
+                            color: Colors.white,
+                          ),
+                          buttonText: l10n.login,
+                          onPressed: () =>
+                              Navigator.pushNamed(context, AppRoutes.auth),
+                        ),
+                ),
+              ),
+              _SettingsLabelItem(labelText: l10n.accountSection),
               _SettingsMenuItem(
-                labelText: l10n.libbyLibrary,
+                labelText: l10n.email,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (auth.user?.appMetadata['provider'] == 'apple')
+                      const AppleBlackIcon(width: 18, height: 18)
+                    else
+                      const GoogleIcon(width: 18, height: 18),
+                    const SizedBox(width: 10),
+                    Text(auth.user?.email ?? '', style: AppTextStyles.label),
+                  ],
+                ),
+              ),
+              // The "Allow profile search" switch stood here and is gone.
+              //
+              // It wrote `profiles.is_private`, and it gated handle search. Both are gone
+              // with mutual friendship: visibility is friendship, and with no search there
+              // is no directory to be absent from. Renaming it to something honest — "Let
+              // anyone view my library" — was considered and rejected, because that is the
+              // `public-profiles` design and it is the branch we did not take.
+              const SizedBox(height: 12),
+              _SettingsLabelItem(labelText: l10n.preferencesSection),
+              _SettingsMenuItem(
+                labelText: l10n.bookSearchSource,
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      ref.watch(libbyLibraryProvider).name ??
-                          l10n.libbyLibraryNotSet,
+                      _bookSourceLabel(
+                        l10n,
+                        ref.watch(bookSourcePreferenceProvider),
+                      ),
                       style: AppTextStyles.label.copyWith(
                         color: context.colors.secondaryText,
                       ),
@@ -687,106 +673,135 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const Icon(Icons.chevron_right, size: 20),
                   ],
                 ),
-                onTap: _showLibbyLibraryPicker,
+                onTap: _showBookSourcePicker,
               ),
-            _SettingsMenuItem(
-              labelText: l10n.appearance,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _appearanceLabel(l10n, ref.watch(themeModeProvider)),
-                    style: AppTextStyles.label.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
+              // Sits beside the book-source picker because that row is already "which
+              // catalogue does this app talk to", so this needs no new section and
+              // nothing has to be explained twice.
+              //
+              // Shown only where a Libby row is offered at all: `storesForLocale('ko')`
+              // is `[play, kindle]`, and a setting for a shop the reader never sees
+              // would be a puzzle rather than a control.
+              if (storesForLocale(
+                Localizations.localeOf(context).languageCode,
+              ).contains(StoreId.libby))
+                _SettingsMenuItem(
+                  labelText: l10n.libbyLibrary,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        ref.watch(libbyLibraryProvider).name ??
+                            l10n.libbyLibraryNotSet,
+                        style: AppTextStyles.label.copyWith(
+                          color: context.colors.secondaryText,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right, size: 20),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right, size: 20),
-                ],
-              ),
-              onTap: _showAppearancePicker,
-            ),
-            const SizedBox(height: 12),
-            _SettingsLabelItem(labelText: l10n.contactDevSection),
-            _SettingsMenuItem(
-              labelText: l10n.aboutDev,
-              trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () => _launchUrl(_personalInfoUrl),
-            ),
-            _SettingsMenuItem(
-              labelText: l10n.reportBug,
-              trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () => _launchUrl(_bugReportUrl),
-            ),
-            _SettingsMenuItem(
-              labelText: l10n.writeFeedback,
-              trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () => _launchUrl(_feedbackUrl),
-            ),
-            _SettingsMenuItem(
-              labelText: l10n.leaveReview,
-              trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: _onInAppReviewPressed,
-            ),
-            const SizedBox(height: 12),
-            _SettingsLabelItem(labelText: l10n.infoSection),
-            _SettingsMenuItem(
-              labelText: l10n.notices,
-              onTap: () => _launchUrl(_noticeUrl),
-            ),
-            _SettingsMenuItem(
-              labelText: l10n.userGuide,
-              onTap: () => _launchUrl(_helpUrl),
-            ),
-            _SettingsMenuItem(
-              labelText: l10n.termsOfUse,
-              onTap: () => _launchUrl(_termsOfUseUrl),
-            ),
-            _SettingsMenuItem(
-              labelText: l10n.privacyPolicy,
-              onTap: () => _launchUrl(_privacyPolicyUrl),
-            ),
-            _SettingsMenuItem(
-              labelText: l10n.acknowledgements,
-              onTap: _onAcknowledgementsPressed,
-            ),
-            FutureBuilder<PackageInfo>(
-              future: PackageInfo.fromPlatform(),
-              builder: (context, snapshot) {
-                final version = snapshot.data?.version ?? '';
-                final buildNumber = snapshot.data?.buildNumber ?? '';
-                return _SettingsMenuItem(
-                  labelText: l10n.appVersion,
-                  trailing: Text(
-                    version.isNotEmpty ? 'v$version ($buildNumber)' : '',
-                    style: AppTextStyles.label.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
-                  ),
-                );
-              },
-            ),
-            if (isAuthenticated) ...[
+                  onTap: _showLibbyLibraryPicker,
+                ),
               _SettingsMenuItem(
-                labelText: l10n.logout,
-                onTap: () async {
-                  await ref.read(authProvider.notifier).signOut();
-                  if (mounted) {
-                    Navigator.pushReplacementNamed(context, AppRoutes.auth);
-                  }
+                labelText: l10n.appearance,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _appearanceLabel(l10n, ref.watch(themeModeProvider)),
+                      style: AppTextStyles.label.copyWith(
+                        color: context.colors.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 20),
+                  ],
+                ),
+                onTap: _showAppearancePicker,
+              ),
+              const SizedBox(height: 12),
+              _SettingsLabelItem(labelText: l10n.contactDevSection),
+              _SettingsMenuItem(
+                labelText: l10n.aboutDev,
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () => _launchUrl(_personalInfoUrl),
+              ),
+              _SettingsMenuItem(
+                labelText: l10n.reportBug,
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () => _launchUrl(_bugReportUrl),
+              ),
+              _SettingsMenuItem(
+                labelText: l10n.writeFeedback,
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () => _launchUrl(_feedbackUrl),
+              ),
+              _SettingsMenuItem(
+                labelText: l10n.leaveReview,
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: _onInAppReviewPressed,
+              ),
+              const SizedBox(height: 12),
+              _SettingsLabelItem(labelText: l10n.infoSection),
+              _SettingsMenuItem(
+                labelText: l10n.notices,
+                onTap: () => _launchUrl(_noticeUrl),
+              ),
+              _SettingsMenuItem(
+                labelText: l10n.userGuide,
+                onTap: () => _launchUrl(_helpUrl),
+              ),
+              _SettingsMenuItem(
+                labelText: l10n.termsOfUse,
+                onTap: () => _launchUrl(_termsOfUseUrl),
+              ),
+              _SettingsMenuItem(
+                labelText: l10n.privacyPolicy,
+                onTap: () => _launchUrl(_privacyPolicyUrl),
+              ),
+              _SettingsMenuItem(
+                labelText: l10n.acknowledgements,
+                onTap: _onAcknowledgementsPressed,
+              ),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  final version = snapshot.data?.version ?? '';
+                  final buildNumber = snapshot.data?.buildNumber ?? '';
+                  return _SettingsMenuItem(
+                    labelText: l10n.appVersion,
+                    trailing: Text(
+                      version.isNotEmpty ? 'v$version ($buildNumber)' : '',
+                      style: AppTextStyles.label.copyWith(
+                        color: context.colors.secondaryText,
+                      ),
+                    ),
+                  );
                 },
               ),
-              _SettingsMenuItem(
-                labelText: l10n.deleteAccount,
-                trailing: const Icon(
-                  Icons.chevron_right,
-                  color: cancelRedColor,
-                  size: 20,
+              if (isAuthenticated) ...[
+                _SettingsMenuItem(
+                  labelText: l10n.logout,
+                  onTap: () async {
+                    await ref.read(authProvider.notifier).signOut();
+                    if (mounted) {
+                      Navigator.pushReplacementNamed(context, AppRoutes.auth);
+                    }
+                  },
                 ),
-                onTap: () => _showDeleteAccountDialog(),
-              ),
+                _SettingsMenuItem(
+                  labelText: l10n.deleteAccount,
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                    color: cancelRedColor,
+                    size: 20,
+                  ),
+                  onTap: () => _showDeleteAccountDialog(),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -1,4 +1,3 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 
 import 'package:bookworm_friends/constants/app_text_styles.dart';
@@ -7,6 +6,7 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book_compliment.dart';
 import 'package:bookworm_friends/providers/book_details_provider.dart';
 import 'package:bookworm_friends/ui/widgets/avatar_circle.dart';
+import 'app_sheet.dart';
 
 /// Who reacted to a book, and with what.
 ///
@@ -45,7 +45,7 @@ Future<void> showReactionsSheet(
   final l10n = AppLocalizations.of(context);
   final ordered = orderedReactions(compliments, currentUserId);
 
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     builder: (context) => Padding(
       padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 24),

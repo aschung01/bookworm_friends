@@ -23,9 +23,9 @@ import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
 import 'package:bookworm_friends/ui/widgets/headers/search_header.dart';
 import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'app_sheet.dart';
 
 /// Opens Add Book as a modal starting just below the status bar.
 ///
@@ -68,7 +68,7 @@ Future<void> showAddBookBottomSheet(BuildContext context) {
     MediaQuery.viewPaddingOf(context).top,
     _minAddBookTopInset,
   );
-  return CNBottomSheet.show<void>(
+  return AppSheet.show<void>(
     context: context,
     // `showDragHandle` is deliberately not used: Material adds that handle
     // *outside* the builder's child, so its height lands on top of whatever exact

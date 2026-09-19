@@ -1,4 +1,3 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,6 +12,7 @@ import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_shelf_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/update_shelf_name_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
+import 'app_sheet.dart';
 
 /// Shelf-scope management: reorder, rename and delete shelves.
 ///
@@ -26,7 +26,7 @@ import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 /// cap below is then silently unreachable. That was the bug: the sheet asked for
 /// 70% and was held at 56%.
 Future<void> showManageShelvesBottomSheet(BuildContext context) {
-  return CNBottomSheet.show<void>(
+  return AppSheet.show<void>(
     context: context,
     isScrollControlled: true,
     builder: (ctx) => const _ManageShelvesSheet(),

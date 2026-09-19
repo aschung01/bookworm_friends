@@ -1,4 +1,3 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
@@ -10,6 +9,7 @@ import 'package:bookworm_friends/ui/widgets/date_field_row.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_selector.dart';
 import 'package:bookworm_friends/ui/widgets/status_selector.dart';
 import 'package:flutter/material.dart';
+import 'app_sheet.dart';
 
 /// The "save a book" sheet: a cover, its catalogue details, and the shelf, status and
 /// dates to file it under.
@@ -59,7 +59,7 @@ Future<void> showBookInfoBottomSheet(
   /// image callback would re-resolve the very image that produced it.
   Color? coverColor;
 
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     isScrollControlled: true,
     builder: (_) => StatefulBuilder(

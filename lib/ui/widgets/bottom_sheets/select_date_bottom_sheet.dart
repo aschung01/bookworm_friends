@@ -1,8 +1,8 @@
-import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:flutter/cupertino.dart';
+import 'app_sheet.dart';
 
 /// Strips the time component so two dates can be compared (and bounded) by
 /// calendar day. Reading dates are stored as `yyyy-MM-dd`, so the time a date
@@ -34,7 +34,7 @@ Future<void> showSelectDateBottomSheet(
   if (initial.isAfter(maximum)) initial = maximum;
 
   DateTime selected = initial;
-  return CNBottomSheet.show(
+  return AppSheet.show(
     context: context,
     builder: (_) => SizedBox(
       height: 320,
