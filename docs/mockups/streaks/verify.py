@@ -155,6 +155,7 @@ _home = open("lib/ui/pages/home_page.dart").read()
 _rdays = open("lib/providers/reading_days_provider.dart").read()
 _sealsrc = open("lib/ui/widgets/library_card/shareable_library_card.dart").read()
 _calsrc = open("lib/ui/widgets/streak/read_calendar_month.dart").read()
+_streaksrc = open("lib/ui/pages/reading_streak_page.dart").read()
 _upstream = [
     (
         '(c): the lamp is still a thing no finger can touch',
@@ -248,6 +249,21 @@ _upstream = [
     (
         "shipped: and the tilt is still the week strip's own rule, not a second one",
         "double readCalendarPatchTilt(int day) => ((day * 7) % 9) - 4;" in _calsrc,
+    ),
+    (
+        "shipped: the legend draws the spine (g) settled on, with both its details",
+        # The widening is only the change if the binding and the fore edge came with it:
+        # a 9pt rectangle with neither is what the 5pt one already was, wider. And the
+        # binding is a SHARE, so tuning the width cannot leave the hinge wrong.
+        "class ReadLegendSpine extends StatelessWidget" in _streaksrc
+        and "static const double width = 9;" in _streaksrc
+        and "static const double height = 17;" in _streaksrc
+        and "static const double bindingShare = 0.22;" in _streaksrc
+        and "widthFactor: bindingShare" in _streaksrc
+        # The fore edge is the app's own page tone, not this record's cream: pure white
+        # in light is what every other page block in the app uses, and it is what keeps
+        # the sliver visible in dark, where `surfaceVariant` would erase it.
+        and "BookChassisColors.of(context).pageBase" in _streaksrc,
     ),
     (
         "stamp/exact: the copied ratios are the shipped seal's own numbers",
@@ -1793,7 +1809,11 @@ const CP = ['cp-rest', 'cp-b-hold', 'cp-b-drag', 'cp-b-prog', 'cp-b-done',
             'cp-f-patch-blot', 'cp-f-patch-splat', 'cp-f-patch-stamp',
             'cp-f-patch-swipe', 'cp-f-patch-dogear',
             'cp-f-stamp-brand', 'cp-f-stamp-oval', 'cp-f-stamp-double',
-            'cp-f-stamp-disc', 'cp-f-stamp-exact'];
+            'cp-f-stamp-disc', 'cp-f-stamp-exact',
+            'cp-g-spine', 'cp-g-cover', 'cp-g-cover-rule', 'cp-g-cover-stamp',
+            'cp-g-spine-thick',
+            'cp-g-spine-many', 'cp-g-cover-many', 'cp-g-cover-rule-many',
+            'cp-g-cover-stamp-many', 'cp-g-spine-thick-many'];
 CP.forEach((id) => ok(ids(V).includes(id), 'frame "' + id + '" is drawn'));
 ok(ids(V).includes('cp-rest') && !/class="lday"|class="lmenu"|class="lcord"|class="lsheet"/
      .test(frame(specOf(V, 'cp-rest'))),
@@ -2040,6 +2060,57 @@ ok((jsrc.match(/PATCH_SPLAT_MASKS = \[[^\]]*\]/) || [''])[0].split('data:image')
    'three seeded silhouettes each, so `d % 3` has a real set to draw from');
 ok(/gen_patch_marks\.py/.test(jsrc),
    'and the stencils name their generator, so a re-roll has one place to go');
+/* ---- (g) the legend: five keys, one variable ----
+   The reader's question, drawn. What these checks protect is the comparison
+   itself: every frame must differ ONLY in the key, the crowded set must differ
+   only in the book count, and the grid above must be untouched in both — a
+   legend frame that also moved the month would not settle anything. */
+const LKEY = {
+  'cp-g-spine': 'ckey spines"',
+  'cp-g-spine-thick': 'ckey spines thick"',
+  'cp-g-cover': 'ckey covers"',
+  'cp-g-cover-rule': 'ckey covers rule"',
+  'cp-g-cover-stamp': 'ckey covers stamped"',
+};
+for (const [id, cls] of Object.entries(LKEY)) {
+  ok(CPH[id].includes('class="' + cls),
+     'legend "' + id.replace('cp-g-', '') + '" draws its own key treatment');
+  ok(/class="cal books tone-stamp-double"/.test(CPH[id]),
+     '  and leaves the month on the shipped die, so the key is the only variable');
+}
+/* The cover is the shelf's own anatomy scaled down, not a coloured chip: the
+   binding strip is the number `book_geometry.dart` uses and `.lbk` draws. */
+ok(/\.fr \.ckey \.ckc::before \{[^}]*width: 8\.2%/.test(css),
+   'the legend cover carries the binding strip at the cover\'s own 8.2%');
+ok(/class="ckc photo"/.test(CPH['cp-g-cover']) &&
+     /class="ckc" style="--c:[^"]*"><em>/.test(CPH['cp-g-cover']),
+   'and photo jackets are full-bleed while typeset ones carry their title');
+/* The stamped key must press the SAME die the grid presses. A second ring rule
+   that merely resembled it is the drift this record keeps catching. */
+ok(/PATCH_DOUBLE_MASKS\[\(s\.books \|\| \[\]\)\.indexOf\(b\) % 3\]/.test(jsrc),
+   'the stamped key presses the grid\'s own die, not a second ring that resembles it');
+/* And the die must be INSIDE the cover's box. `.ckc` clips (it has to, for the
+   binding strip and the title), so a die hung over the corner is clipped clean
+   away — the frame drew plain covers and every check passed until it was looked
+   at. Negative insets are therefore asserted absent. */
+const STK = (css.match(/\.fr \.ckey\.stamped \.ckc i \{[^}]*\}/) || [''])[0];
+ok(/right: 1px/.test(STK) && !/-\d+px/.test(STK),
+   'and presses it inside the cover, because .ckc clips and clipped it away once');
+/* The crowded set is the whole point of drawing it twice: the height cost is
+   invisible at three books. Same days, same run, more books. */
+const LMANY = ['spine', 'cover', 'cover-rule', 'cover-stamp', 'spine-thick'];
+LMANY.forEach((k) => {
+  const few = CPH['cp-g-' + k];
+  const many = CPH['cp-g-' + k + '-many'];
+  const count = (h) => (h.match(/<div class="ckey [^"]*">([\s\S]*?)<\/div>/) || ['', ''])[1]
+    .split('<span>').length - 1;
+  ok(count(few) === 3 && count(many) === 5,
+     'legend "' + k + '" is drawn at three books and again at five',
+     count(few) + ' then ' + count(many));
+  ok((few.match(/class="cday on"/g) || []).length ===
+       (many.match(/class="cday on"/g) || []).length,
+     '  with the same read days either way, so only the legend grows');
+});
 /* ---- the stamp family: four more pressings of the die ----
    The brand die is the reader's own ask, and its load-bearing property is
    that the mask is the SHIPPED seal asset, not a redrawing — asserted here,

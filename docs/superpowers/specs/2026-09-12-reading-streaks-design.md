@@ -1119,8 +1119,61 @@ frame by hand, and _nothing moves once the last beat lands_ — which is why the
 is part of the arrival and there is no idle loop. And the flame is
 `kReadingStreakIcon`, a font glyph chosen because the chip needs it in two tints; a second,
 vector flame is exactly the drift `reading_streak_chip.dart` already warns about for the
-share card's. Rive becomes the right call the day a **milestone takeover with a character**
-is scoped — for that screen only, with the nightly path staying blob-free.
+share card's.
+
+### Reversal: Rive ships after all, for the flame only
+
+**The judgement above was overruled, and it deserved to be.** The hand-built version was
+reviewed side by side with Duolingo's and it is not close. The diagnosis is worth keeping
+because only half of it was about the runtime:
+
+- **uniform scale only.** Ignition was `Tween(0.4, 1)` on the whole glyph. Fire animation is
+  squash-and-stretch — `scaleY` leading `scaleX` — and a uniformly growing silhouette is a
+  sticker, not a flame catching;
+- **a flat single-colour fill.** `kCandleFlame` is one mid-amber. Fire is a gradient. The
+  `ShaderMask`/`srcATop` technique needed for it was _already proven in this file_ by the
+  gleam and simply not used for the fill;
+- **`easeOut` over 300–700ms windows**, which is the grammar of fading in. No impact frame
+  anywhere;
+- **timid values.** A glow peaking at 0.30 alpha and 1–3px embers read as dust.
+
+The first three are fixable without Rive. What is **not** fixable is that
+`kReadingStreakIcon` is one path in one colour: it can be scaled non-uniformly, gradient-
+filled and stacked, but the path cannot **deform**, and a flame tip that licks and curls is
+where the life is. That is an _asset_ limit, not a runtime one — which is the distinction the
+first judgement missed.
+
+So Rive ships, on four conditions that answer every objection above rather than ignoring it:
+
+1. **Rive draws the flame and nothing else.** The counter, week row, milestone bar and every
+   line of copy stay in Flutter. Localised strings and themed colours do not go in a binary.
+2. **Flutter keeps the clock.** The artboard does not autoplay; it exposes one bound Number,
+   `progress` in 0–100, scrubbed from the existing controller. The nine beats stay in Dart,
+   `disableAnimationsOf` needs no special case, and frame 100 is a _resting_ frame — no idle
+   loop on a screen a reader opens nightly.
+3. **The absence of the artboard costs nothing.** `StreakFlame` resolves the file itself and
+   renders the hand-built ignition when there is none, so the hand-built version is not thrown
+   away — it becomes the fallback.
+4. **The increment only.** A milestone takeover with a character would get its own artboard
+   and its own file.
+
+**And a bug found doing it, worth writing down:** `RiveWidgetBuilder` documents a `RiveFailed`
+state, and **a missing asset does not reach it** — `FileLoader.file` throws
+`RiveFileLoaderException` out of `initState`, which takes the subtree down. Handing it the
+asset name broke fifteen cases the moment it was wired in. `StreakFlame` therefore calls
+`File.asset` itself and treats every failure as an ordinary `null`.
+
+The file does not exist yet, because **a `.riv` cannot be authored from a terminal**: it is a
+binary the Rive Editor produces, with no CLI and no public serializer. The build sheet —
+artboard size, the palette taken from shipped tokens, layer order, and the timeline keyed
+against `progress` — is `docs/streak-flame-rive.md`. The drawing is a book laid with its spine
+along Z, seen from the tail edge, its covers splaying and a flame rising out of the gutter
+along +Y.
+
+`rive 0.14.11` pulls `rive_native`, which integrates through **SPM** rather than CocoaPods —
+the same route Firebase takes here, so `ios/Podfile.lock` never mentions it and the
+`RiveNative_ios.xcframework` lands in `build/ios/SourcePackages/artifacts/`. Verified: 1762
+tests pass, `flutter analyze` clean, iOS builds and launches.
 
 - **`reading_days` carries its book.** `ReadingDaysNotifier`'s state went from
   `Set<DateTime>` to `Map<DateTime, String?>`, because the month colours each night by

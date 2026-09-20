@@ -6139,6 +6139,171 @@ SECTION 1b: DEVICE / FRAME STYLES.
                 text-decoration: none;
                 color: #a0987e;
             }
+
+            /* ---------- (g) the legend, four ways ----------
+
+               The spine above was chosen over a swatch because “a book” in this
+               app is a cover seen edge-on. The question these four answer is
+               whether it should be a cover seen FACE-on: the legend does two jobs
+               — it is the colour key for the grid, and it is the “what did I read”
+               line — and the spine only does the first one well. A 12pt
+               ellipsised title is a weak way to make a reader recognise a book
+               they held last night.
+
+               The tension, which is the whole reason to draw rather than argue: a
+               cover is MANY colours and the die is ONE, so recognition and
+               key-ability pull against each other. `cover-rule` and `cover-stamp`
+               are the two attempts to have both; `spine-thick` is the cheap
+               control that may get most of the recognition for none of the cost.
+
+               The cover is the same anatomy `.lbk` draws at full size — binding
+               strip at 8.2%, title set on the jacket, photo covers full-bleed —
+               scaled down rather than re-invented, so the legend cannot come to
+               disagree with the shelf about what a cover looks like. */
+            .fr .ckey.covers {
+                gap: 8px 14px;
+            }
+            .fr .ckey.covers span {
+                gap: 7px;
+                align-items: center;
+            }
+            /* The thumbnail. 18x27 is the smallest box that still reads as a book
+               rather than as a coloured chip: at the app's 2:3 it keeps the
+               proportion the shelf uses, and 27pt against the spine's 15 is
+               exactly the height cost under review. */
+            .fr .ckey .ckc {
+                position: relative;
+                width: 18px;
+                height: 27px;
+                flex: none;
+                border-radius: 1px 2px 2px 1px;
+                overflow: hidden;
+                background: var(--c);
+                box-shadow: 0.5px 0.5px 1.5px rgba(0, 0, 0, 0.28);
+            }
+            /* The binding strip, at the cover's own 8.2% — `book_geometry.dart`'s
+               number, the same one `.lbk::before` uses. */
+            .fr .ckey .ckc::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 8.2%;
+                background: linear-gradient(
+                    90deg,
+                    rgba(0, 0, 0, 0.26),
+                    rgba(0, 0, 0, 0.04)
+                );
+            }
+            /* The jacket's title. At 18pt wide only a couple of words survive,
+               which is honest: this is what a real thumbnail of a typeset cover
+               looks like, and pretending otherwise would flatter the variant. */
+            .fr .ckey .ckc em {
+                position: absolute;
+                left: 14.3%;
+                right: 6.1%;
+                top: 6.1%;
+                font-style: normal;
+                font-size: 3.4px;
+                line-height: 1.2;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+                color: var(--text);
+                overflow: hidden;
+            }
+            .fr .ckey .ckc.photo em {
+                display: none;
+            }
+
+            /* COVER-RULE — the cover, with the grid's own hue as a 2pt rule under
+               it. The cover answers “which book”, the rule answers “which mark”,
+               and neither has to do the other's job. Column, so the rule sits
+               under the cover it belongs to rather than beside it. */
+            .fr .ckey.rule span {
+                align-items: flex-end;
+            }
+            .fr .ckey.rule .ckw {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                align-items: stretch;
+            }
+            .fr .ckey.rule .ckr {
+                height: 2px;
+                border-radius: 1px;
+                background: var(--c);
+            }
+
+            /* COVER-STAMP — the die itself, pressed small on the cover. The key
+               stops being a colour that resembles the mark and becomes the mark,
+               which is the strongest possible tie — and the riskiest, since a ring
+               over artwork is a lot to ask of both.
+
+               **Inside the cover's bounds, and that is a bug fix rather than a
+               preference.** Hung over the corner at `right:-2px` it was invisible:
+               `.ckc` carries `overflow: hidden` for its binding strip and title, so
+               the die was clipped clean away and the frame drew plain covers while
+               every check passed. The same defect class this file already records
+               once — a `box-shadow` lost to a `clip-path`. Pressed fully inside, it
+               also reads better: a stamp is ON the cover, not hanging off it. */
+            .fr .ckey.stamped .ckc i {
+                position: absolute;
+                right: 1px;
+                bottom: 1px;
+                width: 12px;
+                height: 12px;
+                background: var(--c);
+                /* The jacket is the book's own colour, so a die in that colour on
+                   top of it is invisible. Lifted to near-white with a shadow under
+                   it, which is what an ink stamp on a dark cover actually looks
+                   like — and is the same reversal `.cal.books .cday.on` makes. */
+                filter: brightness(2.6) saturate(0.5);
+                -webkit-mask-image: var(--die);
+                -webkit-mask-size: 100% 100%;
+                mask-image: var(--die);
+                mask-size: 100% 100%;
+                transform: rotate(-7deg);
+                opacity: 0.92;
+            }
+
+            /* SPINE-THICK — the control that costs nothing. The spine widened from
+               5 to 9 and given the binding strip and a hint of the fore-edge's
+               pages, so it reads as a book standing on a shelf rather than as a
+               rounded tick. Same 15pt height as today's, so the legend's line box
+               does not move at all. */
+            .fr .ckey.thick i {
+                position: relative;
+                width: 9px;
+                height: 17px;
+                border-radius: 1px 2px 2px 1px;
+                box-shadow: 0.5px 0.5px 1.5px rgba(0, 0, 0, 0.26);
+                overflow: hidden;
+            }
+            .fr .ckey.thick i::before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 22%;
+                background: linear-gradient(
+                    90deg,
+                    rgba(0, 0, 0, 0.3),
+                    rgba(0, 0, 0, 0.05)
+                );
+            }
+            /* The fore-edge: the sliver of page block a spine shows on its right.
+               Paper rather than white, so it reads as leaves and not as a gap. */
+            .fr .ckey.thick i::after {
+                content: "";
+                position: absolute;
+                right: 0;
+                top: 1px;
+                bottom: 1px;
+                width: 1.5px;
+                background: rgba(247, 243, 233, 0.85);
+            }
             /* Tapping a day. The popover is the cheapest possible test of the
                whole `book_id` question: whichever design cannot fill it in is
                the design that stored too little. */
@@ -8469,14 +8634,56 @@ SECTION 1b: DEVICE / FRAME STYLES.
                 if (s.legend) {
                     /* Spines rather than swatches, with each book's own day count
                        after it — derived from the same stamps the capsules are drawn
-                       from, so the legend cannot disagree with the grid above it. */
+                       from, so the legend cannot disagree with the grid above it.
+
+                       **`key` picks the treatment**, and the default is the spine
+                       that shipped. The (g) group draws the four candidates: the
+                       legend does two jobs — colour key and “what did I read” — and
+                       a cover is better at the second and worse at the first,
+                       because a cover is many colours and the die is one. Every
+                       treatment reads the SAME `books` and the SAME derived counts,
+                       so the only difference between the frames is the mark. */
                     const days = calBookDays(s);
+                    const k = s.key || "spine";
+                    const cls = {
+                        spine: "spines",
+                        "spine-thick": "spines thick",
+                        cover: "covers",
+                        "cover-rule": "covers rule",
+                        "cover-stamp": "covers stamped",
+                    }[k];
+                    /* The thumbnail, at `.lbk`'s own anatomy: photo covers are
+                       full-bleed, typeset ones carry their title on the jacket. */
+                    const cov = (b, extra) =>
+                        `<i class="ckc${b.photo ? " photo" : ""}" style="--c:${b.c}">` +
+                        (b.photo ? "" : `<em>${b.t}</em>`) +
+                        (extra || "") +
+                        `</i>`;
+                    const markOf = (b) => {
+                        if (k === "cover") return cov(b);
+                        if (k === "cover-rule")
+                            return (
+                                `<span class="ckw">` +
+                                cov(b) +
+                                `<s class="ckr" style="--c:${b.c}"></s>` +
+                                `</span>`
+                            );
+                        if (k === "cover-stamp")
+                            /* The die is the same drawn stencil the grid presses,
+                               picked off the same three by the book's index — not a
+                               second ring rule that resembles it. */
+                            return cov(
+                                b,
+                                `<i style="--c:${b.c};--die:url(${PATCH_DOUBLE_MASKS[(s.books || []).indexOf(b) % 3]})"></i>`,
+                            );
+                        return `<i style="background:${b.c}"></i>`;
+                    };
                     h +=
-                        `<div class="ckey spines">` +
+                        `<div class="ckey ${cls}">` +
                         (s.books || [])
                             .map(
                                 (b) =>
-                                    `<span><i style="background:${b.c}"></i>${b.t}` +
+                                    `<span>${markOf(b)}${b.t}` +
                                     (days[b.k] ? `<u>${days[b.k]}d</u>` : "") +
                                     `</span>`,
                             )
@@ -10284,6 +10491,11 @@ SECTION 1b: DEVICE / FRAME STYLES.
                 t: b.t,
                 c: b.c,
                 pages: b.pages,
+                /* Carried through, because the (g) legend draws these as covers and a
+                   photo jacket is full-bleed where a typeset one shows its title.
+                   Dropping it made the legend's first book a typeset cover while the
+                   shelf above drew it as a photograph — the same book, two jackets. */
+                photo: b.photo,
             }));
             const CAL_STAMPS = (() => {
                 const m = {};
@@ -10425,6 +10637,64 @@ SECTION 1b: DEVICE / FRAME STYLES.
                else — the one-variable control this file keeps insisting on. */
             const calToned = (t) =>
                 Object.assign({}, CAL_SHEET_SPEC, { tone: t });
+
+            /* ---- (g) the legend: the same month, five keys ----
+
+               `calKeyed` swaps ONE field, exactly as `calToned` does for the tone
+               groups — so a reader comparing two legend frames is looking at the
+               key and nothing else.
+
+               **And the crowded month, because the cost only appears there.** The
+               standard fixture has three books, where every treatment fits on one
+               line and a cover's extra height is nearly free. Five books is the
+               month that shows what a 27pt thumbnail actually costs a card that
+               already holds a heading, two stat tiles and five grid rows — so each
+               candidate is drawn twice and judged on the pair. The two extra books
+               come off `LAMP_STARTUP` rather than being invented, so the crowded
+               month is still a month of this reader's own library. */
+            const calKeyed = (k) =>
+                Object.assign({}, CAL_SHEET_SPEC, { key: k });
+            const CAL_MANY_TITLES = [
+                ...CAL_TITLES,
+                {
+                    k: "d",
+                    t: LAMP_STARTUP[1].t,
+                    c: LAMP_STARTUP[1].c,
+                    photo: 1,
+                },
+                { k: "e", t: LAMP_STARTUP[3].t, c: LAMP_STARTUP[3].c },
+            ];
+            /* The same eleven read days as the page's own month, re-divided across
+               five books instead of three — so the grid's run, the figure and the
+               day count are unchanged and only the legend grows. That is what keeps
+               the crowded frames comparable with the standard ones.
+
+               **Derived from `CAL_SHEET`'s own keys rather than retyped**, which the
+               verifier caught twice: a hand-typed version re-introduced day 13 (the
+               page's today is deliberately open) and kept a freeze on day 10, and
+               freezes are deferred — no frame in this record may draw one. Taking
+               the day set from the fixture makes both impossible. */
+            const CAL_MANY_STAMPS = (() => {
+                const days = Object.keys(CAL_SHEET)
+                    .map(Number)
+                    .sort((x, y) => x - y);
+                /* Five contiguous stretches, so each book still reads as a spell of
+                   reading rather than as days scattered through the month. */
+                const order = ["a", "d", "b", "e", "c"];
+                const per = Math.ceil(days.length / order.length);
+                const m = {};
+                days.forEach((d, i) => {
+                    m[d] =
+                        order[Math.min(order.length - 1, Math.floor(i / per))];
+                });
+                return m;
+            })();
+            const calKeyedMany = (k) =>
+                Object.assign({}, CAL_SHEET_SPEC, {
+                    key: k,
+                    books: CAL_MANY_TITLES,
+                    stamps: CAL_MANY_STAMPS,
+                });
             const PROG_BOOK = LAMP_READING[0];
             const PROG_WHEEL = {
                 drumMode: "pct",
@@ -13637,6 +13907,135 @@ SECTION 1b: DEVICE / FRAME STYLES.
                                     kind: "spage",
                                     read: false,
                                     month: calToned("stamp-disc"),
+                                },
+                            },
+                            /* ---- (g) the legend: what the key under the month is ----
+
+                               A reader's question, and a good one: should the legend
+                               show the book's COVER? The line exists to do two jobs
+                               and is only good at one — it is the colour key for the
+                               grid, and it is the “what did I read this month”
+                               summary. The spine keys the grid well; a 12pt
+                               ellipsised title is a weak way to make someone
+                               recognise a book they were holding last night.
+
+                               **And the die made the first job harder.** The patch
+                               spent a whole cell of colour; the ring spends a
+                               hairline, so the mark→book tie now rests on less
+                               colour than it did when the spine was chosen.
+
+                               The tension is the reason these are drawn rather than
+                               argued: **a cover is many colours and the die is one**,
+                               so recognition and key-ability pull against each other.
+                               Five frames, one variable. Each is drawn again in (g+)
+                               at five books, because a thumbnail's height costs
+                               nothing on a three-book month and is the whole
+                               objection on a crowded one. */
+                            "cp-g-spine": {
+                                group: "(g) the legend under the month",
+                                name: "Legend/spine &middot; the control, as it ships",
+                                note: `<b>What is there now: a 5&times;15 spine at full strength, the title, and the nights.</b> Kept as the control because the choice it already won was against a <i>swatch</i> — <code>reading_streak_page.dart</code>'s own note: at 12pt a fifth-strength wash is barely a colour, and “a book” in this app is a cover seen edge-on.<br><br><b>What it is good at:</b> the key. One flat hue at full strength beside a ring of the same hue is an unambiguous match, and the whole legend is a 15pt line — so on a four-book month it wraps to a line and a half instead of becoming a list.<br><br><b>What it is bad at:</b> recognition. The spine is 5pt wide; nothing about it says <i>which</i> book except the title beside it, and the title is ellipsised at 160pt. A reader scanning their own month gets the colour instantly and the book slowly, which is backwards — they know their books, they do not know their hues.`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyed("spine"),
+                                },
+                            },
+                            "cp-g-cover": {
+                                group: "(g) the legend under the month",
+                                name: "Legend/cover &middot; the plain version of the ask",
+                                note: `<b>The spine becomes an 18&times;27 cover, at the shelf's own anatomy</b> &mdash; binding strip at the cover's 8.2%, photo jackets full-bleed, typeset ones carrying their title &mdash; scaled down rather than re-drawn, so the legend and the shelf cannot disagree about what a cover looks like.<br><br><b>What it buys, and it is the reader's whole point:</b> recognition should be immediate. The month stops being a colour key with titles attached and becomes a shelf of what the month held &mdash; which is what the line is <i>read</i> as, whatever it was designed as.<br><br><b>And the drawing does not deliver it, which is the finding.</b> At 18pt a jacket is a coloured chip: the photo cover is a plain dark rectangle, and the typeset ones carry micro-type at 3.4px that is present but unreadable. <b>Nothing here is recognisable as a particular book</b> &mdash; the title beside it is still doing all the work, exactly as in the spine. So the variant pays a cover's costs and collects a swatch's benefit. Note the micro-type is not a mockup cheat: <code>generated_cover.dart</code> draws real titles for coverless books, and at 18pt they will be just as illegible in Flutter.<br><br><b>What it costs, confirmed:</b> the line's height goes 15 &rarr; 27, the legend <b>wraps to two rows at three books</b> where the spine fits one, and it puts the card's <b>first network image</b> on a surface that is currently all vectors and text &mdash; load states, layout shift, and a precache obligation for any export. See <code>cp-g-cover-many</code> for the five-book case.<br><br><b>The open question this leaves:</b> whether 18pt is simply too small and a fair test is 24&times;36. It probably reads better &mdash; and it costs proportionally more of the card, which is the trade that was already the objection. Worth one more frame if the covers are otherwise wanted.`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyed("cover"),
+                                },
+                            },
+                            "cp-g-cover-rule": {
+                                group: "(g) the legend under the month",
+                                name: "Legend/cover+rule &middot; the cover, keyed by a rule",
+                                note: `<b>The cover, with the grid's own hue as a 2pt rule directly under it.</b> The attempt to stop the two jobs fighting: <b>the cover answers “which book” and the rule answers “which mark”</b>, and neither is asked to do the other's work. The same division <code>cp-f-rule</code> won its own comparison on.<br><br><b>The rule works, and it is the only thing here that does.</b> Under each cover the hue reads as a distinct flat bar, so the key is unambiguous in a way the bare cover's mixed artwork is not — that half of the idea is sound and would be worth keeping on <i>any</i> cover-based legend.<br><br><b>But it inherits the thing that sank <code>cp-g-cover</code>:</b> the cover above the rule is still an 18pt chip nobody can identify, so the entry is now <i>two</i> keys and no recognition &mdash; and at the cover's own hue the rule can read as the jacket simply continuing rather than as a separate mark. <b>If covers come back at a larger size, this is the treatment to bring with them; on its own it does not earn the height.</b>`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyed("cover-rule"),
+                                },
+                            },
+                            "cp-g-cover-stamp": {
+                                group: "(g) the legend under the month",
+                                name: "Legend/cover+stamp &middot; the die pressed on the cover",
+                                note: `<b>The strongest possible tie: the key stops <i>resembling</i> the mark and becomes it.</b> The same drawn die the grid presses — off the same three silhouettes, picked by the book's index, not a second ring rule that looks like it — pressed small on the thumbnail, tilted, lifted to near-white so it reads on a dark jacket.<br><br><b>It cost a defect to draw at all, and the defect is on the record because it is a class this file has seen before.</b> Hung over the cover's corner at <code>right:-2px</code> the die was <b>invisible</b>: <code>.ckc</code> carries <code>overflow: hidden</code> for its binding strip, so the stamp was clipped clean away, the frame drew plain covers, and <i>every check passed</i>. The same defect as the <code>box-shadow</code> a <code>clip-path</code> once ate. It is now pressed fully inside the cover, and a check asserts no negative inset comes back.<br><br><b>What the fixed drawing shows is not encouraging.</b> At 12pt over 18pt of jacket the ring reads as <b>a smudge or a watermark on the artwork</b> rather than as a stamp pressed on it — and the grid directly above is <i>already</i> a field of rings, so the card prints the same texture twice. That is the defect this whole record polices: a page saying one thing in two places. <b>The tie was bought at the cost of the thing it was tying.</b>`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyed("cover-stamp"),
+                                },
+                            },
+                            "cp-g-spine-thick": {
+                                group: "(g) the legend under the month",
+                                name: "Legend/spine+ &middot; the cheap control, widened",
+                                note: `<b>The variant that nearly costs nothing, and it is the one that won.</b> The spine goes from 5pt to 9 and gains the two things that make a spine legible as a book: the binding strip at its hinge and a 1.5pt sliver of <i>page block</i> at its fore edge. Still 17pt tall, so the card's height does not move.<br><br><b>What the drawing shows:</b> it reads as <b>a book standing on a shelf</b> in a way the 5pt version simply does not — the binding and the fore edge are what do it, not the extra width on its own. And it keeps the key perfect, because a spine is still one flat hue: unlike every cover variant, there is nothing for the reader to disambiguate. <b>No network image, no load state, no layout shift, no extra height.</b><br><br><b>The claim this note made first was “costs nothing”, and that was wrong — it costs width.</b> Three books at 9pt <b>wrap to two rows</b> where three at 5pt fit one, because each entry grew 4pt. Cheap next to a cover's 27pt row, but not free, and the honest tuning knob is the width: <b>7pt may keep three books on one line and still carry the binding and fore edge</b>, which is worth a frame if the wrap ever grates.<br><br><b>This is the one the app now ships.</b> <code>ReadLegendSpine</code> in <code>reading_streak_page.dart</code> draws it — public and separate from its row for the same reason <code>ReadCalendarStampDie</code> is, so a future Library Card legend presses the same object rather than growing its own. Two deliberate divergences from this frame, both recorded rather than silent: the binding is <b>a share of the width (22%)</b> rather than an absolute, so tuning the 9pt cannot leave a hinge the wrong size for its spine; and the fore edge takes <b>the app's own <code>BookChassisColors.pageBase</code></b> rather than this drawing's cream — which makes it pure white in light mode, slightly brighter than drawn here, and <i>correct</i>, because that is the tone every other page block in the app is painted in. It also makes the sliver survive dark mode, where a typed cream would have been the one warm thing on the card and <code>surfaceVariant</code> would have made the edge vanish entirely.`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyed("spine-thick"),
+                                },
+                            },
+                            /* ---- (g+) the same five, at five books ----
+
+                               The height objection is invisible on a three-book
+                               month, so every candidate is drawn again on a month
+                               divided five ways. Same eleven read days, same run,
+                               same figure — only the number of books changes, which
+                               is what keeps the pair comparable. */
+                            "cp-g-spine-many": {
+                                group: "(g+) the legend, crowded",
+                                name: "Legend/spine &middot; five books",
+                                note: `<b>The control's crowded case, and the reason it is hard to beat:</b> five spines and five titles still wrap into about two lines, because the entry is 5pt wide and 15 tall. The month card grows by one line box.<br><br>This is the frame every cover variant has to be held against. The question is not whether a cover looks better — it does — but whether it looks better <i>enough</i> to pay what the next four frames pay here.`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyedMany("spine"),
+                                },
+                            },
+                            "cp-g-cover-many": {
+                                group: "(g+) the legend, crowded",
+                                name: "Legend/cover &middot; five books",
+                                note: `<b>The cost, drawn, and it is worse than predicted.</b> Five 27pt thumbnails cannot share a line with their titles at ${FRAME}pt wide, so the legend becomes <b>three tall rows</b> &mdash; the card grows by roughly two grid rows for information the grid above already carries.<br><br><b>And the row does not read as a shelf</b>, which was the one thing that could have justified the height: at 18pt the jackets are chips, so five of them are a row of coloured rectangles with titles beside them. Held against <code>cp-g-spine-many</code> &mdash; five books, two tidy lines, same information &mdash; this is the clearest verdict in the group.`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyedMany("cover"),
+                                },
+                            },
+                            "cp-g-cover-rule-many": {
+                                group: "(g+) the legend, crowded",
+                                name: "Legend/cover+rule &middot; five books",
+                                note: `<b>The favourite's crowded case.</b> Five covers, five rules, five titles. The rules are the cheap part; the question this frame settles is whether <b>five coloured rules in one line read as a key or as a row of underlines</b> — at three books each rule is plainly attached to its cover, and at five the eye may start reading them as one striped band.<br><br>If that happens, the finding is not about the rule but about the count: a legend that works at three and fails at five wants a cap (“+2 more”) rather than a different mark, and a cap is a decision this record has not made anywhere else.`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyedMany("cover-rule"),
+                                },
+                            },
+                            "cp-g-cover-stamp-many": {
+                                group: "(g+) the legend, crowded",
+                                name: "Legend/cover+stamp &middot; five books",
+                                note: `<b>Five covers each wearing a die.</b> The frame that decides whether the strongest tie is also the noisiest idea in the group: five rings at 13pt over five jackets at 18 is, on paper, more detail than a legend has any business carrying — and the month grid directly above it is <i>already</i> a field of rings, so this may print the same texture twice on one card.<br><br><b>That last point is the one to look for</b>, because it is the defect this whole record polices: a page that says the same thing in two places. If the legend's rings and the grid's rings read as one busy surface, the tie has been bought at the cost of the thing it was tying.`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyedMany("cover-stamp"),
+                                },
+                            },
+                            "cp-g-spine-thick-many": {
+                                group: "(g+) the legend, crowded",
+                                name: "Legend/spine+ &middot; five books",
+                                note: `<b>The cheap control at five books, and the frame that settles the group.</b> Five 9pt spines with their bindings and fore edges, wrapping into <b>two tidy lines</b> at the control's height.<br><br><b>Five of them do read as books on a shelf</b> &mdash; which is the one thing the 5pt version cannot do and the one thing the covers were being paid for. Beside <code>cp-g-cover-many</code>'s three rows of unidentifiable chips, this carries the same five books, the same five counts and the same colour key in a third of the space, with no network image. <b>This is the recommendation.</b>`,
+                                spec: {
+                                    kind: "spage",
+                                    read: false,
+                                    month: calKeyedMany("spine-thick"),
                                 },
                             },
                         },

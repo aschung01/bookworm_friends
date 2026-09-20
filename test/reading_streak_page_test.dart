@@ -20,6 +20,7 @@ import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/reading_days_provider.dart';
 import 'package:bookworm_friends/ui/pages/reading_streak_page.dart';
+import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
 import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_calendar_month.dart';
@@ -398,17 +399,59 @@ void main() {
     expect(find.text('1 night'), findsOneWidget);
     expect(find.text('2 books'), findsOneWidget);
 
-    // **Spines, not swatches.** The app's whole vocabulary for *a book* is a cover seen
-    // edge-on, and a 12pt swatch of a fifth-strength wash — which is what the key drew
-    // first, to match the patch it explains — is barely a colour at that size.
+    // **Spines, not swatches — and spines with a spine's anatomy.** The app's whole
+    // vocabulary for *a book* is a cover seen edge-on, and a 12pt swatch of a
+    // fifth-strength wash — which is what the key drew first, to match the patch it
+    // explains — is barely a colour at that size.
     expect(
       find.byKey(const ValueKey('streak-legend-spine-The Dispossessed')),
       findsOneWidget,
     );
-    final spine = tester.getSize(
-      find.byKey(const ValueKey('streak-legend-spine-The Dispossessed')),
+    final spineFinder = find.byKey(
+      const ValueKey('streak-legend-spine-The Dispossessed'),
     );
-    expect(spine, const Size(5, 15));
+    // 9x17, not the 5x15 that shipped first. The width is what the change is: at 5pt
+    // the two details below have no room to be seen, which is why the drawings
+    // (`cp-g-spine-thick`) widened it rather than replacing it with a cover.
+    expect(
+      tester.getSize(spineFinder),
+      const Size(ReadLegendSpine.width, ReadLegendSpine.height),
+    );
+    expect(ReadLegendSpine.width, 9);
+    expect(
+      ReadLegendSpine.height,
+      17,
+      reason: 'the change is horizontal; the card\'s height must not move',
+    );
+
+    // **The two details are the reason this beat an 18x27 cover**, so they are asserted
+    // rather than left to the eye: a hinge shadow at the binding and a sliver of page
+    // block at the fore edge. Without them a wider rectangle is just a wider rectangle.
+    final binding = find.descendant(
+      of: spineFinder,
+      matching: find.byType(FractionallySizedBox),
+    );
+    expect(
+      tester.widget<FractionallySizedBox>(binding).widthFactor,
+      ReadLegendSpine.bindingShare,
+      reason:
+          'the binding is a share of the spine, so tuning the width keeps it right',
+    );
+    // The fore edge takes the app's own page-block tone, which is what makes it read as
+    // leaves in both themes — a typed cream would vanish against dark mode's surface,
+    // the defect `BookChassisColors` exists to avoid.
+    final foreEdge = tester.widget<ColoredBox>(
+      find.descendant(of: spineFinder, matching: find.byType(ColoredBox)),
+    );
+    final paper = BookChassisColors.of(tester.element(spineFinder)).pageBase;
+    expect(foreEdge.color.r, paper.r);
+    expect(foreEdge.color.g, paper.g);
+    expect(
+      foreEdge.color.a,
+      lessThan(1),
+      reason:
+          'the leaves sit slightly under the boards rather than as a white gap',
+    );
   });
 
   testWidgets('the month card reports the tally and the books, not the run again', (

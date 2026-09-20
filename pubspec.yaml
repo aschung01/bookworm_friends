@@ -96,6 +96,7 @@ dependencies:
   # filters to the `/i/` path before doing anything, which is what makes a second
   # subscriber safe. Do not widen that filter.
   app_links: ^7.2.1
+  rive: ^0.14.11
 
 dependency_overrides:
   path_provider_foundation: 2.4.1
@@ -168,6 +169,12 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
+    # The streak celebration's flame, as a Rive artboard. Declared as a directory so the
+    # artboard can land without a pubspec edit -- and the directory is committed with a
+    # `.gitkeep` because Flutter fails the build on an `assets:` entry that does not exist.
+    # `StreakFlame` falls back to a hand-built ignition while the folder is empty, so this
+    # is not load-bearing until the file arrives. Build sheet: `docs/streak-flame-rive.md`.
+    - assets/rive/
     - assets/icons/smileBookwormIcon.svg
     - assets/icons/appleWhiteIcon.svg
     - assets/icons/appleBlackIcon.svg

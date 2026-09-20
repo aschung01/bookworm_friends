@@ -10,6 +10,7 @@ import 'package:bookworm_friends/models/shelf.dart';
 import 'package:bookworm_friends/models/streak.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/reading_days_provider.dart';
+import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/pick_reading_book_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_percent_bottom_sheet.dart';
@@ -589,13 +590,20 @@ class _MonthCard extends StatelessWidget {
             // handsome tally that cannot say one word about what was read, which is the
             // state the whole `book_id` decision exists to get out of.
             //
-            // **Spines, not swatches, which reverses what this drew first.** A swatch in the
-            // patch's own 22%/50% grammar was the obvious choice — make the key look like
-            // the thing it explains — and it is wrong twice over: at 12pt a fifth-strength
-            // wash is barely a colour, and the app's entire vocabulary for *a book* is a
-            // cover seen edge-on. So each entry is a 5x15 spine at full strength, which is
-            // identifiable, and the row wraps rather than stacking — four books is a line
-            // and a half, not four rows of mostly empty space.
+            // **Spines, not swatches — and spines that read as spines.** A swatch in the
+            // patch's own 22%/50% grammar was the obvious first choice, and it was wrong
+            // twice over: at 12pt a fifth-strength wash is barely a colour, and the app's
+            // entire vocabulary for *a book* is a cover seen edge-on.
+            //
+            // **The reader's follow-up was whether these should be covers**, and four
+            // alternatives were drawn for it (groups (g) and (g+)). Three used an 18x27
+            // thumbnail and all three lost: at that size a jacket is a coloured chip, so
+            // the title beside it still did the recognising, while the row cost 27pt
+            // instead of 15 and put this card's first network image on a surface that is
+            // otherwise vectors and text. What won was widening the spine until its
+            // binding and fore edge are visible — see [_LegendSpine]. The row wraps
+            // rather than stacking, so five books is two lines and not five rows of
+            // mostly empty space.
             Wrap(
               spacing: 12,
               runSpacing: 4,
@@ -654,6 +662,119 @@ class _MonthStat extends StatelessWidget {
   }
 }
 
+/// The legend's mark: one book's jacket colour, drawn as a spine.
+///
+/// **Public and separate from its row**, for the reason [ReadCalendarStampDie] is: it is the
+/// object a future Library Card legend would want, and a Card that drew its own spine is
+/// exactly the drift that would follow. Being nameable is also what lets a golden review
+/// the anatomy without reaching into a private class.
+///
+/// **The anatomy is the point, and it is what a widened rectangle does not have.** This
+/// shipped as a 5x15 rounded rectangle in the book's colour — a correct colour key and not
+/// much else. Four alternatives were drawn (`docs/mockups/streaks/index.html`, groups (g)
+/// and (g+)), three of them replacing it with an 18x27 cover, and the finding was that **at
+/// that size a jacket is a coloured chip**: the photo cover renders as a plain dark
+/// rectangle and a typeset one carries type too small to read, so the title beside it was
+/// still doing all the recognition work. The covers paid a cover's costs — a 27pt row
+/// instead of 15, three rows instead of two on a five-book month, and the card's first
+/// network image on a surface that is otherwise all vectors and text — and collected a
+/// swatch's benefit.
+///
+/// What won was widening this until **the two details that make a spine legible as a book**
+/// have room: the binding strip at its hinge and a sliver of page block at its fore edge.
+/// It reads as a book standing on a shelf where the 5pt version read as a rounded tick, and
+/// it keeps the key perfect, because one flat hue beside a ring of the same hue is
+/// unambiguous in a way mixed artwork is not.
+///
+/// **What it costs is width, not height.** At 17pt tall the card does not grow, but each
+/// entry is 4pt wider, so a three-book month wraps to two rows where the 5pt version fit
+/// one. That is cheap beside a cover's row and it is not free; the tuning knob if it ever
+/// matters is [width], and the drawings note 7pt as the value worth trying first.
+class ReadLegendSpine extends StatelessWidget {
+  const ReadLegendSpine({super.key, required this.colour});
+
+  /// The book's `cover_color`, at full strength — the grid's ring is the same hue, which
+  /// is what makes the key work.
+  final Color colour;
+
+  /// The spine's width. 9pt is what the drawing settled on: at 5 the binding strip and
+  /// fore edge have no room to be seen, which is the whole reason the widening happened.
+  static const double width = 9;
+
+  /// And its height. Unchanged from the 5x15 original at 17, so the legend's line box and
+  /// the card's height do not move — the change is horizontal only.
+  static const double height = 17;
+
+  /// The binding strip's share of [width], as the drawing's own 22%. Proportional rather
+  /// than absolute so tuning [width] cannot leave a hinge the wrong size for the spine it
+  /// is on.
+  static const double bindingShare = 0.22;
+
+  @override
+  Widget build(BuildContext context) {
+    // The app's own page-block tone rather than a typed cream, and that matters in dark
+    // mode: `BookChassisColors` deliberately does not use `surfaceVariant` there, because
+    // a page block in the surface's own colour makes the fore edge disappear. Reusing it
+    // means this 1.5pt sliver is the same paper every cover in the app shows.
+    final paper = BookChassisColors.of(context).pageBase;
+    return Container(
+      width: width,
+      height: height,
+      // Clipped so the binding and the fore edge stop at the spine's own corners. The
+      // shadow is the decoration's, painted outside the clip, so it survives — unlike the
+      // design record's first cut of the stamped legend, where a mark hung over a clipping
+      // box vanished entirely and every check still passed.
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colour,
+        // Rounded on the fore edge and square at the hinge, which is the silhouette a book
+        // seen edge-on actually has.
+        borderRadius: const BorderRadius.horizontal(
+          left: Radius.circular(1),
+          right: Radius.circular(2),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x42000000),
+            offset: Offset(0.5, 0.5),
+            blurRadius: 1.5,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // The binding, at the hinge: a shadow in the gutter where the boards fold, which
+          // is what tells the eye which end of the spine is the spine.
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FractionallySizedBox(
+              widthFactor: bindingShare,
+              heightFactor: 1,
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0x4D000000), Color(0x0D000000)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // The fore edge: the leaves, held off the head and tail by a point so the boards
+          // read as standing slightly proud of the pages — which is what they do, and what
+          // stops the sliver reading as a gap in the colour.
+          Positioned(
+            top: 1,
+            bottom: 1,
+            right: 0,
+            width: 1.5,
+            child: ColoredBox(color: paper.withValues(alpha: 0.85)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// One book in the month's legend: its spine, its title, and how many nights it holds.
 class _LegendSpine extends StatelessWidget {
   const _LegendSpine({
@@ -672,26 +793,9 @@ class _LegendSpine extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
+        ReadLegendSpine(
           key: ValueKey('streak-legend-spine-$title'),
-          width: 5,
-          height: 15,
-          decoration: BoxDecoration(
-            color: colour,
-            // Rounded on the fore edge and square at the hinge, which is the silhouette a
-            // book seen edge-on actually has.
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(1),
-              right: Radius.circular(2),
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x40000000),
-                offset: Offset(0.5, 0.5),
-                blurRadius: 1,
-              ),
-            ],
-          ),
+          colour: colour,
         ),
         const SizedBox(width: 6),
         // Constrained, because a long title in a `Wrap` child with no bound is a child

@@ -8,6 +8,7 @@ import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_week_row.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame.dart';
 
 /// The seals a run can earn, in order.
 ///
@@ -193,12 +194,20 @@ class _StreakCelebrationState extends State<StreakCelebration>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
-              _Ignition(
-                ignite: _ignite,
-                bloom: _bloom,
-                sparks: _sparks,
-                gleam: _gleam,
-                sparkTable: _sparkTable,
+              // **The flame is the one part of this screen Rive draws.** Everything below it
+              // is localised copy and themed widgets, which have no business inside a
+              // binary. If the artboard is missing — which it is until it has been authored
+              // — `_Ignition` runs instead, so the sequence is complete either way.
+              StreakFlame(
+                progress: _ignite,
+                size: _Ignition.stageSize,
+                fallback: (context) => _Ignition(
+                  ignite: _ignite,
+                  bloom: _bloom,
+                  sparks: _sparks,
+                  gleam: _gleam,
+                  sparkTable: _sparkTable,
+                ),
               ),
               const SizedBox(height: 12),
               _Counter(
