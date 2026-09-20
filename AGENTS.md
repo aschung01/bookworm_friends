@@ -173,6 +173,7 @@ sheet is not enough.
 ```bash
 ./rive/streak_flame/build.sh                        # verify, inspect, build, install
 ../../.venv/bin/python rive/streak_flame/sheet.py   # render the poses and LOOK at them
+../../.venv/bin/python rive/streak_flame/between.py # and the blends between them
 ```
 
 Both are committed — the RML because it is the source, the `.riv` because
@@ -192,6 +193,14 @@ behind the covers, an egg instead of a flame, and a black peg under it. `sheet.p
 is the third check and the one that finds real defects. Also: **`--advance=1` is
 mandatory** on a screenshot, or every frame is the authored rest pose and six
 identical renders look like a working filmstrip.
+
+**And `sheet.py` is not enough either — run `between.py` after any keyframe change.**
+It renders every 4% rather than only the six keyed poses, because a blend state
+interpolates each property independently and linearly: two poses that are both
+correct can still pass through something that is not. That is how a half-transparent
+page over a near-black cover turned the first fifth of the sequence into a grey slab
+while both ends looked fine. **Nothing translucent may cross-fade over something
+dark** — that bug had two instances and this is the only check that sees either.
 
 ### `flutter test` needs a library that worktrees do not get
 

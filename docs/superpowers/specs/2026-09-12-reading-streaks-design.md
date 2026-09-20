@@ -1203,6 +1203,16 @@ those is a structural error. `--advance=1` is mandatory on a screenshot — with
 frame is the authored rest pose, and six identical renders look convincingly like a working
 filmstrip.
 
+And a fourth, added after the six-pose sheet turned out to be insufficient too.
+**A blend state interpolates every property independently and linearly, so two poses that are
+each correct can still pass through something that is not** — `between.py` samples every 4%
+across the whole scrub. It found that `page_*` fading in on opacity spent the entire first
+fifth of the sequence as a grey slab, a half-transparent page over a near-black cover, with the
+opening happening in that same window. The pages now unfold on `scaleY`, which is also what the
+object does: a page surface is edge-on when the book is shut. The same sheet caught the `fire`
+group at opacity 0.5 making the core and the body both translucent, their outlines showing
+through each other like decals; the dormant ember is now opaque and simply small.
+
 Four things the drawing taught, in the order they were found:
 
 - **Opening is `scaleX`, not rotation.** A 2D rotation pivots about a point, and a half's inner

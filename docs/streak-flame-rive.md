@@ -15,8 +15,9 @@ what voids the original objection to Rive — that a binary blob is un-greppable
 un-reviewable. A geometry change is a diff.
 
 ```bash
-./rive/streak_flame/build.sh                        # verify, inspect, build, install
-../../.venv/bin/python rive/streak_flame/sheet.py   # look at what you built
+./rive/streak_flame/build.sh                           # verify, inspect, build, install
+../../.venv/bin/python rive/streak_flame/sheet.py      # the six keyed poses
+../../.venv/bin/python rive/streak_flame/between.py    # and the blends between them
 ```
 
 Both outputs are committed: the `.riv` because `flutter build` cannot run the CLI and a missing
@@ -79,19 +80,27 @@ Two rules the format enforces silently and the runtime does not check:
   pose blocks are the same eleven objects in the same order every time, and should be read as
   the columns of one table.
 
-## Judging it: three tools, none a superset of another
+## Judging it: four tools, none a superset of another
 
-|                            | catches                                                  |
-| -------------------------- | -------------------------------------------------------- |
-| `rive . --verify`          | Luau and shader compilation; exits 1 on error            |
-| `rive inspect . --summary` | bind paths, state machines, and the only `problems` list |
-| `sheet.py`                 | **whether the drawing looks like anything**              |
+|                            | catches                                                       |
+| -------------------------- | ------------------------------------------------------------- |
+| `rive . --verify`          | Luau and shader compilation; exits 1 on error                 |
+| `rive inspect . --summary` | bind paths, state machines, and the only `problems` list      |
+| `sheet.py`                 | **whether the drawing looks like anything**, at the six poses |
+| `between.py`               | **whether the blends between them look like anything**        |
 
-**The third is the one that matters**, and the first two will happily bless a scene that draws
-nonsense. This one passed both with zero problems on its first attempt and still rendered the
-pages _behind_ the covers (a dark mountain with a cream sliver on top), an egg instead of a
+**The last two are the ones that matter**, and the first two will happily bless a scene that
+draws nonsense. This one passed both with zero problems on its first attempt and still rendered
+the pages _behind_ the covers (a dark mountain with a cream sliver on top), an egg instead of a
 flame, and a black peg where the gutter poked out below the flame's base. None of those is a
 structural error.
+
+And `sheet.py` is not enough either, because **a blend state interpolates every property
+independently and linearly, so two poses that are each correct can still pass through something
+that is not.** The first version faded `page_*` in on opacity, which looks right at both ends and
+spends the whole first fifth of the sequence as a grey slab in the middle — a half-transparent
+page over a near-black cover. The opening happens in that same window, so most of it happened in
+the mud. Only a sheet of the in-betweens shows it; `between.py` samples every 4%.
 
 Two traps in the screenshot path:
 
@@ -141,6 +150,12 @@ In the order the defects were found, because each fix caused the next:
 - **The artboard renders at half scale.** `stageSize` is 152pt against a 304×304 artboard, so a
   drawing occupying a third of the artboard's height wastes both resolution and layout. The
   flame is the hero and is sized like it.
+- **Nothing translucent may cross-fade over something dark.** Two instances, found together in
+  the in-between sheet: `page_*` on opacity over the covers gave the grey slab above, and the
+  `fire` group at opacity 0.5 made the bright core and the body _both_ translucent, so their two
+  outlines showed through each other like overlapping decals instead of reading as fire. The
+  pages now unfold on `scaleY`, and the dormant ember at pose 20 is fully opaque and simply
+  small — a tiny crisp flame reads as a flame, where a half-transparent one read as a smudge.
 
 ## The palette is shipped tokens, and only shipped tokens
 

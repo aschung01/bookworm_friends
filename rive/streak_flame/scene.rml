@@ -17,10 +17,18 @@
       bow tie. Opening is therefore **scale**, anchored at the gutter: a shut book seen down
       its spine is one board wide, an open one is nearly two, so `scaleX` runs 0.54 -> 1.0
       and the inner edge stays pinned where it belongs. `scaleY` flattens the shallow V of
-      the open book back into the slab of a closed one. The covers are what a shut book shows
-      and the pages are what an open one shows, so `page_*` fades in over the top of a cover
-      that was always there -- the material swap that sells the open, and it costs one
-      property rather than a second set of geometry.
+      the open book back into the slab of a closed one.
+
+      The covers are what a shut book shows and the page surfaces are what an open one shows,
+      and **the page surfaces arrive by unfolding rather than by fading.** `page_*` was keyed
+      on opacity at first, which is a cross-dissolve: for the whole of the first fifth of the
+      sequence a half-transparent page sat over a near-black cover and the book read as a grey
+      slab -- and since the opening happens in that same window, most of it happened in the
+      mud. It took a sheet of the *in-betweens* to see, because both ends of that blend are
+      correct and only the middle is wrong. `scaleY` 0 -> 1 instead, anchored at the tail
+      edge, which is also what the object does: a page surface is edge-on when the book is
+      shut and rotates into view as it opens, so it foreshortens to nothing rather than
+      becoming transparent. Every frame stays opaque.
 
       THE CONTRACT. This artboard does not play itself. `Flame/progress` is a Number in
       0-100, written every frame by Flutter's own AnimationController
@@ -396,10 +404,10 @@
                 <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.34"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.02"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.02"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:26">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
@@ -448,10 +456,10 @@
                 <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.05"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:26">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
@@ -460,7 +468,7 @@
                 <KeyedProperty propertyKey="14"><KeyFrameDouble value="226"/></KeyedProperty>
                 <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.34"/></KeyedProperty>
                 <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.3"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.5"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:25">
                 <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
@@ -500,10 +508,10 @@
                 <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:26">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
@@ -551,10 +559,10 @@
                 <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:26">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
@@ -601,10 +609,10 @@
                 <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:26">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
@@ -654,10 +662,10 @@
                 <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
             </KeyedObject>
             <KeyedObject objectId="0:26">
                 <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>

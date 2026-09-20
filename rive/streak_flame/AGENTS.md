@@ -44,16 +44,23 @@ The streak celebration's book-and-flame. `scene.rml` is the source of
 
 ```bash
 ./build.sh                               # verify, inspect, build, install into assets/
-../../../../.venv/bin/python sheet.py    # render the six poses and look at them
+../../../../.venv/bin/python sheet.py    # the six keyed poses
+../../../../.venv/bin/python between.py  # every 4% across the scrub
 ```
 
-`sheet.py` needs PIL, which is not a dependency of this repo and comes from the
-main checkout's `.venv` (a worktree gets none of its own).
+`sheet.py` and `between.py` need PIL, which is not a dependency of this repo and
+comes from the main checkout's `.venv` (a worktree gets none of its own).
 
 **`--verify` and `inspect` will bless a scene that draws nonsense.** This one
 passed both with zero problems and still rendered the pages behind the covers, an
 egg instead of a flame, and a black peg where the gutter poked below the flame.
 Run `sheet.py` and _look at the image_ after every geometry change.
+
+**Run `between.py` after every keyframe change.** A blend state interpolates each
+property independently and linearly, so two poses that are both correct can pass
+through something that is not — which is how a half-transparent page over a
+near-black cover made the book a grey slab for the first fifth of the sequence
+while both ends looked right.
 
 Full background, every defect and why each fix was chosen:
 `docs/streak-flame-rive.md` at the repo root.
