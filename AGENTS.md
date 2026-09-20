@@ -232,6 +232,21 @@ out`. Clearing `active` does not stop it being painted — `active` gates the
 The long version, with every defect and every rejected alternative, is
 `docs/streak-flame-rive.md`.
 
+### Viewing it in the Rive Editor, and the one command that would destroy the source
+
+`rive.yaml` records `push: projectId 1996083 / fileId 2597430`, so `rive push
+rive/streak_flame` updates that same file instead of creating a new one each time.
+Open it from the editor's file browser: **aschung's workspace → Personal Files →
+`streak_flame`**. `--rev=<path>` writes an openable document to disk instead, and
+both need `rive login`.
+
+**Never run `rive pull`.** It overwrites the project _from_ the Rive file, which
+would replace `scene.rml` with a machine-generated equivalent and take every
+comment in it — the whole record of which geometry was tried and why — with it.
+The same is true of round-tripping through the editor at all: `rive create
+--from-rev` regenerates the RML from the binary. **The editor is a viewer here,
+not an authoring surface.** Edits belong in `scene.rml`.
+
 ## Applying one migration without dragging the others
 
 **`supabase db push` cannot cherry-pick.** It applies every pending migration in

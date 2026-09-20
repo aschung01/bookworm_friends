@@ -117,6 +117,42 @@ Two traps in the screenshot path:
 Judging a warm palette on white, or on the previewer's near-black, is how you ship a glow
 nobody can see.
 
+## Viewing it in the Rive Editor
+
+`rive push` sends the document straight to a Rive file in the workspace, so it opens from the
+editor's file browser with a revision history — no `.rev` on disk and no drag and drop.
+`rive.yaml` records the target, so later pushes update that file rather than making a new one:
+
+```bash
+rive login                       # once; the session persists
+rive push rive/streak_flame      # updates the recorded file
+```
+
+Then open **aschung's workspace → Personal Files → `streak_flame`**.
+
+`rive rive/streak_flame --once --rev=<path>` is the other route. It **writes a file and opens
+nothing** — it is the handoff artifact, which the editor then opens — and it lands relative to
+the directory the command was run from, not the project. Both it and `push` need a login;
+`--verify`, `--once`, the previewer and every screenshot do not.
+
+To look at it without a login at all, the previewer works offline:
+
+```bash
+rive rive/streak_flame --data=progress=100 --data=ground=1
+```
+
+Both flags matter. The artboard does not autoplay, so with no `progress` it sits at pose 0 — a
+shut book, which reads as a broken render — and `ground=1` puts it on the cream the celebration
+actually paints instead of the previewer's near-black.
+
+### Do not round-trip through the editor
+
+**`rive pull` would overwrite the project from the Rive file**, replacing `scene.rml` with a
+machine-generated equivalent and discarding every comment in it. `rive create --from-rev` does
+the same thing from a `.rev`. Since the comments are the record of which geometry was tried and
+why — which is the entire argument for authoring this as text — **the editor is a viewer here,
+not an authoring surface.** Edits belong in the RML.
+
 ## What the drawing taught
 
 In the order the defects were found, because each fix caused the next:

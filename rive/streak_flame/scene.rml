@@ -112,26 +112,26 @@
                  first fan looked left-weighted for exactly that reason, with every
                  right-hand spark camouflaged against the flame it had just left. -->
             <Node y="-16" name="sparks" id="0:21">
-                <Shape x="-13" y="-76"><Ellipse width="9" height="9" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
-                <Shape x="22" y="-88"><Ellipse width="8" height="8" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
-                <Shape x="-36" y="-50"><Ellipse width="8" height="8" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
-                <Shape x="42" y="-42"><Ellipse width="7" height="7" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
-                <Shape x="-50" y="-24"><Ellipse width="6" height="6" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
-                <Shape x="8" y="-104"><Ellipse width="8" height="8" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
-                <Shape x="-25" y="-99"><Ellipse width="6" height="6" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
-                <Shape x="54" y="-68"><Ellipse width="6" height="6" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
-                <Shape x="-60" y="-60"><Ellipse width="5" height="5" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
-                <Shape x="37" y="-14"><Ellipse width="5" height="5" name="Path"/>
-                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
+                <Shape x="-13" y="-76" id="0:104"><Ellipse width="9" height="9" name="Path" id="0:105"/>
+                    <Fill name="Fill" id="0:106"><SolidColor colorValue="FFFFD479" name="C" id="0:107"/></Fill></Shape>
+                <Shape x="22" y="-88" id="0:108"><Ellipse width="8" height="8" name="Path" id="0:109"/>
+                    <Fill name="Fill" id="0:110"><SolidColor colorValue="FFFFD479" name="C" id="0:111"/></Fill></Shape>
+                <Shape x="-36" y="-50" id="0:112"><Ellipse width="8" height="8" name="Path" id="0:113"/>
+                    <Fill name="Fill" id="0:114"><SolidColor colorValue="FFF2A93F" name="C" id="0:115"/></Fill></Shape>
+                <Shape x="42" y="-42" id="0:116"><Ellipse width="7" height="7" name="Path" id="0:117"/>
+                    <Fill name="Fill" id="0:118"><SolidColor colorValue="FFF2A93F" name="C" id="0:119"/></Fill></Shape>
+                <Shape x="-50" y="-24" id="0:120"><Ellipse width="6" height="6" name="Path" id="0:121"/>
+                    <Fill name="Fill" id="0:122"><SolidColor colorValue="FFF2A93F" name="C" id="0:123"/></Fill></Shape>
+                <Shape x="8" y="-104" id="0:124"><Ellipse width="8" height="8" name="Path" id="0:125"/>
+                    <Fill name="Fill" id="0:126"><SolidColor colorValue="FFFFD479" name="C" id="0:127"/></Fill></Shape>
+                <Shape x="-25" y="-99" id="0:128"><Ellipse width="6" height="6" name="Path" id="0:129"/>
+                    <Fill name="Fill" id="0:130"><SolidColor colorValue="FFFFD479" name="C" id="0:131"/></Fill></Shape>
+                <Shape x="54" y="-68" id="0:132"><Ellipse width="6" height="6" name="Path" id="0:133"/>
+                    <Fill name="Fill" id="0:134"><SolidColor colorValue="FFFFD479" name="C" id="0:135"/></Fill></Shape>
+                <Shape x="-60" y="-60" id="0:136"><Ellipse width="5" height="5" name="Path" id="0:137"/>
+                    <Fill name="Fill" id="0:138"><SolidColor colorValue="FFF2A93F" name="C" id="0:139"/></Fill></Shape>
+                <Shape x="37" y="-14" id="0:140"><Ellipse width="5" height="5" name="Path" id="0:141"/>
+                    <Fill name="Fill" id="0:142"><SolidColor colorValue="FFFFD479" name="C" id="0:143"/></Fill></Shape>
             </Node>
 
             <!-- The shimmer sweep: a soft bright bar that slides across the flame. Clipped
@@ -140,39 +140,39 @@
                  version's gleam was wide enough to turn the flame to paper; this one is
                  narrow, soft at both edges, and gone by rest. -->
             <Shape y="-55" rotation="-0.45" name="gleam" id="0:23">
-                <PointsPath isClosed="true" isClockwise="true" name="Path">
-                    <StraightVertex x="-11" y="-110"/>
-                    <StraightVertex x="11" y="-110"/>
-                    <StraightVertex x="11" y="110"/>
-                    <StraightVertex x="-11" y="110"/>
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:144">
+                    <StraightVertex x="-11" y="-110" id="0:145"/>
+                    <StraightVertex x="11" y="-110" id="0:146"/>
+                    <StraightVertex x="11" y="110" id="0:147"/>
+                    <StraightVertex x="-11" y="110" id="0:148"/>
                 </PointsPath>
-                <Fill name="Fill">
-                    <LinearGradient startX="-11" startY="0" endX="11" endY="0" name="Gradient">
-                        <GradientStop colorValue="00FDFAF1" position="0"/>
-                        <GradientStop colorValue="6BFDFAF1" position="0.5"/>
-                        <GradientStop colorValue="00FDFAF1" position="1"/>
+                <Fill name="Fill" id="0:149">
+                    <LinearGradient startX="-11" startY="0" endX="11" endY="0" name="Gradient" id="0:150">
+                        <GradientStop colorValue="00FDFAF1" position="0" id="0:151"/>
+                        <GradientStop colorValue="6BFDFAF1" position="0.5" id="0:152"/>
+                        <GradientStop colorValue="00FDFAF1" position="1" id="0:153"/>
                     </LinearGradient>
                 </Fill>
-                <ClippingShape sourceId="0:25" name="Clip"/>
+                <ClippingShape sourceId="0:25" name="Clip" id="0:154"/>
             </Shape>
 
             <!-- The bright core. Its own shape rather than a lighter fill, so it can lick
                  independently of the body -- `rotation` on this and not on the body is the
                  flame moving rather than the flame tilting. -->
             <Shape y="3" name="flame_inner" id="0:24">
-                <PointsPath isClosed="true" isClockwise="true" name="Path">
-                    <StraightVertex x="3" y="-78"/>
-                    <CubicMirroredVertex x="20" y="-42" rotation="1.5707964" distance="24"/>
-                    <CubicMirroredVertex x="13" y="-12" rotation="2.5" distance="14"/>
-                    <CubicMirroredVertex x="0" y="5" rotation="3.1415927" distance="13"/>
-                    <CubicMirroredVertex x="-14" y="-14" rotation="3.9" distance="14"/>
-                    <CubicMirroredVertex x="-18" y="-45" rotation="4.85" distance="24"/>
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:155">
+                    <StraightVertex x="3" y="-78" id="0:156"/>
+                    <CubicMirroredVertex x="20" y="-42" rotation="1.5707964" distance="24" id="0:157"/>
+                    <CubicMirroredVertex x="13" y="-12" rotation="2.5" distance="14" id="0:158"/>
+                    <CubicMirroredVertex x="0" y="5" rotation="3.1415927" distance="13" id="0:159"/>
+                    <CubicMirroredVertex x="-14" y="-14" rotation="3.9" distance="14" id="0:160"/>
+                    <CubicMirroredVertex x="-18" y="-45" rotation="4.85" distance="24" id="0:161"/>
                 </PointsPath>
-                <Fill name="Fill">
-                    <LinearGradient startX="0" startY="-78" endX="0" endY="3" name="Gradient">
-                        <GradientStop colorValue="FFFFD479" position="0"/>
-                        <GradientStop colorValue="FFFFD479" position="0.6"/>
-                        <GradientStop colorValue="FFF2A93F" position="1"/>
+                <Fill name="Fill" id="0:162">
+                    <LinearGradient startX="0" startY="-78" endX="0" endY="3" name="Gradient" id="0:163">
+                        <GradientStop colorValue="FFFFD479" position="0" id="0:164"/>
+                        <GradientStop colorValue="FFFFD479" position="0.6" id="0:165"/>
+                        <GradientStop colorValue="FFF2A93F" position="1" id="0:166"/>
                     </LinearGradient>
                 </Fill>
             </Shape>
@@ -188,18 +188,18 @@
                  and the left and right bellies differ. Gradient-filled, because a flat fill
                  is what made the hand-built version read as a sticker. -->
             <Shape name="flame_outer" id="0:25">
-                <PointsPath isClosed="true" isClockwise="true" name="Path">
-                    <StraightVertex x="6" y="-120"/>
-                    <CubicMirroredVertex x="36" y="-64" rotation="1.5707964" distance="38"/>
-                    <CubicMirroredVertex x="24" y="-18" rotation="2.5" distance="24"/>
-                    <CubicMirroredVertex x="0" y="8" rotation="3.1415927" distance="22"/>
-                    <CubicMirroredVertex x="-25" y="-20" rotation="3.9" distance="24"/>
-                    <CubicMirroredVertex x="-32" y="-69" rotation="4.85" distance="38"/>
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:167">
+                    <StraightVertex x="6" y="-120" id="0:168"/>
+                    <CubicMirroredVertex x="36" y="-64" rotation="1.5707964" distance="38" id="0:169"/>
+                    <CubicMirroredVertex x="24" y="-18" rotation="2.5" distance="24" id="0:170"/>
+                    <CubicMirroredVertex x="0" y="8" rotation="3.1415927" distance="22" id="0:171"/>
+                    <CubicMirroredVertex x="-25" y="-20" rotation="3.9" distance="24" id="0:172"/>
+                    <CubicMirroredVertex x="-32" y="-69" rotation="4.85" distance="38" id="0:173"/>
                 </PointsPath>
-                <Fill name="Fill">
-                    <LinearGradient startX="0" startY="-120" endX="0" endY="6" name="Gradient">
-                        <GradientStop colorValue="FFF2A93F" position="0"/>
-                        <GradientStop colorValue="FFB54708" position="1"/>
+                <Fill name="Fill" id="0:174">
+                    <LinearGradient startX="0" startY="-120" endX="0" endY="6" name="Gradient" id="0:175">
+                        <GradientStop colorValue="FFF2A93F" position="0" id="0:176"/>
+                        <GradientStop colorValue="FFB54708" position="1" id="0:177"/>
                     </LinearGradient>
                 </Fill>
             </Shape>
@@ -216,13 +216,13 @@
              from anyway. What is left here is the seam that appears in the moment after the
              covers fall open and before there is a flame big enough to hide it. -->
         <Shape x="152" y="238" name="gutter" id="0:26">
-            <PointsPath isClosed="true" isClockwise="true" name="Path">
-                <StraightVertex x="-6" y="-16"/>
-                <StraightVertex x="6" y="-16"/>
-                <StraightVertex x="2" y="-60"/>
-                <StraightVertex x="-2" y="-60"/>
+            <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:178">
+                <StraightVertex x="-6" y="-16" id="0:179"/>
+                <StraightVertex x="6" y="-16" id="0:180"/>
+                <StraightVertex x="2" y="-60" id="0:181"/>
+                <StraightVertex x="-2" y="-60" id="0:182"/>
             </PointsPath>
-            <Fill name="Fill"><SolidColor colorValue="FF26190A" name="Color"/></Fill>
+            <Fill name="Fill" id="0:183"><SolidColor colorValue="FF26190A" name="Color" id="0:184"/></Fill>
         </Shape>
 
         <!-- The two halves. Each is a Node hinged at the gutter's near end, holding three
@@ -237,23 +237,23 @@
                  **This is the shape that says we are looking at the bottom of a book** and
                  not at two flat wings -- it is the only element that gives the thing
                  thickness. -->
-            <Shape name="tail_left">
-                <PointsPath isClosed="true" isClockwise="true" name="Path">
-                    <StraightVertex x="0" y="11"/>
-                    <StraightVertex x="-105" y="-3"/>
-                    <StraightVertex x="-116" y="4"/>
-                    <StraightVertex x="0" y="20"/>
+            <Shape name="tail_left" id="0:185">
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:186">
+                    <StraightVertex x="0" y="11" id="0:187"/>
+                    <StraightVertex x="-105" y="-3" id="0:188"/>
+                    <StraightVertex x="-116" y="4" id="0:189"/>
+                    <StraightVertex x="0" y="20" id="0:190"/>
                 </PointsPath>
-                <Fill name="Fill"><SolidColor colorValue="FFE2D9C4" name="Color"/></Fill>
+                <Fill name="Fill" id="0:191"><SolidColor colorValue="FFE2D9C4" name="Color" id="0:192"/></Fill>
             </Shape>
             <Shape name="page_left" id="0:28">
-                <PointsPath isClosed="true" isClockwise="true" name="Path">
-                    <StraightVertex x="0" y="11" radius="2"/>
-                    <StraightVertex x="-105" y="-3" radius="2"/>
-                    <StraightVertex x="-65" y="-53" radius="2"/>
-                    <StraightVertex x="0" y="-58" radius="2"/>
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:193">
+                    <StraightVertex x="0" y="11" radius="2" id="0:194"/>
+                    <StraightVertex x="-105" y="-3" radius="2" id="0:195"/>
+                    <StraightVertex x="-65" y="-53" radius="2" id="0:196"/>
+                    <StraightVertex x="0" y="-58" radius="2" id="0:197"/>
                 </PointsPath>
-                <Fill name="Fill">
+                <Fill name="Fill" id="0:198">
                     <!-- **The crease is the darkest part of an open book, not the
                          brightest.** The first version ran paper-bright at x=0 outward on
                          the reasoning that the flame is the light source and the gutter is
@@ -263,11 +263,11 @@
                          valley shade each other, which is why a real open book has a dark
                          line down it; so the crease gets the shadow tone, the lit band sits
                          just outside it, and the falloff still runs outward from there. -->
-                    <LinearGradient startX="0" startY="-23" endX="-105" endY="-27" name="Gradient">
-                        <GradientStop colorValue="FFD9A96B" position="0"/>
-                        <GradientStop colorValue="FFD9A96B" position="0.03"/>
-                        <GradientStop colorValue="FFFDFAF1" position="0.11"/>
-                        <GradientStop colorValue="FFFFE8C4" position="1"/>
+                    <LinearGradient startX="0" startY="-23" endX="-105" endY="-27" name="Gradient" id="0:199">
+                        <GradientStop colorValue="FFD9A96B" position="0" id="0:200"/>
+                        <GradientStop colorValue="FFD9A96B" position="0.03" id="0:201"/>
+                        <GradientStop colorValue="FFFDFAF1" position="0.11" id="0:202"/>
+                        <GradientStop colorValue="FFFFE8C4" position="1" id="0:203"/>
                     </LinearGradient>
                 </Fill>
                 <!-- No Stroke. **A hairline around this path puts one up the crease**, and
@@ -277,59 +277,59 @@
                      the outline was doing nothing the drawing needed and one thing it did
                      not. `PointsPath` strokes every edge or none. -->
             </Shape>
-            <Shape name="cover_left">
-                <PointsPath isClosed="true" isClockwise="true" name="Path">
-                    <StraightVertex x="0" y="20" radius="3"/>
-                    <StraightVertex x="-116" y="4" radius="3"/>
-                    <StraightVertex x="-72" y="-58" radius="3"/>
-                    <StraightVertex x="0" y="-64" radius="3"/>
+            <Shape name="cover_left" id="0:204">
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:205">
+                    <StraightVertex x="0" y="20" radius="3" id="0:206"/>
+                    <StraightVertex x="-116" y="4" radius="3" id="0:207"/>
+                    <StraightVertex x="-72" y="-58" radius="3" id="0:208"/>
+                    <StraightVertex x="0" y="-64" radius="3" id="0:209"/>
                 </PointsPath>
-                <Fill name="Fill">
-                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient">
-                        <GradientStop colorValue="FF35230E" position="0"/>
-                        <GradientStop colorValue="FF1B1106" position="1"/>
+                <Fill name="Fill" id="0:210">
+                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient" id="0:211">
+                        <GradientStop colorValue="FF35230E" position="0" id="0:212"/>
+                        <GradientStop colorValue="FF1B1106" position="1" id="0:213"/>
                     </LinearGradient>
                 </Fill>
             </Shape>
         </Node>
 
         <Node x="152" y="238" name="wing_right" id="0:29">
-            <Shape name="tail_right">
-                <PointsPath isClosed="true" isClockwise="false" name="Path">
-                    <StraightVertex x="0" y="11"/>
-                    <StraightVertex x="105" y="-3"/>
-                    <StraightVertex x="116" y="4"/>
-                    <StraightVertex x="0" y="20"/>
+            <Shape name="tail_right" id="0:214">
+                <PointsPath isClosed="true" isClockwise="false" name="Path" id="0:215">
+                    <StraightVertex x="0" y="11" id="0:216"/>
+                    <StraightVertex x="105" y="-3" id="0:217"/>
+                    <StraightVertex x="116" y="4" id="0:218"/>
+                    <StraightVertex x="0" y="20" id="0:219"/>
                 </PointsPath>
-                <Fill name="Fill"><SolidColor colorValue="FFE2D9C4" name="Color"/></Fill>
+                <Fill name="Fill" id="0:220"><SolidColor colorValue="FFE2D9C4" name="Color" id="0:221"/></Fill>
             </Shape>
             <Shape name="page_right" id="0:31">
-                <PointsPath isClosed="true" isClockwise="false" name="Path">
-                    <StraightVertex x="0" y="11" radius="2"/>
-                    <StraightVertex x="105" y="-3" radius="2"/>
-                    <StraightVertex x="65" y="-53" radius="2"/>
-                    <StraightVertex x="0" y="-58" radius="2"/>
+                <PointsPath isClosed="true" isClockwise="false" name="Path" id="0:222">
+                    <StraightVertex x="0" y="11" radius="2" id="0:223"/>
+                    <StraightVertex x="105" y="-3" radius="2" id="0:224"/>
+                    <StraightVertex x="65" y="-53" radius="2" id="0:225"/>
+                    <StraightVertex x="0" y="-58" radius="2" id="0:226"/>
                 </PointsPath>
-                <Fill name="Fill">
-                    <LinearGradient startX="0" startY="-23" endX="105" endY="-27" name="Gradient">
-                        <GradientStop colorValue="FFD9A96B" position="0"/>
-                        <GradientStop colorValue="FFD9A96B" position="0.03"/>
-                        <GradientStop colorValue="FFFDFAF1" position="0.11"/>
-                        <GradientStop colorValue="FFFFE8C4" position="1"/>
+                <Fill name="Fill" id="0:227">
+                    <LinearGradient startX="0" startY="-23" endX="105" endY="-27" name="Gradient" id="0:228">
+                        <GradientStop colorValue="FFD9A96B" position="0" id="0:229"/>
+                        <GradientStop colorValue="FFD9A96B" position="0.03" id="0:230"/>
+                        <GradientStop colorValue="FFFDFAF1" position="0.11" id="0:231"/>
+                        <GradientStop colorValue="FFFFE8C4" position="1" id="0:232"/>
                     </LinearGradient>
                 </Fill>
             </Shape>
-            <Shape name="cover_right">
-                <PointsPath isClosed="true" isClockwise="false" name="Path">
-                    <StraightVertex x="0" y="20" radius="3"/>
-                    <StraightVertex x="116" y="4" radius="3"/>
-                    <StraightVertex x="72" y="-58" radius="3"/>
-                    <StraightVertex x="0" y="-64" radius="3"/>
+            <Shape name="cover_right" id="0:233">
+                <PointsPath isClosed="true" isClockwise="false" name="Path" id="0:234">
+                    <StraightVertex x="0" y="20" radius="3" id="0:235"/>
+                    <StraightVertex x="116" y="4" radius="3" id="0:236"/>
+                    <StraightVertex x="72" y="-58" radius="3" id="0:237"/>
+                    <StraightVertex x="0" y="-64" radius="3" id="0:238"/>
                 </PointsPath>
-                <Fill name="Fill">
-                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient">
-                        <GradientStop colorValue="FF35230E" position="0"/>
-                        <GradientStop colorValue="FF1B1106" position="1"/>
+                <Fill name="Fill" id="0:239">
+                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient" id="0:240">
+                        <GradientStop colorValue="FF35230E" position="0" id="0:241"/>
+                        <GradientStop colorValue="FF1B1106" position="1" id="0:242"/>
                     </LinearGradient>
                 </Fill>
             </Shape>
@@ -338,12 +338,12 @@
         <!-- The light, behind the thing making it. Warmer rather than lighter, which is the
              only kind that reads as light on a cream ground. -->
         <Shape x="152" y="140" name="glow" id="0:32">
-            <Ellipse width="250" height="250" name="Path"/>
-            <Fill name="Fill">
-                <RadialGradient startX="0" startY="0" endX="0" endY="125" name="Gradient">
-                    <GradientStop colorValue="7FF2A93F" position="0"/>
-                    <GradientStop colorValue="3DF2A93F" position="0.45"/>
-                    <GradientStop colorValue="00F2A93F" position="1"/>
+            <Ellipse width="250" height="250" name="Path" id="0:243"/>
+            <Fill name="Fill" id="0:244">
+                <RadialGradient startX="0" startY="0" endX="0" endY="125" name="Gradient" id="0:245">
+                    <GradientStop colorValue="7FF2A93F" position="0" id="0:246"/>
+                    <GradientStop colorValue="3DF2A93F" position="0.45" id="0:247"/>
+                    <GradientStop colorValue="00F2A93F" position="1" id="0:248"/>
                 </RadialGradient>
             </Fill>
         </Shape>
@@ -353,30 +353,30 @@
              celebration actually paints, instead of against the previewer's near-black.
              `ground` defaults to 0 in the view model below and nothing in `lib/` writes it. -->
         <Shape x="152" y="152" name="ground" id="0:33">
-            <Rectangle width="304" height="304" name="Path"/>
-            <Fill name="Fill"><SolidColor colorValue="FFFFE8C4" name="Color"/></Fill>
-            <DataBindContext sourcePathIds="0:100-0:103" propertyKey="18"/>
+            <Rectangle width="304" height="304" name="Path" id="0:249"/>
+            <Fill name="Fill" id="0:250"><SolidColor colorValue="FFFFE8C4" name="Color" id="0:251"/></Fill>
+            <DataBindContext sourcePathIds="0:100-0:103" propertyKey="18" id="0:252"/>
         </Shape>
 
         <StateMachine name="Ignite" id="0:7">
             <StateMachineLayer name="Layer 1" id="0:8">
-                <AnyState x="200" y="-120"/>
-                <ExitState x="400" y="-120"/>
-                <EntryState>
-                    <StateTransition stateToId="0:70"/>
+                <AnyState x="200" y="-120" id="0:253"/>
+                <ExitState x="400" y="-120" id="0:254"/>
+                <EntryState id="0:255">
+                    <StateTransition stateToId="0:70" id="0:256"/>
                 </EntryState>
                 <!-- The scrub. Weights run 0-100, and the children must be in ascending
                      `value` order -- the runtime binary-searches them and does not check. -->
                 <BlendState1DViewModel x="200" id="0:70">
-                    <BindablePropertyNumber>
-                        <DataBindContext sourcePathIds="0:100-0:101" propertyKey="636"/>
+                    <BindablePropertyNumber id="0:257">
+                        <DataBindContext sourcePathIds="0:100-0:101" propertyKey="636" id="0:258"/>
                     </BindablePropertyNumber>
-                    <BlendAnimation1D animationId="0:60" value="0"/>
-                    <BlendAnimation1D animationId="0:61" value="20"/>
-                    <BlendAnimation1D animationId="0:62" value="35"/>
-                    <BlendAnimation1D animationId="0:63" value="50"/>
-                    <BlendAnimation1D animationId="0:64" value="70"/>
-                    <BlendAnimation1D animationId="0:65" value="100"/>
+                    <BlendAnimation1D animationId="0:60" value="0" id="0:259"/>
+                    <BlendAnimation1D animationId="0:61" value="20" id="0:260"/>
+                    <BlendAnimation1D animationId="0:62" value="35" id="0:261"/>
+                    <BlendAnimation1D animationId="0:63" value="50" id="0:262"/>
+                    <BlendAnimation1D animationId="0:64" value="70" id="0:263"/>
+                    <BlendAnimation1D animationId="0:65" value="100" id="0:264"/>
                 </BlendState1DViewModel>
             </StateMachineLayer>
         </StateMachine>
@@ -395,51 +395,51 @@
         <!-- 0 - shut. One board wide, flattened to a slab, covers out and pages hidden.
              No seam, no fire, no light. -->
         <LinearAnimation duration="1" name="p00" id="0:60">
-            <KeyedObject objectId="0:27">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.54"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.34"/></KeyedProperty>
+            <KeyedObject objectId="0:27" id="0:265">
+                <KeyedProperty propertyKey="16" id="0:266"><KeyFrameDouble value="0.54" id="0:267"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:268"><KeyFrameDouble value="0.34" id="0:269"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.54"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.34"/></KeyedProperty>
+            <KeyedObject objectId="0:29" id="0:270">
+                <KeyedProperty propertyKey="16" id="0:271"><KeyFrameDouble value="0.54" id="0:272"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:273"><KeyFrameDouble value="0.34" id="0:274"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.02"/></KeyedProperty>
+            <KeyedObject objectId="0:28" id="0:275">
+                <KeyedProperty propertyKey="17" id="0:276"><KeyFrameDouble value="0.02" id="0:277"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.02"/></KeyedProperty>
+            <KeyedObject objectId="0:31" id="0:278">
+                <KeyedProperty propertyKey="17" id="0:279"><KeyFrameDouble value="0.02" id="0:280"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:26" id="0:281">
+                <KeyedProperty propertyKey="18" id="0:282"><KeyFrameDouble value="0" id="0:283"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20">
-                <KeyedProperty propertyKey="14"><KeyFrameDouble value="236"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.3"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.15"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:20" id="0:284">
+                <KeyedProperty propertyKey="14" id="0:285"><KeyFrameDouble value="236" id="0:286"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:287"><KeyFrameDouble value="0.3" id="0:288"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:289"><KeyFrameDouble value="0.15" id="0:290"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:291"><KeyFrameDouble value="0" id="0:292"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:25" id="0:293">
+                <KeyedProperty propertyKey="16" id="0:294"><KeyFrameDouble value="1" id="0:295"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:296"><KeyFrameDouble value="1" id="0:297"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24">
-                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:24" id="0:298">
+                <KeyedProperty propertyKey="15" id="0:299"><KeyFrameDouble value="0" id="0:300"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:301"><KeyFrameDouble value="1" id="0:302"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:303"><KeyFrameDouble value="1" id="0:304"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:21">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.1"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:21" id="0:305">
+                <KeyedProperty propertyKey="16" id="0:306"><KeyFrameDouble value="0.1" id="0:307"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:308"><KeyFrameDouble value="0.1" id="0:309"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:310"><KeyFrameDouble value="0" id="0:311"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:23">
-                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-50"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:23" id="0:312">
+                <KeyedProperty propertyKey="13" id="0:313"><KeyFrameDouble value="-50" id="0:314"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:315"><KeyFrameDouble value="0" id="0:316"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:32">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.3"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.3"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:32" id="0:317">
+                <KeyedProperty propertyKey="16" id="0:318"><KeyFrameDouble value="0.3" id="0:319"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:320"><KeyFrameDouble value="0.3" id="0:321"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:322"><KeyFrameDouble value="0" id="0:323"/></KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
 
@@ -447,51 +447,51 @@
              arriving. Pages are showing, the seam has appeared, and there is an ember in
              it: dormant, small, not yet a flame. -->
         <LinearAnimation duration="1" name="p20" id="0:61">
-            <KeyedObject objectId="0:27">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.04"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.05"/></KeyedProperty>
+            <KeyedObject objectId="0:27" id="0:324">
+                <KeyedProperty propertyKey="16" id="0:325"><KeyFrameDouble value="1.04" id="0:326"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:327"><KeyFrameDouble value="1.05" id="0:328"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.04"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.05"/></KeyedProperty>
+            <KeyedObject objectId="0:29" id="0:329">
+                <KeyedProperty propertyKey="16" id="0:330"><KeyFrameDouble value="1.04" id="0:331"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:332"><KeyFrameDouble value="1.05" id="0:333"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:28" id="0:334">
+                <KeyedProperty propertyKey="17" id="0:335"><KeyFrameDouble value="1" id="0:336"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:31" id="0:337">
+                <KeyedProperty propertyKey="17" id="0:338"><KeyFrameDouble value="1" id="0:339"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:26" id="0:340">
+                <KeyedProperty propertyKey="18" id="0:341"><KeyFrameDouble value="1" id="0:342"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20">
-                <KeyedProperty propertyKey="14"><KeyFrameDouble value="226"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.34"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.3"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:20" id="0:343">
+                <KeyedProperty propertyKey="14" id="0:344"><KeyFrameDouble value="226" id="0:345"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:346"><KeyFrameDouble value="0.34" id="0:347"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:348"><KeyFrameDouble value="0.3" id="0:349"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:350"><KeyFrameDouble value="1" id="0:351"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:25" id="0:352">
+                <KeyedProperty propertyKey="16" id="0:353"><KeyFrameDouble value="1" id="0:354"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:355"><KeyFrameDouble value="1" id="0:356"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24">
-                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:24" id="0:357">
+                <KeyedProperty propertyKey="15" id="0:358"><KeyFrameDouble value="0" id="0:359"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:360"><KeyFrameDouble value="1" id="0:361"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:362"><KeyFrameDouble value="1" id="0:363"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:21">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.2"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.2"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:21" id="0:364">
+                <KeyedProperty propertyKey="16" id="0:365"><KeyFrameDouble value="0.2" id="0:366"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:367"><KeyFrameDouble value="0.2" id="0:368"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:369"><KeyFrameDouble value="0" id="0:370"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:23">
-                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-50"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:23" id="0:371">
+                <KeyedProperty propertyKey="13" id="0:372"><KeyFrameDouble value="-50" id="0:373"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:374"><KeyFrameDouble value="0" id="0:375"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:32">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.42"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.42"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.3"/></KeyedProperty>
+            <KeyedObject objectId="0:32" id="0:376">
+                <KeyedProperty propertyKey="16" id="0:377"><KeyFrameDouble value="0.42" id="0:378"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:379"><KeyFrameDouble value="0.42" id="0:380"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:381"><KeyFrameDouble value="0.3" id="0:382"/></KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
 
@@ -499,152 +499,152 @@
              narrower than it, which is the one thing a font glyph could never do and the
              reason this artboard exists. Sparks are in the air, the glow flares past full. -->
         <LinearAnimation duration="1" name="p35" id="0:62">
-            <KeyedObject objectId="0:27">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:27" id="0:383">
+                <KeyedProperty propertyKey="16" id="0:384"><KeyFrameDouble value="1" id="0:385"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:386"><KeyFrameDouble value="1" id="0:387"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:29" id="0:388">
+                <KeyedProperty propertyKey="16" id="0:389"><KeyFrameDouble value="1" id="0:390"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:391"><KeyFrameDouble value="1" id="0:392"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:28" id="0:393">
+                <KeyedProperty propertyKey="17" id="0:394"><KeyFrameDouble value="1" id="0:395"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:31" id="0:396">
+                <KeyedProperty propertyKey="17" id="0:397"><KeyFrameDouble value="1" id="0:398"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:26" id="0:399">
+                <KeyedProperty propertyKey="18" id="0:400"><KeyFrameDouble value="1" id="0:401"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20">
-                <KeyedProperty propertyKey="14"><KeyFrameDouble value="212"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.06"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:20" id="0:402">
+                <KeyedProperty propertyKey="14" id="0:403"><KeyFrameDouble value="212" id="0:404"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:405"><KeyFrameDouble value="1" id="0:406"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:407"><KeyFrameDouble value="1.06" id="0:408"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:409"><KeyFrameDouble value="1" id="0:410"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.9"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.18"/></KeyedProperty>
+            <KeyedObject objectId="0:25" id="0:411">
+                <KeyedProperty propertyKey="16" id="0:412"><KeyFrameDouble value="0.9" id="0:413"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:414"><KeyFrameDouble value="1.18" id="0:415"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24">
-                <KeyedProperty propertyKey="15"><KeyFrameDouble value="-0.08"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.86"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.12"/></KeyedProperty>
+            <KeyedObject objectId="0:24" id="0:416">
+                <KeyedProperty propertyKey="15" id="0:417"><KeyFrameDouble value="-0.08" id="0:418"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:419"><KeyFrameDouble value="0.86" id="0:420"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:421"><KeyFrameDouble value="1.12" id="0:422"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:21">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.7"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.7"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.95"/></KeyedProperty>
+            <KeyedObject objectId="0:21" id="0:423">
+                <KeyedProperty propertyKey="16" id="0:424"><KeyFrameDouble value="0.7" id="0:425"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:426"><KeyFrameDouble value="0.7" id="0:427"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:428"><KeyFrameDouble value="0.95" id="0:429"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:23">
-                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-44"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:23" id="0:430">
+                <KeyedProperty propertyKey="13" id="0:431"><KeyFrameDouble value="-44" id="0:432"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:433"><KeyFrameDouble value="0" id="0:434"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:32">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.9"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.9"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:32" id="0:435">
+                <KeyedProperty propertyKey="16" id="0:436"><KeyFrameDouble value="0.9" id="0:437"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:438"><KeyFrameDouble value="0.9" id="0:439"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:440"><KeyFrameDouble value="1" id="0:441"/></KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
 
         <!-- 50 - the SQUASH, and the gleam crossing. Wider than rest, shorter than rest,
              licking the other way. Sparks at their widest and already fading. -->
         <LinearAnimation duration="1" name="p50" id="0:63">
-            <KeyedObject objectId="0:27">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:27" id="0:442">
+                <KeyedProperty propertyKey="16" id="0:443"><KeyFrameDouble value="1" id="0:444"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:445"><KeyFrameDouble value="1" id="0:446"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:29" id="0:447">
+                <KeyedProperty propertyKey="16" id="0:448"><KeyFrameDouble value="1" id="0:449"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:450"><KeyFrameDouble value="1" id="0:451"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:28" id="0:452">
+                <KeyedProperty propertyKey="17" id="0:453"><KeyFrameDouble value="1" id="0:454"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:31" id="0:455">
+                <KeyedProperty propertyKey="17" id="0:456"><KeyFrameDouble value="1" id="0:457"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:26" id="0:458">
+                <KeyedProperty propertyKey="18" id="0:459"><KeyFrameDouble value="1" id="0:460"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20">
-                <KeyedProperty propertyKey="14"><KeyFrameDouble value="214"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:20" id="0:461">
+                <KeyedProperty propertyKey="14" id="0:462"><KeyFrameDouble value="214" id="0:463"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:464"><KeyFrameDouble value="1" id="0:465"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:466"><KeyFrameDouble value="1" id="0:467"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:468"><KeyFrameDouble value="1" id="0:469"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.08"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.92"/></KeyedProperty>
+            <KeyedObject objectId="0:25" id="0:470">
+                <KeyedProperty propertyKey="16" id="0:471"><KeyFrameDouble value="1.08" id="0:472"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:473"><KeyFrameDouble value="0.92" id="0:474"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24">
-                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0.07"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.06"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.88"/></KeyedProperty>
+            <KeyedObject objectId="0:24" id="0:475">
+                <KeyedProperty propertyKey="15" id="0:476"><KeyFrameDouble value="0.07" id="0:477"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:478"><KeyFrameDouble value="1.06" id="0:479"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:480"><KeyFrameDouble value="0.88" id="0:481"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:21">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.15"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.15"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.55"/></KeyedProperty>
+            <KeyedObject objectId="0:21" id="0:482">
+                <KeyedProperty propertyKey="16" id="0:483"><KeyFrameDouble value="1.15" id="0:484"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:485"><KeyFrameDouble value="1.15" id="0:486"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:487"><KeyFrameDouble value="0.55" id="0:488"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:23">
-                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-8"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:23" id="0:489">
+                <KeyedProperty propertyKey="13" id="0:490"><KeyFrameDouble value="-8" id="0:491"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:492"><KeyFrameDouble value="1" id="0:493"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:32">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.02"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.02"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.85"/></KeyedProperty>
+            <KeyedObject objectId="0:32" id="0:494">
+                <KeyedProperty propertyKey="16" id="0:495"><KeyFrameDouble value="1.02" id="0:496"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:497"><KeyFrameDouble value="1.02" id="0:498"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:499"><KeyFrameDouble value="0.85" id="0:500"/></KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
 
         <!-- 70 - settling. The last of the lick, the gleam leaving, the embers gone. -->
         <LinearAnimation duration="1" name="p70" id="0:64">
-            <KeyedObject objectId="0:27">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:27" id="0:501">
+                <KeyedProperty propertyKey="16" id="0:502"><KeyFrameDouble value="1" id="0:503"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:504"><KeyFrameDouble value="1" id="0:505"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:29" id="0:506">
+                <KeyedProperty propertyKey="16" id="0:507"><KeyFrameDouble value="1" id="0:508"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:509"><KeyFrameDouble value="1" id="0:510"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:28" id="0:511">
+                <KeyedProperty propertyKey="17" id="0:512"><KeyFrameDouble value="1" id="0:513"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:31" id="0:514">
+                <KeyedProperty propertyKey="17" id="0:515"><KeyFrameDouble value="1" id="0:516"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:26" id="0:517">
+                <KeyedProperty propertyKey="18" id="0:518"><KeyFrameDouble value="1" id="0:519"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20">
-                <KeyedProperty propertyKey="14"><KeyFrameDouble value="214"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.01"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:20" id="0:520">
+                <KeyedProperty propertyKey="14" id="0:521"><KeyFrameDouble value="214" id="0:522"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:523"><KeyFrameDouble value="1" id="0:524"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:525"><KeyFrameDouble value="1.01" id="0:526"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:527"><KeyFrameDouble value="1" id="0:528"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.99"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.03"/></KeyedProperty>
+            <KeyedObject objectId="0:25" id="0:529">
+                <KeyedProperty propertyKey="16" id="0:530"><KeyFrameDouble value="0.99" id="0:531"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:532"><KeyFrameDouble value="1.03" id="0:533"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24">
-                <KeyedProperty propertyKey="15"><KeyFrameDouble value="-0.03"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.98"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.04"/></KeyedProperty>
+            <KeyedObject objectId="0:24" id="0:534">
+                <KeyedProperty propertyKey="15" id="0:535"><KeyFrameDouble value="-0.03" id="0:536"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:537"><KeyFrameDouble value="0.98" id="0:538"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:539"><KeyFrameDouble value="1.04" id="0:540"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:21">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.4"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.4"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:21" id="0:541">
+                <KeyedProperty propertyKey="16" id="0:542"><KeyFrameDouble value="1.4" id="0:543"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:544"><KeyFrameDouble value="1.4" id="0:545"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:546"><KeyFrameDouble value="0" id="0:547"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:23">
-                <KeyedProperty propertyKey="13"><KeyFrameDouble value="38"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.35"/></KeyedProperty>
+            <KeyedObject objectId="0:23" id="0:548">
+                <KeyedProperty propertyKey="13" id="0:549"><KeyFrameDouble value="38" id="0:550"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:551"><KeyFrameDouble value="0.35" id="0:552"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:32">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.62"/></KeyedProperty>
+            <KeyedObject objectId="0:32" id="0:553">
+                <KeyedProperty propertyKey="16" id="0:554"><KeyFrameDouble value="1" id="0:555"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:556"><KeyFrameDouble value="1" id="0:557"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:558"><KeyFrameDouble value="0.62" id="0:559"/></KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
 
@@ -653,51 +653,51 @@
              reader opens nightly, the last frame has to be a place the drawing can just
              sit. -->
         <LinearAnimation duration="1" name="p100" id="0:65">
-            <KeyedObject objectId="0:27">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:27" id="0:560">
+                <KeyedProperty propertyKey="16" id="0:561"><KeyFrameDouble value="1" id="0:562"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:563"><KeyFrameDouble value="1" id="0:564"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:29" id="0:565">
+                <KeyedProperty propertyKey="16" id="0:566"><KeyFrameDouble value="1" id="0:567"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:568"><KeyFrameDouble value="1" id="0:569"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:28" id="0:570">
+                <KeyedProperty propertyKey="17" id="0:571"><KeyFrameDouble value="1" id="0:572"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31">
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:31" id="0:573">
+                <KeyedProperty propertyKey="17" id="0:574"><KeyFrameDouble value="1" id="0:575"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26">
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:26" id="0:576">
+                <KeyedProperty propertyKey="18" id="0:577"><KeyFrameDouble value="1" id="0:578"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20">
-                <KeyedProperty propertyKey="14"><KeyFrameDouble value="214"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:20" id="0:579">
+                <KeyedProperty propertyKey="14" id="0:580"><KeyFrameDouble value="214" id="0:581"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:582"><KeyFrameDouble value="1" id="0:583"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:584"><KeyFrameDouble value="1" id="0:585"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:586"><KeyFrameDouble value="1" id="0:587"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:25" id="0:588">
+                <KeyedProperty propertyKey="16" id="0:589"><KeyFrameDouble value="1" id="0:590"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:591"><KeyFrameDouble value="1" id="0:592"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24">
-                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0"/></KeyedProperty>
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            <KeyedObject objectId="0:24" id="0:593">
+                <KeyedProperty propertyKey="15" id="0:594"><KeyFrameDouble value="0" id="0:595"/></KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:596"><KeyFrameDouble value="1" id="0:597"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:598"><KeyFrameDouble value="1" id="0:599"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:21">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.4"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.4"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:21" id="0:600">
+                <KeyedProperty propertyKey="16" id="0:601"><KeyFrameDouble value="1.4" id="0:602"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:603"><KeyFrameDouble value="1.4" id="0:604"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:605"><KeyFrameDouble value="0" id="0:606"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:23">
-                <KeyedProperty propertyKey="13"><KeyFrameDouble value="55"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            <KeyedObject objectId="0:23" id="0:607">
+                <KeyedProperty propertyKey="13" id="0:608"><KeyFrameDouble value="55" id="0:609"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:610"><KeyFrameDouble value="0" id="0:611"/></KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:32">
-                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
-                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.58"/></KeyedProperty>
+            <KeyedObject objectId="0:32" id="0:612">
+                <KeyedProperty propertyKey="16" id="0:613"><KeyFrameDouble value="1" id="0:614"/></KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:615"><KeyFrameDouble value="1" id="0:616"/></KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:617"><KeyFrameDouble value="0.58" id="0:618"/></KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
     </Artboard>
@@ -709,8 +709,8 @@
         <ViewModelPropertyNumber name="progress" id="0:101"/>
         <ViewModelPropertyNumber name="ground" id="0:103"/>
         <ViewModelInstance exports="true" name="Default" id="0:102">
-            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:101"/>
-            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:103"/>
+            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:101" id="0:619"/>
+            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:103" id="0:620"/>
         </ViewModelInstance>
     </ViewModel>
 </Rive>
