@@ -59,6 +59,30 @@ double _todayOpacity(WidgetTester tester) {
   return fade;
 }
 
+/// How visible the counter is at this instant.
+///
+/// **Read off its own [Opacity], never off an ancestor [FadeTransition].** The counter used
+/// to be a `_Rise` and this was a `FadeTransition` search like the one above; when it became
+/// a counter the search kept passing, because `MaterialApp` puts a route transition above
+/// everything and that is what it had started matching. A finder that cannot fail is worse
+/// than no finder.
+double _figureOpacity(WidgetTester tester) {
+  final opacity = find.ancestor(
+    of: find.byKey(kStreakCelebrationFigureKey),
+    matching: find.byType(Opacity),
+  );
+  return tester.widget<Opacity>(opacity.first).opacity;
+}
+
+/// What the counter currently reads.
+int _figureValue(WidgetTester tester) => int.parse(
+  tester.widget<Text>(find.byKey(kStreakCelebrationFigureKey)).data!,
+);
+
+/// The colour the flame is drawn in at this instant.
+Color _flameColour(WidgetTester tester) =>
+    tester.widget<Icon>(find.byIcon(kReadingStreakIcon)).color!;
+
 void main() {
   testWidgets('the run, its label and the flame are all present', (
     tester,
@@ -78,32 +102,140 @@ void main() {
     await _pump(tester, streak: 12);
 
     await tester.pump(); // schedule
-    await tester.pump(const Duration(milliseconds: 620));
-    final figureAt620 = tester
-        .widget<FadeTransition>(
-          find
-              .ancestor(
-                of: find.text('12'),
-                matching: find.byType(FadeTransition),
-              )
-              .first,
-        )
-        .opacity
-        .value;
+    await tester.pump(const Duration(milliseconds: 700));
+    final figureAt700 = _figureOpacity(tester);
 
     expect(
-      figureAt620,
+      figureAt700,
       greaterThan(0),
-      reason: 'the figure is well under way by 620ms',
+      reason: 'the figure is well under way by 700ms',
     );
     expect(
       _todayOpacity(tester),
-      lessThan(figureAt620),
+      lessThan(figureAt700),
       reason: 'today\'s stamp must still be behind the figure at this point',
     );
 
     await tester.pumpAndSettle();
     expect(_todayOpacity(tester), closeTo(1, 0.001));
+    expect(_figureOpacity(tester), closeTo(1, 0.001));
+  });
+
+  testWidgets('the flame ignites: dormant, then lit', (tester) async {
+    // Duolingo's first beat, and it is the streak page's own rule animated rather than a new
+    // idea: `_Hero` already tints the flame `secondaryText` while the day is open and `flame`
+    // once it is in. Here that transition is the event.
+    await _pump(tester, streak: 12);
+    await tester.pump();
+
+    // On the very first frame it has not caught.
+    expect(
+      _flameColour(tester),
+      isNot(kCandleFlame),
+      reason: 'a flame that starts lit has nothing to ignite',
+    );
+    expect(
+      _flameColour(tester).a,
+      lessThan(1),
+      reason: 'dormant is the copy\'s own brown, most of the way out',
+    );
+
+    await tester.pumpAndSettle();
+    expect(_flameColour(tester), kCandleFlame);
+  });
+
+  testWidgets('sparks fly, and nothing is left on screen afterwards', (
+    tester,
+  ) async {
+    // The one beat with no precedent in the app, so it is hand-painted — and the thing that
+    // makes a hand-painted burst safe is that it *ends*. A painter still drawing at rest would
+    // be an idle repaint on a screen a reader opens nightly.
+    await _pump(tester, streak: 12);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(CustomPaint), findsWidgets);
+    final mid = find
+        .byWidgetPredicate(
+          (w) =>
+              w is CustomPaint &&
+              w.painter.runtimeType.toString().contains('Spark'),
+        )
+        .evaluate()
+        .length;
+    expect(mid, 1, reason: 'the burst is in the air mid-beat');
+
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is CustomPaint &&
+            w.painter.runtimeType.toString().contains('Spark'),
+      ),
+      findsNothing,
+      reason: 'at rest the painter is gone, not merely transparent',
+    );
+  });
+
+  testWidgets('the counter rolls from the previous number, and never past the run', (
+    tester,
+  ) async {
+    // **The figure a reader came for is not `12`, it is `11` becoming `12`.** A number that is
+    // simply present says nothing happened tonight. And it must never read 13: the spring is
+    // on where the figure sits, not on what it says, because this is the one place on the
+    // screen that states a fact.
+    await _pump(tester, streak: 12);
+    await tester.pump();
+
+    expect(_figureValue(tester), 11, reason: 'it starts on last night\'s run');
+
+    final seen = <int>{};
+    for (var ms = 0; ms < 1500; ms += 20) {
+      await tester.pump(const Duration(milliseconds: 20));
+      seen.add(_figureValue(tester));
+    }
+    expect(
+      seen.where((v) => v > 12),
+      isEmpty,
+      reason: 'an overshoot on the value would print a day that was not earned',
+    );
+    expect(seen.contains(11) && seen.contains(12), isTrue);
+
+    await tester.pumpAndSettle();
+    expect(_figureValue(tester), 12);
+  });
+
+  testWidgets('day one counts up from nothing rather than from minus one', (
+    tester,
+  ) async {
+    await _pump(tester, streak: 1);
+    await tester.pump();
+    expect(_figureValue(tester), 0);
+    await tester.pumpAndSettle();
+    expect(_figureValue(tester), 1);
+  });
+
+  testWidgets('the gleam crosses the flame and then leaves it alone', (
+    tester,
+  ) async {
+    // A `ShaderMask` composites its child into a saved layer, so leaving one in place forever
+    // would be a permanent cost for a 380ms effect. It exists only while the band is on the
+    // glyph — which is also what keeps the resting frame identical to the one reduced motion
+    // serves.
+    await _pump(tester, streak: 12);
+    await tester.pump();
+
+    final onFlame = find.ancestor(
+      of: find.byIcon(kReadingStreakIcon),
+      matching: find.byType(ShaderMask),
+    );
+    expect(onFlame, findsNothing, reason: 'not before its beat');
+
+    await tester.pump(const Duration(milliseconds: 800));
+    expect(onFlame, findsOneWidget, reason: 'sweeping, mid-beat');
+
+    await tester.pumpAndSettle();
+    expect(onFlame, findsNothing, reason: 'and gone once it has passed');
   });
 
   testWidgets('today\'s cell is the one thing that arrives tilted', (
@@ -128,6 +260,32 @@ void main() {
     // that is the only frame where a running animation and a completed one differ.
     await _pump(tester, streak: 12, reducedMotion: true);
     await tester.pump();
+
+    // **Every new beat has to land on its resting state too**, which is the thing that makes
+    // the gate cheap: the sparks and the gleam are absent at `value == 1` by construction
+    // rather than by a second code path, so there is no "reduced motion" rendering to keep
+    // in step with the animated one.
+    expect(
+      _figureValue(tester),
+      12,
+      reason: 'the counter has finished counting',
+    );
+    expect(_flameColour(tester), kCandleFlame, reason: 'the flame is lit');
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is CustomPaint &&
+            w.painter.runtimeType.toString().contains('Spark'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.ancestor(
+        of: find.byIcon(kReadingStreakIcon),
+        matching: find.byType(ShaderMask),
+      ),
+      findsNothing,
+    );
 
     expect(_todayOpacity(tester), closeTo(1, 0.001));
     expect(

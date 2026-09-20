@@ -1062,12 +1062,66 @@ does nothing, which is the same mistake a grab handle on this page's cover would
   stays untitled"), so the two agree; it is written down because the reason is the
   constant and not the drawing.
 - **`lib/ui/widgets/streak/streak_celebration.dart`** — the moment. **Deviation:** the
-  spec says implicit animation only, and this uses one `AnimationController` with six
-  `Interval`s. Implicit animations have no delay, so a six-beat stagger means six
+  spec says implicit animation only, and this uses one `AnimationController` with nine
+  `Interval`s. Implicit animations have no delay, so a nine-beat stagger means nine
   `Future.delayed` calls, each of which has to be cancelled on dispose; one controller
   is core Flutter, is a single thing to dispose, and puts the timings in one readable
   place. The `MediaQuery.disableAnimationsOf` gate is honoured as specified, and by
   jumping to `value = 1` rather than running faster.
+
+### The increment choreography, and why there is no Rive in it
+
+**The reference is Duolingo's streak increment, decomposed beat by beat.** Its published
+structure is an ignition from a dormant grey flame to a vibrant one with spark particles, a
+number that rolls with a spring overshoot, a diagonal shimmer sweep across the icon, then a
+staggered reveal of the week and the button. Every one of those is a transform, a colour
+tween or a gradient. **None of it is character animation** — which is the one thing a vector
+runtime would be needed for, and the one thing that only appears in Duolingo's _milestone_
+takeovers, where a mascot fractures out of an egg.
+
+So the increment is built in Flutter, inside the controller that already existed:
+
+| Beat                    | ms       | What it is                                                                                                                                                                      |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ignition                | 0–520    | scale 0.4→1 on `easeOutBack` — already the overshoot, so one tween rather than a `TweenSequence` — with the colour flooding from dormant to [`kCandleFlame`] over the first 55% |
+| Bloom                   | 60–760   | a [`kCandleFlame`] radial halo that flares to a third strength and settles at a sixth                                                                                           |
+| Sparks                  | 120–720  | 14 embers on a `CustomPainter`, thrown in a 250° fan, gravity-pulled, faded to nothing                                                                                          |
+| Counter                 | 300–860  | rolls `streak - 1` → `streak`                                                                                                                                                   |
+| Gleam                   | 620–1000 | one diagonal `ShaderMask` pass, `srcATop`                                                                                                                                       |
+| Label, week, bar, stamp | 700–1500 | unchanged                                                                                                                                                                       |
+
+Total went 1360 → 1500ms.
+
+**Three decisions inside that are worth the words.**
+
+- **The ignition is the streak page's own rule, animated.** `_Hero` already tints the flame
+  `secondaryText` while the day is open and `flame` once it is in; the celebration's first
+  beat is that same transition happening rather than a new idea. The dormant tone is the
+  copy's brown at a third strength, **not a grey** — Duolingo desaturates against white, and
+  a true grey on this cream ground reads as a hole rather than an unlit wick.
+- **The counter's spring is positional, never numerical.** Two animations share one window:
+  the value rides a monotonic `easeOut` and the figure's offset rides `easeOutBack`. A back
+  curve on the value would print `13` and take it back, which is a lie in the only place on
+  the screen that states a fact. It also _drops_ from above where the label, week and bar all
+  rise from below — which is what marks it as the subject rather than another row.
+- **The sparks are seeded from the run**, for the reason `readCalendarPatchTilt` is derived
+  from the day: a re-roll on every paint cannot be told from a regression. The first cut
+  spaced them evenly over a full turn and drew a mechanical starburst — and its comment
+  claimed a fan while the code drew a ring, which is the failure mode this record exists to
+  catch. Found by rendering a filmstrip and looking at it.
+
+**Why no `.riv`.** Beyond having no mascot — and `docs/mockups/empty-states/PROMPTS.md`
+records what producing art for this app costs — a vector blob is un-greppable and
+un-diffable in a codebase whose whole discipline is that a claim can be read, and its timing
+would live in an external editor where no `Interval` can. It also breaks two things this
+screen honours on purpose: `disableAnimationsOf` would need the artboard seeked to its last
+frame by hand, and _nothing moves once the last beat lands_ — which is why the flicker here
+is part of the arrival and there is no idle loop. And the flame is
+`kReadingStreakIcon`, a font glyph chosen because the chip needs it in two tints; a second,
+vector flame is exactly the drift `reading_streak_chip.dart` already warns about for the
+share card's. Rive becomes the right call the day a **milestone takeover with a character**
+is scoped — for that screen only, with the nightly path staying blob-free.
+
 - **`reading_days` carries its book.** `ReadingDaysNotifier`'s state went from
   `Set<DateTime>` to `Map<DateTime, String?>`, because the month colours each night by
   its book and a second provider reading the same table is two answers that can
