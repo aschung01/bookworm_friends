@@ -154,6 +154,10 @@ const Rect _row = Rect.fromLTWH(0, 55, 402, 130);
 /// Two shelves, for the rule that spans them.
 const Rect _rows = Rect.fromLTWH(0, 55, 402, 260);
 
+/// The shelf band with room above it for the remove badges, which hang half a disc
+/// clear of every spine's head.
+const Rect _editRow = Rect.fromLTWH(0, 30, 402, 170);
+
 void main() {
   setUpAll(_loadRealFonts);
 
@@ -283,5 +287,57 @@ void main() {
     await tester.tap(_spineOf('The Hole'));
     await tester.pumpAndSettle();
     await _shoot(tester, dir(), 'rows_forward_moved', crop: _rows);
+  });
+
+  // **One test per density, not a loop.** The `covers` frame's cover wiggle repeats
+  // forever, so a second `pumpHome` in the same test never settles — `shell_tab_bar_test`
+  // hit the same wall and split for the same reason. `spines` no longer wobbles and would
+  // survive a loop; it is split anyway, so the two frames are produced the same way and a
+  // difference between them is the drawing rather than the harness.
+  for (final density in ShelfDensity.values) {
+    testWidgets('render ${density.name} in edit mode', (tester) async {
+      phone(tester);
+
+      // **The frame this file exists for.** A remove badge on a spine is a 22pt disc on
+      // a 29–47pt book whose neighbours are touching it — exactly the kind of drawing that
+      // satisfies every number its design names and still reads as a line of smudges.
+      // What to look for: one disc per spine, each wholly over its own book with daylight
+      // between it and the next, and the discs following the jittered heads rather than
+      // sitting on one line. Then the covers frame beside it, because the two placements
+      // have to read as the same control.
+      //
+      // These are also the frames to judge the wobble on, if it is ever proposed again
+      // here. It shipped for one round and came back as dizziness; `ShelfSpineTile` records
+      // why a narrow box makes the same amplitude read as so much more movement.
+      //
+      // No `pumpAndSettle` past [enterEditMode]: on the `covers` frame `Wiggle` repeats for
+      // as long as edit mode lasts, so there is no quiescent frame to settle to.
+      await _pump(tester, density: density, books: _books(reading: 0));
+      await tester.pumpAndSettle();
+      await enterEditMode(tester);
+
+      await _shoot(tester, dir(), 'edit_${density.name}');
+      await _shoot(tester, dir(), 'row_edit_${density.name}', crop: _editRow);
+    });
+  }
+
+  testWidgets('render a turned-out book in edit mode', (tester) async {
+    phone(tester);
+
+    // The one state that had a badge before this: a book turned out among spines. Its
+    // disc and its neighbours' are all centred on their own books now, and the point of
+    // the frame is that no disc sits over a book it does not remove — this is the frame
+    // that caught the corner-pinned one abutting the spine badge to its left.
+    await _pump(
+      tester,
+      density: ShelfDensity.spines,
+      books: _books(reading: 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(_spineOf('Kim Jiyoung'));
+    await tester.pumpAndSettle();
+    await enterEditMode(tester);
+
+    await _shoot(tester, dir(), 'row_edit_one_forward', crop: _editRow);
   });
 }

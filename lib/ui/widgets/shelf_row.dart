@@ -614,32 +614,63 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
             ref.read(libraryActionsProvider).recordCoverColor(book, color),
         onTap: () => _onBookTap(book),
       );
-      // **The delete target for a compressed row, and it had to be added here.**
-      // [_deleteBadgeFor] says a `spines` badge belongs to the one book that has been
-      // turned out — but that book is drawn by [TurningBook] rather than by
+      // **The delete target for a book turned out among spines, and it had to be added
+      // here.** [_deleteBadgeFor] says a face-out `spines` badge belongs to the one book
+      // that has been turned out — but that book is drawn by [TurningBook] rather than by
       // [ShelfBookTile], which has no slot for a badge, so the rule quietly applied to
       // nothing. It went unnoticed because the *reading* exemption used to keep one
       // cover face-out on any row that had an open book, and that cover carried the
-      // badge. Those books are on the Reading shelf now, so without this a `spines` row
-      // offers no way to delete anything at all.
+      // badge.
       //
-      // Same offset as [ShelfBookTile]'s own, and mounted only in edit mode so the
-      // read-only row keeps one child.
+      // Mounted only in edit mode, so the read-only row keeps one child.
       final badge = isEditMode
           ? _deleteBadgeFor(book, AppLocalizations.of(context))
           : null;
+      // **Holds still, like the spines it stands among.** It was briefly wrapped in a
+      // `Wiggle`, on the reasoning that a still cover among wobbling spines would read as
+      // pinned or exempt. The spines do not wobble any more — see [ShelfSpineTile], and the
+      // dizziness report behind it — so that reasoning has expired, and it expired in the
+      // direction that needs no code: this density is motionless in edit mode, entirely.
       if (badge == null) return turned;
       return Stack(
         clipBehavior: Clip.none,
         children: [
           turned,
-          Positioned(top: -22, left: -22, child: badge),
+          // **Centred on the cover's head, not pinned to its corner — the placement its
+          // spine neighbours use, not the one the `covers` density uses.** A corner badge
+          // needs air beside the book to hang into, and in this density there is none:
+          // this cover's neighbours are touching spines, each carrying a centred disc of
+          // its own, so a corner disc landed *over the spine to its left* and abutted that
+          // spine's badge. Two discs meeting with the left one belonging to the book on
+          // the right is the exact ambiguity `ShelfSpineTile.deleteBadge` describes. Every
+          // disc on a compressed row is over the book it removes.
+          //
+          // `Align`, because `Positioned` with both edges pinned would hand the badge a
+          // tight width — a cover's, so about 80pt — and `SizedBox` widens to a tight
+          // constraint rather than holding its own 44.
+          Positioned(
+            top: -DeleteBookBadge.halfTarget,
+            left: 0,
+            right: 0,
+            child: Align(alignment: Alignment.topCenter, child: badge),
+          ),
         ],
       );
     }
     return ShelfSpineTile(
       book: book,
       baseHeight: bookHeight,
+      isEditMode: isEditMode,
+      // Sized to the spine, which is why the row builds it rather than the tile: the
+      // thickness is public for exactly this reason — the slot's width and the drawing
+      // that goes in it are decided in two different places.
+      deleteBadge: isEditMode
+          ? _deleteBadge(
+              book,
+              AppLocalizations.of(context),
+              targetWidth: shelfSpineWidth(book, bookHeight),
+            )
+          : null,
       onTap: isEditMode ? null : () => _onBookTap(book),
     );
   }
@@ -778,27 +809,37 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
     );
   }
 
-  /// The delete badge for [book], or null for a book that should not show one.
+  /// The badge for a book drawn **face-out**, or null if it should not carry one.
   ///
-  /// **In `spines`, only the book that has been turned out gets one.**
-  /// [DeleteBookBadge] is a 44pt disc offset 22pt outside its cover's top-left, and
-  /// a spine is ~37pt wide with its neighbours touching — so a badge per spine would
-  /// blanket the two either side of it and the row would be a mat of overlapping
-  /// discs.
+  /// **In `spines`, only the book that has been turned out gets a face-out badge** —
+  /// every other book on the row is a spine and carries its own; see [ShelfSpineTile].
+  /// What this rule is left guarding is the density *turn*, where every book on the row
+  /// is briefly a narrowing cover: a corner-pinned 44pt disc per book would be a mat of
+  /// overlapping discs for the length of the animation.
   ///
-  /// The way out needed no new affordance, because the two-step tap already put one
-  /// book face-out at a time: pin the badge to that book and exactly one badge exists,
-  /// so nothing can collide. Tap a spine to turn it out, and the cover carries the
-  /// badge. **The turned-out book has to be surfaced before edit mode is entered**, since
-  /// a spine's tap is disabled while editing — see [_densityContent], which is where the
-  /// badge is actually mounted onto that cover.
+  /// The note here used to read as a verdict on the affordance rather than on the
+  /// placement — "a badge per spine would blanket the two either side of it" — and it was
+  /// right about a disc offset 22pt outside a ~37pt spine. It is not an argument for a
+  /// row that offers no delete target at all, which is what a compressed shelf in edit
+  /// mode was: the reader had to turn a book out *before* entering edit mode, since a
+  /// spine's tap is disabled while editing, and nothing on screen said so.
   Widget? _deleteBadgeFor(Book book, AppLocalizations l10n) {
     if (_drawnDensity == ShelfDensity.spines && book.id != _surfacedBookId) {
       return null;
     }
+    return _deleteBadge(book, l10n);
+  }
+
+  /// The badge itself, wherever it ends up mounted.
+  ///
+  /// One builder so the key, the label and the action cannot drift between a cover's
+  /// badge and a spine's. [targetWidth] is the only thing that differs; see
+  /// [DeleteBookBadge.targetWidth] for why a spine's is narrower.
+  Widget _deleteBadge(Book book, AppLocalizations l10n, {double? targetWidth}) {
     return DeleteBookBadge(
       key: DeleteBookBadge.keyFor(book.id),
       label: l10n.deleteBookNamed(book.title),
+      targetWidth: targetWidth,
       onPressed: () => widget.onDeleteBook?.call(book.id),
     );
   }

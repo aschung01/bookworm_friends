@@ -32,6 +32,7 @@ class DeleteBookBadge extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
+    this.targetWidth,
   });
 
   /// The key both rows mount it under, so `delete_book_<id>` means one thing.
@@ -46,6 +47,14 @@ class DeleteBookBadge extends StatelessWidget {
   /// edge of its cover is the hardest kind there is to hit.
   static const double _target = 44;
 
+  /// Half the target, which is also how far outside its box the disc's centre sits when
+  /// the badge is pinned with a negative `Positioned` offset.
+  ///
+  /// Public because the badge is mounted by its callers rather than by itself —
+  /// `ShelfBookTile`, `ShelfSpineTile` and the row's own turned-out book — and all three
+  /// used to write `-22` as a literal beside a comment saying which 22 it was.
+  static const double halfTarget = _target / 2;
+
   /// The minus, as a proportion of the disc rather than a glyph. Drawn rather than
   /// set as `Icons.remove`, because at this size the icon font's own padding and
   /// stroke weight decide the picture and neither of them is ours to choose.
@@ -54,6 +63,21 @@ class DeleteBookBadge extends StatelessWidget {
 
   final String label;
   final VoidCallback? onPressed;
+
+  /// Narrows the tap target, for a badge that cannot be given the full 44pt without
+  /// taking it from the book next door.
+  ///
+  /// **The spine case, and it is a correctness fix rather than a tidiness one.** Spines
+  /// touch, and they are 29–47pt wide, so a 44pt target centred on one reaches 7–15pt
+  /// into each neighbour — far enough to cover the *left edge of the neighbour's own
+  /// disc*. Slots are painted in row order, so that sliver goes to whichever badge is
+  /// painted later: aiming squarely at a disc you can see would sometimes open the
+  /// confirm sheet for the book beside it. Nothing about the drawing would hint at it,
+  /// and the sheet names the book, so the reader's only clue is the wrong title.
+  ///
+  /// The height is left alone — 44pt tall by 29pt wide is still a comfortable target,
+  /// and there is no neighbour above or below to take width from.
+  final double? targetWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +91,10 @@ class DeleteBookBadge extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           excludeFromSemantics: true,
           onTap: onPressed,
-          child: const SizedBox(
-            width: _target,
+          child: SizedBox(
+            width: targetWidth ?? _target,
             height: _target,
-            child: Center(
+            child: const Center(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: Color(0xBFFFFFFF),
