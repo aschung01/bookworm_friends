@@ -290,15 +290,19 @@ print(json.dumps([o for o in out if o[1]], ensure_ascii=False))
 It reads `BOOKS` out of `render.py` rather than restating the corpus, so the page
 and the PNG cannot disagree about which titles they are arguing over.
 
-**`designhouseOTFLight.otf` is already in the bundle, has all 11,172 Hangul
-syllables, and is referenced nowhere.** The only `DesignHouse` call site is the
-auth wordmark at `titleUser`'s w600, which resolves to the 700 file — so 376KB
-ships and never renders a glyph. It is a genuine free option for a distinctive
-spine, with two honest caveats visible in row 4: its Hangul is 탈네모꼴
+**`designhouseOTFLight.otf` is no longer in the bundle, and this paragraph used to
+say the opposite.** It had all 11,172 Hangul syllables and was referenced nowhere:
+the only `DesignHouse` call site was the auth wordmark at `titleUser`'s w600, which
+resolved to the 700 file, so 376KB shipped and never rendered a glyph. "Use it or
+drop it from `pubspec.yaml`" was the choice this left open, and it was **dropped** —
+the wordmark is `AppTextStyles.hero` now and the family is unregistered. Both `.otf`
+files are still in `assets/fonts/`, which is why row 4 and `render.py` still draw, but
+choosing this face for spines now costs the bytes rather than reclaiming them.
+
+The two caveats visible in row 4 stand either way: its Hangul is 탈네모꼴
 (deconstructed, non-square), which is striking but wide, and Light is thin enough
 that `kSpineTintMinContrast`'s 4.6:1 — a floor tuned for normal-weight text — is
-no longer the right floor. DesignHouse _Bold_ holds up better at 13pt and is
-already the wordmark's face. Either way: use it or drop it from `pubspec.yaml`.
+no longer the right floor. DesignHouse _Bold_ holds up better at 13pt.
 
 ### Rejected
 

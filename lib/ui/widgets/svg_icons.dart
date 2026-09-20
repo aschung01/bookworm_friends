@@ -4,7 +4,6 @@ import 'package:flutter_svg/svg.dart';
 const String _appleWhiteIcon = 'assets/icons/appleWhiteIcon.svg';
 const String _appleBlackIcon = 'assets/icons/appleBlackIcon.svg';
 const String _googleIcon = 'assets/icons/googleIcon.svg';
-const String _smileBookwormIcon = "assets/icons/smileBookwormIcon.svg";
 
 /// Public, alone among these, so that [ReadingBookmark] can warm it before an export:
 /// an `SvgPicture` that has not loaded its bytes paints nothing, and
@@ -92,17 +91,6 @@ class GoogleIcon extends StatelessWidget {
           ? ColorFilter.mode(color!, BlendMode.srcIn)
           : null,
     );
-  }
-}
-
-class SmileBookwormIcon extends StatelessWidget {
-  final double? width;
-  final double? height;
-  const SmileBookwormIcon({super.key, this.width, this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return SvgPicture.asset(_smileBookwormIcon, width: width, height: height);
   }
 }
 

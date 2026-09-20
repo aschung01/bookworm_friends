@@ -36,6 +36,7 @@
 library;
 
 import 'package:bookworm_friends/l10n/app_localizations.dart';
+import 'package:bookworm_friends/ui/widgets/brand_mark.dart';
 
 /// The line under the artifact's title, or **null when the title already says it**.
 ///
@@ -82,13 +83,16 @@ String cardStampTitle(int year) =>
 /// This is `app_icon_mark.png` — white on transparency — because the seal is drawn by
 /// *tinting* pure alpha with `sealInk`, the same constraint the Android monochrome
 /// layer puts on this artwork. The full-bleed `app_icon.png` carries its green plate
-/// and cannot be tinted. The one runtime asset bundled from `assets/branding/`; see
-/// the note in `pubspec.yaml`.
+/// and cannot be tinted.
+///
+/// The path itself lives on [kBrandMarkAsset], which also feeds the sign-in screen's
+/// [BrandMark]; this name stays because what it records is the card's decision about
+/// *which* mark to stamp, not where the file is.
 ///
 /// **Any export drawing this must precache it** — `RepaintBoundary.toImage` paints
 /// only what is already decoded. `exportLibraryCardFile` hands
 /// `AssetImage(kCardSealMarkAsset)` to its `precache` list for exactly this reason.
-const String kCardSealMarkAsset = 'assets/branding/app_icon_mark.png';
+const String kCardSealMarkAsset = kBrandMarkAsset;
 
 /// The one printed return path, and it is deliberately one string rather than two.
 ///

@@ -120,9 +120,9 @@ dev_dependencies:
 # Note: `assets/branding/` is deliberately absent from the `assets:` list below,
 # with one exception. These are build-time inputs for flutter_launcher_icons, not
 # runtime assets, so bundling them would only add weight to the app. The exception
-# is `app_icon_mark.png` (~105KB): the Library Card's embossed seal draws the brand
-# mark by tinting its alpha — see `kCardSealMarkAsset` in
-# `lib/ui/widgets/library_card/card_furniture.dart`.
+# is `app_icon_mark.png` (~105KB), the white-on-transparency master: the sign-in
+# screen composites it onto a brand plate and the Library Card's embossed seal tints
+# its alpha — see `kBrandMarkAsset` in `lib/ui/widgets/brand_mark.dart`.
 flutter_launcher_icons:
   image_path: "assets/branding/app_icon.png"
 
@@ -168,7 +168,6 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
-    - assets/icons/smileBookwormIcon.svg
     - assets/icons/appleWhiteIcon.svg
     - assets/icons/appleBlackIcon.svg
     - assets/icons/googleIcon.svg
@@ -216,8 +215,9 @@ flutter:
     - assets/icons/empty/nomatch.png
     - assets/icons/empty/note.png
     - assets/icons/empty/duo.png
-    # The seal on the Library Card. The one branding master bundled at runtime --
-    # see the note above `flutter_launcher_icons`.
+    # The seal on the Library Card, and the sign-in screen's mark. The one
+    # branding master bundled at runtime -- see the note above
+    # `flutter_launcher_icons`.
     - assets/branding/app_icon_mark.png
   fonts:
     # Built by `scripts/build_fonts.py`, which subsets the upstream faces before
@@ -244,9 +244,12 @@ flutter:
       fonts:
         - asset: assets/fonts/GowunBatang-Bold.ttf
           weight: 700
-    - family: DesignHouse
-      fonts:
-        - asset: assets/fonts/designhouseOTFBold.otf
-          weight: 700
-        - asset: assets/fonts/designhouseOTFLight.otf
-          weight: 300
+    # DesignHouse is NOT registered, and the two .otf files in `assets/fonts/` are
+    # not a mistake. It was the old wordmark's face, set by a `fontFamily` string at
+    # the auth page's call site rather than by a token -- so it shipped 750KB for one
+    # label, and being spelled at the call site it also escaped the pubspec check in
+    # `test/text_style_test.dart`. That label is `AppTextStyles.hero` now and nothing
+    # references the family, so registering it would ship two fonts that never draw a
+    # glyph. The files stay on disk because `docs/mockups/spine-type/` loads them
+    # straight from this directory -- they are a live candidate for spine type there,
+    # at the cost of re-adding them here. An unregistered font is not bundled.

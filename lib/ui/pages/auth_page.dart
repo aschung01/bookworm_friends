@@ -8,7 +8,7 @@ import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/invite_link_provider.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/ui/pages/invite_consent_page.dart';
-import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
+import 'package:bookworm_friends/ui/widgets/brand_mark.dart';
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -86,16 +86,27 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SmileBookwormIcon(height: 120),
-            const SizedBox(height: 48),
+            // The shipping mark. This drew `SmileBookwormIcon` until the logo
+            // review retired the worm — the launcher has been the single chalk
+            // book since `feat(branding)`, and the sign-in screen was the last
+            // place still introducing the app with the old mascot.
+            const BrandMark(size: 96),
+            // 20, not the 48 that used to sit here. A wordmark belongs to its
+            // mark: with an airy outline worm above it the gap read as breathing
+            // room, but under a solid plate the same gap reads as two unrelated
+            // objects. The 48 below survives, so the lockup is one unit with air
+            // beneath it rather than three evenly spaced rows.
+            const SizedBox(height: 20),
             Text(
               l10n.appTitle,
-              // The wordmark keeps its own face and takes only its metrics from
-              // the scale: DesignHouse is the logotype, so the family is the one
-              // thing here that is not the token's to decide.
-              style: AppTextStyles.titleUser.copyWith(
-                fontFamily: 'DesignHouse',
-              ),
+              // `hero` — the app's own words at a full-screen moment, which is
+              // exactly this screen. It replaces a local `fontFamily:
+              // 'DesignHouse'` override: that face was never part of the type
+              // scale `feat(branding)` shipped, and because the override was
+              // spelled at the call site it also escaped `text_style_test.dart`,
+              // which checks tokens against the families `pubspec.yaml`
+              // registers. DesignHouse is no longer registered at all.
+              style: AppTextStyles.hero,
             ),
             const SizedBox(height: 48),
             _SignInButton(
