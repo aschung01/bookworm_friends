@@ -1,133 +1,102 @@
 #!/usr/bin/env python3
-"""Render the flame on the timing it actually ships with, and write a GIF.
+"""Watch the flame move: a strip of the `Idle` loop, and a GIF of the whole sequence.
 
-`sheet.py` samples the keyed poses and `between.py` samples the scrub evenly.
-Neither is what a reader sees, because **the app does not scrub `progress`
-linearly.** `streak_celebration.dart` drives it from `_flame`, a curve over a
-fixed window, so a defect in the *timing* -- a beat nobody can see because the
-curve races past it -- is invisible to the other two sheets by construction.
+**`sheet.py` is not enough, and this is the third check rather than a nicety.** A
+contact strip of `Ignite` says nothing at all about `Idle` -- the previewer plays
+only the artboard's first animation, so until this script existed the loop had
+never been rendered even once. It is also the only thing that shows the *seam*: a
+looping timeline whose properties do not return to their frame-0 values jumps once
+a second, forever, on a screen a reader opens nightly, and no still frame can
+show that.
 
     ../../../../.venv/bin/python motion.py
 
-Writes build/motion.gif plus build/motion_strip.png.
+Writes build/idle.png (a strip across one loop) and build/motion.gif (the ignition
+at 30fps, then two loops, which is the thing to actually judge).
 
-**This is the script that condemned the first curve.** `_ignite`'s `easeOutBack`
-crossed 0 -> 100 in 185ms and then overshot to 108, and since a 1D blend clamps
-past its last pose, 20 of 32 frames were the same held frame: the entire
-choreography played in three frames and a reader saw the flame appear rather
-than a book falling open. Hence `_flame`. Any value above 100 printed below
-means that has regressed.
+**This replaces the old `motion.py`, whose job no longer exists.** It used to
+reimplement Flutter's cubic solve in Python, because the choreography was six
+poses in a blend state scrubbed by a Dart curve and the only way to see the real
+timing was to evaluate that curve here. The timeline owns its easing now and Dart
+drives it linearly, so `--advance=<ms>` *is* the real timing and there is nothing
+left to reimplement.
 """
 
 from __future__ import annotations
 
-import subprocess
 import sys
-from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
-HERE = Path(__file__).parent
-BUILD = HERE / "build"
+from _preview import BUILD, FPS, GROUND, preview_project, shot
 
-# `_beat(0, 760, curve: Curves.easeInOutCubic)` -- the artboard's own drive, which is
-# deliberately not the glyph's `_ignite`. See `_flame` in `streak_celebration.dart`.
-WINDOW_MS = 760
-FPS = 60
+IGNITE_FRAMES = 46
+IDLE_FRAMES = 72
 
-# Flutter's `Curves.easeInOutCubic`, which is `Cubic(0.645, 0.045, 0.355, 1.0)`.
-CUBIC = (0.645, 0.045, 0.355, 1.0)
+# Every other frame: 30fps is enough to judge choreography, and halves a render loop
+# that spawns one process per frame.
+STEP = 2
 
-# Frames to hold the resting pose at the end, so the GIF reads as an event that
-# finishes rather than a loop. Pose 100 is a resting pose; this is the proof.
-HOLD_FRAMES = 30
+PAD = 8
+LABEL_H = 14
 
 
-def cubic(t: float) -> float:
-    """Evaluate a Flutter `Cubic` at `t`, the way Flutter does.
-
-    A CSS-style cubic bezier is a *parametric* curve, so `y` is not a direct
-    function of `t`: Flutter binary-searches the parameter whose `x` equals `t`,
-    then returns that point's `y`. Reimplemented rather than approximated
-    because the whole point of this script is to match what ships.
-    """
-
-    x1, y1, x2, y2 = CUBIC
-
-    def bezier(a: float, b: float, m: float) -> float:
-        # The two endpoints are fixed at 0 and 1, so only the controls appear.
-        return 3 * a * m * (1 - m) ** 2 + 3 * b * m**2 * (1 - m) + m**3
-
-    start, end = 0.0, 1.0
-    for _ in range(60):
-        mid = (start + end) / 2
-        if bezier(x1, x2, mid) < t:
-            start = mid
-        else:
-            end = mid
-    return bezier(y1, y2, (start + end) / 2)
+def frames(project, tag: str, count: int, *, loops: int = 1) -> list[Image.Image]:
+    out = []
+    for loop in range(loops):
+        for frame in range(0, count, STEP):
+            ms = frame * 1000 / FPS + loop * count * 1000 / FPS
+            path = BUILD / f"{tag}{loop}_{frame:03d}.png"
+            out.append(Image.open(shot(project, path, ms)).convert("RGB"))
+    return out
 
 
-def render(index: int, progress: float) -> Image.Image:
-    out = BUILD / f"m{index:03d}.png"
-    subprocess.run(
-        [
-            "rive",
-            ".",
-            f"--screenshot={out}",
-            "--advance=1",
-            # Unclamped on purpose -- see the module docstring.
-            f"--data=progress={progress:.2f}",
-            "--data=ground=1",
-        ],
-        cwd=HERE,
-        check=True,
-        capture_output=True,
+def strip(images: list[Image.Image], labels: list[str]) -> Image.Image:
+    w, h = images[0].size
+    out = Image.new(
+        "RGB", (PAD + len(images) * (w + PAD), PAD + h + LABEL_H + PAD), GROUND
     )
-    return Image.open(out).convert("RGB")
+    draw = ImageDraw.Draw(out)
+    for i, image in enumerate(images):
+        x = PAD + i * (w + PAD)
+        out.paste(image, (x, PAD))
+        draw.text((x + 2, PAD + h + 2), labels[i], fill=(90, 70, 40))
+    return out
 
 
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
 
-    frame_ms = 1000 / FPS
-    count = int(WINDOW_MS / frame_ms) + 1
-    values = [cubic(min(1.0, i * frame_ms / WINDOW_MS)) * 100 for i in range(count)]
+    ignite = preview_project(name="preview")
+    # Reordered so the loop is what plays. It needs nothing else: the scene authors the open
+    # book, so a timeline that only keys the flame leaves the rest of the drawing where the
+    # ignition would have left it. That was not true once -- see `_preview.py`.
+    idle = preview_project(name="preview_idle", first_animation="Idle")
 
-    frames = []
-    for i, value in enumerate(values):
-        frames.append(render(i, value))
-        ms = i * frame_ms
-        flag = "  <- clamped" if value > 100 else ""
-        print(f"  {ms:6.1f}ms  progress={value:7.2f}{flag}")
+    # A strip across one loop, for reading the seam: the first and last cells are the
+    # same instant and must be the same picture.
+    seam_frames = list(range(0, IDLE_FRAMES + 1, 8))
+    seam = [
+        Image.open(shot(idle, BUILD / f"idle_{f:03d}.png", f * 1000 / FPS)).convert(
+            "RGB"
+        )
+        for f in seam_frames
+    ]
+    strip(seam, [f"f{f}" for f in seam_frames]).save(BUILD / "idle.png")
 
-    frames.extend([frames[-1]] * HOLD_FRAMES)
-
-    gif = BUILD / "motion.gif"
-    frames[0].save(
-        gif,
+    gif = frames(ignite, "m_ig", IGNITE_FRAMES) + frames(
+        idle, "m_id", IDLE_FRAMES, loops=2
+    )
+    gif[0].save(
+        BUILD / "motion.gif",
         save_all=True,
-        append_images=frames[1:],
-        # GIF delays are in centiseconds, so 60fps rounds to 2cs (~50fps).
-        duration=max(20, round(frame_ms / 10) * 10),
+        append_images=gif[1:],
+        duration=int(1000 * STEP / FPS),
         loop=0,
-        optimize=True,
     )
 
-    # A strip too, because a GIF cannot be read frame by frame in a review.
-    every = 3
-    picked = frames[: count : every]
-    w, h = picked[0].size
-    small = [f.resize((w // 3, h // 3), Image.LANCZOS) for f in picked]
-    sw, sh = small[0].size
-    strip = Image.new("RGB", (len(small) * sw, sh), (255, 232, 196))
-    for i, f in enumerate(small):
-        strip.paste(f, (i * sw, 0))
-    strip.save(BUILD / "motion_strip.png")
-
-    over = sum(1 for v in values if v > 100)
-    print(f"\n{count} frames over {WINDOW_MS}ms; {over} of them above 100 and clamped")
-    print(f"wrote {gif} and {BUILD / 'motion_strip.png'}")
+    print(f"wrote {BUILD / 'idle.png'} ({len(seam)} cells across one loop)")
+    print(f"wrote {BUILD / 'motion.gif'} ({len(gif)} frames at {FPS // STEP}fps)")
     return 0
 
 

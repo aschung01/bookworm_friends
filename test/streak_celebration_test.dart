@@ -29,6 +29,8 @@ import 'package:bookworm_friends/ui/widgets/streak/read_week_row.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_flame.dart';
 
+import 'still_streak_flame.dart';
+
 Future<void> _pump(
   WidgetTester tester, {
   required int streak,
@@ -95,12 +97,11 @@ Color _flameColour(WidgetTester tester) =>
     tester.widget<Icon>(find.byIcon(kReadingStreakIcon)).color!;
 
 void main() {
-  setUp(() {
-    // Force the hand-built path. See the note at the top of this file: without this, which
-    // flame these cases inspect is a property of the machine rather than of the code.
-    debugStreakFlameAssetOverride = 'assets/rive/__absent__.riv';
-  });
-  tearDown(() => debugStreakFlameAssetOverride = null);
+  // Force the hand-built path. See the note at the top of this file, and the longer one on
+  // `useStillStreakFlame`: without this, which flame these cases inspect is a property of the
+  // machine rather than of the code — and the artboard's idle loop would stop
+  // `pumpAndSettle` ever returning.
+  useStillStreakFlame();
 
   testWidgets('the run, its label and the flame are all present', (
     tester,
@@ -196,16 +197,18 @@ void main() {
   });
 
   testWidgets('the flame is given a drive it can actually use', (tester) async {
-    // **The artboard's six poses are scrubbed by this value, so its shape over time *is* the
-    // animation** -- and the first curve tried here wasted most of it. `easeOutBack` crossed
-    // 0 -> 1 in about 185ms and then overshot to 1.087, and because a 1D blend state clamps
-    // past its last pose, 20 of the window's 32 frames were the same held frame. The whole
-    // choreography played in three frames: rendered at the real timing, a reader saw the flame
-    // appear rather than a book falling open.
+    // **The artboard's `Ignite` timeline is *seeked* by this value, so its shape over time is
+    // what decides which part of the choreography a reader sees** -- and the first curve tried
+    // here wasted most of it. `easeOutBack` crossed 0 -> 1 in about 185ms and then overshot to
+    // 1.087; seeking past the last frame clamps, so 20 of the window's 32 frames were the same
+    // held frame and the whole sequence played in three. Rendered at the real timing, a reader
+    // saw the flame appear rather than a book falling open.
     //
-    // Two things are pinned here because both failure modes are silent. An overshoot is
-    // discarded by the runtime with no error, and a front-loaded curve still animates -- it
-    // just animates somewhere nobody can see.
+    // The drive is `linear` now, because the easing lives in the timeline where it can be
+    // watched (`rive rive/streak_flame`, or the Rive Editor). What is pinned here is what a
+    // linear drive is *for*: full range, no overshoot, and still moving in the middle. Both
+    // failure modes are silent -- an overshoot is discarded by the runtime with no error, and a
+    // front-loaded curve still animates, it just animates somewhere nobody can see.
     await _pump(tester, streak: 12);
     await tester.pump();
 
@@ -222,7 +225,7 @@ void main() {
       samples.values.every((v) => v <= 1.0),
       isTrue,
       reason:
-          'a value past 1 is clamped to the last pose and thrown away: '
+          'a value past 1 is clamped to the last frame and thrown away: '
           'peak was ${samples.values.reduce((a, b) => a > b ? a : b)}',
     );
 
@@ -244,6 +247,46 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(drive().value, 1, reason: 'and it lands on the resting pose');
+  });
+
+  testWidgets('the flame keeps living after the ignition lands', (
+    tester,
+  ) async {
+    // **The one beat on this screen whose finished state is motion.** Everything else comes to
+    // rest, and the comment on `_beats` used to promise that the flame did too -- there was no
+    // idle loop at all, and a flame that freezes the instant it arrives reads as a decal of a
+    // flame. So this pins the reversal rather than trusting the prose: the liveness drive must
+    // be silent while the book is still opening, and fully mixed in by the end.
+    //
+    // `StreakFlame` is what forces it back to zero under reduced motion; that gate cannot live
+    // here, because the gate below jumps the controller to 1 and 1 *is* the moving state.
+    // `streak_flame_test.dart` covers it.
+    await _pump(tester, streak: 12);
+    await tester.pump();
+
+    Animation<double> liveness() =>
+        tester.widget<StreakFlame>(find.byType(StreakFlame)).liveness;
+
+    final samples = <int, double>{};
+    for (var ms = 0; ms <= 1500; ms += 20) {
+      samples[ms] = liveness().value;
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+
+    expect(
+      samples[400],
+      0,
+      reason: 'nothing to flicker while the book is still opening',
+    );
+    expect(
+      samples[900]!,
+      inExclusiveRange(0, 1),
+      reason:
+          'it ramps in over the ignition\'s settle rather than switching on',
+    );
+
+    await tester.pumpAndSettle();
+    expect(liveness().value, 1, reason: 'and the flame is left alive');
   });
 
   testWidgets('the counter rolls from the previous number, and never past the run', (

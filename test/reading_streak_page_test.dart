@@ -26,6 +26,7 @@ import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_calendar_month.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
 
+import 'still_streak_flame.dart';
 import 'support/home_page_harness.dart';
 
 /// Records what was asked of the log instead of writing it.
@@ -181,6 +182,13 @@ Future<void> _recordVia(WidgetTester tester, String title) async {
 }
 
 void main() {
+  // **These cases push the celebration and then settle, so the flame has to hold still.**
+  // Nothing here is about the flame -- it is scenery on a screen whose subject is whether
+  // recording a night writes the day -- but the Rive artboard loops forever once it has caught,
+  // so `pumpAndSettle` would never return on any machine that has run
+  // `dart run rive_native:setup`. Four cases below started timing out on exactly that without
+  // a line of this file changing. `useStillStreakFlame` has the long version.
+  useStillStreakFlame();
   testWidgets('the run is drawn, and the label carries the day\'s status', (
     tester,
   ) async {

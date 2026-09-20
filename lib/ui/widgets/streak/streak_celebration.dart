@@ -100,8 +100,14 @@ class _StreakCelebrationState extends State<StreakCelebration>
   late final AnimationController _beats = AnimationController(
     // **1500, up from 1360**, which bought the ignition and the gleam. Long enough for the
     // sequence to read as one event rather than a flash, short enough that a reader doing
-    // this every night is not waiting for it. Nothing moves after the last cell lands —
-    // which is why the flicker is part of the arrival and there is no idle loop.
+    // this every night is not waiting for it.
+    //
+    // **The flame keeps moving after the last cell lands.** This comment used to say the
+    // opposite — "nothing moves after the last cell lands, which is why the flicker is part
+    // of the arrival and there is no idle loop" — and that was overruled deliberately: a
+    // flame that freezes the instant it arrives reads as a decal. See [_alive], and
+    // `kStreakFlameIdleAnimation` for what it costs. Everything that is *not* the flame
+    // still comes to rest.
     duration: const Duration(milliseconds: 1500),
     vsync: this,
   );
@@ -116,31 +122,38 @@ class _StreakCelebrationState extends State<StreakCelebration>
     curve: Curves.easeOutBack,
   );
 
-  /// The same event, on the curve the **artboard** needs rather than the glyph's.
+  /// The same event, on the drive the **artboard** needs rather than the glyph's.
   ///
   /// **Two drives for one beat, because the two drawings are not the same kind of thing.**
   /// [_ignite] scrubs a single continuous scale on a font glyph, and `easeOutBack`'s overshoot
-  /// is what gave that its pop. The Rive artboard is six discrete poses — shut, open, stretch,
-  /// squash, settle, rest — and against those the same curve is actively wrong twice over:
+  /// is what gives that its pop. The artboard's `Ignite` timeline already carries its own
+  /// easing, authored frame by frame against real time — a hold on the shut book, a back-out
+  /// on the covers, a cut on the action, a settle on the flame — so a curve here would be
+  /// applied *on top of* that one. That is not a nuance; it was a bug twice over with
+  /// `easeOutBack`:
   ///
-  /// - it crosses 0 → 100 in about **185ms**, so the book opening (poses 0 → 20) gets ~21ms,
-  ///   barely a frame at 60fps. Rendered at the real timing, the whole choreography played in
-  ///   three frames and a reader saw the flame *appear* rather than a book falling open;
-  /// - the overshoot then runs to 108 and back, and a 1D blend clamps past its last pose, so
-  ///   **62% of the window was a held frame**. The springiness bought the artboard nothing and
-  ///   cost it the time it needed.
+  /// - it crossed 0 → 1 in about **185ms**, so the 900ms timeline played in roughly three
+  ///   frames and a reader saw the flame *appear* rather than a book falling open;
+  /// - the overshoot then ran past 1 and back, and seeking past the last frame clamps, so
+  ///   **62% of the window was a held frame**.
   ///
-  /// So this one uses the whole window and no overshoot. `easeInOutCubic` also happens to match
-  /// the choreography's own shape: a slow start that lets the shut book register, the fast part
-  /// through the ignition, and a long settle into the resting pose.
+  /// So this one is `linear` and spans exactly the timeline's own 900ms. `StreakFlame` seeks
+  /// by it; the shape of the motion belongs to `rive/streak_flame/scene.rml`, where it can be
+  /// watched with `rive rive/streak_flame` or in the Rive Editor.
+  late final Animation<double> _flame = _beat(0, 900, curve: Curves.linear);
+
+  /// How much of the artboard's looping `Idle` timeline to mix in, so the flame keeps
+  /// flickering and throwing embers after it has caught.
   ///
-  /// Found by `rive/streak_flame/motion.py`, which renders the artboard on this curve rather
-  /// than on an even scrub — a beat nobody can see is invisible to a contact sheet.
-  late final Animation<double> _flame = _beat(
-    0,
-    760,
-    curve: Curves.easeInOutCubic,
-  );
+  /// **This is the beat that reverses the rule above it**: something does move after the last
+  /// cell lands. It ramps rather than switching, because the loop's values sit a few percent
+  /// either side of the pose the ignition ends on and a hard cut would step the flame's scale.
+  /// It starts before [_flame] finishes on purpose — the last 80ms of the ignition is a settle,
+  /// which is exactly where a flicker should begin.
+  ///
+  /// `StreakFlame` forces it to zero under reduced motion. It cannot be gated here: the gate
+  /// below jumps the controller to 1, and this is the one beat whose t=1 state is motion.
+  late final Animation<double> _alive = _beat(820, 1120, curve: Curves.linear);
   late final Animation<double> _bloom = _beat(60, 760);
   late final Animation<double> _sparks = _beat(120, 720, curve: Curves.linear);
   late final Animation<double> _figure = _beat(300, 860);
@@ -226,6 +239,7 @@ class _StreakCelebrationState extends State<StreakCelebration>
               // — `_Ignition` runs instead, so the sequence is complete either way.
               StreakFlame(
                 progress: _flame,
+                liveness: _alive,
                 size: _Ignition.stageSize,
                 fallback: (context) => _Ignition(
                   ignite: _ignite,

@@ -1,716 +1,860 @@
 <Rive version="1" kind="fragment">
     <!--
-      The streak celebration's flame: a book lying with its spine running away from the
-      viewer, falling open, with a flame rising out of the gutter.
+      The streak celebration's flame: a book lying flat, opening, with a flame rising out of
+      the gutter.
 
-      ORIENTATION. The spine is along Z, so the camera sits at the book's TAIL edge looking
-      along the spine. We see the two halves splaying left and right, the page block between
-      them, the stacked page edges along the near edge, and the gutter as a dark seam up the
-      middle. The flame rises along +Y out of that seam. Rive is 2D, so the depth is drawn
-      rather than transformed: the far edge of every quad is narrower and higher than its
-      near edge, converging up-screen.
+      ORIENTATION, and this is the second attempt at it. The book lies on the floor and the
+      spine runs away from the camera along Z, so the camera sits **at the book's own level**
+      looking along the spine. What that shows is the *tail edge and nothing else*: the stacked
+      edges of the pages, the edge of the cover boards under them, and a dark notch at the
+      centre where the two halves part. The first version drew the page surfaces splaying open
+      in a V, which is the view from above -- a camera looking down into the book. Wrong: from
+      here the interior is edge-on and invisible. The drawing is a low horizontal slab.
 
-      WHAT OPENING IS, HERE. The first draft of this file rotated the two halves apart, and
-      that is wrong for this camera -- a 2D rotation pivots about a point, and the inner edge
-      of a half is not a point but the *gutter line*, which recedes. Rotating a half swung
-      its far-inner corner clean across the centre line, so the two halves crossed into a
-      bow tie. Opening is therefore **scale**, anchored at the gutter: a shut book seen down
-      its spine is one board wide, an open one is nearly two, so `scaleX` runs 0.54 -> 1.0
-      and the inner edge stays pinned where it belongs. `scaleY` flattens the shallow V of
-      the open book back into the slab of a closed one.
+      WHAT OPENING IS. A shut book seen down its spine is one board wide and its full
+      thickness. Opened flat it is nearly two boards wide and about half as thick. So the whole
+      transformation is two properties on one node -- `scaleX` 0.52 -> 1 and `scaleY` 1.9 -> 1
+      -- plus the notch fading in, because a shut book has no visible gutter. That is also why
+      there is no page-surface geometry left to fade or unfold: earlier drafts rotated the
+      halves (which crossed them into a bow tie) and then cross-faded them (which spent the
+      first fifth of the sequence as a grey slab). Neither problem exists in a drawing that
+      never shows the inside.
 
-      The covers are what a shut book shows and the page surfaces are what an open one shows,
-      and **the page surfaces arrive by unfolding rather than by fading.** `page_*` was keyed
-      on opacity at first, which is a cross-dissolve: for the whole of the first fifth of the
-      sequence a half-transparent page sat over a near-black cover and the book read as a grey
-      slab -- and since the opening happens in that same window, most of it happened in the
-      mud. It took a sheet of the *in-betweens* to see, because both ends of that blend are
-      correct and only the middle is wrong. `scaleY` 0 -> 1 instead, anchored at the tail
-      edge, which is also what the object does: a page surface is edge-on when the book is
-      shut and rotates into view as it opens, so it foreshortens to nothing rather than
-      becoming transparent. Every frame stays opaque.
+      WHO OWNS THE MOTION, which changed too. **The easing lives in these timelines, and
+      Flutter drives time linearly.** Previously the poses were six single-frame animations in
+      a 1D blend state scrubbed by a bound number, and the consequence was that the file had no
+      timeline at all: nothing to play in the editor, nothing to play in the previewer, nothing
+      to iterate against. Every review had to go through a contact sheet, and a timing defect
+      hid there for days -- the driving curve crossed the whole sequence in three frames and
+      then held for 470ms, and no still image can show that.
 
-      THE CONTRACT. This artboard does not play itself. `Flame/progress` is a Number in
-      0-100, written every frame by Flutter's own AnimationController
-      (`lib/ui/widgets/streak/streak_flame.dart`), and the blend state below poses the scene
-      at whatever it says. That is deliberate and it is what makes Rive acceptable here:
-      the celebration's beats stay in Dart where they are greppable and a golden test can
-      drive them, `MediaQuery.disableAnimationsOf` needs no special case (the controller
-      jumps to 1, progress becomes 100, the scene poses at its final frame), and pose 100 is
-      a RESTING pose -- nothing moves once the last beat lands, on a screen a reader opens
-      nightly.
+      Now `Ignite` is an ordinary 46-frame timeline with cubic keyframes. It plays in the
+      editor, it plays in `rive .`, and `--advance=250ms` samples it. Flutter seeks it by
+      setting `Animation.time` (see `lib/ui/widgets/streak/streak_flame.dart`), so the host
+      still decides *how far through* the sequence is -- which keeps reduced motion working
+      with no special case and keeps the beat greppable in Dart -- while the *shape* of the
+      motion is authored here, where it can be watched.
 
-      So: no `loopValue`, no idle wobble, no autoplaying timeline. Every animation below is
-      a single-frame POSE, and the blend between them is the animation.
+      There is deliberately **no state machine, no blend state and no view model**. None of
+      them was earning anything once the timelines existed, and dropping them is what let the
+      file shrink.
+
+      `Idle` is the second timeline and it **loops**: the flame breathes and throws embers so
+      it reads as alive rather than as a decal. Flutter advances it and mixes it in as the
+      ignition lands. That reverses an earlier rule in this file which said nothing may move
+      after the last beat; it was overruled deliberately, and the cost is real and worth
+      stating -- an idle loop repaints for as long as the screen is up. It is a transient
+      celebration with one way out rather than a screen left open, `Idle` is mixed to zero
+      under reduced motion, and the host stops advancing it when it is not wanted.
 
       COLOURS are shipped tokens, not new ones. `library_card/card_lighting.dart` and
-      `app_theme.dart` own them; this file has picked none of its own, because inventing
-      brand colours is a mistake this repo has already made once (see the first comment
-      block of `docs/mockups/streaks/index.html`).
+      `app_theme.dart` own them; this file has picked none of its own, because inventing brand
+      colours is a mistake this repo has already made once.
         FFFFD479  flame core     - the record's lit-today highlight
         FFF2A93F  flame body     - kCandleFlame
         FFB54708  flame edge     - AppColors.light.flame
-        FF26190A  gutter seam    - kCandleStockTop
-        FF35230E  cover          - kCandleWellTop
-        FF1B1106  cover, near    - kCandleWellBottom
-        FFFDFAF1  page, lit      - the record's paper
-        FFFFE8C4  page, falling  - kCandleGlow
-        FFD9A96B  page, far      - kCandleCoverLight
-        FFE2D9C4  page edges     - the record's hairline
+        FF26190A  the striations  - kCandleStockTop, at 18%
+        FF35230E / FF1B1106  cover board edge - kCandleWellTop / kCandleWellBottom
+        FF130D05  the gutter's floor - kCandleStockBottom
+        FFFDFAF1  page edges, lit    - the record's paper
+        FFFFE8C4  page edges, falling off - kCandleGlow
+        FFD9A96B  page edges, far    - kCandleCoverLight
+        FFFFF3DD  the flame's hot tip - kShareChromeLitInk
 
       The ground this sits on is kCandleGlow #FFE8C4, painted by `streak_celebration.dart`.
-      A *lighter* halo is invisible on it; the glow below is therefore warmer rather than
-      brighter, and the page gradient runs paper -> cream -> tan outward from the flame so
-      the light has somewhere to fall off to.
+      A *lighter* halo is invisible on it, so the glow below is warmer rather than brighter.
     -->
-    <Artboard defaultStateMachineId="0:7" styleId="0:5" viewModelId="0:100"
-              viewModelInstanceId="0:102" width="304" height="304" name="Flame" id="0:2">
+    <Artboard styleId="0:5" width="304" height="304" name="Flame" id="0:2">
         <LayoutComponentStyle name="Artboard Style" id="0:5"/>
 
-        <!-- No background Fill. The celebration paints its own cream ground, and a filled
-             artboard would sit on it as a visible panel.
+        <!-- No background Fill: the celebration paints its own cream ground, and a filled
+             artboard would sit on it as a visible panel. `sheet.py` patches a copy of this
+             project to composite against that cream rather than the previewer's #1D1D1D,
+             which is why no preview-only shape ships here any more. -->
 
-             `ground` below is the exception that proves it, and it is deliberate. A
-             `rive --screenshot` composites onto the CLI's own opaque #1D1D1D canvas and
-             there is no flag to change that: a `kind="fragment"` document may not declare a
-             `<Backboard>`, and `rive.yaml`'s `artboard.background` applies only to projects
-             with no RML. So every semi-transparent thing here -- the glow above all -- came
-             back from the previewer darkened toward black, and `sheet.py`'s chroma key
-             cannot recover an alpha it was never given: the first honest-looking sheet
-             showed the glow as a solid black disc that does not exist. Rather than judge the
-             light through a lie, the artboard carries a cream rectangle bound to a second
-             Number that **defaults to 0 and is switched on only by `sheet.py`**. Flutter
-             never writes it, so the shipped artboard is transparent exactly as before. -->
+        <!-- Draw order is declaration order, FRONT FIRST. -->
 
-        <!-- Draw order is declaration order, FRONT FIRST. So: the fire, then the seam it
-             comes out of, then the two halves of the book, then the light behind all of it.
-             **The first draft had the pages declared after the covers and so behind them**,
-             which is why the book read as a dark mountain with a cream sliver on top. -->
+        <!-- ============================ THE FIRE ============================ -->
 
-        <!-- The fire, as one group. A single node carries the rise and the overall size
-             ramp, so the poses say that once instead of once per shape; the shapes inside
-             carry only what differs between them, which is the squash and stretch. -->
-        <!-- The fire, as one group. A single node carries the rise and the overall size
-             ramp, so the poses say that once instead of once per shape; the shapes inside
-             carry only what differs between them, which is the squash and stretch.
+        <!-- The living embers, which belong to `Idle` and not to the ignition. Separate shapes
+             from `burst` on purpose: the burst is a one-off that must be *gone* at rest, and
+             reusing it would mean the resting frame could never be still.
 
-             **It sits at the crease's mid-depth, not at its near end, and that is what makes
-             the flame come *out of* the book.** Placed at the tail edge the flame's base sat
-             in front of the whole page block and read as a spike stabbing down through it;
-             seated a third of the way along the gutter it rises from the valley with the
-             pages spread below it on both sides. -->
-        <Node x="152" y="214" name="fire" id="0:20">
+             **Declared in front of the fire, which is not a detail -- it is why the loop was
+             invisible.** They were behind it, spawning around the tip and rising through the
+             body, which is exactly the region the flame occupies; every one of them was
+             occluded for its whole flight, and the first render of `Idle` showed a flame
+             breathing on its own with no spray at all. Nothing else about the timeline was
+             wrong. Drawn in front they read as sparks carried off the tip, which is what they
+             are.
 
-            <!-- Embers. Also a group, so the burst is one transform rather than forty
-                 keyframes: the node scales outward while it fades. A **fan**, denser near
-                 the flame and spreading up and out, and nothing below the book line -- an
-                 even ring is what this looked like the first time and it read as a halo.
+             **All five are `kCandleFlame` #F2A93F, and that reverses an earlier rule here.**
+             When the embers were *behind* the flame the note said never to use #B54708 because
+             an ember the colour of the body it just left is invisible -- and the same argument
+             now rules out the two pale tokens, because in front of the flame an ember spends
+             almost its whole life over the #FFE8C4 cream ground, where #FFD479 is a four-point
+             difference and simply is not there. #F2A93F is the one token in the set that reads
+             against both the ground and the core. The first tuned version used the pale pair at
+             three to five pixels and rendered as dust on the lens.
 
-                 **Only the two bright tokens, and never the deep one.** Half of these are
-                 in front of the flame's own body, and an ember painted `flame` #B54708 on a
-                 body that runs to #B54708 at the base is an ember nobody can see -- the
-                 first fan looked left-weighted for exactly that reason, with every
-                 right-hand spark camouflaged against the flame it had just left. -->
-            <Node y="-16" name="sparks" id="0:21">
-                <Shape x="-13" y="-76" id="0:104"><Ellipse width="9" height="9" name="Path" id="0:105"/>
-                    <Fill name="Fill" id="0:106"><SolidColor colorValue="FFFFD479" name="C" id="0:107"/></Fill></Shape>
-                <Shape x="22" y="-88" id="0:108"><Ellipse width="8" height="8" name="Path" id="0:109"/>
-                    <Fill name="Fill" id="0:110"><SolidColor colorValue="FFFFD479" name="C" id="0:111"/></Fill></Shape>
-                <Shape x="-36" y="-50" id="0:112"><Ellipse width="8" height="8" name="Path" id="0:113"/>
-                    <Fill name="Fill" id="0:114"><SolidColor colorValue="FFF2A93F" name="C" id="0:115"/></Fill></Shape>
-                <Shape x="42" y="-42" id="0:116"><Ellipse width="7" height="7" name="Path" id="0:117"/>
-                    <Fill name="Fill" id="0:118"><SolidColor colorValue="FFF2A93F" name="C" id="0:119"/></Fill></Shape>
-                <Shape x="-50" y="-24" id="0:120"><Ellipse width="6" height="6" name="Path" id="0:121"/>
-                    <Fill name="Fill" id="0:122"><SolidColor colorValue="FFF2A93F" name="C" id="0:123"/></Fill></Shape>
-                <Shape x="8" y="-104" id="0:124"><Ellipse width="8" height="8" name="Path" id="0:125"/>
-                    <Fill name="Fill" id="0:126"><SolidColor colorValue="FFFFD479" name="C" id="0:127"/></Fill></Shape>
-                <Shape x="-25" y="-99" id="0:128"><Ellipse width="6" height="6" name="Path" id="0:129"/>
-                    <Fill name="Fill" id="0:130"><SolidColor colorValue="FFFFD479" name="C" id="0:131"/></Fill></Shape>
-                <Shape x="54" y="-68" id="0:132"><Ellipse width="6" height="6" name="Path" id="0:133"/>
-                    <Fill name="Fill" id="0:134"><SolidColor colorValue="FFFFD479" name="C" id="0:135"/></Fill></Shape>
-                <Shape x="-60" y="-60" id="0:136"><Ellipse width="5" height="5" name="Path" id="0:137"/>
-                    <Fill name="Fill" id="0:138"><SolidColor colorValue="FFF2A93F" name="C" id="0:139"/></Fill></Shape>
-                <Shape x="37" y="-14" id="0:140"><Ellipse width="5" height="5" name="Path" id="0:141"/>
-                    <Fill name="Fill" id="0:142"><SolidColor colorValue="FFFFD479" name="C" id="0:143"/></Fill></Shape>
+             **Each is invisible at both ends of its flight, and that is what makes the loop
+             seamless.** Rive holds a keyed property at its *first* keyframe's value for every
+             frame before it, so an ember whose window is 14..40 simply sits at its birthplace
+             from 0 to 14 and at its death place from 40 to 72 -- and jumps back at the seam
+             while its opacity is zero. No snap-back keyframes are needed, and the earlier ones
+             (`frame 45 value -34` and friends) were noise. -->
+        <Node x="152" y="228" name="embers" id="0:30">
+            <Shape x="-14" y="-88" opacity="0" name="e1" id="0:31">
+                <Ellipse width="7" height="7" name="Path" id="0:205"/>
+                <Fill name="Fill" id="0:206"><SolidColor colorValue="FFF2A93F" name="C" id="0:207"/></Fill>
+            </Shape>
+            <Shape x="14" y="-80" opacity="0" name="e2" id="0:32">
+                <Ellipse width="6" height="6" name="Path" id="0:208"/>
+                <Fill name="Fill" id="0:209"><SolidColor colorValue="FFF2A93F" name="C" id="0:210"/></Fill>
+            </Shape>
+            <Shape x="2" y="-118" opacity="0" name="e3" id="0:33">
+                <Ellipse width="5" height="5" name="Path" id="0:211"/>
+                <Fill name="Fill" id="0:212"><SolidColor colorValue="FFF2A93F" name="C" id="0:213"/></Fill>
+            </Shape>
+            <Shape x="20" y="-62" opacity="0" name="e4" id="0:34">
+                <Ellipse width="4.5" height="4.5" name="Path" id="0:214"/>
+                <Fill name="Fill" id="0:215"><SolidColor colorValue="FFF2A93F" name="C" id="0:216"/></Fill>
+            </Shape>
+            <Shape x="-18" y="-70" opacity="0" name="e5" id="0:35">
+                <Ellipse width="6" height="6" name="Path" id="0:217"/>
+                <Fill name="Fill" id="0:218"><SolidColor colorValue="FFF2A93F" name="C" id="0:219"/></Fill>
+            </Shape>
+        </Node>
+
+        <Node x="152" y="228" name="fire" id="0:20">
+
+            <!-- The ignition burst. One node so the whole spray is a single transform: it
+                 scales outward as it fades. **Only the two bright tokens and never `flame`
+                 #B54708** -- half of these sit in front of a body that runs to #B54708 at its
+                 base, and an ember the colour of what it left is an ember nobody can see.
+
+                 Authored invisible, like every other shape here that belongs to one moment.
+                 `Ignite` holds it at zero until frame 18 and returns it to zero by 42, so the
+                 app never sees the authored value -- but a still render does, and a resting
+                 artboard wearing a full starburst is a lie about the drawing. It is also what
+                 made the first render of `Idle` look like the loop threw permanent sparks. -->
+            <Node y="-14" opacity="0" name="burst" id="0:21">
+                <Shape x="-13" y="-76" id="0:220"><Ellipse width="9" height="9" name="Path" id="0:221"/>
+                    <Fill name="Fill" id="0:222"><SolidColor colorValue="FFFFD479" name="C" id="0:223"/></Fill></Shape>
+                <Shape x="22" y="-88" id="0:224"><Ellipse width="8" height="8" name="Path" id="0:225"/>
+                    <Fill name="Fill" id="0:226"><SolidColor colorValue="FFFFD479" name="C" id="0:227"/></Fill></Shape>
+                <Shape x="-36" y="-50" id="0:228"><Ellipse width="8" height="8" name="Path" id="0:229"/>
+                    <Fill name="Fill" id="0:230"><SolidColor colorValue="FFF2A93F" name="C" id="0:231"/></Fill></Shape>
+                <Shape x="42" y="-42" id="0:232"><Ellipse width="7" height="7" name="Path" id="0:233"/>
+                    <Fill name="Fill" id="0:234"><SolidColor colorValue="FFF2A93F" name="C" id="0:235"/></Fill></Shape>
+                <Shape x="-50" y="-24" id="0:236"><Ellipse width="6" height="6" name="Path" id="0:237"/>
+                    <Fill name="Fill" id="0:238"><SolidColor colorValue="FFF2A93F" name="C" id="0:239"/></Fill></Shape>
+                <Shape x="8" y="-104" id="0:240"><Ellipse width="8" height="8" name="Path" id="0:241"/>
+                    <Fill name="Fill" id="0:242"><SolidColor colorValue="FFFFD479" name="C" id="0:243"/></Fill></Shape>
+                <Shape x="-25" y="-99" id="0:244"><Ellipse width="6" height="6" name="Path" id="0:245"/>
+                    <Fill name="Fill" id="0:246"><SolidColor colorValue="FFFFD479" name="C" id="0:247"/></Fill></Shape>
+                <Shape x="54" y="-68" id="0:248"><Ellipse width="6" height="6" name="Path" id="0:249"/>
+                    <Fill name="Fill" id="0:250"><SolidColor colorValue="FFFFD479" name="C" id="0:251"/></Fill></Shape>
+                <Shape x="-60" y="-60" id="0:252"><Ellipse width="5" height="5" name="Path" id="0:253"/>
+                    <Fill name="Fill" id="0:254"><SolidColor colorValue="FFF2A93F" name="C" id="0:255"/></Fill></Shape>
+                <Shape x="37" y="-14" id="0:256"><Ellipse width="5" height="5" name="Path" id="0:257"/>
+                    <Fill name="Fill" id="0:258"><SolidColor colorValue="FFFFD479" name="C" id="0:259"/></Fill></Shape>
             </Node>
 
-            <!-- The shimmer sweep: a soft bright bar that slides across the flame. Clipped
-                 to the flame's own silhouette, because the whole point is that the flame
-                 gleams and not that a white stripe crosses the screen. The hand-built
-                 version's gleam was wide enough to turn the flame to paper; this one is
-                 narrow, soft at both edges, and gone by rest. -->
-            <Shape y="-55" rotation="-0.45" name="gleam" id="0:23">
-                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:144">
-                    <StraightVertex x="-11" y="-110" id="0:145"/>
-                    <StraightVertex x="11" y="-110" id="0:146"/>
-                    <StraightVertex x="11" y="110" id="0:147"/>
-                    <StraightVertex x="-11" y="110" id="0:148"/>
+            <!-- The shimmer sweep, clipped to the flame's own silhouette: the point is that
+                 the flame gleams, not that a white stripe crosses the screen. Authored
+                 invisible for the same reason as the burst. -->
+            <Shape y="-55" rotation="-0.45" opacity="0" name="gleam" id="0:23">
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:260">
+                    <StraightVertex x="-11" y="-110" id="0:261"/>
+                    <StraightVertex x="11" y="-110" id="0:262"/>
+                    <StraightVertex x="11" y="110" id="0:263"/>
+                    <StraightVertex x="-11" y="110" id="0:264"/>
                 </PointsPath>
-                <Fill name="Fill" id="0:149">
-                    <LinearGradient startX="-11" startY="0" endX="11" endY="0" name="Gradient" id="0:150">
-                        <GradientStop colorValue="00FDFAF1" position="0" id="0:151"/>
-                        <GradientStop colorValue="6BFDFAF1" position="0.5" id="0:152"/>
-                        <GradientStop colorValue="00FDFAF1" position="1" id="0:153"/>
+                <Fill name="Fill" id="0:265">
+                    <LinearGradient startX="-11" startY="0" endX="11" endY="0" name="Gradient" id="0:266">
+                        <GradientStop colorValue="00FDFAF1" position="0" id="0:267"/>
+                        <GradientStop colorValue="6BFDFAF1" position="0.5" id="0:268"/>
+                        <GradientStop colorValue="00FDFAF1" position="1" id="0:269"/>
                     </LinearGradient>
                 </Fill>
-                <ClippingShape sourceId="0:25" name="Clip" id="0:154"/>
+                <ClippingShape sourceId="0:25" name="Clip" id="0:270"/>
             </Shape>
 
             <!-- The bright core. Its own shape rather than a lighter fill, so it can lick
-                 independently of the body -- `rotation` on this and not on the body is the
-                 flame moving rather than the flame tilting. -->
+                 independently of the body: `rotation` on this and not on the body is the flame
+                 moving rather than the whole flame tilting. -->
             <Shape y="3" name="flame_inner" id="0:24">
-                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:155">
-                    <StraightVertex x="3" y="-78" id="0:156"/>
-                    <CubicMirroredVertex x="20" y="-42" rotation="1.5707964" distance="24" id="0:157"/>
-                    <CubicMirroredVertex x="13" y="-12" rotation="2.5" distance="14" id="0:158"/>
-                    <CubicMirroredVertex x="0" y="5" rotation="3.1415927" distance="13" id="0:159"/>
-                    <CubicMirroredVertex x="-14" y="-14" rotation="3.9" distance="14" id="0:160"/>
-                    <CubicMirroredVertex x="-18" y="-45" rotation="4.85" distance="24" id="0:161"/>
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:271">
+                    <StraightVertex x="5" y="-84" id="0:272"/>
+                    <CubicDetachedVertex x="17" y="-48" inRotation="4.4298" inDistance="10.76" outRotation="1.2882" outDistance="10.76" id="0:273"/>
+                    <CubicDetachedVertex x="23" y="-22" inRotation="4.8318" inDistance="8.39" outRotation="1.6902" outDistance="8.39" id="0:274"/>
+                    <CubicDetachedVertex x="11" y="2" inRotation="5.4001" inDistance="6.04" outRotation="2.2585" outDistance="6.04" id="0:275"/>
+                    <CubicDetachedVertex x="0" y="6" inRotation="0.0454" inDistance="3.67" outRotation="3.1870" outDistance="3.67" id="0:276"/>
+                    <CubicDetachedVertex x="-11" y="1" inRotation="0.9601" inDistance="6.10" outRotation="4.1017" outDistance="6.10" id="0:277"/>
+                    <CubicDetachedVertex x="-21" y="-24" inRotation="1.5143" inDistance="8.85" outRotation="4.6558" outDistance="8.85" id="0:278"/>
+                    <CubicDetachedVertex x="-14" y="-52" inRotation="1.9797" inDistance="10.90" outRotation="5.1213" outDistance="10.90" id="0:279"/>
                 </PointsPath>
-                <Fill name="Fill" id="0:162">
-                    <LinearGradient startX="0" startY="-78" endX="0" endY="3" name="Gradient" id="0:163">
-                        <GradientStop colorValue="FFFFD479" position="0" id="0:164"/>
-                        <GradientStop colorValue="FFFFD479" position="0.6" id="0:165"/>
-                        <GradientStop colorValue="FFF2A93F" position="1" id="0:166"/>
+                <Fill name="Fill" id="0:280">
+                    <LinearGradient startX="0" startY="-84" endX="0" endY="6" name="Gradient" id="0:281">
+                        <GradientStop colorValue="FFFFF3DD" position="0" id="0:282"/>
+                        <GradientStop colorValue="FFFFD479" position="0.45" id="0:283"/>
+                        <GradientStop colorValue="FFF2A93F" position="1" id="0:284"/>
                     </LinearGradient>
                 </Fill>
             </Shape>
 
-            <!-- The body. **A sharp apex, a narrow base, and an asymmetric belly; all three
-                 are the point.** The first draft used four mirrored vertices and got an egg:
-                 a flame is not an ellipse, it has a tip. The second got a tulip, because the
-                 widest point sat too low and the base was as wide as the shoulders, so the
-                 silhouette flared, pinched to a waist and flared again. A flame is widest
-                 about a third of the way up and tapers to almost nothing where it meets what
-                 is burning. The apex is a `StraightVertex` so the two curves meet in a corner
-                 instead of rounding over, it sits right of centre so the silhouette leans,
-                 and the left and right bellies differ. Gradient-filled, because a flat fill
-                 is what made the hand-built version read as a sticker. -->
+            <!-- The body. **A sharp apex, a base wide enough to sit in the gutter, and the
+                 widest point low.**
+                 A flame is widest about a quarter of the way up and tapers over the whole
+                 upper two thirds to a leaning tip. Four mirrored vertices gave an egg; putting
+                 the widest point too low and the base as wide as the shoulders gave a tulip,
+                 flaring and pinching and flaring again; six evenly spaced ones with the widest
+                 at mid-height gave a gothic leaf with near-parallel sides and a maroon pinch
+                 where it met the book. Eight, with a *shoulder* between the apex and the belly
+                 and a base wide enough to sit down in the gutter rather than balance on it, is
+                 what finally read as fire. The apex is a `StraightVertex` so the curves meet in
+                 a corner rather than rounding over, and it sits right of centre so the whole
+                 silhouette leans. Gradient-filled, because a flat fill is what made the
+                 hand-built version read as a sticker.
+
+                 **The handles are `rive/streak_flame/smooth.py`'s output, not hand-tuned, and
+                 that is what fixed the faceting.** A mirrored vertex spends one angle and one
+                 length on both of its segments, so a tangent chosen to suit one neighbour kinks
+                 the other; detached vertices let the script fit a Catmull-Rom tangent through
+                 each point instead. Move a point there and paste, rather than nudging numbers
+                 here.
+
+                 **The ramp is held flat for the top half and only falls to `flame` at the
+                 base.** Run linearly over the whole height -- which is how this started -- the
+                 midtone is a brown-orange nothing, the silhouette has no value contrast
+                 against the core, and the result is the soft airbrushed blob the reader
+                 called plain. A flat saturated body with a burnt foot is both bolder and more
+                 like what fire does. -->
             <Shape name="flame_outer" id="0:25">
-                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:167">
-                    <StraightVertex x="6" y="-120" id="0:168"/>
-                    <CubicMirroredVertex x="36" y="-64" rotation="1.5707964" distance="38" id="0:169"/>
-                    <CubicMirroredVertex x="24" y="-18" rotation="2.5" distance="24" id="0:170"/>
-                    <CubicMirroredVertex x="0" y="8" rotation="3.1415927" distance="22" id="0:171"/>
-                    <CubicMirroredVertex x="-25" y="-20" rotation="3.9" distance="24" id="0:172"/>
-                    <CubicMirroredVertex x="-32" y="-69" rotation="4.85" distance="38" id="0:173"/>
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:285">
+                    <StraightVertex x="8" y="-126" id="0:286"/>
+                    <CubicDetachedVertex x="30" y="-70" inRotation="4.3906" inDistance="16.87" outRotation="1.2490" outDistance="16.87" id="0:287"/>
+                    <CubicDetachedVertex x="40" y="-30" inRotation="4.8640" inDistance="12.14" outRotation="1.7224" outDistance="12.14" id="0:288"/>
+                    <CubicDetachedVertex x="19" y="2" inRotation="5.5234" inDistance="9.20" outRotation="2.3818" outDistance="9.20" id="0:289"/>
+                    <CubicDetachedVertex x="0" y="8" inRotation="0.0526" inDistance="6.34" outRotation="3.1942" outDistance="6.34" id="0:290"/>
+                    <CubicDetachedVertex x="-19" y="0" inRotation="0.8486" inDistance="9.33" outRotation="3.9902" outDistance="9.33" id="0:291"/>
+                    <CubicDetachedVertex x="-37" y="-34" inRotation="1.4899" inDistance="12.37" outRotation="4.6315" outDistance="12.37" id="0:292"/>
+                    <CubicDetachedVertex x="-25" y="-74" inRotation="2.0257" inDistance="17.07" outRotation="5.1673" outDistance="17.07" id="0:293"/>
                 </PointsPath>
-                <Fill name="Fill" id="0:174">
-                    <LinearGradient startX="0" startY="-120" endX="0" endY="6" name="Gradient" id="0:175">
-                        <GradientStop colorValue="FFF2A93F" position="0" id="0:176"/>
-                        <GradientStop colorValue="FFB54708" position="1" id="0:177"/>
+                <Fill name="Fill" id="0:294">
+                    <LinearGradient startX="0" startY="-126" endX="0" endY="8" name="Gradient" id="0:295">
+                        <GradientStop colorValue="FFF2A93F" position="0" id="0:296"/>
+                        <GradientStop colorValue="FFF2A93F" position="0.52" id="0:297"/>
+                        <GradientStop colorValue="FFB54708" position="1" id="0:298"/>
                     </LinearGradient>
                 </Fill>
             </Shape>
         </Node>
 
-        <!-- The crease the flame comes out of. Declared before the two halves so it sits on
-             top of their join, and faded out when the book is shut because a shut book has no
-             visible gutter.
+        <!-- ============================ THE BOOK ============================ -->
+        <!--
+          **The spine is the hinge, and that is the whole rig.** This is the second mechanism
+          and the first one was wrong in a way that showed: the book used to be a single node
+          whose "opening" was `scaleX` 0.52 -> 1 and `scaleY` 1.9 -> 1, which contains no spine
+          anywhere. The consequence was that the shut pose was two parallel dark bars with a
+          cream filling and read as an equals sign, and the covers never hinged -- they slid
+          apart. A reader called it immediately.
 
-             **It stops exactly where the flame's base begins, and its whole job is pose 20.**
-             Twice now a gutter drawn past that point has read as a black peg stood on the
-             page: once as a blunt rectangle, once as a wedge. Below the flame the crease is
-             carried by the page gradient's own shadow instead, which is where a crease comes
-             from anyway. What is left here is the seam that appears in the moment after the
-             covers fall open and before there is a flame big enough to hide it. -->
-        <Shape x="152" y="238" name="gutter" id="0:26">
-            <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:178">
-                <StraightVertex x="-6" y="-16" id="0:179"/>
-                <StraightVertex x="6" y="-16" id="0:180"/>
-                <StraightVertex x="2" y="-60" id="0:181"/>
-                <StraightVertex x="-2" y="-60" id="0:182"/>
-            </PointsPath>
-            <Fill name="Fill" id="0:183"><SolidColor colorValue="FF26190A" name="Color" id="0:184"/></Fill>
-        </Shape>
+          From this camera the spine runs away along Z, so it is a *point* in our view, and
+          opening a book is the front cover plus half the page block **rotating 180 degrees
+          about that point** -- an ordinary in-plane rotation. `leaf` is that half. `base` is the
+          half that stays. The 2:1 thickness relationship a book has between shut and open then
+          falls out of the geometry instead of being faked: shut, the two halves are stacked
+          (44 units); open, they are side by side (22).
 
-        <!-- The two halves. Each is a Node hinged at the gutter's near end, holding three
-             shapes: the stacked page edges we are looking straight at, the page surface
-             receding away, and the cover board behind both, showing as a rim.
+          Three properties and no opacity anywhere, which is the other thing this bought. The
+          old rig needed a front board to fade or collapse, a filler to cover the page taper,
+          and a gutter to fade in, and every gradual version of that handoff composited to grey
+          mud -- see the history in `docs/streak-flame-rive.md`. A hinge needs none of them:
+          `leaf.rotation`, `spine.scaleY`, and `book.x` so the spine ends up centred.
 
-             Written out twice rather than mirrored with `scaleX="-1"`, because the opening
-             *is* `scaleX` and a right half whose open pose reads `-1.0` is a trap for
-             whoever edits the pose table next. -->
-        <Node x="152" y="238" name="wing_left" id="0:27">
-            <!-- The tail edge: the band between the page block's near edge and the cover's.
-                 **This is the shape that says we are looking at the bottom of a book** and
-                 not at two flat wings -- it is the only element that gives the thing
-                 thickness. -->
-            <Shape name="tail_left" id="0:185">
-                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:186">
-                    <StraightVertex x="0" y="11" id="0:187"/>
-                    <StraightVertex x="-105" y="-3" id="0:188"/>
-                    <StraightVertex x="-116" y="4" id="0:189"/>
-                    <StraightVertex x="0" y="20" id="0:190"/>
-                </PointsPath>
-                <Fill name="Fill" id="0:191"><SolidColor colorValue="FFE2D9C4" name="Color" id="0:192"/></Fill>
-            </Shape>
-            <Shape name="page_left" id="0:28">
-                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:193">
-                    <StraightVertex x="0" y="11" radius="2" id="0:194"/>
-                    <StraightVertex x="-105" y="-3" radius="2" id="0:195"/>
-                    <StraightVertex x="-65" y="-53" radius="2" id="0:196"/>
-                    <StraightVertex x="0" y="-58" radius="2" id="0:197"/>
-                </PointsPath>
-                <Fill name="Fill" id="0:198">
-                    <!-- **The crease is the darkest part of an open book, not the
-                         brightest.** The first version ran paper-bright at x=0 outward on
-                         the reasoning that the flame is the light source and the gutter is
-                         nearest to it -- and drew a pale needle straight down the middle of
-                         the book, because both halves put their brightest pixel against x=0
-                         and nothing covered the join below the flame. Two pages meeting in a
-                         valley shade each other, which is why a real open book has a dark
-                         line down it; so the crease gets the shadow tone, the lit band sits
-                         just outside it, and the falloff still runs outward from there. -->
-                    <LinearGradient startX="0" startY="-23" endX="-105" endY="-27" name="Gradient" id="0:199">
-                        <GradientStop colorValue="FFD9A96B" position="0" id="0:200"/>
-                        <GradientStop colorValue="FFD9A96B" position="0.03" id="0:201"/>
-                        <GradientStop colorValue="FFFDFAF1" position="0.11" id="0:202"/>
-                        <GradientStop colorValue="FFFFE8C4" position="1" id="0:203"/>
+          The cross-section, shut, from the ground up:
+              0 ..  -8   the back board, edge-on
+             -8 .. -30   its half of the page block
+            -30 .. -52   the leaf's half of the block, resting on it
+            -52 .. -60   the front board
+          and the spine capping all four on the left, from -60 to 0.
+
+          **But the authored values here are the OPEN pose, not the shut one, and that matters
+          outside the app.** `Ignite` keys every one of these properties at frame 0, so the shut
+          pose is established by the timeline and the authored value is never what the app
+          draws. What the authored value *is* is what anything that plays a different timeline
+          sees -- and `Idle` keys the flame, the core and the glow and nothing else, because it
+          has no business re-stating a pose the ignition already reached. Authored shut, playing
+          `Idle` on its own in the Rive Editor therefore showed a living flame standing on a
+          **closed book**, which is nonsense, and the same was true of any runtime that named
+          `Idle` first.
+
+          The scripts in this directory used to paper over it by patching these attributes in a
+          copy of the project before rendering, which meant the preview was right and the file
+          was wrong. Authoring the resting pose is the actual fix: it costs nothing, it deletes
+          that whole mechanism, and it makes a still render of the artboard -- or a runtime that
+          fails to find `Ignite` at all -- show a book lying open with a flame on it, which is
+          the only sensible thing for either to show.
+
+          **Twenty-two units of paper per half, up from fifteen, and no fore-edge chamfer.**
+          At fifteen the open book was a five-pixel cream sliver on a three-pixel dark line and
+          read as a ruler with graduations rather than as a book -- the striations filled the
+          whole band because there was no band to speak of. The chamfer went at the same time:
+          bevelling both halves' outer top corners opened a wedge between them as they stacked,
+          which drew a dark notch in the shut book's fore edge and made the whole thing read as
+          a battery icon. A rounded corner does the same job with nothing to misalign.
+
+          **The page block is a constant thickness, which is a concession.** Half a text block
+          in an open book does thin toward the gutter, and it was drawn that way -- but a taper
+          reflected through the hinge leaves a wedge-shaped *gap* between the two halves when
+          they are stacked, and a shut book has no gap in the middle of its pages. The shallow V
+          an open book rests in is carried instead by tilting each half three degrees, which is
+          cheaper and has no such side effect.
+        -->
+        <Node x="152" y="248" name="book" id="0:40">
+
+            <!-- The half that travels: the front cover and the pages above the midline. Its
+                 own origin is the hinge, so `rotation` is the only thing that moves it.
+                 Declared first, therefore frontmost, because it passes over the other half on
+                 its way round.
+
+                 Note the *reversed* stacking: going up from the hinge it is pages then board,
+                 because the front cover is on top of a shut book. After 180 degrees the board
+                 is underneath, which is where a cover laid open belongs -- so the flip sorts
+                 the layering out by itself and nothing has to be keyed for it. Both gradients
+                 are authored to be read *after* the flip for the same reason. -->
+            <Node y="-30" rotation="-3.0892" name="leaf" id="0:42">
+                <!-- The page-edge hairlines. **They run ACROSS the block, parallel to the
+                     cover -- not up it**, and this was drawn the other way round for several
+                     passes. It is the most basic thing the drawing got wrong: the pages are
+                     sheets lying flat, stacked through the block's thickness, so looking at
+                     the block's edge each sheet is one thin *horizontal* band and the shadows
+                     between them are horizontal too. Vertical hairlines correspond to nothing
+                     physical at all -- they read as a comb, or as a ruler's graduations, which
+                     is how every review described them, without anyone (including the reviews
+                     that used those exact words) naming the cause.
+
+                     **Dark, at a fifth or less.** Five wide *pale* bars per side, over a band
+                     that itself runs pale-to-tan, meant that near the fore edge the striation
+                     was lighter than what it sat on. A paper edge is a shadow between sheets:
+                     the same ink the copy is set in, nearly transparent, with the alpha varied
+                     so the stack does not read as ruled notepaper.
+
+                     **Generated by `smooth.py`, not hand-fitted**, because the leaf's have to
+                     be authored in mirrored local space -- its 180-degree flip runs its y the
+                     other way -- so that both halves' layers line up across the gutter once the
+                     book is open, and stack into an evenly ruled slab when it is shut. Run the
+                     script and paste. -->
+                <Shape x="55" y="-3" name="ls1" id="0:830"><Rectangle width="86" height="1.2" name="P" id="0:831"/>
+                    <Fill name="Fill" id="0:832"><SolidColor colorValue="3026190A" name="C" id="0:833"/></Fill></Shape>
+                <Shape x="55" y="-7" name="ls2" id="0:834"><Rectangle width="86" height="1.2" name="P" id="0:835"/>
+                    <Fill name="Fill" id="0:836"><SolidColor colorValue="2226190A" name="C" id="0:837"/></Fill></Shape>
+                <Shape x="55" y="-11" name="ls3" id="0:838"><Rectangle width="86" height="1.2" name="P" id="0:839"/>
+                    <Fill name="Fill" id="0:840"><SolidColor colorValue="2C26190A" name="C" id="0:841"/></Fill></Shape>
+                <Shape x="55" y="-15" name="ls4" id="0:842"><Rectangle width="86" height="1.2" name="P" id="0:843"/>
+                    <Fill name="Fill" id="0:844"><SolidColor colorValue="1C26190A" name="C" id="0:845"/></Fill></Shape>
+                <Shape x="55" y="-19" name="ls5" id="0:846"><Rectangle width="86" height="1.2" name="P" id="0:847"/>
+                    <Fill name="Fill" id="0:848"><SolidColor colorValue="2826190A" name="C" id="0:849"/></Fill></Shape>
+                <Shape name="leaf_pages" id="0:650">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:651">
+                        <StraightVertex x="6" y="-22" id="0:652"/>
+                        <StraightVertex x="104" y="-22" radius="4" id="0:653"/>
+                        <StraightVertex x="104" y="0" radius="4" id="0:654"/>
+                        <StraightVertex x="6" y="0" id="0:655"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:656">
+                        <LinearGradient startX="6" startY="-11" endX="104" endY="-11" name="Gradient" id="0:657">
+                            <GradientStop colorValue="FFFDFAF1" position="0" id="0:658"/>
+                            <GradientStop colorValue="FFFFE8C4" position="0.55" id="0:659"/>
+                            <GradientStop colorValue="FFD9A96B" position="1" id="0:660"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+                <Shape name="leaf_board" id="0:661">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:662">
+                        <StraightVertex x="0" y="-30" id="0:663"/>
+                        <StraightVertex x="104" y="-30" radius="3" id="0:664"/>
+                        <StraightVertex x="104" y="-22" radius="3" id="0:665"/>
+                        <StraightVertex x="0" y="-22" id="0:666"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:667">
+                        <LinearGradient startX="0" startY="-30" endX="0" endY="-22" name="Gradient" id="0:668">
+                            <GradientStop colorValue="FF1B1106" position="0" id="0:669"/>
+                            <GradientStop colorValue="FF35230E" position="1" id="0:670"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+            </Node>
+
+            <!-- The half that stays: the back cover and the pages below the midline. It only
+                 tilts, by the same three degrees the leaf overshoots 180 by, so the pair comes to
+                 rest in the shallow V an open book actually lies in rather than dead flat. -->
+            <Node rotation="-0.0524" name="base" id="0:43">
+                <Shape x="55" y="-27" name="bs1" id="0:850"><Rectangle width="86" height="1.2" name="P" id="0:851"/>
+                    <Fill name="Fill" id="0:852"><SolidColor colorValue="3026190A" name="C" id="0:853"/></Fill></Shape>
+                <Shape x="55" y="-23" name="bs2" id="0:854"><Rectangle width="86" height="1.2" name="P" id="0:855"/>
+                    <Fill name="Fill" id="0:856"><SolidColor colorValue="2226190A" name="C" id="0:857"/></Fill></Shape>
+                <Shape x="55" y="-19" name="bs3" id="0:858"><Rectangle width="86" height="1.2" name="P" id="0:859"/>
+                    <Fill name="Fill" id="0:860"><SolidColor colorValue="2C26190A" name="C" id="0:861"/></Fill></Shape>
+                <Shape x="55" y="-15" name="bs4" id="0:862"><Rectangle width="86" height="1.2" name="P" id="0:863"/>
+                    <Fill name="Fill" id="0:864"><SolidColor colorValue="1C26190A" name="C" id="0:865"/></Fill></Shape>
+                <Shape x="55" y="-11" name="bs5" id="0:866"><Rectangle width="86" height="1.2" name="P" id="0:867"/>
+                    <Fill name="Fill" id="0:868"><SolidColor colorValue="2826190A" name="C" id="0:869"/></Fill></Shape>
+                <Shape name="base_pages" id="0:703">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:704">
+                        <StraightVertex x="6" y="-30" id="0:705"/>
+                        <StraightVertex x="104" y="-30" radius="4" id="0:706"/>
+                        <StraightVertex x="104" y="-8" radius="4" id="0:707"/>
+                        <StraightVertex x="6" y="-8" id="0:708"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:709">
+                        <LinearGradient startX="6" startY="-19" endX="104" endY="-19" name="Gradient" id="0:710">
+                            <GradientStop colorValue="FFFDFAF1" position="0" id="0:711"/>
+                            <GradientStop colorValue="FFFFE8C4" position="0.55" id="0:712"/>
+                            <GradientStop colorValue="FFD9A96B" position="1" id="0:713"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+                <Shape name="base_board" id="0:714">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:715">
+                        <StraightVertex x="0" y="-8" id="0:716"/>
+                        <StraightVertex x="104" y="-8" radius="3" id="0:717"/>
+                        <StraightVertex x="104" y="0" radius="3" id="0:718"/>
+                        <StraightVertex x="0" y="0" id="0:719"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:720">
+                        <LinearGradient startX="0" startY="-8" endX="0" endY="0" name="Gradient" id="0:721">
+                            <GradientStop colorValue="FF35230E" position="0" id="0:722"/>
+                            <GradientStop colorValue="FF1B1106" position="1" id="0:723"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+            </Node>
+
+            <!-- The spine: **one shape doing two jobs, which is why there is no cross-fade
+                 left in this drawing.** Shut, it is the rounded cap joining the two covers down
+                 the left-hand side -- the thing whose absence made the old shut pose read as
+                 two floating bars. Open, squashed to half its height, it is the dark gutter the
+                 flame comes out of, flush with the page tops so it never stands proud of them.
+                 The previous rig needed a separate gutter shape fading in over the cream, which
+                 is mud; a hinge only needs `scaleY`.
+
+                 Behind both halves, so shut it shows only as the cap past their left edge, and
+                 open only as the strip between their inner ends. -->
+            <Shape scaleY="0.5" name="spine" id="0:41">
+                <Rectangle width="18" height="60" originY="1" cornerRadiusTL="6" name="P" id="0:724"/>
+                <Fill name="Fill" id="0:725">
+                    <LinearGradient startX="0" startY="-60" endX="0" endY="0" name="Gradient" id="0:726">
+                        <GradientStop colorValue="FF35230E" position="0" id="0:727"/>
+                        <GradientStop colorValue="FF1B1106" position="1" id="0:728"/>
                     </LinearGradient>
                 </Fill>
-                <!-- No Stroke. **A hairline around this path puts one up the crease**, and
-                     the left and right halves' two strokes meeting at x=0 drew a pale needle
-                     from the flame's base down to the tail edge -- the page block's edge is
-                     already carried by `tail_left` below and the cover's rim outside it, so
-                     the outline was doing nothing the drawing needed and one thing it did
-                     not. `PointsPath` strokes every edge or none. -->
             </Shape>
-            <Shape name="cover_left" id="0:204">
-                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:205">
-                    <StraightVertex x="0" y="20" radius="3" id="0:206"/>
-                    <StraightVertex x="-116" y="4" radius="3" id="0:207"/>
-                    <StraightVertex x="-72" y="-58" radius="3" id="0:208"/>
-                    <StraightVertex x="0" y="-64" radius="3" id="0:209"/>
-                </PointsPath>
-                <Fill name="Fill" id="0:210">
-                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient" id="0:211">
-                        <GradientStop colorValue="FF35230E" position="0" id="0:212"/>
-                        <GradientStop colorValue="FF1B1106" position="1" id="0:213"/>
-                    </LinearGradient>
-                </Fill>
-            </Shape>
-        </Node>
 
-        <Node x="152" y="238" name="wing_right" id="0:29">
-            <Shape name="tail_right" id="0:214">
-                <PointsPath isClosed="true" isClockwise="false" name="Path" id="0:215">
-                    <StraightVertex x="0" y="11" id="0:216"/>
-                    <StraightVertex x="105" y="-3" id="0:217"/>
-                    <StraightVertex x="116" y="4" id="0:218"/>
-                    <StraightVertex x="0" y="20" id="0:219"/>
-                </PointsPath>
-                <Fill name="Fill" id="0:220"><SolidColor colorValue="FFE2D9C4" name="Color" id="0:221"/></Fill>
-            </Shape>
-            <Shape name="page_right" id="0:31">
-                <PointsPath isClosed="true" isClockwise="false" name="Path" id="0:222">
-                    <StraightVertex x="0" y="11" radius="2" id="0:223"/>
-                    <StraightVertex x="105" y="-3" radius="2" id="0:224"/>
-                    <StraightVertex x="65" y="-53" radius="2" id="0:225"/>
-                    <StraightVertex x="0" y="-58" radius="2" id="0:226"/>
-                </PointsPath>
-                <Fill name="Fill" id="0:227">
-                    <LinearGradient startX="0" startY="-23" endX="105" endY="-27" name="Gradient" id="0:228">
-                        <GradientStop colorValue="FFD9A96B" position="0" id="0:229"/>
-                        <GradientStop colorValue="FFD9A96B" position="0.03" id="0:230"/>
-                        <GradientStop colorValue="FFFDFAF1" position="0.11" id="0:231"/>
-                        <GradientStop colorValue="FFFFE8C4" position="1" id="0:232"/>
-                    </LinearGradient>
-                </Fill>
-            </Shape>
-            <Shape name="cover_right" id="0:233">
-                <PointsPath isClosed="true" isClockwise="false" name="Path" id="0:234">
-                    <StraightVertex x="0" y="20" radius="3" id="0:235"/>
-                    <StraightVertex x="116" y="4" radius="3" id="0:236"/>
-                    <StraightVertex x="72" y="-58" radius="3" id="0:237"/>
-                    <StraightVertex x="0" y="-64" radius="3" id="0:238"/>
-                </PointsPath>
-                <Fill name="Fill" id="0:239">
-                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient" id="0:240">
-                        <GradientStop colorValue="FF35230E" position="0" id="0:241"/>
-                        <GradientStop colorValue="FF1B1106" position="1" id="0:242"/>
-                    </LinearGradient>
+            <!-- The contact shadow, which is the only thing telling the eye the book is lying
+                 on something rather than floating. Inside the book node so it travels with it,
+                 and keyed to widen and re-centre as the halves spread. -->
+            <Shape y="1" name="shadow" id="0:44">
+                <Ellipse width="250" height="20" name="Path" id="0:729"/>
+                <Fill name="Fill" id="0:730">
+                    <RadialGradient startX="0" startY="0" endX="0" endY="10" name="Gradient" id="0:731">
+                        <GradientStop colorValue="3826190A" position="0" id="0:732"/>
+                        <GradientStop colorValue="0026190A" position="1" id="0:733"/>
+                    </RadialGradient>
                 </Fill>
             </Shape>
         </Node>
 
         <!-- The light, behind the thing making it. Warmer rather than lighter, which is the
              only kind that reads as light on a cream ground. -->
-        <Shape x="152" y="140" name="glow" id="0:32">
-            <Ellipse width="250" height="250" name="Path" id="0:243"/>
-            <Fill name="Fill" id="0:244">
-                <RadialGradient startX="0" startY="0" endX="0" endY="125" name="Gradient" id="0:245">
-                    <GradientStop colorValue="7FF2A93F" position="0" id="0:246"/>
-                    <GradientStop colorValue="3DF2A93F" position="0.45" id="0:247"/>
-                    <GradientStop colorValue="00F2A93F" position="1" id="0:248"/>
+        <Shape x="152" y="168" opacity="0.58" name="glow" id="0:50">
+            <Ellipse width="250" height="250" name="Path" id="0:405"/>
+            <Fill name="Fill" id="0:406">
+                <RadialGradient startX="0" startY="0" endX="0" endY="125" name="Gradient" id="0:407">
+                    <GradientStop colorValue="7FF2A93F" position="0" id="0:408"/>
+                    <GradientStop colorValue="3DF2A93F" position="0.45" id="0:409"/>
+                    <GradientStop colorValue="00F2A93F" position="1" id="0:410"/>
                 </RadialGradient>
             </Fill>
         </Shape>
 
-        <!-- PREVIEW ONLY, and off unless something asks for it. See the note at the top of
-             the artboard: this exists so `sheet.py` can judge the glow against the cream the
-             celebration actually paints, instead of against the previewer's near-black.
-             `ground` defaults to 0 in the view model below and nothing in `lib/` writes it. -->
-        <Shape x="152" y="152" name="ground" id="0:33">
-            <Rectangle width="304" height="304" name="Path" id="0:249"/>
-            <Fill name="Fill" id="0:250"><SolidColor colorValue="FFFFE8C4" name="Color" id="0:251"/></Fill>
-            <DataBindContext sourcePathIds="0:100-0:103" propertyKey="18" id="0:252"/>
-        </Shape>
 
-        <StateMachine name="Ignite" id="0:7">
-            <StateMachineLayer name="Layer 1" id="0:8">
-                <AnyState x="200" y="-120" id="0:253"/>
-                <ExitState x="400" y="-120" id="0:254"/>
-                <EntryState id="0:255">
-                    <StateTransition stateToId="0:70" id="0:256"/>
-                </EntryState>
-                <!-- The scrub. Weights run 0-100, and the children must be in ascending
-                     `value` order -- the runtime binary-searches them and does not check. -->
-                <BlendState1DViewModel x="200" id="0:70">
-                    <BindablePropertyNumber id="0:257">
-                        <DataBindContext sourcePathIds="0:100-0:101" propertyKey="636" id="0:258"/>
-                    </BindablePropertyNumber>
-                    <BlendAnimation1D animationId="0:60" value="0" id="0:259"/>
-                    <BlendAnimation1D animationId="0:61" value="20" id="0:260"/>
-                    <BlendAnimation1D animationId="0:62" value="35" id="0:261"/>
-                    <BlendAnimation1D animationId="0:63" value="50" id="0:262"/>
-                    <BlendAnimation1D animationId="0:64" value="70" id="0:263"/>
-                    <BlendAnimation1D animationId="0:65" value="100" id="0:264"/>
-                </BlendState1DViewModel>
-            </StateMachineLayer>
-        </StateMachine>
+        <!-- The easing. Authored here rather than in Dart, so the timeline the editor plays is
+             the motion that ships. -->
+        <CubicEaseInterpolator x1="0.16" y1="1" x2="0.3" y2="1" id="0:200"/>
+        <CubicEaseInterpolator x1="0.45" y1="0" x2="0.55" y2="1" id="0:201"/>
+        <CubicEaseInterpolator x1="0.34" y1="1.56" x2="0.64" y2="1" id="0:202"/>
+        <CubicEaseInterpolator x1="0.55" y1="0" x2="1" y2="0.45" id="0:203"/>
+        <!-- A *mild* ease-out, for the embers. `0:200` is a (0.16,1,0.3,1) snap that is right
+             for something arriving and wrong for something drifting: a quarter of the way
+             through its flight an ember was already four fifths of the way up, so the spray
+             appeared as specks pinned near the top of the frame with a gap between them and the
+             flame they supposedly came off. A spark slows as it cools; it does not stop. -->
+        <CubicEaseInterpolator x1="0.33" y1="0.5" x2="0.7" y2="1" id="0:204"/>
 
         <!--
-          THE POSES. Every pose keys EVERY blended property: one keyed in one pose and
-          absent from another has nothing to mix toward, and jumps instead of blending. So
-          these six blocks are the same eleven objects in the same order, every time, and
-          they should be read as the columns of one table.
+          ============================ IGNITE ============================
+          54 frames at 60fps = 900ms, one shot. Flutter seeks this by time; the editor plays
+          it. The beats, and **the first two are corrections**:
 
-          propertyKey: 13 x, 14 y, 15 rotation, 16 scaleX, 17 scaleY, 18 opacity.
-          Values are ABSOLUTE, not offsets -- `fire` is declared at y=196, so a pose that
-          wants it 24px lower says 220.
+            0 .. 6    the shut book, HELD. Without this hold the reader never saw a closed
+                      book at all: `backOut` front-loads so hard that at frame 4 -- 66ms --
+                      the covers were already 70% of the way open, and the whole point of the
+                      sequence is that a book opens. A held pose is the cheapest possible fix
+                      and the only one that works, because the curve is what gives the landing
+                      its knock and softening it costs that.
+            6 .. 30   the cover swings. `leaf` rotates -177 degrees about the spine, sweeping
+                      up and over; `base` tilts the matching 3 degrees the other way so the
+                      pair lands in a shallow V; the spine squashes to half height and becomes
+                      the gutter; and the whole book slides right so the spine finishes centred
+                      under the flame. Four properties, no opacity, nothing to composite.
+           18 .. 44   the room lights. **Not from frame 0.** It used to, which lit a warm halo
+                      behind a book that was still shut and nothing was burning -- light
+                      before its source, visible in every contact sheet and noticed in none
+                      of them for three passes.
+           22 .. 44   the flame rises out of the gutter, stretching as it catches.
+           28 .. 54   the burst flies out and fades.
+           36 .. 52   the gleam crosses.
+           54         everything has settled, so `Idle` can take over with nothing to correct.
+
+          The rotation is **negative**, and that is not arbitrary: at +90 degrees the leaf
+          sweeps *down* through the table before coming up the other side. Sign it the other way
+          and the book opens by passing its cover through the floor.
         -->
+        <LinearAnimation fps="60" duration="54" loopValue="oneShot" name="Ignite" id="0:60">
 
-        <!-- 0 - shut. One board wide, flattened to a slab, covers out and pages hidden.
-             No seam, no fire, no light. -->
-        <LinearAnimation duration="1" name="p00" id="0:60">
-            <KeyedObject objectId="0:27" id="0:265">
-                <KeyedProperty propertyKey="16" id="0:266"><KeyFrameDouble value="0.54" id="0:267"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:268"><KeyFrameDouble value="0.34" id="0:269"/></KeyedProperty>
+            <!-- The cover, up and over. `backOut` so it lands with a knock rather than easing
+                 to a halt, and a `hold` in front of it so there is a book to watch open. -->
+            <KeyedObject objectId="0:42" id="0:734">
+                <KeyedProperty propertyKey="15" id="0:735">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="hold" id="0:736"/>
+                    <KeyFrameDouble frame="6" value="0" interpolationType="cubic" interpolatorId="0:202" id="0:737"/>
+                    <KeyFrameDouble frame="30" value="-3.0892" id="0:738"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29" id="0:270">
-                <KeyedProperty propertyKey="16" id="0:271"><KeyFrameDouble value="0.54" id="0:272"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:273"><KeyFrameDouble value="0.34" id="0:274"/></KeyedProperty>
+            <KeyedObject objectId="0:43" id="0:739">
+                <KeyedProperty propertyKey="15" id="0:740">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="hold" id="0:741"/>
+                    <KeyFrameDouble frame="6" value="0" interpolationType="cubic" interpolatorId="0:202" id="0:742"/>
+                    <KeyFrameDouble frame="30" value="-0.0524" id="0:743"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28" id="0:275">
-                <KeyedProperty propertyKey="17" id="0:276"><KeyFrameDouble value="0.02" id="0:277"/></KeyedProperty>
+            <KeyedObject objectId="0:41" id="0:744">
+                <KeyedProperty propertyKey="17" id="0:745">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="hold" id="0:746"/>
+                    <KeyFrameDouble frame="6" value="1" interpolationType="cubic" interpolatorId="0:202" id="0:747"/>
+                    <KeyFrameDouble frame="30" value="0.5" id="0:748"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31" id="0:278">
-                <KeyedProperty propertyKey="17" id="0:279"><KeyFrameDouble value="0.02" id="0:280"/></KeyedProperty>
+            <!-- The book re-centres on its spine, because a shut book is one board wide and
+                 sits to one side of the hinge. Without this the shut pose is hard against the
+                 right of the frame. -->
+            <KeyedObject objectId="0:40" id="0:749">
+                <KeyedProperty propertyKey="13" id="0:750">
+                    <KeyFrameDouble frame="0" value="100" interpolationType="hold" id="0:751"/>
+                    <KeyFrameDouble frame="6" value="100" interpolationType="cubic" interpolatorId="0:202" id="0:752"/>
+                    <KeyFrameDouble frame="30" value="152" id="0:753"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26" id="0:281">
-                <KeyedProperty propertyKey="18" id="0:282"><KeyFrameDouble value="0" id="0:283"/></KeyedProperty>
+            <KeyedObject objectId="0:44" id="0:754">
+                <KeyedProperty propertyKey="13" id="0:755">
+                    <KeyFrameDouble frame="0" value="48" interpolationType="hold" id="0:756"/>
+                    <KeyFrameDouble frame="6" value="48" interpolationType="cubic" interpolatorId="0:202" id="0:757"/>
+                    <KeyFrameDouble frame="30" value="0" id="0:758"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:759">
+                    <KeyFrameDouble frame="0" value="0.45" interpolationType="hold" id="0:760"/>
+                    <KeyFrameDouble frame="6" value="0.45" interpolationType="cubic" interpolatorId="0:202" id="0:761"/>
+                    <KeyFrameDouble frame="30" value="1" id="0:762"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20" id="0:284">
-                <KeyedProperty propertyKey="14" id="0:285"><KeyFrameDouble value="236" id="0:286"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:287"><KeyFrameDouble value="0.3" id="0:288"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:289"><KeyFrameDouble value="0.15" id="0:290"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:291"><KeyFrameDouble value="0" id="0:292"/></KeyedProperty>
+
+            <!-- The fire: rises out of the gutter, stretching as it catches. Held at nothing
+                 until the book has somewhere to burn from. -->
+            <KeyedObject objectId="0:20" id="0:763">
+                <KeyedProperty propertyKey="14" id="0:764">
+                    <KeyFrameDouble frame="22" value="238" interpolationType="cubic" interpolatorId="0:200" id="0:765"/>
+                    <KeyFrameDouble frame="40" value="228" id="0:766"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:767">
+                    <KeyFrameDouble frame="22" value="0.3" interpolationType="cubic" interpolatorId="0:201" id="0:768"/>
+                    <KeyFrameDouble frame="36" value="0.9" interpolationType="cubic" interpolatorId="0:200" id="0:769"/>
+                    <KeyFrameDouble frame="44" value="1" id="0:770"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:771">
+                    <KeyFrameDouble frame="22" value="0.2" interpolationType="cubic" interpolatorId="0:201" id="0:772"/>
+                    <KeyFrameDouble frame="36" value="1.15" interpolationType="cubic" interpolatorId="0:200" id="0:773"/>
+                    <KeyFrameDouble frame="44" value="1" id="0:774"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:775">
+                    <KeyFrameDouble frame="20" value="0" interpolationType="cubic" interpolatorId="0:200" id="0:776"/>
+                    <KeyFrameDouble frame="32" value="1" id="0:777"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25" id="0:293">
-                <KeyedProperty propertyKey="16" id="0:294"><KeyFrameDouble value="1" id="0:295"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:296"><KeyFrameDouble value="1" id="0:297"/></KeyedProperty>
+
+            <!-- Squash and stretch, the thing a font glyph could not do and the reason this
+                 artboard exists. The body leads, the core lags and licks. -->
+            <KeyedObject objectId="0:25" id="0:778">
+                <KeyedProperty propertyKey="16" id="0:779">
+                    <KeyFrameDouble frame="28" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:780"/>
+                    <KeyFrameDouble frame="34" value="0.9" interpolationType="cubic" interpolatorId="0:201" id="0:781"/>
+                    <KeyFrameDouble frame="40" value="1.08" interpolationType="cubic" interpolatorId="0:201" id="0:782"/>
+                    <KeyFrameDouble frame="47" value="0.99" interpolationType="cubic" interpolatorId="0:200" id="0:783"/>
+                    <KeyFrameDouble frame="54" value="1" id="0:784"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:785">
+                    <KeyFrameDouble frame="28" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:786"/>
+                    <KeyFrameDouble frame="34" value="1.18" interpolationType="cubic" interpolatorId="0:201" id="0:787"/>
+                    <KeyFrameDouble frame="40" value="0.92" interpolationType="cubic" interpolatorId="0:201" id="0:788"/>
+                    <KeyFrameDouble frame="47" value="1.03" interpolationType="cubic" interpolatorId="0:200" id="0:789"/>
+                    <KeyFrameDouble frame="54" value="1" id="0:790"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24" id="0:298">
-                <KeyedProperty propertyKey="15" id="0:299"><KeyFrameDouble value="0" id="0:300"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:301"><KeyFrameDouble value="1" id="0:302"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:303"><KeyFrameDouble value="1" id="0:304"/></KeyedProperty>
+            <KeyedObject objectId="0:24" id="0:791">
+                <KeyedProperty propertyKey="15" id="0:792">
+                    <KeyFrameDouble frame="28" value="0" interpolationType="cubic" interpolatorId="0:201" id="0:793"/>
+                    <KeyFrameDouble frame="34" value="-0.08" interpolationType="cubic" interpolatorId="0:201" id="0:794"/>
+                    <KeyFrameDouble frame="40" value="0.07" interpolationType="cubic" interpolatorId="0:201" id="0:795"/>
+                    <KeyFrameDouble frame="48" value="-0.02" interpolationType="cubic" interpolatorId="0:200" id="0:796"/>
+                    <KeyFrameDouble frame="54" value="0" id="0:797"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:21" id="0:305">
-                <KeyedProperty propertyKey="16" id="0:306"><KeyFrameDouble value="0.1" id="0:307"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:308"><KeyFrameDouble value="0.1" id="0:309"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:310"><KeyFrameDouble value="0" id="0:311"/></KeyedProperty>
+
+            <!-- The burst, out and gone. -->
+            <KeyedObject objectId="0:21" id="0:798">
+                <KeyedProperty propertyKey="16" id="0:799">
+                    <KeyFrameDouble frame="28" value="0.2" interpolationType="cubic" interpolatorId="0:200" id="0:800"/>
+                    <KeyFrameDouble frame="54" value="1.4" id="0:801"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:802">
+                    <KeyFrameDouble frame="28" value="0.2" interpolationType="cubic" interpolatorId="0:200" id="0:803"/>
+                    <KeyFrameDouble frame="54" value="1.4" id="0:804"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:805">
+                    <KeyFrameDouble frame="28" value="0" interpolationType="linear" id="0:806"/>
+                    <KeyFrameDouble frame="35" value="0.95" interpolationType="cubic" interpolatorId="0:203" id="0:807"/>
+                    <KeyFrameDouble frame="54" value="0" id="0:808"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:23" id="0:312">
-                <KeyedProperty propertyKey="13" id="0:313"><KeyFrameDouble value="-50" id="0:314"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:315"><KeyFrameDouble value="0" id="0:316"/></KeyedProperty>
+
+            <!-- The gleam, across and away. -->
+            <KeyedObject objectId="0:23" id="0:809">
+                <KeyedProperty propertyKey="13" id="0:810">
+                    <KeyFrameDouble frame="36" value="-50" interpolationType="cubic" interpolatorId="0:201" id="0:811"/>
+                    <KeyFrameDouble frame="52" value="50" id="0:812"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:813">
+                    <KeyFrameDouble frame="36" value="0" interpolationType="linear" id="0:814"/>
+                    <KeyFrameDouble frame="42" value="1" interpolationType="linear" id="0:815"/>
+                    <KeyFrameDouble frame="52" value="0" id="0:816"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:32" id="0:317">
-                <KeyedProperty propertyKey="16" id="0:318"><KeyFrameDouble value="0.3" id="0:319"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:320"><KeyFrameDouble value="0.3" id="0:321"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:322"><KeyFrameDouble value="0" id="0:323"/></KeyedProperty>
+
+            <!-- The light, arriving with the flame rather than before it, flaring past full
+                 and settling back. -->
+            <KeyedObject objectId="0:50" id="0:817">
+                <KeyedProperty propertyKey="16" id="0:818">
+                    <KeyFrameDouble frame="18" value="0.3" interpolationType="cubic" interpolatorId="0:200" id="0:819"/>
+                    <KeyFrameDouble frame="36" value="0.95" interpolationType="cubic" interpolatorId="0:200" id="0:820"/>
+                    <KeyFrameDouble frame="44" value="1" id="0:821"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:822">
+                    <KeyFrameDouble frame="18" value="0.3" interpolationType="cubic" interpolatorId="0:200" id="0:823"/>
+                    <KeyFrameDouble frame="36" value="0.95" interpolationType="cubic" interpolatorId="0:200" id="0:824"/>
+                    <KeyFrameDouble frame="44" value="1" id="0:825"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:826">
+                    <KeyFrameDouble frame="18" value="0" interpolationType="cubic" interpolatorId="0:200" id="0:827"/>
+                    <KeyFrameDouble frame="36" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:828"/>
+                    <KeyFrameDouble frame="54" value="0.58" id="0:829"/>
+                </KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
 
-        <!-- 20 - fallen open, a few percent past its rest so it settles back rather than
-             arriving. Pages are showing, the seam has appeared, and there is an ember in
-             it: dormant, small, not yet a flame. -->
-        <LinearAnimation duration="1" name="p20" id="0:61">
-            <KeyedObject objectId="0:27" id="0:324">
-                <KeyedProperty propertyKey="16" id="0:325"><KeyFrameDouble value="1.04" id="0:326"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:327"><KeyFrameDouble value="1.05" id="0:328"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:29" id="0:329">
-                <KeyedProperty propertyKey="16" id="0:330"><KeyFrameDouble value="1.04" id="0:331"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:332"><KeyFrameDouble value="1.05" id="0:333"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:28" id="0:334">
-                <KeyedProperty propertyKey="17" id="0:335"><KeyFrameDouble value="1" id="0:336"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:31" id="0:337">
-                <KeyedProperty propertyKey="17" id="0:338"><KeyFrameDouble value="1" id="0:339"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:26" id="0:340">
-                <KeyedProperty propertyKey="18" id="0:341"><KeyFrameDouble value="1" id="0:342"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:20" id="0:343">
-                <KeyedProperty propertyKey="14" id="0:344"><KeyFrameDouble value="226" id="0:345"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:346"><KeyFrameDouble value="0.34" id="0:347"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:348"><KeyFrameDouble value="0.3" id="0:349"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:350"><KeyFrameDouble value="1" id="0:351"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:25" id="0:352">
-                <KeyedProperty propertyKey="16" id="0:353"><KeyFrameDouble value="1" id="0:354"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:355"><KeyFrameDouble value="1" id="0:356"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:24" id="0:357">
-                <KeyedProperty propertyKey="15" id="0:358"><KeyFrameDouble value="0" id="0:359"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:360"><KeyFrameDouble value="1" id="0:361"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:362"><KeyFrameDouble value="1" id="0:363"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:21" id="0:364">
-                <KeyedProperty propertyKey="16" id="0:365"><KeyFrameDouble value="0.2" id="0:366"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:367"><KeyFrameDouble value="0.2" id="0:368"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:369"><KeyFrameDouble value="0" id="0:370"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:23" id="0:371">
-                <KeyedProperty propertyKey="13" id="0:372"><KeyFrameDouble value="-50" id="0:373"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:374"><KeyFrameDouble value="0" id="0:375"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:32" id="0:376">
-                <KeyedProperty propertyKey="16" id="0:377"><KeyFrameDouble value="0.42" id="0:378"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:379"><KeyFrameDouble value="0.42" id="0:380"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:381"><KeyFrameDouble value="0.3" id="0:382"/></KeyedProperty>
-            </KeyedObject>
-        </LinearAnimation>
+        <!--
+          ============================= IDLE =============================
+          72 frames at 60fps = 1.2s, looping.
 
-        <!-- 35 - ignition, and the STRETCH. The flame goes taller than its rest while
-             narrower than it, which is the one thing a font glyph could never do and the
-             reason this artboard exists. Sparks are in the air, the glow flares past full. -->
-        <LinearAnimation duration="1" name="p35" id="0:62">
-            <KeyedObject objectId="0:27" id="0:383">
-                <KeyedProperty propertyKey="16" id="0:384"><KeyFrameDouble value="1" id="0:385"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:386"><KeyFrameDouble value="1" id="0:387"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:29" id="0:388">
-                <KeyedProperty propertyKey="16" id="0:389"><KeyFrameDouble value="1" id="0:390"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:391"><KeyFrameDouble value="1" id="0:392"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:28" id="0:393">
-                <KeyedProperty propertyKey="17" id="0:394"><KeyFrameDouble value="1" id="0:395"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:31" id="0:396">
-                <KeyedProperty propertyKey="17" id="0:397"><KeyFrameDouble value="1" id="0:398"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:26" id="0:399">
-                <KeyedProperty propertyKey="18" id="0:400"><KeyFrameDouble value="1" id="0:401"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:20" id="0:402">
-                <KeyedProperty propertyKey="14" id="0:403"><KeyFrameDouble value="212" id="0:404"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:405"><KeyFrameDouble value="1" id="0:406"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:407"><KeyFrameDouble value="1.06" id="0:408"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:409"><KeyFrameDouble value="1" id="0:410"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:25" id="0:411">
-                <KeyedProperty propertyKey="16" id="0:412"><KeyFrameDouble value="0.9" id="0:413"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:414"><KeyFrameDouble value="1.18" id="0:415"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:24" id="0:416">
-                <KeyedProperty propertyKey="15" id="0:417"><KeyFrameDouble value="-0.08" id="0:418"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:419"><KeyFrameDouble value="0.86" id="0:420"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:421"><KeyFrameDouble value="1.12" id="0:422"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:21" id="0:423">
-                <KeyedProperty propertyKey="16" id="0:424"><KeyFrameDouble value="0.7" id="0:425"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:426"><KeyFrameDouble value="0.7" id="0:427"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:428"><KeyFrameDouble value="0.95" id="0:429"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:23" id="0:430">
-                <KeyedProperty propertyKey="13" id="0:431"><KeyFrameDouble value="-44" id="0:432"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:433"><KeyFrameDouble value="0" id="0:434"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:32" id="0:435">
-                <KeyedProperty propertyKey="16" id="0:436"><KeyFrameDouble value="0.9" id="0:437"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:438"><KeyFrameDouble value="0.9" id="0:439"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:440"><KeyFrameDouble value="1" id="0:441"/></KeyedProperty>
-            </KeyedObject>
-        </LinearAnimation>
+          **Every property starts and ends on the same value, or is invisible at both ends.**
+          Otherwise the loop has a visible seam once a second for as long as the screen is up.
+          The embers take the second route: Rive holds a keyed property at its first
+          keyframe's value for every frame before it, so an ember sits at its birthplace until
+          its window opens and at its death place afterwards, and the jump back happens at zero
+          opacity.
 
-        <!-- 50 - the SQUASH, and the gleam crossing. Wider than rest, shorter than rest,
-             licking the other way. Sparks at their widest and already fading. -->
-        <LinearAnimation duration="1" name="p50" id="0:63">
-            <KeyedObject objectId="0:27" id="0:442">
-                <KeyedProperty propertyKey="16" id="0:443"><KeyFrameDouble value="1" id="0:444"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:445"><KeyFrameDouble value="1" id="0:446"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:29" id="0:447">
-                <KeyedProperty propertyKey="16" id="0:448"><KeyFrameDouble value="1" id="0:449"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:450"><KeyFrameDouble value="1" id="0:451"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:28" id="0:452">
-                <KeyedProperty propertyKey="17" id="0:453"><KeyFrameDouble value="1" id="0:454"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:31" id="0:455">
-                <KeyedProperty propertyKey="17" id="0:456"><KeyFrameDouble value="1" id="0:457"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:26" id="0:458">
-                <KeyedProperty propertyKey="18" id="0:459"><KeyFrameDouble value="1" id="0:460"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:20" id="0:461">
-                <KeyedProperty propertyKey="14" id="0:462"><KeyFrameDouble value="214" id="0:463"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:464"><KeyFrameDouble value="1" id="0:465"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:466"><KeyFrameDouble value="1" id="0:467"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:468"><KeyFrameDouble value="1" id="0:469"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:25" id="0:470">
-                <KeyedProperty propertyKey="16" id="0:471"><KeyFrameDouble value="1.08" id="0:472"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:473"><KeyFrameDouble value="0.92" id="0:474"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:24" id="0:475">
-                <KeyedProperty propertyKey="15" id="0:476"><KeyFrameDouble value="0.07" id="0:477"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:478"><KeyFrameDouble value="1.06" id="0:479"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:480"><KeyFrameDouble value="0.88" id="0:481"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:21" id="0:482">
-                <KeyedProperty propertyKey="16" id="0:483"><KeyFrameDouble value="1.15" id="0:484"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:485"><KeyFrameDouble value="1.15" id="0:486"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:487"><KeyFrameDouble value="0.55" id="0:488"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:23" id="0:489">
-                <KeyedProperty propertyKey="13" id="0:490"><KeyFrameDouble value="-8" id="0:491"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:492"><KeyFrameDouble value="1" id="0:493"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:32" id="0:494">
-                <KeyedProperty propertyKey="16" id="0:495"><KeyFrameDouble value="1.02" id="0:496"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:497"><KeyFrameDouble value="1.02" id="0:498"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:499"><KeyFrameDouble value="0.85" id="0:500"/></KeyedProperty>
-            </KeyedObject>
-        </LinearAnimation>
+          **It may only key properties `Ignite` leaves at their authored values.** Flutter
+          applies the ignition and then mixes this in on top, so anything keyed here *replaces*
+          what the ignition left. The flame's and core's scales and the glow's scale all end the
+          ignition at 1 and are safe. The glow's *opacity* is not -- `Ignite` settles it at 0.58
+          -- so this timeline does not touch it, and must not start to.
 
-        <!-- 70 - settling. The last of the lick, the gleam leaving, the embers gone. -->
-        <LinearAnimation duration="1" name="p70" id="0:64">
-            <KeyedObject objectId="0:27" id="0:501">
-                <KeyedProperty propertyKey="16" id="0:502"><KeyFrameDouble value="1" id="0:503"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:504"><KeyFrameDouble value="1" id="0:505"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:29" id="0:506">
-                <KeyedProperty propertyKey="16" id="0:507"><KeyFrameDouble value="1" id="0:508"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:509"><KeyFrameDouble value="1" id="0:510"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:28" id="0:511">
-                <KeyedProperty propertyKey="17" id="0:512"><KeyFrameDouble value="1" id="0:513"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:31" id="0:514">
-                <KeyedProperty propertyKey="17" id="0:515"><KeyFrameDouble value="1" id="0:516"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:26" id="0:517">
-                <KeyedProperty propertyKey="18" id="0:518"><KeyFrameDouble value="1" id="0:519"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:20" id="0:520">
-                <KeyedProperty propertyKey="14" id="0:521"><KeyFrameDouble value="214" id="0:522"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:523"><KeyFrameDouble value="1" id="0:524"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:525"><KeyFrameDouble value="1.01" id="0:526"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:527"><KeyFrameDouble value="1" id="0:528"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:25" id="0:529">
-                <KeyedProperty propertyKey="16" id="0:530"><KeyFrameDouble value="0.99" id="0:531"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:532"><KeyFrameDouble value="1.03" id="0:533"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:24" id="0:534">
-                <KeyedProperty propertyKey="15" id="0:535"><KeyFrameDouble value="-0.03" id="0:536"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:537"><KeyFrameDouble value="0.98" id="0:538"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:539"><KeyFrameDouble value="1.04" id="0:540"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:21" id="0:541">
-                <KeyedProperty propertyKey="16" id="0:542"><KeyFrameDouble value="1.4" id="0:543"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:544"><KeyFrameDouble value="1.4" id="0:545"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:546"><KeyFrameDouble value="0" id="0:547"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:23" id="0:548">
-                <KeyedProperty propertyKey="13" id="0:549"><KeyFrameDouble value="38" id="0:550"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:551"><KeyFrameDouble value="0.35" id="0:552"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:32" id="0:553">
-                <KeyedProperty propertyKey="16" id="0:554"><KeyFrameDouble value="1" id="0:555"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:556"><KeyFrameDouble value="1" id="0:557"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:558"><KeyFrameDouble value="0.62" id="0:559"/></KeyedProperty>
-            </KeyedObject>
-        </LinearAnimation>
+          **Two breaths per loop, not one, and unequal.** A single 1.2s swell at three percent
+          was below the threshold of being seen at all: the first render of this loop was
+          indistinguishable from a still. Fire moves faster and less regularly than a
+          breathing chest, so the amplitudes and the spacing are deliberately uneven -- an
+          even two-cycle sine is a pulsing logo.
+        -->
+        <LinearAnimation fps="60" duration="72" loopValue="loop" name="Idle" id="0:61">
 
-        <!-- 100 - REST. Book open, flame lit and square, glow steady, nothing in the air
-             and nothing part-way through anything. Scrub here and leave it: on a screen a
-             reader opens nightly, the last frame has to be a place the drawing can just
-             sit. -->
-        <LinearAnimation duration="1" name="p100" id="0:65">
-            <KeyedObject objectId="0:27" id="0:560">
-                <KeyedProperty propertyKey="16" id="0:561"><KeyFrameDouble value="1" id="0:562"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:563"><KeyFrameDouble value="1" id="0:564"/></KeyedProperty>
+            <!-- The body flickers: wider-and-shorter, then taller-and-narrower, twice, on
+                 uneven beats. -->
+            <KeyedObject objectId="0:25" id="0:515">
+                <KeyedProperty propertyKey="16" id="0:516">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:517"/>
+                    <KeyFrameDouble frame="10" value="1.07" interpolationType="cubic" interpolatorId="0:201" id="0:518"/>
+                    <KeyFrameDouble frame="22" value="0.955" interpolationType="cubic" interpolatorId="0:201" id="0:519"/>
+                    <KeyFrameDouble frame="38" value="1.045" interpolationType="cubic" interpolatorId="0:201" id="0:520"/>
+                    <KeyFrameDouble frame="54" value="0.97" interpolationType="cubic" interpolatorId="0:201" id="0:521"/>
+                    <KeyFrameDouble frame="64" value="1.025" interpolationType="cubic" interpolatorId="0:201" id="0:522"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:523"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:524">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:525"/>
+                    <KeyFrameDouble frame="10" value="0.945" interpolationType="cubic" interpolatorId="0:201" id="0:526"/>
+                    <KeyFrameDouble frame="22" value="1.06" interpolationType="cubic" interpolatorId="0:201" id="0:527"/>
+                    <KeyFrameDouble frame="38" value="0.965" interpolationType="cubic" interpolatorId="0:201" id="0:528"/>
+                    <KeyFrameDouble frame="54" value="1.04" interpolationType="cubic" interpolatorId="0:201" id="0:529"/>
+                    <KeyFrameDouble frame="64" value="0.98" interpolationType="cubic" interpolatorId="0:201" id="0:530"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:531"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:29" id="0:565">
-                <KeyedProperty propertyKey="16" id="0:566"><KeyFrameDouble value="1" id="0:567"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:568"><KeyFrameDouble value="1" id="0:569"/></KeyedProperty>
+
+            <!-- The core licks, out of step with the body so the two do not pulse together:
+                 it leans, stretches and slides a little sideways, all on different periods. -->
+            <KeyedObject objectId="0:24" id="0:532">
+                <KeyedProperty propertyKey="15" id="0:533">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="cubic" interpolatorId="0:201" id="0:534"/>
+                    <KeyFrameDouble frame="14" value="0.06" interpolationType="cubic" interpolatorId="0:201" id="0:535"/>
+                    <KeyFrameDouble frame="30" value="-0.05" interpolationType="cubic" interpolatorId="0:201" id="0:536"/>
+                    <KeyFrameDouble frame="46" value="0.07" interpolationType="cubic" interpolatorId="0:201" id="0:537"/>
+                    <KeyFrameDouble frame="60" value="-0.035" interpolationType="cubic" interpolatorId="0:201" id="0:538"/>
+                    <KeyFrameDouble frame="72" value="0" id="0:539"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:540">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:541"/>
+                    <KeyFrameDouble frame="8" value="1.08" interpolationType="cubic" interpolatorId="0:201" id="0:542"/>
+                    <KeyFrameDouble frame="26" value="0.93" interpolationType="cubic" interpolatorId="0:201" id="0:543"/>
+                    <KeyFrameDouble frame="42" value="1.06" interpolationType="cubic" interpolatorId="0:201" id="0:544"/>
+                    <KeyFrameDouble frame="58" value="0.96" interpolationType="cubic" interpolatorId="0:201" id="0:545"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:546"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:547">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="cubic" interpolatorId="0:201" id="0:548"/>
+                    <KeyFrameDouble frame="18" value="1.8" interpolationType="cubic" interpolatorId="0:201" id="0:549"/>
+                    <KeyFrameDouble frame="44" value="-1.6" interpolationType="cubic" interpolatorId="0:201" id="0:550"/>
+                    <KeyFrameDouble frame="72" value="0" id="0:551"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:28" id="0:570">
-                <KeyedProperty propertyKey="17" id="0:571"><KeyFrameDouble value="1" id="0:572"/></KeyedProperty>
+
+            <!-- The light breathes with it, a third as much. Scale only: see the note above
+                 about the glow's opacity belonging to `Ignite`. -->
+            <KeyedObject objectId="0:50" id="0:552">
+                <KeyedProperty propertyKey="16" id="0:553">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:554"/>
+                    <KeyFrameDouble frame="16" value="1.04" interpolationType="cubic" interpolatorId="0:201" id="0:555"/>
+                    <KeyFrameDouble frame="46" value="0.975" interpolationType="cubic" interpolatorId="0:201" id="0:556"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:557"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:558">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:559"/>
+                    <KeyFrameDouble frame="16" value="1.04" interpolationType="cubic" interpolatorId="0:201" id="0:560"/>
+                    <KeyFrameDouble frame="46" value="0.975" interpolationType="cubic" interpolatorId="0:201" id="0:561"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:562"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:31" id="0:573">
-                <KeyedProperty propertyKey="17" id="0:574"><KeyFrameDouble value="1" id="0:575"/></KeyedProperty>
+
+            <!--
+              The spray: five embers, each with its own window inside the loop, drifting
+              outward as it rises so the group opens into a plume rather than a column.
+
+                e1  0..26   e5  10..64 (the slow one, which travels furthest)
+                e2 14..40   e3  28..54   e4  42..68
+
+              Overlapping in pairs, so there is never a frame with nothing in flight and never
+              one that looks like a volley. Every window ends at or before 72, which is what
+              makes the seam free -- see the note on `embers` in the artboard.
+
+              Opacity is `linear` throughout: an ember is a point of light with no weight, and
+              an eased fade on something four pixels across reads as a flicker rather than as
+              a curve. Height is eased out, because a spark leaves fast and slows as it cools.
+            -->
+            <KeyedObject objectId="0:31" id="0:563">
+                <KeyedProperty propertyKey="14" id="0:564">
+                    <KeyFrameDouble frame="0" value="-88" interpolationType="cubic" interpolatorId="0:204" id="0:565"/>
+                    <KeyFrameDouble frame="26" value="-168" id="0:566"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:567">
+                    <KeyFrameDouble frame="0" value="-14" interpolationType="cubic" interpolatorId="0:204" id="0:568"/>
+                    <KeyFrameDouble frame="26" value="-36" id="0:569"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:570">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="linear" id="0:571"/>
+                    <KeyFrameDouble frame="6" value="0.95" interpolationType="linear" id="0:572"/>
+                    <KeyFrameDouble frame="26" value="0" id="0:573"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:26" id="0:576">
-                <KeyedProperty propertyKey="18" id="0:577"><KeyFrameDouble value="1" id="0:578"/></KeyedProperty>
+            <KeyedObject objectId="0:32" id="0:574">
+                <KeyedProperty propertyKey="14" id="0:575">
+                    <KeyFrameDouble frame="14" value="-80" interpolationType="cubic" interpolatorId="0:204" id="0:576"/>
+                    <KeyFrameDouble frame="40" value="-158" id="0:577"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:578">
+                    <KeyFrameDouble frame="14" value="14" interpolationType="cubic" interpolatorId="0:204" id="0:579"/>
+                    <KeyFrameDouble frame="40" value="34" id="0:580"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:581">
+                    <KeyFrameDouble frame="14" value="0" interpolationType="linear" id="0:582"/>
+                    <KeyFrameDouble frame="20" value="0.9" interpolationType="linear" id="0:583"/>
+                    <KeyFrameDouble frame="40" value="0" id="0:584"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:20" id="0:579">
-                <KeyedProperty propertyKey="14" id="0:580"><KeyFrameDouble value="214" id="0:581"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:582"><KeyFrameDouble value="1" id="0:583"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:584"><KeyFrameDouble value="1" id="0:585"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:586"><KeyFrameDouble value="1" id="0:587"/></KeyedProperty>
+            <KeyedObject objectId="0:33" id="0:585">
+                <KeyedProperty propertyKey="14" id="0:586">
+                    <KeyFrameDouble frame="28" value="-118" interpolationType="cubic" interpolatorId="0:204" id="0:587"/>
+                    <KeyFrameDouble frame="54" value="-196" id="0:588"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:589">
+                    <KeyFrameDouble frame="28" value="2" interpolationType="cubic" interpolatorId="0:204" id="0:590"/>
+                    <KeyFrameDouble frame="54" value="8" id="0:591"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:592">
+                    <KeyFrameDouble frame="28" value="0" interpolationType="linear" id="0:593"/>
+                    <KeyFrameDouble frame="34" value="0.85" interpolationType="linear" id="0:594"/>
+                    <KeyFrameDouble frame="54" value="0" id="0:595"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:25" id="0:588">
-                <KeyedProperty propertyKey="16" id="0:589"><KeyFrameDouble value="1" id="0:590"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:591"><KeyFrameDouble value="1" id="0:592"/></KeyedProperty>
+            <KeyedObject objectId="0:34" id="0:596">
+                <KeyedProperty propertyKey="14" id="0:597">
+                    <KeyFrameDouble frame="42" value="-62" interpolationType="cubic" interpolatorId="0:204" id="0:598"/>
+                    <KeyFrameDouble frame="68" value="-130" id="0:599"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:600">
+                    <KeyFrameDouble frame="42" value="20" interpolationType="cubic" interpolatorId="0:204" id="0:601"/>
+                    <KeyFrameDouble frame="68" value="44" id="0:602"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:603">
+                    <KeyFrameDouble frame="42" value="0" interpolationType="linear" id="0:604"/>
+                    <KeyFrameDouble frame="48" value="0.8" interpolationType="linear" id="0:605"/>
+                    <KeyFrameDouble frame="68" value="0" id="0:606"/>
+                </KeyedProperty>
             </KeyedObject>
-            <KeyedObject objectId="0:24" id="0:593">
-                <KeyedProperty propertyKey="15" id="0:594"><KeyFrameDouble value="0" id="0:595"/></KeyedProperty>
-                <KeyedProperty propertyKey="16" id="0:596"><KeyFrameDouble value="1" id="0:597"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:598"><KeyFrameDouble value="1" id="0:599"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:21" id="0:600">
-                <KeyedProperty propertyKey="16" id="0:601"><KeyFrameDouble value="1.4" id="0:602"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:603"><KeyFrameDouble value="1.4" id="0:604"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:605"><KeyFrameDouble value="0" id="0:606"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:23" id="0:607">
-                <KeyedProperty propertyKey="13" id="0:608"><KeyFrameDouble value="55" id="0:609"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:610"><KeyFrameDouble value="0" id="0:611"/></KeyedProperty>
-            </KeyedObject>
-            <KeyedObject objectId="0:32" id="0:612">
-                <KeyedProperty propertyKey="16" id="0:613"><KeyFrameDouble value="1" id="0:614"/></KeyedProperty>
-                <KeyedProperty propertyKey="17" id="0:615"><KeyFrameDouble value="1" id="0:616"/></KeyedProperty>
-                <KeyedProperty propertyKey="18" id="0:617"><KeyFrameDouble value="0.58" id="0:618"/></KeyedProperty>
+            <KeyedObject objectId="0:35" id="0:607">
+                <KeyedProperty propertyKey="14" id="0:608">
+                    <KeyFrameDouble frame="10" value="-70" interpolationType="cubic" interpolatorId="0:204" id="0:609"/>
+                    <KeyFrameDouble frame="64" value="-172" id="0:610"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:611">
+                    <KeyFrameDouble frame="10" value="-18" interpolationType="cubic" interpolatorId="0:204" id="0:612"/>
+                    <KeyFrameDouble frame="64" value="-48" id="0:613"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:614">
+                    <KeyFrameDouble frame="10" value="0" interpolationType="linear" id="0:615"/>
+                    <KeyFrameDouble frame="20" value="0.75" interpolationType="linear" id="0:616"/>
+                    <KeyFrameDouble frame="64" value="0" id="0:617"/>
+                </KeyedProperty>
             </KeyedObject>
         </LinearAnimation>
     </Artboard>
-
-    <!-- The one value Flutter writes, and one it does not. `progress` is the contract;
-         `ground` is the preview aid documented against the `ground` shape above, and its
-         default of 0 is what keeps the shipped artboard transparent. -->
-    <ViewModel defaultInstanceId="0:102" name="Flame" id="0:100">
-        <ViewModelPropertyNumber name="progress" id="0:101"/>
-        <ViewModelPropertyNumber name="ground" id="0:103"/>
-        <ViewModelInstance exports="true" name="Default" id="0:102">
-            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:101" id="0:619"/>
-            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:103" id="0:620"/>
-        </ViewModelInstance>
-    </ViewModel>
 </Rive>

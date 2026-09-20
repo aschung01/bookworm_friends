@@ -1268,6 +1268,87 @@ hand-built choreography (the glyph's colour as it catches, the spark painter, th
 resolve. `streak_flame_test.dart` covers the other side, and its one case that needs the
 library skips itself with a reason where there is none.
 
+### Reversal: the artboard gets real timelines, and the flame keeps moving
+
+**Two of the four conditions above were overruled, and both deserved to be.** The artboard as
+first built satisfied every condition on this page and still drew something the reader called
+"so plain and low quality compared to Duolingo's". The diagnosis split cleanly in two.
+
+**Condition 2 — "the artboard does not autoplay; it exposes one bound Number" — bought a real
+thing and paid too much for it.** What it bought is that the beats stay in Dart. What it cost is
+that the file contained **no timeline at all**: six single-frame poses in a `BlendState1DViewModel`
+scrubbed by a Number. Nothing played it — not the editor, not `rive .`, not any runtime — so
+every review had to go through a contact sheet, and the animation could not be watched, let
+alone iterated on, before it shipped. It is also how a timing defect hid for days: the driving
+curve crossed the whole sequence in three frames and then held one frame for 470ms, and no still
+image can show that.
+
+The fix keeps the clock in Dart and moves the **easing** into the timelines. `Ignite` is now an
+ordinary 54-frame one-shot that Flutter _seeks_ by `Animation.time`, linearly; the shape of the
+motion is authored where the editor and the previewer can both play it. The state machine, the
+blend state, the view model and the data bind are gone, along with three Flutter-side failure
+modes they carried. `kStreakFlameStateMachine` and `kStreakFlameProgressProperty` are replaced
+by `kStreakFlameIgniteAnimation` and `kStreakFlameIdleAnimation`.
+
+**Condition 2's other half — "frame 100 is a resting frame, no idle loop on a screen a reader
+opens nightly" — was overruled outright.** A flame that freezes the instant it arrives reads as
+a decal of a flame; Duolingo's does not stop. `Idle` is a 72-frame looping timeline that Flutter
+advances and mixes in as the ignition lands: the body flickers on two uneven breaths, the core
+licks out of step with it, and five embers spray off the tip on their own phases.
+
+The cost that condition was protecting against is real and is not waved away:
+
+- it repaints for as long as the celebration is up. Bounded by the celebration being a transient
+  sheet with one way out, not a screen left open;
+- **`pumpAndSettle` never returns anywhere the Rive path is live.** Not hypothetical — it took
+  out four cases in `reading_streak_page_test.dart` that have nothing to do with the flame.
+  `useStillStreakFlame()` (`test/still_streak_flame.dart`) is the fix, and it subsumes
+  `debugStreakFlameAssetOverride`'s older job above;
+- reduced motion would otherwise get the one thing on the screen that never stops, because the
+  screen's gate jumps the controller to 1 and for this beat 1 _is_ the moving state.
+  `StreakFlame` forces the mix to zero instead, which is the only beat gated outside
+  `didChangeDependencies`.
+
+`between.py` is deleted — it existed because a blend state interpolates each property
+independently, and sampling a timeline by time _is_ sampling the in-betweens. `motion.py` is
+rewritten as the loop's only check, because **the previewer plays only the artboard's first
+animation and there is no `--animation` flag**: until it existed, `Idle` had never been rendered
+once, and it was committed with every ember hidden behind the flame it came off.
+
+The drawing was largely redone at the same time. The orientation was wrong (page _surfaces_
+splaying in a V is the view from above, not from the tail edge); the flame's silhouette went egg
+→ tulip → gothic leaf before it read as fire; and the book's whole mechanism had to be replaced
+twice.
+
+**The mechanism is worth stating here, because the first one was wrong in a way a reader caught
+immediately.** Opening was `scaleX` 0.52 → 1 plus `scaleY` 1.9 → 1 on a single node — arithmetic
+that correctly describes a shut book being one board wide and twice as thick, and that contains
+no spine anywhere. The shut pose came out as two parallel dark bars with a cream filling, read as
+an equals sign, and the covers slid apart rather than hinging. From this camera the spine runs
+away along Z, so it is a _point_, and opening a book is the front cover plus half the page block
+**rotating 180° about it** — an ordinary in-plane rotation. That is what ships.
+
+It also paid for itself three times over: the 2:1 thickness relationship became geometry instead
+of a faked `scaleY`; the layering sorted itself out, since the flip puts the cover underneath
+where a cover laid open belongs; and **every use of opacity in the book disappeared**, which
+deleted a front board, a page-taper filler, a separate gutter shape, and the four cross-fade-mud
+bugs they had between them.
+
+Two smaller things, both of which only a human looking at it found:
+
+- **the page-edge hairlines ran the wrong way.** Vertical, for several passes — which corresponds
+  to nothing physical, since pages are sheets stacked through the thickness and their edges are
+  horizontal bands. They were described as "a comb" and "a ruler's graduations" in three separate
+  reviews without anyone naming the cause;
+- **the artboard's authored pose has to be the _resting_ pose.** Authored shut, playing `Idle` on
+  its own showed a living flame standing on a closed book — invisible in the app, because the
+  painter applies `Ignite` first, and obvious the moment someone scrubbed the loop in the Rive
+  Editor. `motion.py` had been hiding it by patching those authored values in a copy before
+  rendering, which is the wrong place to fix anything.
+
+Every defect and every rejected alternative is in `docs/streak-flame-rive.md`; conditions 1, 3
+and 4 above all still hold unchanged.
+
 Verified: 1767 tests pass, `flutter analyze` clean of errors and warnings, iOS builds and
 launches.
 

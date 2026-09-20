@@ -172,13 +172,22 @@ sheet is not enough.
 
 ```bash
 ./rive/streak_flame/build.sh                        # verify, inspect, build, install
-../../.venv/bin/python rive/streak_flame/sheet.py   # render the poses and LOOK at them
-../../.venv/bin/python rive/streak_flame/between.py # and the blends between them
-../../.venv/bin/python rive/streak_flame/motion.py  # and all of it on the real curve
+../../.venv/bin/python rive/streak_flame/smooth.py   # cubic handles + striations, to paste
+../../.venv/bin/python rive/streak_flame/sheet.py    # render `Ignite` and LOOK at it
+../../.venv/bin/python rive/streak_flame/motion.py   # `Idle`, its seam, and a GIF of both
 ```
 
 Both are committed — the RML because it is the source, the `.riv` because
 `flutter build` cannot run the CLI. Edit the RML, run the script, commit both.
+
+It holds **two ordinary timelines and no state machine**: `Ignite` (54 frames, one
+shot, seeked by Dart) and `Idle` (72 frames, looping, advanced and mixed by Dart).
+This replaced a `BlendState1DViewModel` of six single-frame poses scrubbed by a
+bound Number, and the reason was not tidiness: **that file had no timeline at all,
+so nothing played it** — not the editor, not `rive .`, not any runtime. Every review
+had to go through a contact sheet and the animation could not be iterated on before
+it shipped. The easing now lives in the timelines and Dart drives `progress`
+linearly.
 
 **There is a `rive` CLI, at `/opt/homebrew/bin/rive`.** A previous session asserted
 there was not — that `.riv` is editor-only with no CLI and no public serializer —
@@ -192,25 +201,70 @@ shaders; only `inspect` reports a `problems` list) and _neither looks at a pixel
 This scene passed both with zero problems on its first attempt and drew the pages
 behind the covers, an egg instead of a flame, and a black peg under it. `sheet.py`
 is the third check and the one that finds real defects. Also: **`--advance=1` is
-mandatory** on a screenshot, or every frame is the authored rest pose and six
-identical renders look like a working filmstrip.
+mandatory** on a screenshot — `--advance=0` renders the _authored_ pose, which here
+is a finished flame over an open book and looks convincingly like a broken file.
 
-**And `sheet.py` is not enough either — run `between.py` after any keyframe change.**
-It renders every 4% rather than only the six keyed poses, because a blend state
-interpolates each property independently and linearly: two poses that are both
-correct can still pass through something that is not. That is how a half-transparent
-page over a near-black cover turned the first fifth of the sequence into a grey slab
-while both ends looked fine. **Nothing translucent may cross-fade over something
-dark** — that bug had two instances and this is the only check that sees either.
+**And `sheet.py` is not enough either — run `motion.py` after any keyframe change.**
+There is **no `--animation` flag**, and the previewer plays only the artboard's
+_first_ animation, so `sheet.py` cannot see `Idle` at all: the loop was committed
+once with every ember hidden behind the flame it came off, and nothing caught it.
+`motion.py` builds a reordered copy, and it is also the only check that shows the
+loop **seam** — frame 0 and frame 72 must be the same picture, or the flame jumps
+once a second for as long as the screen is up. (`between.py` is gone: it existed
+because a blend state interpolates each property independently, so the keyed poses
+and the blends between them were two different things to check. Sampling a timeline
+by time _is_ sampling the in-betweens.)
 
-**Nor are those two enough — run `motion.py` if the pose axis or the curve moves.**
-Neither sheet scrubs `progress` the way the app does. The flame was first driven by
-`_ignite`, whose `easeOutBack` crossed 0 → 100 in 185ms and then overshot to 108;
-a 1D blend clamps past its last pose, so **62% of the window was one held frame**
-and the whole choreography played in three. Every pose was right and every blend
-between them was right. `_flame` in `streak_celebration.dart` is its own drive for
-that reason — don't collapse the two back together — and a case in
-`streak_celebration_test.dart` fails if the overshoot returns.
+**Nothing translucent may cross-fade over something dark, in either direction** —
+five instances so far, most recently a dark cover fading over the cream ground (a
+grey plank) and a cream filler fading over that same cover (grey again). Where a
+light thing and a dark thing have to swap, switch both on one `hold` keyframe under
+the fastest part of the motion — or, better, **remove the thing that needs the
+cross-fade**, which is what the spine hinge did: the book animates on four
+continuous transforms and not one opacity.
+
+**The book opens on a hinge, and the spine is it.** Opening used to be `scaleX`
+0.52 → 1 plus `scaleY` 1.9 → 1 on one node, which contains no spine anywhere: the
+shut pose came out as two parallel dark bars and read as an equals sign. From this
+camera the spine is a _point_, so opening is `leaf` — the front cover and the half
+of the page block above the midline — rotating **−177° about it**. Sign it positive
+and the cover sweeps down through the table on its way round.
+
+**Page-edge hairlines run across the block, parallel to the cover.** They were
+vertical for several passes, which corresponds to nothing physical: pages are sheets
+stacked through the thickness, so their edges are horizontal bands. They were called
+"a comb" and "a ruler's graduations" three times before anyone named the cause.
+
+**The authored pose is the _resting_ pose, not the starting one.** `Idle` keys only
+the flame, so everything the opening moves falls back to its authored value — and
+authored shut, playing `Idle` alone shows a flame on a _closed_ book. Invisible in
+the app, obvious the moment a human scrubs the loop in the editor. `motion.py` had
+been hiding it by patching the authored values in a copy before rendering; that
+mechanism is gone.
+
+**Don't hand-tune cubic handles — `smooth.py` fits them.** A `CubicMirroredVertex`
+spends one angle and one length on both of its segments, so a tangent that suits one
+neighbour kinks the other; three attempts by eye all came out faceted.
+`CubicDetachedVertex` plus a Catmull-Rom fit makes them a calculation.
+
+**`_flame` in `streak_celebration.dart` is its own drive — don't collapse it back
+into `_ignite`.** `_ignite`'s `easeOutBack` crossed 0 → 1 in 185ms and then overshot
+past the last frame, so **62% of the window was one held frame** and the whole
+choreography played in three. A case in `streak_celebration_test.dart` fails if the
+overshoot returns.
+
+### The flame keeps moving after the sequence lands, on purpose
+
+This file and three others used to say the opposite — **nothing moves after the last
+cell lands, and there is no idle loop.** That was overruled deliberately: a flame
+that freezes the instant it arrives reads as a decal. The cost is that
+**`pumpAndSettle` never returns anywhere the Rive path is live**, which is not
+hypothetical — it took out four cases in `reading_streak_page_test.dart` that have
+nothing to do with the flame.
+
+So any test that pumps the celebration and then settles must call
+`useStillStreakFlame()` (`test/still_streak_flame.dart`). It also fixes the older
+problem of which flame a test inspects; see below.
 
 ### `flutter test` needs a library that worktrees do not get
 
@@ -222,22 +276,25 @@ dart run rive_native:setup --verbose --clean --platform macos
 `env.json` it does not travel between worktrees. Without it `File.asset` fails,
 `StreakFlame` draws the hand-built fallback, and the suite stays green — the
 failure is _printed_, not thrown. So this is not a required setup step; it is the
-switch that decides **which flame a test sees**, which is why
-`streak_celebration_test.dart` pins the fallback with
-`debugStreakFlameAssetOverride` instead of leaving it to the machine.
+switch that decides **which flame a test sees**, and now also whether a test that
+settles hangs. `useStillStreakFlame()` takes the machine out of it.
 
-### Two things not to "fix" back
+### Three things not to "fix" back
 
 - **`kStreakFlameFactory` is `Factory.flutter`, not `Factory.rive`.** The Rive
   Renderer wants a GPU context; a headless test shell has none, so `File.asset`
   trips a native assert (`file.cpp:206`) and the shell dies with **SIGABRT** —
   uncatchable, and it takes every case that pumps the celebration with it.
-- **`_PosedState` clears `controller.active`.** A 1D blend state reports itself as
-  always advancing, so `advance` returns true forever and the artboard repaints at
-  60fps on a screen a reader opens nightly. It shows up as `pumpAndSettle timed
-out`. Clearing `active` does not stop it being painted — `active` gates the
-  ticker and hit testing, not `paint` — and writing `progress` schedules its own
-  frame, so the drawing still poses.
+- **`_FlamePainter.advance` returns `_liveness > 0` and nothing else.** The obvious
+  extra term — also return true while `progress` is strictly between 0 and 1, to save
+  a ticker stop/start per frame during the ignition — means an artboard _parked_ at
+  any mid value asks for frames forever. `streak_flame_golden_test.dart` renders six
+  of those side by side and times out on all of them. Returning `false` does not stop
+  the drawing being drawn: it gates the ticker, not `paint`, and `scheduleRepaint`
+  restarts it when either drive moves.
+- **`StreakFlame` forces `liveness` to 0 under reduced motion.** It cannot be gated
+  in `streak_celebration.dart` like every other beat, because that gate jumps the
+  controller to 1 and for this one beat 1 _is_ the moving state.
 
 The long version, with every defect and every rejected alternative, is
 `docs/streak-flame-rive.md`.
@@ -249,6 +306,25 @@ rive/streak_flame` updates that same file instead of creating a new one each tim
 Open it from the editor's file browser: **aschung's workspace → Personal Files →
 `streak_flame`**. `--rev=<path>` writes an openable document to disk instead, and
 both need `rive login`.
+
+**It plays in the editor now**, which it did not before the timelines existed. A push
+also **writes ids into `scene.rml`** — 413 of them the first time — which is how it
+matches objects up to update the same file. That is harmless and does not regenerate
+anything (comments and formatting survive), but it means a push shows up as a large
+diff. Expect it rather than investigating it.
+
+**Do not push while the file is open in the editor.** Three pushes in one session,
+with the tab open throughout, left the editor showing an **empty stage and an empty
+Animations panel** — no artwork, no timelines, nothing — while the source on disk was
+intact (441 objects, 2 `LinearAnimation`s, `rive inspect` clean) and the last push had
+reported `0 created, 56 updated, 0 deleted, 387 unchanged`, which accounts for every
+object. The document was fine; the editor was holding a copy that had been rewritten
+underneath it. Closing the tab and reopening from the file browser is the fix.
+
+So the order is: **close the tab, push, reopen.** Or skip the live file for review
+altogether — `rive rive/streak_flame --once --rev=/tmp/streak_flame.rev` writes a
+standalone document that can be opened directly and cannot be out of sync with
+anything. Both need `rive login`.
 
 **Never run `rive pull`.** It overwrites the project _from_ the Rive file, which
 would replace `scene.rml` with a machine-generated equivalent and take every
@@ -282,7 +358,7 @@ still-pending, and a later `db push` then re-runs the DDL and fails on
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (1767 cases). There is no expected-failure list any
+`flutter test` passes completely (1769 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3
