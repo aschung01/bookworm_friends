@@ -745,12 +745,12 @@ class ReadLegendSpine extends StatelessWidget {
         children: [
           // The binding, at the hinge: a shadow in the gutter where the boards fold, which
           // is what tells the eye which end of the spine is the spine.
-          Align(
+          const Align(
             alignment: AlignmentDirectional.centerStart,
             child: FractionallySizedBox(
               widthFactor: bindingShare,
               heightFactor: 1,
-              child: const DecoratedBox(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Color(0x4D000000), Color(0x0D000000)],

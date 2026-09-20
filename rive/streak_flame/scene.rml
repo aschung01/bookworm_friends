@@ -1,0 +1,708 @@
+<Rive version="1" kind="fragment">
+    <!--
+      The streak celebration's flame: a book lying with its spine running away from the
+      viewer, falling open, with a flame rising out of the gutter.
+
+      ORIENTATION. The spine is along Z, so the camera sits at the book's TAIL edge looking
+      along the spine. We see the two halves splaying left and right, the page block between
+      them, the stacked page edges along the near edge, and the gutter as a dark seam up the
+      middle. The flame rises along +Y out of that seam. Rive is 2D, so the depth is drawn
+      rather than transformed: the far edge of every quad is narrower and higher than its
+      near edge, converging up-screen.
+
+      WHAT OPENING IS, HERE. The first draft of this file rotated the two halves apart, and
+      that is wrong for this camera -- a 2D rotation pivots about a point, and the inner edge
+      of a half is not a point but the *gutter line*, which recedes. Rotating a half swung
+      its far-inner corner clean across the centre line, so the two halves crossed into a
+      bow tie. Opening is therefore **scale**, anchored at the gutter: a shut book seen down
+      its spine is one board wide, an open one is nearly two, so `scaleX` runs 0.54 -> 1.0
+      and the inner edge stays pinned where it belongs. `scaleY` flattens the shallow V of
+      the open book back into the slab of a closed one. The covers are what a shut book shows
+      and the pages are what an open one shows, so `page_*` fades in over the top of a cover
+      that was always there -- the material swap that sells the open, and it costs one
+      property rather than a second set of geometry.
+
+      THE CONTRACT. This artboard does not play itself. `Flame/progress` is a Number in
+      0-100, written every frame by Flutter's own AnimationController
+      (`lib/ui/widgets/streak/streak_flame.dart`), and the blend state below poses the scene
+      at whatever it says. That is deliberate and it is what makes Rive acceptable here:
+      the celebration's beats stay in Dart where they are greppable and a golden test can
+      drive them, `MediaQuery.disableAnimationsOf` needs no special case (the controller
+      jumps to 1, progress becomes 100, the scene poses at its final frame), and pose 100 is
+      a RESTING pose -- nothing moves once the last beat lands, on a screen a reader opens
+      nightly.
+
+      So: no `loopValue`, no idle wobble, no autoplaying timeline. Every animation below is
+      a single-frame POSE, and the blend between them is the animation.
+
+      COLOURS are shipped tokens, not new ones. `library_card/card_lighting.dart` and
+      `app_theme.dart` own them; this file has picked none of its own, because inventing
+      brand colours is a mistake this repo has already made once (see the first comment
+      block of `docs/mockups/streaks/index.html`).
+        FFFFD479  flame core     - the record's lit-today highlight
+        FFF2A93F  flame body     - kCandleFlame
+        FFB54708  flame edge     - AppColors.light.flame
+        FF26190A  gutter seam    - kCandleStockTop
+        FF35230E  cover          - kCandleWellTop
+        FF1B1106  cover, near    - kCandleWellBottom
+        FFFDFAF1  page, lit      - the record's paper
+        FFFFE8C4  page, falling  - kCandleGlow
+        FFD9A96B  page, far      - kCandleCoverLight
+        FFE2D9C4  page edges     - the record's hairline
+
+      The ground this sits on is kCandleGlow #FFE8C4, painted by `streak_celebration.dart`.
+      A *lighter* halo is invisible on it; the glow below is therefore warmer rather than
+      brighter, and the page gradient runs paper -> cream -> tan outward from the flame so
+      the light has somewhere to fall off to.
+    -->
+    <Artboard defaultStateMachineId="0:7" styleId="0:5" viewModelId="0:100"
+              viewModelInstanceId="0:102" width="304" height="304" name="Flame" id="0:2">
+        <LayoutComponentStyle name="Artboard Style" id="0:5"/>
+
+        <!-- No background Fill. The celebration paints its own cream ground, and a filled
+             artboard would sit on it as a visible panel.
+
+             `ground` below is the exception that proves it, and it is deliberate. A
+             `rive --screenshot` composites onto the CLI's own opaque #1D1D1D canvas and
+             there is no flag to change that: a `kind="fragment"` document may not declare a
+             `<Backboard>`, and `rive.yaml`'s `artboard.background` applies only to projects
+             with no RML. So every semi-transparent thing here -- the glow above all -- came
+             back from the previewer darkened toward black, and `sheet.py`'s chroma key
+             cannot recover an alpha it was never given: the first honest-looking sheet
+             showed the glow as a solid black disc that does not exist. Rather than judge the
+             light through a lie, the artboard carries a cream rectangle bound to a second
+             Number that **defaults to 0 and is switched on only by `sheet.py`**. Flutter
+             never writes it, so the shipped artboard is transparent exactly as before. -->
+
+        <!-- Draw order is declaration order, FRONT FIRST. So: the fire, then the seam it
+             comes out of, then the two halves of the book, then the light behind all of it.
+             **The first draft had the pages declared after the covers and so behind them**,
+             which is why the book read as a dark mountain with a cream sliver on top. -->
+
+        <!-- The fire, as one group. A single node carries the rise and the overall size
+             ramp, so the poses say that once instead of once per shape; the shapes inside
+             carry only what differs between them, which is the squash and stretch. -->
+        <!-- The fire, as one group. A single node carries the rise and the overall size
+             ramp, so the poses say that once instead of once per shape; the shapes inside
+             carry only what differs between them, which is the squash and stretch.
+
+             **It sits at the crease's mid-depth, not at its near end, and that is what makes
+             the flame come *out of* the book.** Placed at the tail edge the flame's base sat
+             in front of the whole page block and read as a spike stabbing down through it;
+             seated a third of the way along the gutter it rises from the valley with the
+             pages spread below it on both sides. -->
+        <Node x="152" y="214" name="fire" id="0:20">
+
+            <!-- Embers. Also a group, so the burst is one transform rather than forty
+                 keyframes: the node scales outward while it fades. A **fan**, denser near
+                 the flame and spreading up and out, and nothing below the book line -- an
+                 even ring is what this looked like the first time and it read as a halo.
+
+                 **Only the two bright tokens, and never the deep one.** Half of these are
+                 in front of the flame's own body, and an ember painted `flame` #B54708 on a
+                 body that runs to #B54708 at the base is an ember nobody can see -- the
+                 first fan looked left-weighted for exactly that reason, with every
+                 right-hand spark camouflaged against the flame it had just left. -->
+            <Node y="-16" name="sparks" id="0:21">
+                <Shape x="-13" y="-76"><Ellipse width="9" height="9" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
+                <Shape x="22" y="-88"><Ellipse width="8" height="8" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
+                <Shape x="-36" y="-50"><Ellipse width="8" height="8" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
+                <Shape x="42" y="-42"><Ellipse width="7" height="7" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
+                <Shape x="-50" y="-24"><Ellipse width="6" height="6" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
+                <Shape x="8" y="-104"><Ellipse width="8" height="8" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
+                <Shape x="-25" y="-99"><Ellipse width="6" height="6" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
+                <Shape x="54" y="-68"><Ellipse width="6" height="6" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
+                <Shape x="-60" y="-60"><Ellipse width="5" height="5" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFF2A93F" name="C"/></Fill></Shape>
+                <Shape x="37" y="-14"><Ellipse width="5" height="5" name="Path"/>
+                    <Fill name="Fill"><SolidColor colorValue="FFFFD479" name="C"/></Fill></Shape>
+            </Node>
+
+            <!-- The shimmer sweep: a soft bright bar that slides across the flame. Clipped
+                 to the flame's own silhouette, because the whole point is that the flame
+                 gleams and not that a white stripe crosses the screen. The hand-built
+                 version's gleam was wide enough to turn the flame to paper; this one is
+                 narrow, soft at both edges, and gone by rest. -->
+            <Shape y="-55" rotation="-0.45" name="gleam" id="0:23">
+                <PointsPath isClosed="true" isClockwise="true" name="Path">
+                    <StraightVertex x="-11" y="-110"/>
+                    <StraightVertex x="11" y="-110"/>
+                    <StraightVertex x="11" y="110"/>
+                    <StraightVertex x="-11" y="110"/>
+                </PointsPath>
+                <Fill name="Fill">
+                    <LinearGradient startX="-11" startY="0" endX="11" endY="0" name="Gradient">
+                        <GradientStop colorValue="00FDFAF1" position="0"/>
+                        <GradientStop colorValue="6BFDFAF1" position="0.5"/>
+                        <GradientStop colorValue="00FDFAF1" position="1"/>
+                    </LinearGradient>
+                </Fill>
+                <ClippingShape sourceId="0:25" name="Clip"/>
+            </Shape>
+
+            <!-- The bright core. Its own shape rather than a lighter fill, so it can lick
+                 independently of the body -- `rotation` on this and not on the body is the
+                 flame moving rather than the flame tilting. -->
+            <Shape y="3" name="flame_inner" id="0:24">
+                <PointsPath isClosed="true" isClockwise="true" name="Path">
+                    <StraightVertex x="3" y="-78"/>
+                    <CubicMirroredVertex x="20" y="-42" rotation="1.5707964" distance="24"/>
+                    <CubicMirroredVertex x="13" y="-12" rotation="2.5" distance="14"/>
+                    <CubicMirroredVertex x="0" y="5" rotation="3.1415927" distance="13"/>
+                    <CubicMirroredVertex x="-14" y="-14" rotation="3.9" distance="14"/>
+                    <CubicMirroredVertex x="-18" y="-45" rotation="4.85" distance="24"/>
+                </PointsPath>
+                <Fill name="Fill">
+                    <LinearGradient startX="0" startY="-78" endX="0" endY="3" name="Gradient">
+                        <GradientStop colorValue="FFFFD479" position="0"/>
+                        <GradientStop colorValue="FFFFD479" position="0.6"/>
+                        <GradientStop colorValue="FFF2A93F" position="1"/>
+                    </LinearGradient>
+                </Fill>
+            </Shape>
+
+            <!-- The body. **A sharp apex, a narrow base, and an asymmetric belly; all three
+                 are the point.** The first draft used four mirrored vertices and got an egg:
+                 a flame is not an ellipse, it has a tip. The second got a tulip, because the
+                 widest point sat too low and the base was as wide as the shoulders, so the
+                 silhouette flared, pinched to a waist and flared again. A flame is widest
+                 about a third of the way up and tapers to almost nothing where it meets what
+                 is burning. The apex is a `StraightVertex` so the two curves meet in a corner
+                 instead of rounding over, it sits right of centre so the silhouette leans,
+                 and the left and right bellies differ. Gradient-filled, because a flat fill
+                 is what made the hand-built version read as a sticker. -->
+            <Shape name="flame_outer" id="0:25">
+                <PointsPath isClosed="true" isClockwise="true" name="Path">
+                    <StraightVertex x="6" y="-120"/>
+                    <CubicMirroredVertex x="36" y="-64" rotation="1.5707964" distance="38"/>
+                    <CubicMirroredVertex x="24" y="-18" rotation="2.5" distance="24"/>
+                    <CubicMirroredVertex x="0" y="8" rotation="3.1415927" distance="22"/>
+                    <CubicMirroredVertex x="-25" y="-20" rotation="3.9" distance="24"/>
+                    <CubicMirroredVertex x="-32" y="-69" rotation="4.85" distance="38"/>
+                </PointsPath>
+                <Fill name="Fill">
+                    <LinearGradient startX="0" startY="-120" endX="0" endY="6" name="Gradient">
+                        <GradientStop colorValue="FFF2A93F" position="0"/>
+                        <GradientStop colorValue="FFB54708" position="1"/>
+                    </LinearGradient>
+                </Fill>
+            </Shape>
+        </Node>
+
+        <!-- The crease the flame comes out of. Declared before the two halves so it sits on
+             top of their join, and faded out when the book is shut because a shut book has no
+             visible gutter.
+
+             **It stops exactly where the flame's base begins, and its whole job is pose 20.**
+             Twice now a gutter drawn past that point has read as a black peg stood on the
+             page: once as a blunt rectangle, once as a wedge. Below the flame the crease is
+             carried by the page gradient's own shadow instead, which is where a crease comes
+             from anyway. What is left here is the seam that appears in the moment after the
+             covers fall open and before there is a flame big enough to hide it. -->
+        <Shape x="152" y="238" name="gutter" id="0:26">
+            <PointsPath isClosed="true" isClockwise="true" name="Path">
+                <StraightVertex x="-6" y="-16"/>
+                <StraightVertex x="6" y="-16"/>
+                <StraightVertex x="2" y="-60"/>
+                <StraightVertex x="-2" y="-60"/>
+            </PointsPath>
+            <Fill name="Fill"><SolidColor colorValue="FF26190A" name="Color"/></Fill>
+        </Shape>
+
+        <!-- The two halves. Each is a Node hinged at the gutter's near end, holding three
+             shapes: the stacked page edges we are looking straight at, the page surface
+             receding away, and the cover board behind both, showing as a rim.
+
+             Written out twice rather than mirrored with `scaleX="-1"`, because the opening
+             *is* `scaleX` and a right half whose open pose reads `-1.0` is a trap for
+             whoever edits the pose table next. -->
+        <Node x="152" y="238" name="wing_left" id="0:27">
+            <!-- The tail edge: the band between the page block's near edge and the cover's.
+                 **This is the shape that says we are looking at the bottom of a book** and
+                 not at two flat wings -- it is the only element that gives the thing
+                 thickness. -->
+            <Shape name="tail_left">
+                <PointsPath isClosed="true" isClockwise="true" name="Path">
+                    <StraightVertex x="0" y="11"/>
+                    <StraightVertex x="-105" y="-3"/>
+                    <StraightVertex x="-116" y="4"/>
+                    <StraightVertex x="0" y="20"/>
+                </PointsPath>
+                <Fill name="Fill"><SolidColor colorValue="FFE2D9C4" name="Color"/></Fill>
+            </Shape>
+            <Shape name="page_left" id="0:28">
+                <PointsPath isClosed="true" isClockwise="true" name="Path">
+                    <StraightVertex x="0" y="11" radius="2"/>
+                    <StraightVertex x="-105" y="-3" radius="2"/>
+                    <StraightVertex x="-65" y="-53" radius="2"/>
+                    <StraightVertex x="0" y="-58" radius="2"/>
+                </PointsPath>
+                <Fill name="Fill">
+                    <!-- **The crease is the darkest part of an open book, not the
+                         brightest.** The first version ran paper-bright at x=0 outward on
+                         the reasoning that the flame is the light source and the gutter is
+                         nearest to it -- and drew a pale needle straight down the middle of
+                         the book, because both halves put their brightest pixel against x=0
+                         and nothing covered the join below the flame. Two pages meeting in a
+                         valley shade each other, which is why a real open book has a dark
+                         line down it; so the crease gets the shadow tone, the lit band sits
+                         just outside it, and the falloff still runs outward from there. -->
+                    <LinearGradient startX="0" startY="-23" endX="-105" endY="-27" name="Gradient">
+                        <GradientStop colorValue="FFD9A96B" position="0"/>
+                        <GradientStop colorValue="FFD9A96B" position="0.03"/>
+                        <GradientStop colorValue="FFFDFAF1" position="0.11"/>
+                        <GradientStop colorValue="FFFFE8C4" position="1"/>
+                    </LinearGradient>
+                </Fill>
+                <!-- No Stroke. **A hairline around this path puts one up the crease**, and
+                     the left and right halves' two strokes meeting at x=0 drew a pale needle
+                     from the flame's base down to the tail edge -- the page block's edge is
+                     already carried by `tail_left` below and the cover's rim outside it, so
+                     the outline was doing nothing the drawing needed and one thing it did
+                     not. `PointsPath` strokes every edge or none. -->
+            </Shape>
+            <Shape name="cover_left">
+                <PointsPath isClosed="true" isClockwise="true" name="Path">
+                    <StraightVertex x="0" y="20" radius="3"/>
+                    <StraightVertex x="-116" y="4" radius="3"/>
+                    <StraightVertex x="-72" y="-58" radius="3"/>
+                    <StraightVertex x="0" y="-64" radius="3"/>
+                </PointsPath>
+                <Fill name="Fill">
+                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient">
+                        <GradientStop colorValue="FF35230E" position="0"/>
+                        <GradientStop colorValue="FF1B1106" position="1"/>
+                    </LinearGradient>
+                </Fill>
+            </Shape>
+        </Node>
+
+        <Node x="152" y="238" name="wing_right" id="0:29">
+            <Shape name="tail_right">
+                <PointsPath isClosed="true" isClockwise="false" name="Path">
+                    <StraightVertex x="0" y="11"/>
+                    <StraightVertex x="105" y="-3"/>
+                    <StraightVertex x="116" y="4"/>
+                    <StraightVertex x="0" y="20"/>
+                </PointsPath>
+                <Fill name="Fill"><SolidColor colorValue="FFE2D9C4" name="Color"/></Fill>
+            </Shape>
+            <Shape name="page_right" id="0:31">
+                <PointsPath isClosed="true" isClockwise="false" name="Path">
+                    <StraightVertex x="0" y="11" radius="2"/>
+                    <StraightVertex x="105" y="-3" radius="2"/>
+                    <StraightVertex x="65" y="-53" radius="2"/>
+                    <StraightVertex x="0" y="-58" radius="2"/>
+                </PointsPath>
+                <Fill name="Fill">
+                    <LinearGradient startX="0" startY="-23" endX="105" endY="-27" name="Gradient">
+                        <GradientStop colorValue="FFD9A96B" position="0"/>
+                        <GradientStop colorValue="FFD9A96B" position="0.03"/>
+                        <GradientStop colorValue="FFFDFAF1" position="0.11"/>
+                        <GradientStop colorValue="FFFFE8C4" position="1"/>
+                    </LinearGradient>
+                </Fill>
+            </Shape>
+            <Shape name="cover_right">
+                <PointsPath isClosed="true" isClockwise="false" name="Path">
+                    <StraightVertex x="0" y="20" radius="3"/>
+                    <StraightVertex x="116" y="4" radius="3"/>
+                    <StraightVertex x="72" y="-58" radius="3"/>
+                    <StraightVertex x="0" y="-64" radius="3"/>
+                </PointsPath>
+                <Fill name="Fill">
+                    <LinearGradient startX="0" startY="-64" endX="0" endY="20" name="Gradient">
+                        <GradientStop colorValue="FF35230E" position="0"/>
+                        <GradientStop colorValue="FF1B1106" position="1"/>
+                    </LinearGradient>
+                </Fill>
+            </Shape>
+        </Node>
+
+        <!-- The light, behind the thing making it. Warmer rather than lighter, which is the
+             only kind that reads as light on a cream ground. -->
+        <Shape x="152" y="140" name="glow" id="0:32">
+            <Ellipse width="250" height="250" name="Path"/>
+            <Fill name="Fill">
+                <RadialGradient startX="0" startY="0" endX="0" endY="125" name="Gradient">
+                    <GradientStop colorValue="7FF2A93F" position="0"/>
+                    <GradientStop colorValue="3DF2A93F" position="0.45"/>
+                    <GradientStop colorValue="00F2A93F" position="1"/>
+                </RadialGradient>
+            </Fill>
+        </Shape>
+
+        <!-- PREVIEW ONLY, and off unless something asks for it. See the note at the top of
+             the artboard: this exists so `sheet.py` can judge the glow against the cream the
+             celebration actually paints, instead of against the previewer's near-black.
+             `ground` defaults to 0 in the view model below and nothing in `lib/` writes it. -->
+        <Shape x="152" y="152" name="ground" id="0:33">
+            <Rectangle width="304" height="304" name="Path"/>
+            <Fill name="Fill"><SolidColor colorValue="FFFFE8C4" name="Color"/></Fill>
+            <DataBindContext sourcePathIds="0:100-0:103" propertyKey="18"/>
+        </Shape>
+
+        <StateMachine name="Ignite" id="0:7">
+            <StateMachineLayer name="Layer 1" id="0:8">
+                <AnyState x="200" y="-120"/>
+                <ExitState x="400" y="-120"/>
+                <EntryState>
+                    <StateTransition stateToId="0:70"/>
+                </EntryState>
+                <!-- The scrub. Weights run 0-100, and the children must be in ascending
+                     `value` order -- the runtime binary-searches them and does not check. -->
+                <BlendState1DViewModel x="200" id="0:70">
+                    <BindablePropertyNumber>
+                        <DataBindContext sourcePathIds="0:100-0:101" propertyKey="636"/>
+                    </BindablePropertyNumber>
+                    <BlendAnimation1D animationId="0:60" value="0"/>
+                    <BlendAnimation1D animationId="0:61" value="20"/>
+                    <BlendAnimation1D animationId="0:62" value="35"/>
+                    <BlendAnimation1D animationId="0:63" value="50"/>
+                    <BlendAnimation1D animationId="0:64" value="70"/>
+                    <BlendAnimation1D animationId="0:65" value="100"/>
+                </BlendState1DViewModel>
+            </StateMachineLayer>
+        </StateMachine>
+
+        <!--
+          THE POSES. Every pose keys EVERY blended property: one keyed in one pose and
+          absent from another has nothing to mix toward, and jumps instead of blending. So
+          these six blocks are the same eleven objects in the same order, every time, and
+          they should be read as the columns of one table.
+
+          propertyKey: 13 x, 14 y, 15 rotation, 16 scaleX, 17 scaleY, 18 opacity.
+          Values are ABSOLUTE, not offsets -- `fire` is declared at y=196, so a pose that
+          wants it 24px lower says 220.
+        -->
+
+        <!-- 0 - shut. One board wide, flattened to a slab, covers out and pages hidden.
+             No seam, no fire, no light. -->
+        <LinearAnimation duration="1" name="p00" id="0:60">
+            <KeyedObject objectId="0:27">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.54"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.34"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:29">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.54"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.34"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:28">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:31">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:26">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="14"><KeyFrameDouble value="236"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.3"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.15"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:25">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:24">
+                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.1"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:23">
+                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-50"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:32">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.3"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.3"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+
+        <!-- 20 - fallen open, a few percent past its rest so it settles back rather than
+             arriving. Pages are showing, the seam has appeared, and there is an ember in
+             it: dormant, small, not yet a flame. -->
+        <LinearAnimation duration="1" name="p20" id="0:61">
+            <KeyedObject objectId="0:27">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.04"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.05"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:29">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.04"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.05"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:28">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:31">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:26">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="14"><KeyFrameDouble value="226"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.34"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.3"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.5"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:25">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:24">
+                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.2"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.2"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:23">
+                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-50"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:32">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.42"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.42"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.3"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+
+        <!-- 35 - ignition, and the STRETCH. The flame goes taller than its rest while
+             narrower than it, which is the one thing a font glyph could never do and the
+             reason this artboard exists. Sparks are in the air, the glow flares past full. -->
+        <LinearAnimation duration="1" name="p35" id="0:62">
+            <KeyedObject objectId="0:27">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:29">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:28">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:31">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:26">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="14"><KeyFrameDouble value="212"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.06"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:25">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.9"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.18"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:24">
+                <KeyedProperty propertyKey="15"><KeyFrameDouble value="-0.08"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.86"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.12"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.7"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.7"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.95"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:23">
+                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-44"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:32">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.9"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.9"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+
+        <!-- 50 - the SQUASH, and the gleam crossing. Wider than rest, shorter than rest,
+             licking the other way. Sparks at their widest and already fading. -->
+        <LinearAnimation duration="1" name="p50" id="0:63">
+            <KeyedObject objectId="0:27">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:29">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:28">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:31">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:26">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="14"><KeyFrameDouble value="214"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:25">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.08"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.92"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:24">
+                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0.07"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.06"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="0.88"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.15"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.15"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.55"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:23">
+                <KeyedProperty propertyKey="13"><KeyFrameDouble value="-8"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:32">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.02"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.02"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.85"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+
+        <!-- 70 - settling. The last of the lick, the gleam leaving, the embers gone. -->
+        <LinearAnimation duration="1" name="p70" id="0:64">
+            <KeyedObject objectId="0:27">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:29">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:28">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:31">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:26">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="14"><KeyFrameDouble value="214"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.01"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:25">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.99"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.03"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:24">
+                <KeyedProperty propertyKey="15"><KeyFrameDouble value="-0.03"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="0.98"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.04"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.4"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.4"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:23">
+                <KeyedProperty propertyKey="13"><KeyFrameDouble value="38"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.35"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:32">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.62"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+
+        <!-- 100 - REST. Book open, flame lit and square, glow steady, nothing in the air
+             and nothing part-way through anything. Scrub here and leave it: on a screen a
+             reader opens nightly, the last frame has to be a place the drawing can just
+             sit. -->
+        <LinearAnimation duration="1" name="p100" id="0:65">
+            <KeyedObject objectId="0:27">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:29">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:28">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:31">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:26">
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:20">
+                <KeyedProperty propertyKey="14"><KeyFrameDouble value="214"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:25">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:24">
+                <KeyedProperty propertyKey="15"><KeyFrameDouble value="0"/></KeyedProperty>
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:21">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1.4"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1.4"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:23">
+                <KeyedProperty propertyKey="13"><KeyFrameDouble value="55"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0"/></KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:32">
+                <KeyedProperty propertyKey="16"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="17"><KeyFrameDouble value="1"/></KeyedProperty>
+                <KeyedProperty propertyKey="18"><KeyFrameDouble value="0.58"/></KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+    </Artboard>
+
+    <!-- The one value Flutter writes, and one it does not. `progress` is the contract;
+         `ground` is the preview aid documented against the `ground` shape above, and its
+         default of 0 is what keeps the shipped artboard transparent. -->
+    <ViewModel defaultInstanceId="0:102" name="Flame" id="0:100">
+        <ViewModelPropertyNumber name="progress" id="0:101"/>
+        <ViewModelPropertyNumber name="ground" id="0:103"/>
+        <ViewModelInstance exports="true" name="Default" id="0:102">
+            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:101"/>
+            <ViewModelInstanceNumber propertyValue="0" viewModelPropertyId="0:103"/>
+        </ViewModelInstance>
+    </ViewModel>
+</Rive>

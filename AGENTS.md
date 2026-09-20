@@ -165,6 +165,64 @@ new art with `flutter test --update-goldens
 test/empty_state_art_golden_test.dart` and _look at the two images_ — a proof
 sheet is not enough.
 
+## The streak flame is Rive, and the `.riv` is built from committed text
+
+`assets/rive/streak_flame.riv` is **a build artifact**. Its source is
+`rive/streak_flame/scene.rml`, and the Rive CLI turns one into the other:
+
+```bash
+./rive/streak_flame/build.sh                        # verify, inspect, build, install
+../../.venv/bin/python rive/streak_flame/sheet.py   # render the poses and LOOK at them
+```
+
+Both are committed — the RML because it is the source, the `.riv` because
+`flutter build` cannot run the CLI. Edit the RML, run the script, commit both.
+
+**There is a `rive` CLI, at `/opt/homebrew/bin/rive`.** A previous session asserted
+there was not — that `.riv` is editor-only with no CLI and no public serializer —
+and wrote a whole document addressed to a human with the Rive Editor on that
+basis. `rive docs` and `rive schema <Type>` are the references; RML postdates
+training data, so look types up rather than guessing them.
+
+**`rive . --verify` and `rive inspect . --summary` will bless a scene that draws
+nonsense.** They are not supersets of each other (`--verify` does scripts and
+shaders; only `inspect` reports a `problems` list) and _neither looks at a pixel_.
+This scene passed both with zero problems on its first attempt and drew the pages
+behind the covers, an egg instead of a flame, and a black peg under it. `sheet.py`
+is the third check and the one that finds real defects. Also: **`--advance=1` is
+mandatory** on a screenshot, or every frame is the authored rest pose and six
+identical renders look like a working filmstrip.
+
+### `flutter test` needs a library that worktrees do not get
+
+```bash
+dart run rive_native:setup --verbose --clean --platform macos
+```
+
+`rive_native`'s dylib lands in **`build/`, which is gitignored**, so like
+`env.json` it does not travel between worktrees. Without it `File.asset` fails,
+`StreakFlame` draws the hand-built fallback, and the suite stays green — the
+failure is _printed_, not thrown. So this is not a required setup step; it is the
+switch that decides **which flame a test sees**, which is why
+`streak_celebration_test.dart` pins the fallback with
+`debugStreakFlameAssetOverride` instead of leaving it to the machine.
+
+### Two things not to "fix" back
+
+- **`kStreakFlameFactory` is `Factory.flutter`, not `Factory.rive`.** The Rive
+  Renderer wants a GPU context; a headless test shell has none, so `File.asset`
+  trips a native assert (`file.cpp:206`) and the shell dies with **SIGABRT** —
+  uncatchable, and it takes every case that pumps the celebration with it.
+- **`_PosedState` clears `controller.active`.** A 1D blend state reports itself as
+  always advancing, so `advance` returns true forever and the artboard repaints at
+  60fps on a screen a reader opens nightly. It shows up as `pumpAndSettle timed
+out`. Clearing `active` does not stop it being painted — `active` gates the
+  ticker and hit testing, not `paint` — and writing `progress` schedules its own
+  frame, so the drawing still poses.
+
+The long version, with every defect and every rejected alternative, is
+`docs/streak-flame-rive.md`.
+
 ## Applying one migration without dragging the others
 
 **`supabase db push` cannot cherry-pick.** It applies every pending migration in
@@ -190,7 +248,7 @@ still-pending, and a later `db push` then re-runs the DDL and fails on
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (1532 cases). There is no expected-failure list any
+`flutter test` passes completely (1766 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

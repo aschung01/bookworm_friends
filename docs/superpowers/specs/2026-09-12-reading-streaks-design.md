@@ -1163,17 +1163,103 @@ state, and **a missing asset does not reach it** — `FileLoader.file` throws
 asset name broke fifteen cases the moment it was wired in. `StreakFlame` therefore calls
 `File.asset` itself and treats every failure as an ordinary `null`.
 
-The file does not exist yet, because **a `.riv` cannot be authored from a terminal**: it is a
-binary the Rive Editor produces, with no CLI and no public serializer. The build sheet —
-artboard size, the palette taken from shipped tokens, layer order, and the timeline keyed
-against `progress` — is `docs/streak-flame-rive.md`. The drawing is a book laid with its spine
-along Z, seen from the tail edge, its covers splaying and a flame rising out of the gutter
-along +Y.
+The build sheet — artboard size, the palette taken from shipped tokens, layer order, and the
+timeline keyed against `progress` — is `docs/streak-flame-rive.md`. The drawing is a book laid
+with its spine along Z, seen from the tail edge, its covers splaying and a flame rising out of
+the gutter along +Y.
 
 `rive 0.14.11` pulls `rive_native`, which integrates through **SPM** rather than CocoaPods —
 the same route Firebase takes here, so `ios/Podfile.lock` never mentions it and the
-`RiveNative_ios.xcframework` lands in `build/ios/SourcePackages/artifacts/`. Verified: 1762
-tests pass, `flutter analyze` clean, iOS builds and launches.
+`RiveNative_ios.xcframework` lands in `build/ios/SourcePackages/artifacts/`.
+
+### Reversal: a `.riv` _is_ authorable from a terminal, and this one is
+
+**The paragraph above used to say the file could not exist yet, "because a `.riv` cannot be
+authored from a terminal: it is a binary the Rive Editor produces, with no CLI and no public
+serializer". That was simply wrong**, and it was wrong in the expensive direction — it turned
+a solvable problem into a hand-off, and it justified writing a build sheet addressed to a human
+with an editor. There is a first-party CLI, `rive`, already installed at
+`/opt/homebrew/bin/rive`; it compiles a directory of plain text into a `.riv`.
+
+So the asset's source is **committed markup**, `rive/streak_flame/scene.rml`, and
+`assets/rive/streak_flame.riv` is a build artifact of it produced by
+`rive/streak_flame/build.sh`. That voids the original objection to Rive rather than tolerating
+it: the complaint was that a binary blob is un-greppable and un-reviewable, and a text scene
+with a one-command build makes a geometry change a diff.
+
+Three tools, and none of them is a superset of another:
+
+|                              | catches                                                  |
+| ---------------------------- | -------------------------------------------------------- |
+| `rive . --verify`            | Luau and shader compilation; exits 1 on error            |
+| `rive inspect . --summary`   | bind paths, state machines, and the only `problems` list |
+| `rive/streak_flame/sheet.py` | **whether the drawing looks like anything**              |
+
+The third is the one that mattered. The scene passed `--verify` and `inspect` with zero
+problems on the first attempt and still drew: the pages **behind** the covers, so the book read
+as a dark mountain with a cream sliver; an **egg** instead of a flame, four mirrored vertices
+having no tip; and a **black peg** where the gutter poked out below the flame's base. None of
+those is a structural error. `--advance=1` is mandatory on a screenshot — without it every
+frame is the authored rest pose, and six identical renders look convincingly like a working
+filmstrip.
+
+Four things the drawing taught, in the order they were found:
+
+- **Opening is `scaleX`, not rotation.** A 2D rotation pivots about a point, and a half's inner
+  edge is not a point but the gutter _line_, which recedes. Rotating the halves swung their
+  far-inner corners across the centre line and the book crossed into a bow tie. Anchored at
+  the gutter, `scaleX` 0.54 → 1.0 is also the physical truth: a shut book seen down its spine
+  is one board wide and an open one is nearly two.
+- **The crease is the darkest part of an open book, not the brightest.** Lighting the pages
+  outward from the gutter — on the reasoning that the flame is the light source and the gutter
+  is nearest it — put each half's brightest pixel against `x=0` and drew a pale needle down
+  the middle of the book. Two pages meeting in a valley shade each other.
+- **A flame is widest a third of the way up.** Correcting the egg overshot into a tulip,
+  because the widest point sat too low and the base was as wide as the shoulders, so the
+  silhouette flared, pinched to a waist and flared again.
+- **Embers may not wear the flame's own colour.** Half the fan sits in front of the flame
+  body, and sparks painted `flame` #B54708 over a body that runs to #B54708 were invisible —
+  the burst looked left-weighted for weeks of nothing but that.
+
+### Two runtime defects the artboard exposed, both worse than the bug they replaced
+
+Neither of these is about the drawing, and both were found only by putting the file in place.
+
+**`Factory.rive` aborts the process.** The Rive Renderer wants a GPU context, and a headless
+`flutter test` shell has none, so `File.asset` trips a native assertion — `Assertion failed:
+(factory)`, `file.cpp:206` — and the shell dies with SIGABRT. That is not catchable: the
+`catch` in `StreakFlame._resolve` never runs, the whole test file reports `did not complete`,
+and every case in `streak_celebration_test.dart` goes with it. `Factory.flutter` draws through
+Flutter's own canvas and needs no context; for a dozen paths with no meshes, images or scripts
+the Rive Renderer was buying nothing that would pay for a crash on a screen presented over the
+streak page.
+
+**A 1D blend state never stops advancing.** `RiveWidgetController.advance` returns
+`didAdvance && active`, and a blend state reports itself as always advancing, so with `active`
+left at its default the ticker runs forever — a 60fps repaint on a screen a reader opens
+nightly and then leaves sitting there, which is precisely the idle-loop cost condition 2 was
+written to forbid. It surfaced as `pumpAndSettle timed out` the hour the `.riv` landed.
+Clearing `active` does not stop the drawing being drawn: `active` gates the ticker, the hit
+test and the pointer handlers, not `paint`. And the state machine registers `scheduleRepaint`
+as an advance-request listener, so writing `progress` asks for a frame by itself — one frame
+per change, stillness in between, which is the contract the poses were already written to.
+
+### Which flame a test sees is a property of the machine, so tests may not leave it to chance
+
+`rive_native`'s dynamic library is downloaded by `dart run rive_native:setup` into `build/`,
+and **`build/` is gitignored, so it does not travel between worktrees** any more than `env.json`
+does. A fresh checkout therefore has the `.riv` and no library to read it with: `File.asset`
+fails, the fallback draws, and that is correct behaviour rather than a broken test. Without
+the library the failure is _printed_ rather than thrown, so the graceful path really is
+graceful — but it means the three cases in `streak_celebration_test.dart` that assert the
+hand-built choreography (the glyph's colour as it catches, the spark painter, the gleam's
+`ShaderMask`) pass on a machine that has not run the setup and fail on one that has.
+`debugStreakFlameAssetOverride` settles it by pointing the widget at a name that cannot
+resolve. `streak_flame_test.dart` covers the other side, and its one case that needs the
+library skips itself with a reason where there is none.
+
+Verified: 1766 tests pass, `flutter analyze` clean of errors and warnings, iOS builds and
+launches.
 
 - **`reading_days` carries its book.** `ReadingDaysNotifier`'s state went from
   `Set<DateTime>` to `Map<DateTime, String?>`, because the month colours each night by

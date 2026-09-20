@@ -1,26 +1,42 @@
 # The streak flame, as a Rive artboard
 
-The build sheet for `assets/rive/streak_flame.riv`. Written because **a `.riv` cannot be
-authored from a terminal** — it is a binary produced by the Rive Editor, with no CLI and no
-public serializer — so the file has to be built by hand, and everything a builder needs to
-match is here rather than in someone's memory.
+How `assets/rive/streak_flame.riv` is authored, built and judged.
 
-The Flutter side already exists and is wired in: `lib/ui/widgets/streak/streak_flame.dart`.
-Drop the file at `assets/rive/streak_flame.riv` and it takes over; until then the celebration
-draws the hand-built ignition in `streak_celebration.dart` and nothing is broken.
-`test/streak_flame_test.dart` pins that.
+**This file used to be a build sheet addressed to a human with the Rive Editor**, on the stated
+premise that "a `.riv` cannot be authored from a terminal — it is a binary produced by the Rive
+Editor, with no CLI and no public serializer". That was false. There is a first-party CLI,
+`rive`, and it compiles a directory of plain text into a `.riv`. The premise is recorded rather
+than deleted because it shaped the design of the Flutter side, which still assumes the artboard
+may be missing — and that assumption turned out to be worth keeping for an unrelated reason
+(see [Which flame you get](#which-flame-you-get-depends-on-the-machine)).
+
+So: **`rive/streak_flame/scene.rml` is the source and the `.riv` is a build artifact.** That is
+what voids the original objection to Rive — that a binary blob is un-greppable and
+un-reviewable. A geometry change is a diff.
+
+```bash
+./rive/streak_flame/build.sh                        # verify, inspect, build, install
+../../.venv/bin/python rive/streak_flame/sheet.py   # look at what you built
+```
+
+Both outputs are committed: the `.riv` because `flutter build` cannot run the CLI and a missing
+asset degrades silently, and the RML because it is the source. Edit the RML, run the script,
+commit both.
 
 ## The three names that must match exactly
 
-| Thing | Name |
-| --- | --- |
-| Asset path | `assets/rive/streak_flame.riv` |
-| State machine | `Ignite` |
-| Bound view-model property (Number) | `progress` |
+| Thing                              | Name                           |
+| ---------------------------------- | ------------------------------ |
+| Asset path                         | `assets/rive/streak_flame.riv` |
+| State machine                      | `Ignite`                       |
+| Bound view-model property (Number) | `progress`                     |
 
 A typo in any of them is a **silent fallback** — the app keeps working and quietly never shows
-the artboard, which is the hardest failure to notice. The three are constants in
-`streak_flame.dart` and asserted in `streak_flame_test.dart`.
+the artboard, which is the hardest failure to notice. They are constants in
+`streak_flame.dart`, asserted in `streak_flame_test.dart`, and — because constants agreeing
+with each other proves nothing about the binary — that test also greps the built `.riv` for
+`Ignite` and `progress`. It reads the bytes rather than the runtime, so unlike the rest of the
+file it holds on every machine.
 
 ## The contract: Flutter keeps the clock
 
@@ -31,111 +47,175 @@ finish, by that one property.
 This is the whole reason Rive is acceptable here, and it is worth understanding rather than
 just implementing:
 
-- the nine beats of the celebration stay in Dart, where they are greppable and a golden test
-  can drive them, instead of moving into an editor timeline nobody can read from the repo;
+- the beats of the celebration stay in Dart, where they are greppable and a test can drive
+  them, instead of moving into an editor timeline nobody can read from the repo;
 - `MediaQuery.disableAnimationsOf` keeps working with no special case — the controller jumps
   to `value = 1`, `progress` becomes 100, and the artboard poses at its final frame. A
   one-shot animation would need the artboard seeked by hand;
 - **nothing moves once the last beat lands**, which this screen honours on purpose. An
   artboard with an idle loop would break it, on a screen a reader opens nightly.
 
-So: **no idle state, no looping layer, no `advance`-driven wobble.** Frame 100 is a resting
-frame.
+Every animation in the scene is therefore a **single-frame pose**, and the blend between them
+is the animation. There is no `loopValue`, no idle wobble, no autoplaying timeline.
 
-## The drawing
+The six poses the `BlendState1DViewModel` mixes between:
 
-**A book lying with its spine running away from the viewer, and a flame rising out of it.**
+| `progress` | pose                                                                            |
+| ---------- | ------------------------------------------------------------------------------- |
+| 0          | shut — one board wide, flattened to a slab, covers out and pages hidden         |
+| 20         | fallen open a few percent past its rest, seam showing, a dormant ember in it    |
+| 35         | ignition, and the stretch: taller than rest while narrower than it              |
+| 50         | the squash — wider and shorter than rest, licking the other way, gleam crossing |
+| 70         | settling; the last of the lick, embers gone                                     |
+| 100        | rest, and genuinely still                                                       |
 
-Orientation, because this is the part that is easy to get backwards: the spine is along **Z**
-— it runs into the screen — so the camera is at the book's **tail edge**, looking along the
-spine. We see the two covers splayed left and right, the page block between them, and the
-gutter as a dark seam down the middle. The flame rises along **+Y**, straight up out of that
-seam.
+Two rules the format enforces silently and the runtime does not check:
 
-Rive is 2D, so the depth is drawn rather than transformed: the far edge of each cover is
-**narrower and higher** than the near edge, converging toward a vanishing point above centre.
+- weights run **0–100, not 0–1**;
+- `BlendAnimation1D` children must be in **ascending `value`** order — the runtime binary
+  searches them;
+- **every blended property must be keyed in every pose.** One keyed in one pose and absent
+  from another has nothing to mix toward, and jumps instead of blending. This is why the six
+  pose blocks are the same eleven objects in the same order every time, and should be read as
+  the columns of one table.
 
-### Artboard
+## Judging it: three tools, none a superset of another
 
-- **304 × 304**, origin centred. The Flutter side hands it a 152pt square (`_Ignition.stageSize`)
-  and asks for `Fit.contain`, so 2× gives clean scaling on a 3× screen without the artboard
-  being the thing that decides the on-screen size.
-- Background **transparent**. The celebration paints its own cream ground (`kCandleGlow`,
-  `#FFE8C4`) and a filled artboard would sit on it as a visible panel.
+|                            | catches                                                  |
+| -------------------------- | -------------------------------------------------------- |
+| `rive . --verify`          | Luau and shader compilation; exits 1 on error            |
+| `rive inspect . --summary` | bind paths, state machines, and the only `problems` list |
+| `sheet.py`                 | **whether the drawing looks like anything**              |
 
-### Palette — take these, do not pick new ones
+**The third is the one that matters**, and the first two will happily bless a scene that draws
+nonsense. This one passed both with zero problems on its first attempt and still rendered the
+pages _behind_ the covers (a dark mountain with a cream sliver on top), an egg instead of a
+flame, and a black peg where the gutter poked out below the flame's base. None of those is a
+structural error.
 
-Every value below is already a token in `lib/ui/widgets/library_card/card_lighting.dart` or
-`lib/constants/app_theme.dart`. The app has been burned by invented brand colours before
-(`docs/mockups/streaks/index.html` says so in its first comment block), so the artboard uses
-the shipped ones.
+Two traps in the screenshot path:
 
-| Role | Hex | Token |
-| --- | --- | --- |
-| Flame core | `#FFD479` | the record's lit-today highlight |
-| Flame body | `#F2A93F` | `kCandleFlame` |
-| Flame edge / deep | `#B54708` | `AppColors.light.flame` |
-| Cover | `#26190A` | `kCandleStockTop` |
-| Page block | `#FDFAF1` | the record's paper |
-| Page edge lines | `#E2D9C4` | the record's `cstats` hairline |
-| Glow | `#F2A93F` at 0–30% | `kCandleFlame`, alpha animated |
+- **`--advance=1` is mandatory.** Without it nothing has advanced and every frame is the
+  authored rest pose — six identical renders that look convincingly like a working filmstrip.
+- **The previewer composites onto its own opaque `#1D1D1D`**, and there is no flag to change
+  it: a `kind="fragment"` document may not declare a `<Backboard>`, and `rive.yaml`'s
+  `artboard.background` applies only to projects with no RML. So a chroma key cannot recover
+  the alpha it was never given, and the first honest-looking contact sheet showed the glow as a
+  solid black disc that does not exist. The scene therefore carries a cream `ground` rectangle
+  bound to a second Number that **defaults to 0 and is switched on only by `sheet.py`**. The
+  shipped artboard is transparent; the celebration paints `kCandleGlow` behind it.
 
-The flame is a **gradient**, core → body → edge, not a flat fill. That single fact is most of
-what separated the hand-built version from Duolingo's.
+Judging a warm palette on white, or on the previewer's near-black, is how you ship a glow
+nobody can see.
 
-### Layer order, back to front
+## What the drawing taught
 
-1. `glow` — radial gradient, `kCandleFlame` centre to transparent. Sits behind everything.
-2. `cover_far` — the underside cover, a trapezoid: wide at the bottom (near edge), narrow at
-   the top (far edge).
-3. `pages` — the page block, a fanned stack. 5–7 hairlines in `#E2D9C4` over `#FDFAF1`,
-   splaying from the gutter.
-4. `gutter` — a narrow dark wedge at centre, `#26190A`, where the flame emerges.
-5. `cover_left`, `cover_right` — the two splayed covers, same trapezoid mirrored.
-6. `flame_outer` — the main flame body, gradient-filled.
-7. `flame_inner` — ~60% scale, core colour, **its own centre of rotation slightly below the
-   outer flame's**, so it can lean independently. This is the part a font glyph could not do
-   and the reason we are in Rive at all.
-8. `sparks` — 12–16 small shapes, each on its own path or a bone.
+In the order the defects were found, because each fix caused the next:
 
-## The timeline, in `progress` 0–100
+- **Opening is `scaleX`, not rotation.** A 2D rotation pivots about a point, and a half's inner
+  edge is not a point but the gutter _line_, which recedes. Rotating the halves swung their
+  far-inner corners across the centre line and the book crossed into a bow tie. Anchored at the
+  gutter, `scaleX` 0.54 → 1.0 is also the physical truth: a shut book seen down its spine is
+  one board wide and an open one nearly two. `scaleY` flattens the open book's shallow V back
+  into a slab, and `page_*` opacity fades the pages in over a cover that was always there —
+  the material swap that sells the open, for one property rather than a second set of geometry.
+- **The crease is the darkest part of an open book, not the brightest.** Lighting the pages
+  outward from the gutter — on the reasoning that the flame is the light source and the gutter
+  is nearest it — put each half's brightest pixel against `x=0` and drew a pale needle straight
+  down the middle of the book. Two pages meeting in a valley shade each other. (The page
+  outline was the first suspect and was innocent; `PointsPath` strokes every edge or none, so
+  it had to go anyway.)
+- **A flame is widest about a third of the way up.** Correcting the egg overshot into a tulip:
+  the widest point sat too low and the base was as wide as the shoulders, so the silhouette
+  flared, pinched to a waist, and flared again. The apex is a `StraightVertex` so the two
+  curves meet in a corner rather than rounding over, and it sits right of centre so the
+  silhouette leans.
+- **The gutter may not outlive the flame's base.** Twice a gutter drawn past that point read as
+  a domino stood on the page — once as a blunt rectangle, once as a converging wedge. Below the
+  flame the crease is carried by the page gradient's own shadow, which is where a crease comes
+  from anyway; what is left of the gutter is the seam that appears after the covers fall open
+  and before there is a flame big enough to hide it.
+- **Embers may not wear the flame's own colour.** Half the fan sits in front of the flame body,
+  and sparks painted `flame` #B54708 over a body that runs to #B54708 at its base were
+  invisible. The burst looked left-weighted and the distribution was symmetrical all along.
+- **The artboard renders at half scale.** `stageSize` is 152pt against a 304×304 artboard, so a
+  drawing occupying a third of the artboard's height wastes both resolution and layout. The
+  flame is the hero and is sized like it.
 
-One timeline, keyed against the scrub. Times are percentages of `progress`, not seconds.
+## The palette is shipped tokens, and only shipped tokens
 
-| `progress` | What happens |
-| --- | --- |
-| 0 | Book **closed and flat**, seen end-on: covers together, no flame, no glow, no sparks. The page block is a thin closed stack. |
-| 0 → 22 | **The open.** Covers rotate apart to their splayed rest. Page block fans. Ease out with a small overshoot — the covers pass their rest angle by a few degrees and settle. Nothing else yet. |
-| 18 → 45 | **The ignition.** `flame_outer` scales from 0 at the gutter, `scaleY` leading `scaleX` so it *stretches up* then settles wide — the squash-and-stretch the hand-built version never had. Gradient shifts from deep edge toward the lit core over the same window. |
-| 22 → 60 | `glow` rises to 30% alpha and settles back to ~16%: a flare, then a steady burn. |
-| 24 → 55 | **Sparks** leave the gutter in a ~250° fan biased upward, gravity-pulled, faded to nothing by 55. They must be **gone**, not merely transparent, by the end. |
-| 30 → 100 | `flame_inner` leans — two or three slow, decaying cycles of ±4° with a small vertical scale breathe, **damped to zero by 100**. This is the "settles rather than freezes" beat. Keep it decaying: a constant wobble at frame 100 is an idle loop by another name. |
-| 55 → 90 | Optional **gleam**: a narrow bright diagonal band travelling across the flame. The hand-built version does this with a `ShaderMask` and it reads well at 0.15 band width / 55% white — anything wider turned the flame into paper. |
-| 100 | **Resting frame.** Book open, flame lit and still, glow steady, no sparks, no gleam. |
+`library_card/card_lighting.dart` and `app_theme.dart` own these. The scene picked none of its
+own, because inventing brand colours is a mistake this repo has already made once.
 
-## What to check before accepting it
+|                         |                                                                 |
+| ----------------------- | --------------------------------------------------------------- |
+| `FFFFD479`              | flame core — the record's lit-today highlight                   |
+| `FFF2A93F`              | flame body — `kCandleFlame`                                     |
+| `FFB54708`              | flame edge — `AppColors.light.flame`                            |
+| `FF26190A`              | gutter seam — `kCandleStockTop`                                 |
+| `FF35230E` / `FF1B1106` | cover, far and near — `kCandleWellTop` / `kCandleWellBottom`    |
+| `FFFDFAF1`              | page, lit — the record's paper                                  |
+| `FFFFE8C4`              | page, falling off — `kCandleGlow`                               |
+| `FFD9A96B`              | page at the crease, and the outer falloff — `kCandleCoverLight` |
+| `FFE2D9C4`              | the stacked page edges — the record's hairline                  |
 
-The rule this repo learned on the empty-state art: *a contact sheet is not a look.* Render it
-and look at these specifically.
+The ground is `kCandleGlow` `#FFE8C4`. **A lighter halo is invisible on it**, so the glow is
+warmer rather than brighter.
 
-1. **Frame 100 is genuinely still.** Scrub to 100, leave it, and confirm nothing moves. This
-   is the one that will be got wrong, because an animator's instinct is to leave the flame
-   alive.
-2. **The covers read as depth, not as a bow tie.** If the far edges do not converge, the book
-   reads as two flat triangles rather than a book seen along its spine.
-3. **The flame is legible at 152pt and at 44pt.** The chip draws a flame at 18pt and the page
-   hero at 44pt; this artboard is only used at 152, but if it collapses to mush when scaled
-   down it is over-detailed.
-4. **It does not compete with the counter.** The figure below it is the fact; the flame is the
-   event. If the eye lands on the flame and stays there, the glow or the sparks are too strong.
-5. **On cream, not on white.** The ground is `#FFE8C4`. A flame tuned against white will look
-   washed out on it — the hand-built version's first glow was invisible for exactly this
-   reason.
+## Two runtime defects the artboard exposed
 
-## Scope, deliberately
+Neither is about the drawing, and both were found only by putting the file in place. Both are
+worse than the bug they replaced, which is the argument for wiring an asset up early.
 
-This artboard is the **increment** only. Duolingo's milestone takeovers — the fracturing egg,
-the mascot in sunglasses — are character animation, and this app has no character;
-`docs/mockups/empty-states/PROMPTS.md` records what producing art here costs. If a milestone
-takeover is ever scoped it gets its **own** artboard and its own file, so the nightly path
-stays as cheap as it is now.
+**`Factory.rive` aborts the process.** The Rive Renderer wants a GPU context and a headless
+`flutter test` shell has none, so `File.asset` trips a native assertion — `Assertion failed:
+(factory)`, `file.cpp:206` — and the shell dies with SIGABRT. That is not catchable: the
+`catch` in `_resolve` never runs, the whole test file reports `did not complete`, and every case
+in `streak_celebration_test.dart` goes with it. `kStreakFlameFactory` is `Factory.flutter`,
+which draws through Flutter's own canvas. For a dozen paths with no meshes, images or scripts
+the Rive Renderer was buying nothing that would pay for a crash on a screen presented over the
+streak page.
+
+**A 1D blend state never stops advancing.** `RiveWidgetController.advance` returns
+`didAdvance && active`, and a blend state reports itself as always advancing, so with `active`
+left at its default the ticker runs forever — a 60fps repaint on a screen a reader opens
+nightly and then leaves sitting there, which is exactly the idle-loop cost the scrubbed-timeline
+contract exists to avoid. It surfaced as `pumpAndSettle timed out`. Clearing `active` does not
+stop the drawing being drawn: it gates the ticker, the hit test and the pointer handlers, not
+`paint`. And the state machine registers `scheduleRepaint` as an advance-request listener, so
+writing `progress` asks for a frame by itself — one frame per change, stillness in between.
+
+And the older one, still true: **`RiveWidgetBuilder` documents a `RiveFailed` state and a
+missing asset does not reach it.** `FileLoader.file` throws `RiveFileLoaderException` out of
+`initState`, which takes the subtree down and broke fifteen cases the moment Rive was wired in.
+`StreakFlame` therefore calls `File.asset` itself and treats every failure — thrown _or_ a null
+return, it does both — as an ordinary absence. Don't simplify it back to `FileLoader.fromAsset`.
+
+## Which flame you get depends on the machine
+
+`rive_native`'s dynamic library is downloaded by `dart run rive_native:setup --platform macos`
+into `build/`, and **`build/` is gitignored, so it does not travel between worktrees** any more
+than `env.json` does. A fresh checkout has the `.riv` and no library to read it with:
+`File.asset` fails, the fallback draws, and that is correct behaviour rather than a broken
+test. Usefully, without the library the failure is _printed_ rather than thrown, so the
+graceful path really is graceful.
+
+But it means the hand-built flame is not dead code, and it means a test that inspects one flame
+or the other is asserting a property of the machine. Three cases in
+`streak_celebration_test.dart` do inspect it — the glyph's colour as it catches, the spark
+painter, the gleam's `ShaderMask` — and they pass on a machine that has not run the setup and
+fail on one that has. `debugStreakFlameAssetOverride` settles it by pointing the widget at a
+name that cannot resolve. In the other direction, `streak_flame_test.dart` asserts only what is
+true on both paths, and its one case that needs the library skips itself with a reason.
+
+## The drawing itself
+
+A book laid with its spine along Z, so the camera sits at the **tail edge looking along the
+spine**. We see the two halves splaying left and right, the page block between them, the
+stacked page edges along the near edge, and the gutter as a dark seam up the middle. The flame
+rises along +Y out of that seam. Rive is 2D, so the depth is drawn rather than transformed: the
+far edge of every quad is narrower and higher than its near edge, converging up-screen.
+
+Draw order is declaration order, **front first**: the fire (embers, gleam, core, body), then
+the seam it comes out of, then the two halves of the book, then the light behind all of it, then
+the preview-only ground.

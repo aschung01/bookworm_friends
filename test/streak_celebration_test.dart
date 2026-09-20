@@ -6,6 +6,16 @@
 /// *finished* state rather than a faster version of it. Both are easy to break silently: a
 /// reordered interval still animates, and a missing gate still looks fine on a machine
 /// nobody has configured for reduced motion.
+///
+/// **Every case here runs against the hand-built flame, deliberately.** Three of them assert
+/// its internals — the glyph's colour as it catches, the spark painter, the gleam's
+/// `ShaderMask` — and those widgets exist only when the Rive artboard is unavailable. Which of
+/// the two paths `StreakFlame` takes depends on whether `rive_native`'s dynamic library has
+/// been downloaded into the gitignored `build/`, so left to chance these cases pass on a
+/// machine that has not run `dart run rive_native:setup` and fail on one that has — which is
+/// exactly what happened the hour the `.riv` was committed. `debugStreakFlameAssetOverride`
+/// settles it. The artboard's own wiring is `streak_flame_test.dart`, and how the drawing
+/// *looks* is `rive/streak_flame/sheet.py` and a simulator.
 library;
 
 import 'package:flutter/material.dart';
@@ -17,6 +27,7 @@ import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_week_row.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -84,6 +95,13 @@ Color _flameColour(WidgetTester tester) =>
     tester.widget<Icon>(find.byIcon(kReadingStreakIcon)).color!;
 
 void main() {
+  setUp(() {
+    // Force the hand-built path. See the note at the top of this file: without this, which
+    // flame these cases inspect is a property of the machine rather than of the code.
+    debugStreakFlameAssetOverride = 'assets/rive/__absent__.riv';
+  });
+  tearDown(() => debugStreakFlameAssetOverride = null);
+
   testWidgets('the run, its label and the flame are all present', (
     tester,
   ) async {

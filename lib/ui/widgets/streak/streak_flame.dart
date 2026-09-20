@@ -27,6 +27,38 @@ const String kStreakFlameStateMachine = 'Ignite';
 /// model.
 const String kStreakFlameProgressProperty = 'progress';
 
+/// Which renderer decodes and draws the artboard.
+///
+/// **`Factory.flutter`, and `Factory.rive` is not a tuning knob here — it crashes the
+/// process.** The Rive Renderer wants a GPU context, and a headless `flutter test` shell has
+/// none, so `File.asset` trips a native assertion (`Assertion failed: (factory)`, `file.cpp`
+/// line 206) and the shell dies with SIGABRT. That is not catchable: the `catch` below never
+/// runs, the whole test file reports `did not complete`, and every case in
+/// `streak_celebration_test.dart` goes with it, because that screen pumps this widget. A
+/// screen presented over the streak page may not carry a renderer that can abort the process.
+///
+/// The Flutter factory draws through Flutter's own canvas instead. For a drawing this size — a
+/// dozen paths, no meshes, no images, no scripts — the Rive Renderer buys nothing that would
+/// pay for that failure mode.
+///
+/// `final` rather than `const`: `Factory.flutter` is a getter, not a constant.
+final rive.Factory kStreakFlameFactory = rive.Factory.flutter;
+
+/// Where [StreakFlame] looks for the artboard, when a test needs it to look somewhere else.
+///
+/// **This exists because which path the widget takes depends on the machine, and a test may
+/// not.** `rive_native`'s dynamic library is downloaded into `build/`, which is gitignored, so
+/// the artboard renders on a developer machine that has run `dart run rive_native:setup` and
+/// falls back on one that has not. Three cases in `streak_celebration_test.dart` assert the
+/// hand-built choreography — the glyph's colour as it catches, the spark painter, the gleam's
+/// `ShaderMask` — and those widgets exist only on the fallback path. Pointing this at a name
+/// that cannot resolve makes that path certain rather than probable.
+///
+/// Nothing in `lib/` writes it. The artboard path is covered by `streak_flame_test.dart`,
+/// which asks the file itself whether it decodes and exposes the contract.
+@visibleForTesting
+String? debugStreakFlameAssetOverride;
+
 /// The flame at the top of the celebration: the Rive book-and-flame if it has been authored,
 /// and the hand-built ignition if it has not.
 ///
@@ -79,8 +111,8 @@ class _StreakFlameState extends State<StreakFlame> {
     rive.File? file;
     try {
       file = await rive.File.asset(
-        kStreakFlameAsset,
-        riveFactory: rive.Factory.rive,
+        debugStreakFlameAssetOverride ?? kStreakFlameAsset,
+        riveFactory: kStreakFlameFactory,
       );
     } catch (_) {
       // Absent, truncated, or authored against a newer format than this runtime reads. All
@@ -118,7 +150,7 @@ class _StreakFlameState extends State<StreakFlame> {
       child: rive.RiveWidgetBuilder(
         fileLoader: rive.FileLoader.fromFile(
           file,
-          riveFactory: rive.Factory.rive,
+          riveFactory: kStreakFlameFactory,
         ),
         stateMachineSelector: const rive.StateMachineNamed(
           kStreakFlameStateMachine,
@@ -166,6 +198,22 @@ class _PosedState extends State<_Posed> {
   void initState() {
     super.initState();
     _progress = widget.viewModel.number(kStreakFlameProgressProperty);
+
+    // **The artboard must not tick on its own, and this is a correctness fix rather than an
+    // optimisation.** `RiveWidgetController.advance` returns `didAdvance && active`, and a 1D
+    // blend state considers itself always advancing, so with `active` left at its default the
+    // ticker never stops: the celebration would repaint at 60fps forever on a screen a reader
+    // opens nightly and then leaves sitting there. It also made `pumpAndSettle` time out the
+    // moment the `.riv` landed, which is how it was found -- every widget test that pumps this
+    // screen hung for its full timeout.
+    //
+    // Switching it off does not stop the drawing from being drawn: `active` gates the ticker,
+    // the hit test and the pointer handlers, not `paint`. And the state machine registers
+    // `scheduleRepaint` as an advance-request listener, so writing `progress` asks for a frame
+    // by itself. The result is one frame per change and stillness in between -- which is the
+    // same contract the poses are written to, now enforced on both sides.
+    widget.controller.active = false;
+
     widget.progress.addListener(_pose);
     _pose();
   }
@@ -179,7 +227,13 @@ class _PosedState extends State<_Posed> {
   /// **In 0–100, which is the range Rive's own scroll examples use** rather than 0–1: a
   /// number input has no declared domain, so the convention has to live somewhere, and the
   /// editor's timeline is easier to map onto a percentage.
-  void _pose() => _progress?.value = widget.progress.value * 100;
+  void _pose() {
+    _progress?.value = widget.progress.value * 100;
+    // Explicit rather than relying on the advance-request listener alone: the listener fires
+    // on the state machine's own notion of dirtiness, and a pose that failed to repaint is a
+    // frozen flame with no error attached to it.
+    widget.controller.scheduleRepaint();
+  }
 
   @override
   Widget build(BuildContext context) {
