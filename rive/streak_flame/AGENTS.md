@@ -46,10 +46,11 @@ The streak celebration's book-and-flame. `scene.rml` is the source of
 ./build.sh                               # verify, inspect, build, install into assets/
 ../../../../.venv/bin/python sheet.py    # the six keyed poses
 ../../../../.venv/bin/python between.py  # every 4% across the scrub
+../../../../.venv/bin/python motion.py   # on the curve the app actually drives it with
 ```
 
-`sheet.py` and `between.py` need PIL, which is not a dependency of this repo and
-comes from the main checkout's `.venv` (a worktree gets none of its own).
+These need PIL, which is not a dependency of this repo and comes from the main
+checkout's `.venv` (a worktree gets none of its own).
 
 **`--verify` and `inspect` will bless a scene that draws nonsense.** This one
 passed both with zero problems and still rendered the pages behind the covers, an
@@ -61,6 +62,11 @@ property independently and linearly, so two poses that are both correct can pass
 through something that is not — which is how a half-transparent page over a
 near-black cover made the book a grey slab for the first fifth of the sequence
 while both ends looked right.
+
+**Run `motion.py` if the pose axis or the driving curve moves.** Neither sheet
+above scrubs `progress` the way the app does, and the first curve raced 0 → 100 in
+185ms and then overshot past the last pose, so 62% of the window was a held frame
+and the whole thing played in three. Every pose and every blend was correct.
 
 Full background, every defect and why each fix was chosen:
 `docs/streak-flame-rive.md` at the repo root.

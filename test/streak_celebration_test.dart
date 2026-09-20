@@ -195,6 +195,57 @@ void main() {
     );
   });
 
+  testWidgets('the flame is given a drive it can actually use', (tester) async {
+    // **The artboard's six poses are scrubbed by this value, so its shape over time *is* the
+    // animation** -- and the first curve tried here wasted most of it. `easeOutBack` crossed
+    // 0 -> 1 in about 185ms and then overshot to 1.087, and because a 1D blend state clamps
+    // past its last pose, 20 of the window's 32 frames were the same held frame. The whole
+    // choreography played in three frames: rendered at the real timing, a reader saw the flame
+    // appear rather than a book falling open.
+    //
+    // Two things are pinned here because both failure modes are silent. An overshoot is
+    // discarded by the runtime with no error, and a front-loaded curve still animates -- it
+    // just animates somewhere nobody can see.
+    await _pump(tester, streak: 12);
+    await tester.pump();
+
+    Animation<double> drive() =>
+        tester.widget<StreakFlame>(find.byType(StreakFlame)).progress;
+
+    final samples = <int, double>{};
+    for (var ms = 0; ms <= 1500; ms += 20) {
+      samples[ms] = drive().value;
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+
+    expect(
+      samples.values.every((v) => v <= 1.0),
+      isTrue,
+      reason:
+          'a value past 1 is clamped to the last pose and thrown away: '
+          'peak was ${samples.values.reduce((a, b) => a > b ? a : b)}',
+    );
+
+    // The shut book has to register before it opens. A curve that is already half way through
+    // at 100ms has spent the opening inside two frames.
+    expect(
+      samples[100]!,
+      lessThan(0.25),
+      reason: 'the book is still shutting at 100ms, not already open',
+    );
+
+    // And it must still be moving well into the window rather than parked at the end of it.
+    expect(
+      samples[400]!,
+      inExclusiveRange(0.25, 1.0),
+      reason:
+          'at 400ms the sequence is mid-flight, neither finished nor stalled',
+    );
+
+    await tester.pumpAndSettle();
+    expect(drive().value, 1, reason: 'and it lands on the resting pose');
+  });
+
   testWidgets('the counter rolls from the previous number, and never past the run', (
     tester,
   ) async {

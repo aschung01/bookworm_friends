@@ -18,6 +18,7 @@ un-reviewable. A geometry change is a diff.
 ./rive/streak_flame/build.sh                           # verify, inspect, build, install
 ../../.venv/bin/python rive/streak_flame/sheet.py      # the six keyed poses
 ../../.venv/bin/python rive/streak_flame/between.py    # and the blends between them
+../../.venv/bin/python rive/streak_flame/motion.py     # and all of it on the real curve
 ```
 
 Both outputs are committed: the `.riv` because `flutter build` cannot run the CLI and a missing
@@ -45,8 +46,13 @@ file it holds on every machine.
 `AnimationController`. **The artboard must not autoplay.** Its timeline is scrubbed, start to
 finish, by that one property.
 
-This is the whole reason Rive is acceptable here, and it is worth understanding rather than
-just implementing:
+Which means **it does not animate on its own, anywhere** — not in the CLI previewer, not in the
+Rive Editor, not in any runtime that just loads it. It animates because something writes
+`progress`. In the app that is `_flame`. In the editor it is you, dragging the bound value.
+That is the design, not a missing piece; the price is that a bare preview shows one frozen pose
+and looks broken, which is worth knowing before you conclude it is.
+
+Two consequences fall out of who owns the clock, and both are the reason Rive was acceptable:
 
 - the beats of the celebration stay in Dart, where they are greppable and a test can drive
   them, instead of moving into an editor timeline nobody can read from the repo;
@@ -80,7 +86,7 @@ Two rules the format enforces silently and the runtime does not check:
   pose blocks are the same eleven objects in the same order every time, and should be read as
   the columns of one table.
 
-## Judging it: four tools, none a superset of another
+## Judging it: five tools, none a superset of another
 
 |                            | catches                                                       |
 | -------------------------- | ------------------------------------------------------------- |
@@ -88,8 +94,9 @@ Two rules the format enforces silently and the runtime does not check:
 | `rive inspect . --summary` | bind paths, state machines, and the only `problems` list      |
 | `sheet.py`                 | **whether the drawing looks like anything**, at the six poses |
 | `between.py`               | **whether the blends between them look like anything**        |
+| `motion.py`                | **whether any of it happens where a reader can see it**       |
 
-**The last two are the ones that matter**, and the first two will happily bless a scene that
+**Only the last three look at a picture**, and the first two will happily bless a scene that
 draws nonsense. This one passed both with zero problems on its first attempt and still rendered
 the pages _behind_ the covers (a dark mountain with a cream sliver on top), an egg instead of a
 flame, and a black peg where the gutter poked out below the flame's base. None of those is a
@@ -101,6 +108,17 @@ that is not.** The first version faded `page_*` in on opacity, which looks right
 spends the whole first fifth of the sequence as a grey slab in the middle — a half-transparent
 page over a near-black cover. The opening happens in that same window, so most of it happened in
 the mud. Only a sheet of the in-betweens shows it; `between.py` samples every 4%.
+
+Nor are those two together, because **neither of them scrubs `progress` the way the app does.**
+The artboard is posed by a curve over a window, and the first curve tried — `_ignite`'s
+`easeOutBack`, shared with the hand-built glyph — crossed 0 → 100 in about 185ms and then
+overshot to 108. A 1D blend clamps past its last pose, so 20 of the window's 32 frames were the
+same held frame and the entire choreography played in three: a reader saw the flame _appear_
+rather than a book falling open, with 62% of the window frozen. Every pose was correct and every
+blend between them was correct. `motion.py` renders on the real curve and prints any value above
+100; `_flame` in `streak_celebration.dart` is the fix, and a case in `streak_celebration_test.dart`
+pins it, because both halves of that failure are silent — the runtime discards an overshoot
+without complaint, and a front-loaded curve still animates, just somewhere nobody can see.
 
 Two traps in the screenshot path:
 

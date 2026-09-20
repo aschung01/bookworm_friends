@@ -1268,7 +1268,7 @@ hand-built choreography (the glyph's colour as it catches, the spark painter, th
 resolve. `streak_flame_test.dart` covers the other side, and its one case that needs the
 library skips itself with a reason where there is none.
 
-Verified: 1766 tests pass, `flutter analyze` clean of errors and warnings, iOS builds and
+Verified: 1767 tests pass, `flutter analyze` clean of errors and warnings, iOS builds and
 launches.
 
 - **`reading_days` carries its book.** `ReadingDaysNotifier`'s state went from

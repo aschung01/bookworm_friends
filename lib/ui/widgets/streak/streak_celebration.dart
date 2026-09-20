@@ -115,6 +115,32 @@ class _StreakCelebrationState extends State<StreakCelebration>
     520,
     curve: Curves.easeOutBack,
   );
+
+  /// The same event, on the curve the **artboard** needs rather than the glyph's.
+  ///
+  /// **Two drives for one beat, because the two drawings are not the same kind of thing.**
+  /// [_ignite] scrubs a single continuous scale on a font glyph, and `easeOutBack`'s overshoot
+  /// is what gave that its pop. The Rive artboard is six discrete poses — shut, open, stretch,
+  /// squash, settle, rest — and against those the same curve is actively wrong twice over:
+  ///
+  /// - it crosses 0 → 100 in about **185ms**, so the book opening (poses 0 → 20) gets ~21ms,
+  ///   barely a frame at 60fps. Rendered at the real timing, the whole choreography played in
+  ///   three frames and a reader saw the flame *appear* rather than a book falling open;
+  /// - the overshoot then runs to 108 and back, and a 1D blend clamps past its last pose, so
+  ///   **62% of the window was a held frame**. The springiness bought the artboard nothing and
+  ///   cost it the time it needed.
+  ///
+  /// So this one uses the whole window and no overshoot. `easeInOutCubic` also happens to match
+  /// the choreography's own shape: a slow start that lets the shut book register, the fast part
+  /// through the ignition, and a long settle into the resting pose.
+  ///
+  /// Found by `rive/streak_flame/motion.py`, which renders the artboard on this curve rather
+  /// than on an even scrub — a beat nobody can see is invisible to a contact sheet.
+  late final Animation<double> _flame = _beat(
+    0,
+    760,
+    curve: Curves.easeInOutCubic,
+  );
   late final Animation<double> _bloom = _beat(60, 760);
   late final Animation<double> _sparks = _beat(120, 720, curve: Curves.linear);
   late final Animation<double> _figure = _beat(300, 860);
@@ -199,7 +225,7 @@ class _StreakCelebrationState extends State<StreakCelebration>
               // binary. If the artboard is missing — which it is until it has been authored
               // — `_Ignition` runs instead, so the sequence is complete either way.
               StreakFlame(
-                progress: _ignite,
+                progress: _flame,
                 size: _Ignition.stageSize,
                 fallback: (context) => _Ignition(
                   ignite: _ignite,

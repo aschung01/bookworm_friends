@@ -174,6 +174,7 @@ sheet is not enough.
 ./rive/streak_flame/build.sh                        # verify, inspect, build, install
 ../../.venv/bin/python rive/streak_flame/sheet.py   # render the poses and LOOK at them
 ../../.venv/bin/python rive/streak_flame/between.py # and the blends between them
+../../.venv/bin/python rive/streak_flame/motion.py  # and all of it on the real curve
 ```
 
 Both are committed — the RML because it is the source, the `.riv` because
@@ -201,6 +202,15 @@ correct can still pass through something that is not. That is how a half-transpa
 page over a near-black cover turned the first fifth of the sequence into a grey slab
 while both ends looked fine. **Nothing translucent may cross-fade over something
 dark** — that bug had two instances and this is the only check that sees either.
+
+**Nor are those two enough — run `motion.py` if the pose axis or the curve moves.**
+Neither sheet scrubs `progress` the way the app does. The flame was first driven by
+`_ignite`, whose `easeOutBack` crossed 0 → 100 in 185ms and then overshot to 108;
+a 1D blend clamps past its last pose, so **62% of the window was one held frame**
+and the whole choreography played in three. Every pose was right and every blend
+between them was right. `_flame` in `streak_celebration.dart` is its own drive for
+that reason — don't collapse the two back together — and a case in
+`streak_celebration_test.dart` fails if the overshoot returns.
 
 ### `flutter test` needs a library that worktrees do not get
 
@@ -272,7 +282,7 @@ still-pending, and a later `db push` then re-runs the DDL and fails on
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (1766 cases). There is no expected-failure list any
+`flutter test` passes completely (1767 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3
