@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/services/notification_service.dart';
@@ -41,6 +43,20 @@ class AuthNotifier extends Notifier<AuthState> {
     ref.onDispose(subscription.cancel);
 
     final session = supabase.auth.currentSession;
+    if (session != null) {
+      // **Not left to the `initialSession` event.** `onAuthStateChange` is a plain
+      // broadcast stream with no replay, and `Supabase.initialize` has already
+      // recovered the session -- and emitted for it -- by the time anything first
+      // reads this provider. Whether the listener above is attached before or after
+      // that emission is a race decided by which widget reads `authProvider` first,
+      // so the event cannot be relied on to arrive for an already-signed-in reader.
+      //
+      // Registering here covers the restored-session case directly. The event branch
+      // in `_apply` still covers a fresh sign-in. If both happen to fire, the cost is
+      // one redundant idempotent UPDATE, which is a better trade than the write being
+      // skipped -- which is the bug this whole change exists to fix.
+      unawaited(NotificationService.registerToken());
+    }
     return session == null
         ? const AuthState.unauthenticated()
         : AuthState.authenticated(session.user);
@@ -62,13 +78,30 @@ class AuthNotifier extends Notifier<AuthState> {
 
     final wasSignedOut = state.status != AuthStatus.authenticated;
     state = AuthState.authenticated(session.user);
+
+    // **Push registration is driven off the event, not off the state transition.**
+    // `build()` returns `authenticated` when a session already exists, and the
+    // recovered session's `initialSession` event arrives *after* that -- so
+    // `wasSignedOut` is false for precisely the readers who were already signed in,
+    // which is every returning user. Gating the token write on it meant only a
+    // brand-new sign-in ever attempted one, and on iOS that is the single moment the
+    // attempt is guaranteed to fail (see `PushTokenRegistrar`). Between them, those
+    // two facts are why `profiles.fcm_token` was NULL for every row in production.
+    //
+    // `tokenRefreshed` is deliberately not in this set: it fires roughly hourly for
+    // the life of the session and the token it refreshes is Supabase's, not FCM's.
+    // FCM rotation is handled by `PushTokenRegistrar.watchRefreshes`.
+    if (data.event == AuthChangeEvent.initialSession ||
+        data.event == AuthChangeEvent.signedIn) {
+      unawaited(NotificationService.registerToken());
+    }
+
     if (!wasSignedOut) return;
 
     // The OAuth screen is an in-app browser (`SFSafariViewController` on iOS).
     // The provider's redirect back to `bookworm-friends://` reaches the app but
     // does not dismiss the browser, which is left sitting blank on top of it.
     closeInAppWebView();
-    NotificationService.updateTokenInProfile();
   }
 
   Future<void> signInWithGoogle() async {

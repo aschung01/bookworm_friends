@@ -111,6 +111,12 @@
             android:value="high_importance_channel" />
     </application>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Pokes. Required from Android 13 (API 33): without it the OS drops every
+         notification silently and `requestPermission()` has nothing to prompt for,
+         so push appears to work right up until nothing arrives. `firebase_messaging`
+         raises the runtime prompt for this permission; declaring it is what makes
+         that prompt possible. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
