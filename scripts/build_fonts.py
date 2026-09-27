@@ -59,6 +59,15 @@ Weights are the four the scale asks for
 Statics rather than the variable file on purpose: Flutter does not drive a
 variable font's `wght` axis from `TextStyle.fontWeight` -- that needs
 `fontVariations` -- and four statics at ~1.2MB beat the 6.4MB variable file.
+
+A third face, cut to almost nothing
+------------------------------------
+`Nunito` sets streak numerals: the reading-streak page's hero figure
+(`AppTextStyles.streakFigure`, ExtraBold) and the library bar's chip
+(`AppTextStyles.streakChip`, Bold). Both only ever render `int.toString()` of a
+streak count, so both cuts are digits plus the minus sign a negative would need
+if one ever reached either widget -- nothing else in the app sets this family,
+and it must stay that way, or the tiny cuts stop being true.
 """
 
 from __future__ import annotations
@@ -177,7 +186,6 @@ def subset(src: Path, dst: Path, unicodes: str, text: str) -> None:
     args = [
         PYFTSUBSET,
         str(src),
-        f"--unicodes={unicodes}",
         f"--output-file={dst}",
         # `tnum` is not optional: `AppTextStyles.display`, `figure` and `label`
         # ask for tabular figures and would silently get proportional ones if the
@@ -186,6 +194,8 @@ def subset(src: Path, dst: Path, unicodes: str, text: str) -> None:
         "--no-hinting",
         "--drop-tables+=DSIG",
     ]
+    if unicodes:
+        args.append(f"--unicodes={unicodes}")
     if text:
         args.append(f"--text={text}")
     subprocess.run(args, check=True)
@@ -217,6 +227,27 @@ def main() -> None:
             # from silently falling through to Pretendard mid-title.
             unicodes=LATIN,
             text=ks_x_1001_hangul() + serif_text,
+        )
+    )
+    jobs.append(
+        Job(
+            out="Nunito-ExtraBold.ttf",
+            url=gf_ttf_url("Nunito", 800),
+            # Digits and the minus sign only -- see the module docstring. Not a
+            # `unicodes` range, so a stray glyph never sneaks back in the way a
+            # copy-pasted range could.
+            unicodes="",
+            text="0123456789-",
+        )
+    )
+    jobs.append(
+        Job(
+            out="Nunito-Bold.ttf",
+            url=gf_ttf_url("Nunito", 700),
+            # Same cut as the ExtraBold above, for the same reason: this file sets
+            # only `AppTextStyles.streakChip`'s numeral.
+            unicodes="",
+            text="0123456789-",
         )
     )
 

@@ -6,14 +6,17 @@ import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
+import 'package:bookworm_friends/models/reading_date.dart';
 import 'package:bookworm_friends/providers/book_search_provider.dart';
 import 'package:bookworm_friends/providers/invite_link_provider.dart';
+import 'package:bookworm_friends/providers/reading_days_provider.dart';
 import 'package:bookworm_friends/providers/shell_chrome_provider.dart';
 import 'package:bookworm_friends/providers/theme_provider.dart';
 import 'package:bookworm_friends/services/image_disk_cache.dart';
 import 'package:bookworm_friends/services/notification_service.dart';
 import 'package:bookworm_friends/ui/widgets/invite_link_listener.dart';
 import 'package:bookworm_friends/ui/widgets/shell_chrome.dart';
+import 'package:bookworm_friends/ui/widgets/streak_widget_sync.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -101,14 +104,31 @@ class MyApp extends ConsumerStatefulWidget {
   ConsumerState<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends ConsumerState<MyApp> {
+class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
   /// Held rather than rebuilt: `EasyLoading.init()` returns a fresh builder each
   /// call, and it now has to compose with the shell's chrome.
   late final TransitionBuilder _easyLoading = EasyLoading.init();
 
+  /// Wakes the reading day's phase at 21:00 and again at midnight.
+  ///
+  /// **The clock lives here rather than in `readingDayPhaseProvider`**, and that placement is
+  /// the whole design. The provider is a pure function of the recorded days and the current
+  /// moment; a timer inside it made it a provider every widget test had to know about, because
+  /// `testWidgets` fails a test that ends with a timer pending and a container disposed in a
+  /// tear-down is torn down after that check. Owning it at the shell keeps the provider
+  /// testable and puts the one long-lived timer in the one place that is already long-lived.
+  Timer? _phaseBoundary;
+
   @override
   void initState() {
     super.initState();
+    // **The app's first lifecycle observer**, for the same clock. A suspended app's timers do
+    // not fire on schedule, so a reader who backgrounds the app at 20:55 and returns at 22:10
+    // would come back to a phase computed on the wrong side of the boundary. Resume recomputes
+    // from the real clock, which is also what covers the timer firing an hour out across a DST
+    // transition — and why `nextReadingPhaseBoundary` can stay wall-clock arithmetic.
+    WidgetsBinding.instance.addObserver(this);
+    _schedulePhaseBoundary();
     if (Platform.isIOS) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
@@ -116,6 +136,37 @@ class _MyAppState extends ConsumerState<MyApp> {
         } catch (_) {}
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _phaseBoundary?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Only `resumed`: the passage of time is the only thing this is watching for, and a phase
+    // computed while the app was hidden is not worth the wake.
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(readingDayPhaseProvider);
+      _schedulePhaseBoundary();
+    }
+  }
+
+  /// One timer to the next boundary, rescheduled when it fires — not a ticker.
+  ///
+  /// The phase changes at most twice a day, so a periodic rebuild would be a per-second cost
+  /// for two transitions. `nextReadingPhaseBoundary` is asserted to be strictly in the future
+  /// at every minute of the day, which is what keeps this from becoming a spin.
+  void _schedulePhaseBoundary() {
+    _phaseBoundary?.cancel();
+    final now = DateTime.now();
+    _phaseBoundary = Timer(nextReadingPhaseBoundary(now).difference(now), () {
+      ref.invalidate(readingDayPhaseProvider);
+      _schedulePhaseBoundary();
+    });
   }
 
   @override
@@ -149,11 +200,18 @@ class _MyAppState extends ConsumerState<MyApp> {
       // draws nothing, and a link can arrive on any screen, so it has to sit outside
       // every route. See its class comment for the case it exists to fix — a link
       // tapped while the app is already running used to do nothing at all.
+      // `StreakWidgetSync` sits alongside for the same reason and draws nothing either: a night
+      // can be recorded from the streak page, the book details band or the finished-books sheet,
+      // and the home-screen widget has to follow all three. Innermost of the three so it is
+      // below `Localizations` — it needs `AppLocalizations` to put translated copy in the
+      // snapshot, which is what keeps those strings out of Swift.
       builder: (context, child) => _easyLoading(
         context,
         InviteLinkListener(
           navigatorKey: navigatorKey,
-          child: ShellChrome(navigatorKey: navigatorKey, child: child!),
+          child: StreakWidgetSync(
+            child: ShellChrome(navigatorKey: navigatorKey, child: child!),
+          ),
         ),
       ),
       initialRoute: AppRoutes.splash,

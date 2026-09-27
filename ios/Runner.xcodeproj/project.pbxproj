@@ -9,17 +9,45 @@
 /* Begin PBXBuildFile section */
 		1347D05B28C3913C00AAED15 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1347D05A28C3913C00AAED15 /* GoogleService-Info.plist */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		20066FDB7A13F2339AA5CE01 /* StreakFlameGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59FE27681EBDEE610E689EAA /* StreakFlameGeometry.swift */; };
+		2EF02B1B5CF39CB19C256F0D /* StreakWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860667B0F043B4C8C32EB738 /* StreakWidget.swift */; };
+		341D14AD9B3E0578BFE9EDE9 /* StreakSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9326C150869BC82E3E98A5 /* StreakSnapshot.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		A98BEAEF0011AFEE027FD692 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1DECC635F0C365479E7FA29F /* Foundation.framework */; };
 		B0F9D89E6E842E90EAF20D89 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C7D6C595B58E09D00C707163 /* Pods_Runner.framework */; };
+		BD33C09DE7CC89E3A45A42BA /* StreakWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8337D9C838CB94E369B30B31 /* StreakWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		FA10C0DE0000000000000004 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FA10C0DE0000000000000003 /* InfoPlist.strings */; };
+		FA10C0DE0000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FA10C0DE0000000000000005 /* Assets.xcassets */; };
+		FA10C0DE0000000000000008 /* Nunito-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA10C0DE0000000000000007 /* Nunito-ExtraBold.ttf */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		EBAAE3BBDFB0E8F86DAE1B0C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 85D1DAEC18BC46B8118B0A81;
+			remoteInfo = StreakWidget;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
+		8A52AE067A1AA409C280F92C /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BD33C09DE7CC89E3A45A42BA /* StreakWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -37,13 +65,20 @@
 		1347D05A28C3913C00AAED15 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		1A9326C150869BC82E3E98A5 /* StreakSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakSnapshot.swift; sourceTree = "<group>"; };
+		1DECC635F0C365479E7FA29F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		4E3707FB1F5268D411439100 /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		5295233BC35B7A8DC31D2800 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		59FE27681EBDEE610E689EAA /* StreakFlameGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakFlameGeometry.swift; sourceTree = "<group>"; };
 		5D58D0D931A248ED3AE124A0 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		6E515DAD9161071AD60060D2 /* StreakWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = StreakWidget.entitlements; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		8337D9C838CB94E369B30B31 /* StreakWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StreakWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		860667B0F043B4C8C32EB738 /* StreakWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakWidget.swift; sourceTree = "<group>"; };
 		8DDF68D586AB2E1412590B97 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -56,9 +91,19 @@
 		C7D6C595B58E09D00C707163 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA10C0DE0000000000000001 /* en */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		FA10C0DE0000000000000002 /* ko */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		FA10C0DE0000000000000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FA10C0DE0000000000000007 /* Nunito-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Nunito-ExtraBold.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		57B4993BBC5E88CC480BF2F9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A98BEAEF0011AFEE027FD692 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EB1CF9000F007C117D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -85,8 +130,17 @@
 			isa = PBXGroup;
 			children = (
 				C7D6C595B58E09D00C707163 /* Pods_Runner.framework */,
+				51BE08272166442210086498 /* iOS */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		51BE08272166442210086498 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				1DECC635F0C365479E7FA29F /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
@@ -111,6 +165,7 @@
 				09582C8A2AE678A52D3DCF73 /* Pods */,
 				316B513FA74D1885D3EB4AE4 /* Frameworks */,
 				4E3707FB1F5268D411439100 /* GoogleService-Info.plist */,
+				BAE65761AB19701DCE55C71F /* StreakWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -118,6 +173,7 @@
 			isa = PBXGroup;
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
+				8337D9C838CB94E369B30B31 /* StreakWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -139,9 +195,41 @@
 			path = Runner;
 			sourceTree = "<group>";
 		};
+		BAE65761AB19701DCE55C71F /* StreakWidget */ = {
+			isa = PBXGroup;
+			children = (
+				860667B0F043B4C8C32EB738 /* StreakWidget.swift */,
+				1A9326C150869BC82E3E98A5 /* StreakSnapshot.swift */,
+				59FE27681EBDEE610E689EAA /* StreakFlameGeometry.swift */,
+				FA10C0DE0000000000000005 /* Assets.xcassets */,
+				FA10C0DE0000000000000007 /* Nunito-ExtraBold.ttf */,
+				5295233BC35B7A8DC31D2800 /* Info.plist */,
+				6E515DAD9161071AD60060D2 /* StreakWidget.entitlements */,
+			);
+			name = StreakWidget;
+			path = StreakWidget;
+			sourceTree = SOURCE_ROOT;
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		85D1DAEC18BC46B8118B0A81 /* StreakWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 45D2F24CA6C5EF88D8894E64 /* Build configuration list for PBXNativeTarget "StreakWidget" */;
+			buildPhases = (
+				3248B7F17A3F46C10158A3EC /* Sources */,
+				57B4993BBC5E88CC480BF2F9 /* Frameworks */,
+				D145083F5997DEC089D0D954 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StreakWidget;
+			productName = StreakWidget;
+			productReference = 8337D9C838CB94E369B30B31 /* StreakWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
@@ -152,6 +240,7 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				8A52AE067A1AA409C280F92C /* Embed App Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				244CED2C32777BD21BB476A8 /* [CP] Embed Pods Frameworks */,
 				28EF5CDAA2EA4A8CDE5D8030 /* FlutterFire: "flutterfire upload-crashlytics-symbols" */,
@@ -159,6 +248,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				F3BCFF790DABC328ABEA4A6F /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -201,6 +291,7 @@
 			projectRoot = "";
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
+				85D1DAEC18BC46B8118B0A81 /* StreakWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -216,6 +307,15 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				FA10C0DE0000000000000004 /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D145083F5997DEC089D0D954 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA10C0DE0000000000000006 /* Assets.xcassets in Resources */,
+				FA10C0DE0000000000000008 /* Nunito-ExtraBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,6 +413,16 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3248B7F17A3F46C10158A3EC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2EF02B1B5CF39CB19C256F0D /* StreakWidget.swift in Sources */,
+				341D14AD9B3E0578BFE9EDE9 /* StreakSnapshot.swift in Sources */,
+				20066FDB7A13F2339AA5CE01 /* StreakFlameGeometry.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EA1CF9000F007C117D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -323,6 +433,15 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F3BCFF790DABC328ABEA4A6F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = StreakWidget;
+			target = 85D1DAEC18BC46B8118B0A81 /* StreakWidget */;
+			targetProxy = EBAAE3BBDFB0E8F86DAE1B0C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		97C146FA1CF9000F007C117D /* Main.storyboard */ = {
@@ -426,6 +545,58 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Profile;
+		};
+		5922BC78E3E54E79AAB5C084 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB31CF90195004384FC /* Generated.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = StreakWidget/StreakWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = 58P4CVB7L8;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StreakWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				OTHER_LDFLAGS = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.unicorn.bookwormFriends.StreakWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7A9AA5196720B37A356F11D8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB31CF90195004384FC /* Generated.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = StreakWidget/StreakWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = 58P4CVB7L8;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StreakWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				OTHER_LDFLAGS = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.unicorn.bookwormFriends.StreakWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -583,9 +754,45 @@
 			};
 			name = Release;
 		};
+		C154D3F93C4F0B9F8F8D27E3 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB31CF90195004384FC /* Generated.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = StreakWidget/StreakWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = 58P4CVB7L8;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StreakWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				OTHER_LDFLAGS = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.unicorn.bookwormFriends.StreakWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		45D2F24CA6C5EF88D8894E64 /* Build configuration list for PBXNativeTarget "StreakWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A9AA5196720B37A356F11D8 /* Release */,
+				5922BC78E3E54E79AAB5C084 /* Debug */,
+				C154D3F93C4F0B9F8F8D27E3 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

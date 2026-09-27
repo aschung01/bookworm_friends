@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Libstack</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+	<!--
+	  Taken from pubspec.yaml through Flutter's Generated.xcconfig, which this target's build
+	  configurations are based on, exactly as Runner/Info.plist does it.
+
+	  This is not cosmetic: App Store Connect rejects a bundle whose extension's version does
+	  not match the app's, and hardcoding either number here would reintroduce the stale
+	  MARKETING_VERSION problem AGENTS.md already warns about in project.pbxproj. One source
+	  of truth, and it is pubspec.yaml.
+	-->
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
+	<!--
+	  Nunito, for the streak figure and nothing else.
+
+	  **An extension does not inherit the host app's fonts**, and Flutter's copy lives inside
+	  App.framework's asset bundle where nothing native can reach it, so the same file is a
+	  member of this target too. It is the app's own `AppTextStyles.streak`, which is why the
+	  widget's figure and the streak page's cannot drift.
+
+	  It costs 2.7KB, because `scripts/build_fonts.py` subsets this face to digits and a minus
+	  sign -- the one thing it ever sets is `int.toString()` of a run. That is also the reason
+	  it must never be asked for a letter here: there are none in the file, and the glyphs
+	  would silently fall back.
+	-->
+	<key>UIAppFonts</key>
+	<array>
+		<string>Nunito-ExtraBold.ttf</string>
+	</array>
+</dict>
+</plist>

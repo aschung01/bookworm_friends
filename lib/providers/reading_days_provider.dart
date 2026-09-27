@@ -63,8 +63,10 @@ class ReadingDaysNotifier
         // `date` arrives as `yyyy-MM-dd`, which `DateTime.parse` reads as local
         // midnight — the same value `readingDate` produces. Nothing is reformatted
         // in between, so the key a widget holds and the key a row carries are one
-        // value. **Not `readingDate` of this**: pushing a midnight through the 4am
-        // rollover a second time would move every day in the set back by one.
+        // value. **Not `readingDate` of this**: these values are already reading
+        // dates, and relying on today's midnight rollover to make a second pass a
+        // no-op is not a bet this file should make — it was not a no-op when the
+        // rollover was 4.
         DateTime.parse(row['day'] as String): row['book_id'] as String?,
     };
   }
@@ -157,7 +159,7 @@ class ReadingDaysNotifier
   /// The value is already a date-only local midnight, so there is nothing to format
   /// *away* — and `toIso8601String` would send a time component and a `Z` for a
   /// Postgres `date` column to discard, which invites a timezone conversion at the
-  /// boundary the 4am rollover exists to keep the server out of.
+  /// boundary the midnight rollover exists to keep the server out of.
   static String _wire(DateTime day) =>
       '${day.year.toString().padLeft(4, '0')}-'
       '${day.month.toString().padLeft(2, '0')}-'
@@ -168,7 +170,7 @@ class ReadingDaysNotifier
 ///
 /// **Its own provider rather than a widget-side `contains`**, because the answer
 /// depends on `readingDate(DateTime.now())` and three surfaces ask it. Reading the
-/// clock in three places is how they come to disagree across the 4am boundary.
+/// clock in three places is how they come to disagree across the midnight boundary.
 final readTodayProvider = Provider.autoDispose<bool>((ref) {
   final days = ref.watch(readingDaysProvider).valueOrNull;
   if (days == null) return false;
@@ -195,4 +197,29 @@ final longestStreakProvider = Provider.autoDispose<int>((ref) {
   final days = ref.watch(readingDaysProvider).valueOrNull;
   if (days == null) return 0;
   return longestReadingRun(days.keys);
+});
+
+/// How far through the reading day the reader is: recorded, open, or open and late.
+///
+/// **Derived, with no clock of its own — and that is a correction worth recording.** The first
+/// cut scheduled a `Timer` to [nextReadingPhaseBoundary] in here and invalidated itself when it
+/// fired, which reads well and is wrong: a provider that spawns a timer is a provider every
+/// widget test has to know about. `testWidgets` fails a test that ends with a timer pending, and
+/// a `ProviderContainer` disposed in a tear-down is torn down *after* that check runs — so
+/// seventeen existing cases on the streak page broke at once, none of them about the clock.
+///
+/// **So `MyApp` owns the clock and this owns the answer.** The shell schedules one timer to the
+/// next boundary and invalidates this provider when it fires, and also on resume, because a
+/// suspended app's timers do not fire on schedule — a reader who backgrounds the app at 20:55
+/// and returns at 22:10 would otherwise see a phase computed on the wrong side of the boundary.
+/// That split leaves this provider a pure function of the map and the current moment, which is
+/// what every other value in this file already is.
+///
+/// While the fetch is in flight the days are unknown, and this answers `open` or `openLate` from
+/// the clock alone — the same choice `readTodayProvider` makes in returning `false`. It is safe
+/// for the same reason: the surfaces that draw a phase are the ones that already gate on
+/// `hasValue`, so nothing paints a guess.
+final readingDayPhaseProvider = Provider.autoDispose<ReadingDayPhase>((ref) {
+  final days = ref.watch(readingDaysProvider).valueOrNull;
+  return readingDayPhase(DateTime.now(), days?.keys ?? const <DateTime>[]);
 });

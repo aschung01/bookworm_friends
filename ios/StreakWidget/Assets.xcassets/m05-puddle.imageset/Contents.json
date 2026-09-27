@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "m05-puddle.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "m05-puddle@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "m05-puddle@3x.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

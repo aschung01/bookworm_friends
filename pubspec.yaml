@@ -15,7 +15,6 @@ dependencies:
   flutter_riverpod: ^2.6.0
   intl: ^0.20.2
   flutter_easyloading: ^3.0.5
-  phosphor_flutter: ^2.1.0
   animated_text_kit: ^4.2.2
   shimmer: ^3.0.0
   flutter_svg: ^2.0.10
@@ -257,3 +256,13 @@ flutter:
           weight: 700
         - asset: assets/fonts/designhouseOTFLight.otf
           weight: 300
+    # Nunito (OFL) sets streak numerals only -- see `AppFonts.streak` and the
+    # module docstring in `build_fonts.py`. Both weights are cut to digits and a
+    # minus sign, so each ships at a few KB rather than the ~110KB a single-weight
+    # static would otherwise cost.
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700

@@ -7,7 +7,7 @@
 // That is the failure mode worth a file of its own. The chip, the sheet's checkbox and
 // the Library Card's tile all depend on `readingDate(DateTime.now())`, and reading the
 // clock separately in three widgets is exactly how they come to disagree across the
-// 4am rollover — one of them says the streak is 12 and another says 11, for ten
+// midnight rollover — one of them says the streak is 12 and another says 11, for ten
 // minutes a night, and nothing reproduces it in daylight. So the clock is read in these
 // providers and nowhere downstream.
 //
@@ -154,7 +154,7 @@ void main() {
   group('the three surfaces agree', () {
     test('a run ending today is both current and recorded', () async {
       // One clock read, in the providers, so a chip and a tile cannot land on
-      // different sides of the 4am boundary.
+      // different sides of the midnight boundary.
       final container = await _container(_run(5, endingOn: today));
       expect(container.read(readTodayProvider), isTrue);
       expect(container.read(currentStreakProvider), 5);
