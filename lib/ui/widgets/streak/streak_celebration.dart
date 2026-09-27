@@ -6,24 +6,80 @@ import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
-import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_week_row.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_flame.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame_mark.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_span_track.dart';
 
-/// The seals a run can earn, in order.
+/// The spans a run can reach, in order.
 ///
-/// **Provisional, and the design record says so** (open question 7): 7 / 30 / 100 is the
-/// obvious ladder, and the constraint it has to satisfy is that seals stay rare enough to
-/// mean something on a Library Card that will eventually carry several. It is a constant
-/// here rather than a literal in the celebration so that changing the ladder is one edit
-/// and cannot leave the bar filling toward one number while the copy names another.
+/// **Nothing in the celebration reads these any more, and that is the point.** They used to
+/// drive both the progress bar and its caption, as "the 7-day seal" — a reward that does not
+/// exist. There is no award, unlock or earn path anywhere in `lib/`, and `_Seal` in
+/// `shareable_library_card.dart` is the app's own logo emboss, present on every Library Card
+/// regardless of any streak, so the copy also borrowed a noun the reader already owned. The
+/// bar and the caption now measure the reader's own record instead, which
+/// `longestStreakProvider` already computes.
+///
+/// Kept, unused by `lib/`, because the ladder itself is sound and is where making these
+/// spans *real* would start — see `docs/mockups/streak-week/index.html`, which draws that
+/// proposal and names the two decisions it still needs. `streakMilestoneTarget` and
+/// `test/streak_celebration_test.dart`'s ladder group are its only remaining readers.
 const List<int> kStreakMilestones = [7, 30, 100, 365];
 
 /// The figure the celebration counts up to, for a test that must not read the flame's own
 /// numerals or the week row's.
 const Key kStreakCelebrationFigureKey = ValueKey('streak-celebration-figure');
 
-/// The seal this run is working toward, or null once every one has been passed.
+/// The celebration's ground.
+///
+/// **White, which reverses the cream this shipped with.** Every other value on this screen
+/// still comes from `card_lighting.dart`, and the cream [kCandleGlow] was the whole premise:
+/// a candlelit surface, warm rather than bright, with the flame's halo readable because the
+/// ground was already warm. That premise lost to a plainer one — Duolingo's card is white,
+/// the reference the whole screen is measured against is white, and the cream read as a tint
+/// over the app rather than as a surface of its own.
+///
+/// **What it costs, stated rather than discovered later.** The flame's own halo and the pool
+/// under the book are amber at low alpha, authored to sit on cream; on white they are paler
+/// and closer to invisible, which is exactly what
+/// `test/streak_flame_golden_test.dart` used to warn about from the other direction. And the
+/// ink below had to move with it, because a mid-amber on white is worse than on cream, not
+/// better.
+///
+/// A constant rather than a literal so the widget, `streak_celebration_test.dart` and the
+/// flame's golden cannot disagree about what this screen stands on — they did, once: the
+/// golden's ground was hardcoded.
+const Color kStreakCelebrationGround = Colors.white;
+
+/// The ink for the figure and its label.
+///
+/// **[kCandleFlame] #F2A93F — the colour the fire itself is drawn in — and this reverses a
+/// documented decision, on instruction.** It was `AppColors.light.flame` #B54708 for exactly
+/// the reason `app_theme.dart` gives: that token is deliberately darkened from a true fire
+/// orange far enough to pass AA while still reading as orange. The reversal is a deliberate
+/// choice to match the flame above rather than to clear a threshold, and the numbers it gives
+/// up are worth having written down:
+///
+/// | on white              | contrast |
+/// | --------------------- | -------- |
+/// | `flame` #B54708       | 5.43:1   |
+/// | **`kCandleFlame`**    | **2.00:1** |
+///
+/// 2.00:1 is under AA's 4.5:1 for body text **and** under the 3:1 allowed for large text,
+/// which the 64pt figure and the 22pt semibold label both qualify as. Darkening this hue
+/// until it reaches even 3:1 lands near #BF8632, an ochre that no longer reads as fire, so
+/// there is no version of this instruction that is both the flame's colour and compliant —
+/// the saturation is what runs out, not the lightness. Duolingo's own figure makes the same
+/// trade.
+///
+/// `final` rather than `const`: kept that way because the value is a token from another
+/// library and the previous one could not be `const` either — Dart will not read a field off
+/// a const instance inside a constant expression, the same reason `kStreakFlameFactory` in
+/// `streak_flame.dart` is `final`.
+final Color _kStreakCelebrationInk = kCandleFlame;
+
+/// The next span above this run, or null once every one has been passed.
 int? streakMilestoneTarget(int streak) {
   for (final target in kStreakMilestones) {
     if (streak < target) return target;
@@ -33,9 +89,10 @@ int? streakMilestoneTarget(int streak) {
 
 /// The one second in the day the reader is owed a reward.
 ///
-/// **Duolingo's grammar, in the library's own candlelight.** One figure, one label, the
-/// week it belongs to, one way out — and the palette is [kCandleFlame] over [kCandleGlow],
-/// the tokens `card_lighting.dart` owns and the reading lamp already borrows. Deliberately
+/// **Duolingo's grammar, and now on Duolingo's ground.** One figure, one label, the
+/// week it belongs to, one way out — over [kStreakCelebrationGround] white, with the flame
+/// and the counter in [kCandleFlame]. It shipped on [kCandleGlow] cream and that is recorded
+/// on the ground constant rather than deleted. Deliberately
 /// *not* Duolingo's green: in this app green is the brand colour and means something else
 /// on every other screen, so a celebration in it would read as chrome.
 ///
@@ -72,13 +129,25 @@ class StreakCelebration extends StatefulWidget {
   const StreakCelebration({
     super.key,
     required this.streak,
+    required this.best,
     required this.week,
     required this.today,
     required this.onDone,
   });
 
-  /// The run *after* tonight was recorded. The figure, and what the milestone bar measures.
+  /// The run *after* today was recorded. The figure, and what the bar measures.
   final int streak;
+
+  /// The longest run on record, from `longestStreakProvider`.
+  ///
+  /// **`longestReadingRun` counts the run in progress**, so `best >= streak` always holds
+  /// and `streak == best` is not a tie — it is the night the record is being set. That is
+  /// what lets this screen hand out a real reward without one new stored field.
+  ///
+  /// Passed rather than watched because this widget is deliberately provider-free:
+  /// `reading_streak_page.dart` owns every query this feature makes, and a second read here
+  /// would be a second source for one number.
+  final int best;
 
   /// The seven days ending today, oldest first: whether each was recorded.
   ///
@@ -222,10 +291,14 @@ class _StreakCelebrationState extends State<StreakCelebration>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final target = streakMilestoneTarget(widget.streak);
+    // Short of the record, so there is a distance worth naming. `best` counts this run,
+    // so the other branch means the record is being set right now.
+    final chasing = widget.best > widget.streak;
+    // To *beat* a best of N you need N+1 days, not N.
+    final toBeat = widget.best + 1 - widget.streak;
 
     return ColoredBox(
-      color: kCandleGlow,
+      color: kStreakCelebrationGround,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -240,7 +313,11 @@ class _StreakCelebrationState extends State<StreakCelebration>
               StreakFlame(
                 progress: _flame,
                 liveness: _alive,
-                size: _Ignition.stageSize,
+                // **[StreakFlame.stageSize], not `_Ignition.stageSize`.** The two used to be
+                // the same 152, which quietly tied the Rive flame's on-screen size to the
+                // point size of the fallback's font glyph; see the long note on that
+                // constant. The fallback below keeps its own box.
+                size: StreakFlame.stageSize,
                 fallback: (context) => _Ignition(
                   ignite: _ignite,
                   bloom: _bloom,
@@ -259,8 +336,20 @@ class _StreakCelebrationState extends State<StreakCelebration>
                 animation: _label,
                 child: Text(
                   l10n.streakCelebrationLabel(widget.streak),
-                  style: AppTextStyles.subtitle.copyWith(
-                    color: kCandleStockTop.withValues(alpha: 0.7),
+                  // **Full opacity, and dropping the 0.7 it used to carry is not cosmetic.**
+                  // The alpha was fine against `kCandleStockTop`, which still measured 5.8:1
+                  // blended over the cream ground. The same 70% on this orange composites to
+                  // #CB7740 and **2.8:1**, under AA — so recolouring the label without also
+                  // taking the alpha off would have quietly made it fail. At 100% it is
+                  // 4.55:1, which clears AA for body text.
+                  //
+                  // **`titleUser` is the scale's 22pt sans step, one above `subtitle`'s 17.**
+                  // Its name records where the step came from rather than restricting it, and
+                  // reusing an existing step is what `text_style_test.dart` asks for — a
+                  // `subtitleStreak` duplicating these exact metrics is the scale drifting
+                  // back into thirteen sizes, which is the thing that guard exists to stop.
+                  style: AppTextStyles.titleUser.copyWith(
+                    color: _kStreakCelebrationInk,
                   ),
                 ),
               ),
@@ -278,25 +367,70 @@ class _StreakCelebrationState extends State<StreakCelebration>
                 animation: _bar,
                 child: Column(
                   children: [
-                    if (target != null) ...[
-                      _MilestoneBar(
-                        animation: _bar,
-                        progress: widget.streak / target,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
+                    // **The span ladder, and this screen is its only home.**
+                    //
+                    // It shipped on the streak page first, standing between the week row
+                    // and the month card, and was moved here on instruction. That move
+                    // reconciles the two options the design record had left fighting
+                    // (`docs/mockups/streak-week/index.html`): **F** wanted a ladder, **G**
+                    // wanted no standing reminder of what the reader has not done and the
+                    // whole reward in the celebration. F's object shown only at G's moment
+                    // is both — a reader meets the ladder on the night they have just added
+                    // to it, and never as a permanent list of four things they have not
+                    // managed. It also puts the object on the ground it was drawn for:
+                    // `StreakSpanTrack` paints in `kCandleStockTop` and `kCandleFlame`,
+                    // which are candle tokens, and on the page it was the only candlelit
+                    // thing on `pageBackground`.
+                    //
+                    // **It replaced `_MilestoneBar`, which is deleted rather than moved
+                    // aside.** Two horizontal amber bars 10pt apart is one duplication; the
+                    // worse one is that the old bar measured `streak` against `best + 1`
+                    // and the sentence directly under it said that same figure in words —
+                    // "8 more days to beat your best" *is* the bar, drawn. The ladder says
+                    // something the sentence cannot: where tonight's run sits among spans
+                    // that have names. And it is here every night, where the bar vanished
+                    // on a record night — the one night with the most to show.
+                    //
+                    // **The fill does not animate.** It is set once, at the fraction the
+                    // run in progress has reached; the `_Rise` above is the reveal.
+                    //
+                    // **This reads `widget.streak`, not `widget.best`.** It read the record
+                    // for one round, on the reasoning that the record is the more honest
+                    // number to show since it never falls. That was backwards: it drew the
+                    // rail far along a rung the *current* run had no claim on — sharpest
+                    // right after a lapse, when the streak has just reset to 1 and the rail
+                    // still shows the old run's reach — with nothing on screen saying the
+                    // fill was the old run rather than the new one. The record is still
+                    // named, in words, by the caption below.
+                    StreakSpanTrack(
+                      streak: widget.streak,
+                      rungs: [
+                        StreakSpan(days: 7, label: l10n.streakSpanWeek),
+                        StreakSpan(days: 30, label: l10n.streakSpanMonth),
+                        StreakSpan(days: 100, label: l10n.streakSpanHundred),
+                        StreakSpan(days: 365, label: l10n.streakSpanYear),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     Text(
-                      // Three different things to say, and the first day gets its own
-                      // line: "29 more days to the 30-day seal" is a discouraging thing to
-                      // read on the night someone started.
+                      // Three things to say, and the first day still gets its own line:
+                      // a countdown is a discouraging thing to read on day one.
+                      //
+                      // **This used to name a seal, and there is no seal.**
+                      // `kStreakMilestones` fed the bar and one sentence and nothing
+                      // else — no award, unlock or earn path exists anywhere in `lib/`
+                      // — and the noun was already spent on `_Seal` in
+                      // `shareable_library_card.dart`, the app's own logo emboss, which
+                      // every Library Card carries whether or not its reader has ever
+                      // recorded a day. So the line promised an object that is never
+                      // granted, named after one the reader already had, which is why it
+                      // read as *so what?*. `longestStreakProvider` ships and is the one
+                      // stake the app can honestly point at today.
                       widget.streak == 1
                           ? l10n.streakCelebrationFirst
-                          : target == null
-                          ? l10n.streakCelebrationSealed(kStreakMilestones.last)
-                          : l10n.streakCelebrationMilestone(
-                              target - widget.streak,
-                              target,
-                            ),
+                          : chasing
+                          ? l10n.streakCelebrationChasing(toBeat)
+                          : l10n.streakCelebrationRecord,
                       textAlign: TextAlign.center,
                       style: AppTextStyles.body.copyWith(
                         color: kCandleStockTop.withValues(alpha: 0.65),
@@ -328,11 +462,16 @@ class _StreakCelebrationState extends State<StreakCelebration>
 
 /// The flame catching: it lights, it throws sparks, it glows, and then it gleams.
 ///
-/// **Four beats on one glyph, and the glyph is the shipped one.** [kReadingStreakIcon] is a
-/// font codepoint precisely because the chip needs the same flame in two tints; replacing it
-/// here with a drawn or vector flame would put two flames in the app that can drift, which
-/// is the defect `reading_streak_chip.dart` already warns about for the share card's.
-/// Everything below therefore *decorates* that glyph rather than substituting for it.
+/// **Four beats on one mark, and the mark is now the artboard's own silhouette.** This used
+/// to say something stronger and wrong: that the flame here had to stay `kReadingStreakIcon`,
+/// a Phosphor glyph, *because* the chip needed the same flame in two tints, and that drawing
+/// a vector one here would put two flames in the app that could drift. The premise was right
+/// and the arithmetic backwards — there were already two flames, this glyph and the Rive
+/// artboard a few lines above it, and this is the code path that runs when the artboard is
+/// missing. So the fallback was the one place in the app guaranteed to draw a *different*
+/// flame from the one it was standing in for. [StreakFlameMark] is generated from the
+/// artboard's own point lists, so the fallback and the real thing are one silhouette and the
+/// four beats below decorate that.
 class _Ignition extends StatelessWidget {
   const _Ignition({
     required this.ignite,
@@ -357,11 +496,13 @@ class _Ignition extends StatelessWidget {
 
   /// The flame before it catches: the candle family's own brown, most of the way out.
   ///
-  /// **Not a grey.** Duolingo's dormant flame is desaturated because its ground is white;
-  /// this ground is [kCandleGlow] cream, and a true grey on cream reads as a hole rather
-  /// than as an unlit wick. This is the same hue the copy is set in, nearly transparent —
-  /// which is also exactly what the streak page means by an open day, where `_Hero` tints
-  /// the flame `secondaryText` until tonight is in. The ignition is that rule, animated.
+  /// **Not a grey, even though the ground is now white.** Duolingo's dormant flame is
+  /// desaturated and its ground is white too, so the original reason given here — that a true
+  /// grey on cream reads as a hole — no longer applies. It stays brown anyway for the
+  /// stronger reason the note already carried: this is the same hue the copy is set in,
+  /// nearly transparent, and it is exactly what the streak page means by an open day, where
+  /// `_Hero` tints the flame `secondaryText` until today is in. The ignition is that rule,
+  /// animated.
   static final Color dormant = kCandleStockTop.withValues(alpha: 0.32);
 
   @override
@@ -423,11 +564,16 @@ class _Ignition extends StatelessWidget {
                 // `easeOutBack` is already the overshoot — it carries past 1 and settles —
                 // so this is one tween rather than a `TweenSequence` pretending to be one.
                 scale: 0.4 + ignite.value * 0.6,
-                child: Icon(
-                  kReadingStreakIcon,
+                child: StreakFlameMark(
                   size: flameSize,
                   // The colour floods in over the first half of the burst, so the flame is
                   // fully lit by the time it stops growing rather than arriving lit.
+                  //
+                  // The core is left to `StreakFlameMark`'s own derivation rather than being
+                  // lerped separately, which means it lights *with* the body from the same
+                  // number. Handing it `kCandleFlameCore` outright would have the core arrive
+                  // fully lit over a body still going grey — a bright tongue inside a dead
+                  // shape, which is the one frame of this beat that cannot look right.
                   color:
                       Color.lerp(
                         dormant,
@@ -604,9 +750,18 @@ class _Counter extends StatelessWidget {
             child: Text(
               '${(from + (streak - from) * value.value).round()}',
               key: kStreakCelebrationFigureKey,
-              // `display` carries tabular figures, which is what stops the width jumping
-              // as the digits roll.
-              style: AppTextStyles.display.copyWith(color: kCandleStockTop),
+              // `displayStreak` carries tabular figures, which is what stops the width
+              // jumping as the digits roll.
+              //
+              // **A token rather than `display.copyWith(fontSize: 64)`.** That was the first
+              // attempt and `text_style_test.dart` rejected it: no call site under `lib/ui`
+              // may state its own size, because a size the scale lacks means the scale is
+              // wrong rather than that this line needs an exception. Raising `display`
+              // itself was not available either — the Library Card's hero figure and
+              // `StatTile` both read it, so this screen would have grown those.
+              style: AppTextStyles.displayStreak.copyWith(
+                color: _kStreakCelebrationInk,
+              ),
             ),
           ),
         );
@@ -663,23 +818,31 @@ class _WeekCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        // A shade of the ground rather than white: a white card on cream reads as a
-        // different surface, and this is meant to be part of the same piece of paper.
-        color: Colors.white.withValues(alpha: 0.45),
+        // **A border and no fill, which the move to a white ground forced.** This was
+        // `Colors.white` at 45% — a shade of the cream it sat on, so the card read as the
+        // same piece of paper rather than a second surface. On white that fill is *nothing*:
+        // the card disappeared entirely and only the row inside it remained. A hairline is
+        // how a white card on white gets an edge, and it is also the grammar the row
+        // redesign is heading toward (`docs/mockups/streak-week/index.html`, `el-card`).
+        border: Border.all(color: kCandleStockTop.withValues(alpha: 0.12)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: ReadWeekRow(
         days: week,
         endingOn: today,
-        // The candle pair, because this screen paints its own cream ground and the theme's
-        // inks would be white on it in dark mode.
+        // The candle pair. **Still the candle pair on a white ground**, because the reason
+        // was never the cream: `context.colors` hands back white type in dark mode, and
+        // this screen has no dark variant, so a theme-read palette would vanish here.
         palette: ReadWeekPalette.candle,
-        // Off, so that exactly one cell on this screen arrives tilted. Six already-raked
+        // Off, so that exactly one token on this screen arrives tilted. Six already-raked
         // neighbours would bury the one beat the sequence is built around.
         tilt: false,
-        // The closing beat's cell is inverted rather than merely stamped — `.lweek s.fresh`
-        // in the record. Against six neighbours that are already the accent colour, a
-        // seventh in the same wash is not somewhere for the eye to land.
+        // **Lifted rather than inverted, which is a downgrade forced by the row redesign
+        // and not a change of mind.** The old cell was a 10% wash inside an edge, so a
+        // solid fill with a reversed-out letter was a real escalation away from its six
+        // neighbours. Every read day is now *already* solid and already carries a
+        // reversed-out check, so there is nothing left to invert to. What marks this one
+        // out is the shadow this adds plus the overshoot and tilt below.
         freshLast: true,
         decorateLast: (cell) => ScaleTransition(
           // Overshooting its own size and staying there: the record's
@@ -700,33 +863,12 @@ class _WeekCard extends StatelessWidget {
   }
 }
 
-/// How far this run is toward its next seal.
-class _MilestoneBar extends StatelessWidget {
-  const _MilestoneBar({required this.animation, required this.progress});
-
-  final Animation<double> animation;
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: SizedBox(
-        height: 8,
-        child: ColoredBox(
-          color: kCandleStockTop.withValues(alpha: 0.12),
-          child: AnimatedBuilder(
-            animation: animation,
-            builder: (context, _) => FractionallySizedBox(
-              alignment: AlignmentDirectional.centerStart,
-              // Fills *with* the beat rather than jumping to its value, so the bar is one
-              // of the beats that happen instead of a figure that was already there.
-              widthFactor: (progress * animation.value).clamp(0.0, 1.0),
-              child: const ColoredBox(color: kCandleFlame),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// **`_MilestoneBar` used to live here and is deleted, not parked.** It was an 8pt rail
+// filling `streak / (best + 1)`, hidden on a record night. `StreakSpanTrack` replaced it,
+// moved down from the streak page; the reasoning is at its call site above. One thing it
+// taught that is worth keeping without it: its `SizedBox` had a height and no width, and
+// because the parent `Column` centres its children the whole stack collapsed onto its own
+// fill — a `ColoredBox` sizes to its child, and a `FractionallySizedBox` is a fraction *of
+// the space it is given*. The bar drew as a short amber dash floating mid-screen with no
+// track behind it, and the suite was green throughout. `StreakSpanTrack` cannot repeat that
+// — it is a `LayoutBuilder` over the width it is handed — but any future rail here can.

@@ -277,6 +277,16 @@ class _HomePageState extends ConsumerState<HomePage> {
           // providers — see `LibraryCardSheet.streak`.
           streak: ref.watch(currentStreakProvider),
           longestStreak: ref.watch(longestStreakProvider),
+          // The same provider the bar's chip keys its tint on, so the chip and the card
+          // cannot disagree about whether today counts.
+          readToday: ref.watch(readTodayProvider),
+          // The same destination `ReadingStreakChip` pushes, and pushed the same way:
+          // on the root navigator's own table, so the library and this sheet are still
+          // exactly as the reader left them underneath. Two doors to one page is the
+          // point — the chip is the everyday glance and the card is where a reader
+          // goes looking for their figures.
+          onStreakTap: () =>
+              Navigator.pushNamed(context, AppRoutes.readingStreak),
         );
     }
   }

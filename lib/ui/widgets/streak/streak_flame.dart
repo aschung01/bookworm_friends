@@ -99,6 +99,75 @@ class StreakFlame extends StatefulWidget {
     required this.fallback,
   });
 
+  /// The square the celebration draws the artboard into.
+  ///
+  /// **Its own number, and not `_Ignition.stageSize`, which is what it used to be.** That
+  /// constant is `flameSize * 2`, where `flameSize` is the point size of
+  /// [kReadingStreakIcon] in the hand-built fallback — "twice the flame, so a spark can
+  /// leave the glyph and still be drawn". Sizing the Rive artboard off the fallback's font
+  /// metrics was never a decision; it was the artboard inheriting the only box that already
+  /// existed. The two have no reason to agree, and holding them together is what made the
+  /// flame un-growable.
+  ///
+  /// That mattered because a reader called the flame small and was right: measured off a
+  /// render it was 134 of the artboard's 304 units, so 44% of the frame. The artboard's own
+  /// frame was then grown to 480 to hold a flame three times as tall — and **on its own that
+  /// reached the screen as nothing at all**, because [rive.Fit.contain] maps the artboard
+  /// onto this box and only the flame's *fraction* of the artboard survives the mapping.
+  /// Growing an artboard and growing a drawing inside it are opposite moves; the first is
+  /// cancelled exactly by the fit.
+  ///
+  /// 252 is that arithmetic run backwards. On-screen flame height is `fraction × size`: it
+  /// was 0.44 × 152 = 67px and is now 0.84 × 252 = 211px, which is the 3x that was asked
+  /// for. The artboard-to-screen scale goes 152/304 = 0.500 to 252/480 = 0.525, so the
+  /// *book* comes out a hair larger rather than smaller, and the page-edge hairlines stay
+  /// above a pixel. That last point was raised as a risk and was wrong — the box grew by
+  /// more than the artboard did (1.66x against 1.58x), so every detail in the drawing gained
+  /// 5% instead of losing a third.
+  ///
+  /// **What this does cost is vertical room**, and the celebration is a column of fixed
+  /// pieces between two `Spacer`s, which is the shape that overflows first. 100 extra points
+  /// of flame comes out of that slack. `streak_celebration_test.dart` pins it at 375×667 as
+  /// well as 393×852 for exactly this reason: before this change nothing in the suite set a
+  /// surface short enough to fail.
+  ///
+  /// **This is now the box's *height*, and the width comes from [artboardAspect].** It was the
+  /// side of a square while the artboard was one.
+  static const double stageSize = 252;
+
+  /// The artboard's own width over its height, so the box can match it.
+  ///
+  /// **The box has to carry the artboard's aspect or [rive.Fit.contain] letterboxes**, and a
+  /// letterbox is not cosmetic here: `contain` takes `min(W / artboardW, H / artboardH)`, so a
+  /// square box around a 6:5 artboard scales by the *width* ratio and the flame comes out a
+  /// sixth smaller than the same box gives it today. The room the artboard just gained would be
+  /// spent shrinking the drawing rather than on the spray it was gained for.
+  ///
+  /// **Why the artboard is 360 × 300 rather than square, which is the interesting part.** The
+  /// burst spray is drawn behind the flame, so a bit only reads once it is clear of the
+  /// silhouette — and at 300 square the field between the settled body (half-width 93) and the
+  /// frame's edge (150) was 57 units, falling to 10 at the burst. Measured against the Duolingo
+  /// still the brief came from, its particles reach about 2.0–2.5× their flame's half-width;
+  /// ours reached 1.61×. 360 puts it at 1.94×.
+  ///
+  /// **And the growth is horizontal because that is the axis with slack.** On-screen flame
+  /// height is `(flame ÷ artboard) × box`, so growing the artboard and the box together cancels
+  /// exactly and the flame does not change size — 195px before and after. Doing it by shrinking
+  /// the drawing inside a *square* artboard and raising [stageSize] to compensate reaches the
+  /// same ratio, but grows the box in both directions: the 33%-of-frame share that would match
+  /// the reference's crop needs a 475pt box, wider than the phone, and every point of height is
+  /// taken from the slack described above. Widening costs nothing vertically. The celebration
+  /// pads itself 28 points each side, so the box's width budget is 319 on a 375pt phone; this
+  /// lands at 302 and leaves 17.
+  ///
+  /// Note the reference's crop includes part of a numeral below its flame, so it is a card
+  /// region rather than a tight box, and "share of the frame" overstates what is wanted. Reach
+  /// in flame half-widths is the comparable number, and it is the one above.
+  static const double artboardAspect = 360 / 300;
+
+  /// The width the box gets, given a height of [size].
+  static double stageWidthFor(double height) => height * artboardAspect;
+
   /// 0 → 1 across the ignition window, driven by the celebration's own controller.
   ///
   /// **Linear.** The artboard's `Ignite` timeline carries its own easing — a hold on the shut
@@ -115,7 +184,7 @@ class StreakFlame extends StatefulWidget {
   /// side of the pose the ignition ends on.
   final Animation<double> liveness;
 
-  /// The square the artboard is drawn into.
+  /// The height of the box the artboard is drawn into; the width follows [artboardAspect].
   final double size;
 
   /// What to draw when there is no artboard to draw.
@@ -221,10 +290,27 @@ class _StreakFlameState extends State<StreakFlame> {
     // **The fallback is what shows while resolving, not a spinner and not a gap.** Reading an
     // asset takes a frame or two, and this is the first beat of a 1.5s sequence: a hole where
     // the flame belongs would be more visible than the swap.
-    if (!_settled || artboard == null) return widget.fallback(context);
+    //
+    // **It is boxed to [size] rather than returned bare, and that is a layout invariant
+    // rather than tidiness.** Returned bare, this widget's height was whatever the fallback
+    // happened to be — `_Ignition`'s 152 — so the celebration's column was 100 points
+    // shorter on a machine where the artboard failed to resolve than on one where it
+    // succeeded. Which of those a run gets depends on whether `rive_native`'s dylib has been
+    // downloaded into the gitignored `build/`, so the column's layout depended on a file
+    // nobody commits, and the 375×667 case in `streak_celebration_test.dart` was measuring
+    // the short path while claiming to cover the tall one. `Center` rather than a tight box:
+    // `_Ignition` sizes its own spark field off `_Ignition.stageSize` and lays sparks out
+    // across it, so forcing it wider would silently rescale the hand-built choreography.
+    if (!_settled || artboard == null) {
+      return SizedBox(
+        width: StreakFlame.stageWidthFor(widget.size),
+        height: widget.size,
+        child: Center(child: widget.fallback(context)),
+      );
+    }
 
     return SizedBox(
-      width: widget.size,
+      width: StreakFlame.stageWidthFor(widget.size),
       height: widget.size,
       child: rive.RiveArtboardWidget(artboard: artboard, painter: _painter),
     );

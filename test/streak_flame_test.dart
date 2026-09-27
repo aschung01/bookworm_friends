@@ -42,7 +42,7 @@ Future<void> _pump(
             child: StreakFlame(
               progress: progress,
               liveness: liveness ?? const AlwaysStoppedAnimation(0),
-              size: 152,
+              size: StreakFlame.stageSize,
               fallback: (context) =>
                   const Text('hand-built', key: _fallbackKey),
             ),

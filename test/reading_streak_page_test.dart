@@ -20,9 +20,10 @@ import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/reading_days_provider.dart';
 import 'package:bookworm_friends/ui/pages/reading_streak_page.dart';
+import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame_mark.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
-import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_calendar_month.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
 
@@ -77,11 +78,11 @@ class _FakeActions extends LibraryActions {
 
 /// The day the *app* thinks it is, which is not the same as the calendar date.
 ///
-/// **Through `readingDate`, and getting this wrong broke every case in this file once.** The
-/// 4am rollover means that between midnight and 03:59 the app's today is the previous
-/// calendar day, so a fixture built from `DateTime.now()`'s raw date disagreed with the page
-/// by one day — and only for anyone running the suite after midnight. Read it the way the
-/// page reads it and the hour stops mattering.
+/// **Through `readingDate`, and getting this wrong broke every case in this file once,
+/// back when the rollover was 4am.** Even now that the rollover is midnight and this is
+/// just the plain calendar date, the helper stays: it is what the page itself calls, so a
+/// fixture built any other way is one accidental rollover change away from disagreeing
+/// with the page again.
 final _today = readingDate(DateTime.now());
 
 /// A run of [length] days ending today, with no book attributed.
@@ -98,6 +99,12 @@ Map<DateTime, String?> _runEndingToday(int length) => {
 Map<DateTime, String?> _runEndingYesterday(int length) => {
   for (var back = 1; back <= length; back++)
     DateTime(_today.year, _today.month, _today.day - back): null,
+};
+
+/// A run of [length] days ending [back] days before today — history, not the current run.
+Map<DateTime, String?> _runEndingDaysAgo(int back, int length) => {
+  for (var i = 0; i < length; i++)
+    DateTime(_today.year, _today.month, _today.day - back - i): null,
 };
 
 /// Two open books and one that is not, which is the shape the picker's grouping is about.
@@ -128,7 +135,21 @@ Future<_Rig> _pump(
   WidgetTester tester, {
   Map<DateTime, String?>? log,
   List<Shelf>? shelves,
+  ReadingDayPhase? phase,
+  Size surface = const Size(393, 852),
 }) async {
+  // **A phone-shaped surface by default, because the harness default is not one.**
+  // `flutter_test` hands out 800×600 — wider and much shorter than any device the app
+  // supports, the smallest being an iPhone SE at 667. The page itself scrolls and survives
+  // that, but half the cases here go on to *present the celebration*, which is a full-screen
+  // column of fixed-height pieces between two `Spacer`s and has no scroll view. When the span
+  // ladder moved into it, that column grew past 600 and four cases here failed with a
+  // `RenderFlex` overflow about a widget none of them mentions. Setting a real size once is
+  // both the fix and the honest statement of what this page is.
+  tester.view.physicalSize = surface;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+
   final days = _FakeReadingDays(log ?? const {});
   final container = ProviderContainer(
     overrides: [
@@ -138,6 +159,12 @@ Future<_Rig> _pump(
         () => FakeLibraryNotifier(shelves ?? _shelves()),
       ),
       libraryActionsProvider.overrideWith(_FakeActions.new),
+      // **Overridden only when a case is about the evening warning.** Left alone, the real
+      // provider derives the phase from the fake log exactly as it would in the app — which is
+      // what every other case here wants, and why it is a plain derived provider with no clock
+      // of its own (`MyApp` owns the timer). Pinning it is for the cases that need a particular
+      // hour, because the alternative is a suite that passes differently after 21:00.
+      if (phase != null) readingDayPhaseProvider.overrideWithValue(phase),
     ],
   );
   addTearDown(container.dispose);
@@ -189,22 +216,32 @@ void main() {
   // `dart run rive_native:setup`. Four cases below started timing out on exactly that without
   // a line of this file changing. `useStillStreakFlame` has the long version.
   useStillStreakFlame();
-  testWidgets('the run is drawn, and the label carries the day\'s status', (
+  testWidgets('the run is drawn, and the label only names what it is', (
     tester,
   ) async {
-    // **The figure stays honest all day and the label does the worrying.** A run ending
-    // yesterday is still current — an unstamped today means the day is open, not broken —
-    // so 11 beside an open day is correct, and a page that dropped it to 0 each morning
-    // would be a threat rather than a record.
+    // **The figure stays honest all day, and nothing on this page says so in words.** A run
+    // ending yesterday is still current — an unstamped today means the day is open, not broken
+    // — so 11 beside an open day is correct, and a page that dropped it to 0 each morning
+    // would be a threat rather than a record. The label used to carry that status ("day
+    // streak, and today is open") over an italic line asking for a page; both were withdrawn,
+    // so what is left is one attributive label in every phase.
     await _pump(tester, log: _runEndingYesterday(11));
 
     expect(find.byKey(kStreakFigureKey), findsOneWidget);
     expect(tester.widget<Text>(find.byKey(kStreakFigureKey)).data, '11');
-    // Two lines, and they say different things: the label names what the figure is and
-    // carries the day's status, the line under it is the only place the page asks for
-    // anything.
-    expect(find.text('days, and today is open'), findsOneWidget);
-    expect(find.textContaining('until 4am'), findsOneWidget);
+    expect(find.text('day streak'), findsOneWidget);
+    expect(
+      find.textContaining('today is open'),
+      findsNothing,
+      reason: 'the label names the figure and leaves the status to the drawing',
+    );
+    expect(
+      find.textContaining('until midnight'),
+      findsNothing,
+      reason:
+          'the deadline line lives on the home-screen widget, not on the page',
+    );
+    // The one place the page still asks for anything.
     expect(find.text('I read today'), findsOneWidget);
   });
 
@@ -218,8 +255,11 @@ void main() {
     final rig = await _pump(tester, log: _runEndingToday(12));
 
     expect(tester.widget<Text>(find.byKey(kStreakFigureKey)).data, '12');
-    expect(find.text('days in a row'), findsOneWidget);
-    expect(find.textContaining('recorded'), findsWidgets);
+    expect(find.text('day streak'), findsOneWidget);
+    // **Once, and in the footer.** The hero used to repeat it under the figure, which put
+    // the same sentence on one screen twice; the flame's own colour already carries the
+    // day's status, so the confirmation belongs where the undo is.
+    expect(find.textContaining('recorded'), findsOneWidget);
     expect(
       find.byKey(kStreakRecordButtonKey),
       findsNothing,
@@ -239,13 +279,35 @@ void main() {
   });
 
   testWidgets(
-    'an empty log says where a streak would start, not that it is zero',
+    'an empty log reads "No streak yet", not the withdrawn start-here copy',
     (tester) async {
       await _pump(tester, log: const {});
       expect(tester.widget<Text>(find.byKey(kStreakFigureKey)).data, '0');
-      expect(find.textContaining('starts here'), findsOneWidget);
+      expect(find.text('No streak yet'), findsOneWidget);
+      expect(find.textContaining('starts here'), findsNothing);
     },
   );
+
+  testWidgets('the record is the Library Card\'s job, not this page\'s', (
+    tester,
+  ) async {
+    // **Three treatments were tried and all three are gone: a boxed `Longest / 2 days` row,
+    // then a caption under the figure, then nothing.** The row cost ~60pt above the fold and
+    // the caption cost a line, but the objection that settled it was not cost — it is that a
+    // lifetime stat answers a question this screen is not about. The page is the run in
+    // progress and tonight's act; `libraryCardStreakSub` carries the record on the surface
+    // whose job is stats.
+    await _pump(
+      tester,
+      log: {..._runEndingToday(3), ..._runEndingDaysAgo(30, 9)},
+    );
+
+    expect(tester.widget<Text>(find.byKey(kStreakFigureKey)).data, '3');
+    expect(find.textContaining('Longest'), findsNothing);
+    // The record's own figure, in the phrasing both dead treatments used. Not a bare '9':
+    // the month grid draws day numerals, so 9 and 19 are on this screen either way.
+    expect(find.textContaining('9 days'), findsNothing);
+  });
 
   testWidgets('recording a night writes the day, its book, and the position', (
     tester,
@@ -371,6 +433,44 @@ void main() {
     expect(find.byKey(kStreakUndoKey), findsOneWidget);
   });
 
+  testWidgets('outside debug there is no footer once the night is in', (
+    tester,
+  ) async {
+    // **The shipped behaviour, which no other case can reach.** `flutter test` runs in
+    // debug, so `streakUndoVisible` is true everywhere else in this file and the undo is
+    // always there to assert — which is exactly why the gate is an overridable top-level
+    // rather than a bare `kDebugMode` at the call site.
+    //
+    // What is gated is the whole confirmation footer, not just the `Undo` inside it: a
+    // banner whose only control has been removed is a line of text restating what the week
+    // row and the month grid above it already show. The record button is gone too, because
+    // there is nothing left to record — so the page ends at the month card, and the
+    // padding goes with the footer rather than staying as a reserved strip that reads as a
+    // control which failed to load.
+    debugStreakUndoVisibleOverride = false;
+    addTearDown(() => debugStreakUndoVisibleOverride = null);
+
+    await _pump(tester, log: _runEndingToday(3));
+
+    expect(find.byKey(kStreakUndoKey), findsNothing);
+    expect(find.text('Today is recorded.'), findsNothing);
+    // And the button it replaces has not come back in its place: today is recorded, so
+    // offering to record it again would be the worse of the two failures.
+    expect(find.byKey(kStreakRecordButtonKey), findsNothing);
+  });
+
+  testWidgets(
+    'in debug the footer is there, which is the other side of the gate',
+    (tester) async {
+      debugStreakUndoVisibleOverride = true;
+      addTearDown(() => debugStreakUndoVisibleOverride = null);
+
+      await _pump(tester, log: _runEndingToday(3));
+
+      expect(find.byKey(kStreakUndoKey), findsOneWidget);
+    },
+  );
+
   testWidgets('the month colours a recorded night by the book it names', (
     tester,
   ) async {
@@ -478,9 +578,9 @@ void main() {
       },
     );
 
-    // Scoped to the tile, because the fixture's longest run is also 3 and `_RecordRow`
-    // prints "3 days" too — a coincidence of this log, not a duplication. Asserting on the
-    // bare string would pass for a page that printed the tally in the wrong place.
+    // Scoped to the tile, because this fixture's tally is 3 and so is its longest run — a
+    // coincidence of this log, not a duplication. Asserting on the bare string would pass for
+    // a page that printed the tally in the wrong place.
     // Uppercased at the call site, which is `AppTextStyles.caption`'s own documented
     // convention for a stat label — and a no-op on Korean, which is why the casing is not
     // baked into the `.arb` string.
@@ -503,30 +603,32 @@ void main() {
     );
   });
 
-  testWidgets('the flame leads the figure, and it is the chip\'s own glyph', (
+  testWidgets('the flame leads the figure, and it is the chip\'s own mark', (
     tester,
   ) async {
-    // One flame constant, not two that happen to look alike. The flame names the *run*,
-    // which is why the month under it draws stamps rather than thirty flames.
+    // **One flame, and it is now literally one drawing rather than one constant.** This
+    // asserted `kReadingStreakIcon`, the Phosphor glyph the chip also used — which made the
+    // page and the chip agree while both disagreed with the celebration's Rive artboard.
+    // `StreakFlameMark` is generated from that artboard's own point lists. The flame names
+    // the *run*, which is why the month under it draws stamps rather than thirty flames.
     await _pump(tester, log: _runEndingToday(3));
-    expect(find.byIcon(kReadingStreakIcon), findsOneWidget);
+    expect(find.byType(StreakFlameMark), findsOneWidget);
   });
 
   testWidgets('it lays out at the frame size the drawings use', (tester) async {
-    // **Pumped at 393×852 because that is where an overflow would actually happen.** The
-    // default test surface is 800×600 — wider and much shorter than any phone — so a column
-    // that is fine there can still be clipped on device, and a fixed-height row that is fine
-    // on device can overflow there. The page has a scroll view precisely so the long case
-    // fits; this asserts that the *pinned* parts around it do too.
-    tester.view.physicalSize = const Size(393, 852);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
+    // **393×852 is where an overflow would actually happen**, and it is `_pump`'s default
+    // now — stated through the parameter anyway, because this case is about the size rather
+    // than merely at it. The default test surface is 800×600, wider and much shorter than any
+    // phone, so a column that is fine there can still be clipped on device and a fixed-height
+    // row that is fine on device can overflow there. The page has a scroll view precisely so
+    // the long case fits; this asserts that the *pinned* parts around it do too.
 
     // A full month with a three-book legend: the tallest the card gets. Ending *yesterday*,
     // so the footer is the record button — the taller of the two footers, and the one whose
     // pinning is worth asserting.
     await _pump(
       tester,
+      surface: const Size(393, 852),
       log: {
         for (var back = 1; back <= 28; back++)
           DateTime(_today.year, _today.month, _today.day - back): [
@@ -561,4 +663,81 @@ void main() {
       expect(find.byType(ReadingStreakPage), findsNothing);
     },
   );
+
+  // **The evening warning is no longer on this page, and these cases pin that.** The design
+  // record specced four chip states and shipped two; the third — `sc-risk`, the open day
+  // sharpening as midnight approaches — was built here as a line under the hero and has been
+  // withdrawn with the rest of the page's status copy. It still exists on the home-screen
+  // widget, which has no flame, week row or button to say it instead;
+  // `streak_widget_snapshot_test.dart` owns that. What is asserted here is that the page reads
+  // identically either side of the warning hour, and that the run and the flame are unmoved by
+  // it — because the likeliest way this regresses is someone putting a red line or a third
+  // tint back.
+  group('the evening warning is not on this page', () {
+    testWidgets('before the warning hour, the hero says only the run', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        log: _runEndingYesterday(4),
+        phase: ReadingDayPhase.open,
+      );
+
+      expect(find.text('day streak'), findsOneWidget);
+      expect(find.textContaining('A page is enough'), findsNothing);
+    });
+
+    testWidgets('from the warning hour, it says exactly the same thing', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        log: _runEndingYesterday(4),
+        phase: ReadingDayPhase.openLate,
+      );
+
+      expect(find.text('day streak'), findsOneWidget);
+      expect(find.textContaining('Nearly midnight'), findsNothing);
+      expect(find.textContaining('A page is enough'), findsNothing);
+    });
+
+    // The figure is the run, and the run is intact until the day actually ends. A warning that
+    // dropped the number would be scolding the reader for something that has not happened —
+    // the rule the whole design shares, and the one a later "fix" is most likely to break.
+    testWidgets('the run is still four, and the flame has not changed colour', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        log: _runEndingYesterday(4),
+        phase: ReadingDayPhase.openLate,
+      );
+
+      expect(tester.widget<Text>(find.byKey(kStreakFigureKey)).data, '4');
+      // Grey, not a third tint: `kCandleFlame` is what "recorded" means, and late is not a
+      // weaker version of recorded.
+      final mark = tester.widget<StreakFlameMark>(
+        find.byType(StreakFlameMark).first,
+      );
+      expect(mark.color, isNot(kCandleFlame));
+    });
+
+    // Once the night is in, the footer says it three rows down and nothing above repeats it.
+    testWidgets('once today is recorded, the hero still says only the run', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        log: _runEndingToday(4),
+        phase: ReadingDayPhase.recorded,
+      );
+
+      expect(find.text('day streak'), findsOneWidget);
+      expect(
+        find.textContaining('recorded'),
+        findsOneWidget,
+        reason: 'the confirmation is the footer\'s, and it is said once',
+      );
+    });
+  });
 }

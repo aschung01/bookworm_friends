@@ -13,6 +13,21 @@
 /// three reads of one set rather than three things that must be kept in step.
 library;
 
+/// The seven days ending on [today], oldest first.
+///
+/// **A rolling window, not a calendar week**, which is why `ReadWeekRow` can label its
+/// cells from their position: the last cell is always today.
+///
+/// Lives here rather than on the page that draws it because three surfaces ask the same
+/// question now — the streak page's row, the celebration's row, and whichever screen
+/// happens to present the celebration. It was a private method on `ReadingStreakPage`
+/// while that page was the only door to the celebration, and it stopped being one the
+/// moment recording a night from a book's details could raise the same screen.
+List<bool> readingWeekEndingOn(Set<DateTime> days, DateTime today) => [
+  for (var back = 6; back >= 0; back--)
+    days.contains(DateTime(today.year, today.month, today.day - back)),
+];
+
 /// The length of the run that is still alive on [today], or `0` if none is.
 ///
 /// Counts back from [today] when [today] is stamped, otherwise from the day before
@@ -90,9 +105,12 @@ int longestReadingRun(Iterable<DateTime> days) {
 
 /// [day] with its time component dropped, in the local zone.
 ///
-/// Not `readingDate` — these values are already reading dates, and pushing a
-/// midnight through the 4am rollover a second time would move every day in the set
-/// back by one.
+/// Not `readingDate` — these values are already reading dates. At today's midnight
+/// rollover, reapplying it happens to be a no-op, but that is a property of
+/// [kReadingDayRolloverHour] being zero right now, not a guarantee this function
+/// should lean on — pushing a date through a nonzero rollover a second time moves
+/// every day in the set back by one, which is exactly how this broke when the
+/// rollover was 4.
 DateTime _dayKey(DateTime day) {
   final local = day.toLocal();
   return DateTime(local.year, local.month, local.day);

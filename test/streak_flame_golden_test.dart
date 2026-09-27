@@ -24,19 +24,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rive/rive.dart' as rive;
 
-import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_flame.dart';
 
-/// Where along `Ignite` to sample, as percentages of the 900ms window.
+/// Where along `Ignite` to sample, as percentages of the 1300ms window.
 ///
 /// **Not the same numbers as `sheet.py`'s, and they do not need to be.** They used to be the
 /// blend state's own axis values, which the CLI sheet also had to address directly; now both
 /// scripts sample *time*, so either can pick its own points. These are chosen to land on the
-/// beats: the shut book, the cut, the flame's first appearance, its stretch, its settle, rest.
-const List<int> _samples = [0, 12, 30, 45, 70, 100];
+/// beats, and they moved when the flame gained a strain: the shut book, the cover swinging,
+/// the small flame it starts from, the second strain's peak, the burst, rest.
+const List<int> _samples = [0, 23, 38, 59, 77, 100];
 
-/// The square the celebration hands the flame, from `_Ignition.stageSize`.
-const double _stage = 152;
+/// The box the celebration hands the flame: [StreakFlame.stageSize] is its height, and the
+/// width follows the artboard's 6:5.
+///
+/// **The strip has to be laid out from the width, not the height, and it was not.** The box was
+/// square while the artboard was; widening the artboard to 360×300 to give the burst spray room
+/// made each cell 302.4 wide, and a surface sized `stage * samples * 2` then overflowed the row
+/// by exactly one cell.
+const double _stage = StreakFlame.stageSize;
+final double _stageWidth = StreakFlame.stageWidthFor(_stage);
 
 void main() {
   testWidgets('the flame draws, across the ignition', (tester) async {
@@ -46,7 +54,7 @@ void main() {
     }
 
     tester.view.physicalSize = Size(
-      _stage * _samples.length * 2,
+      _stageWidth * _samples.length * 2,
       _stage * 2 + 40,
     );
     tester.view.devicePixelRatio = 2;
@@ -56,10 +64,13 @@ void main() {
       MaterialApp(
         debugShowCheckedModeBanner: false,
         home: ColoredBox(
-          // The ground the celebration paints. **Not white**: the glow is warmer rather than
-          // brighter precisely because a lighter halo is invisible on this cream, so a golden
-          // shot on white would flatter art that cannot be seen in the app.
-          color: kCandleGlow,
+          // The ground the celebration paints. **White now, and the constant rather than a
+          // literal.** This used to be `kCandleGlow` with a note arguing the opposite — that
+          // a golden shot on white would flatter a halo that cannot be seen on cream. The
+          // screen moved to white, so the warning inverts: the halo really is fainter here,
+          // and this golden is now the place that shows it rather than the place that hides
+          // it. Regenerate and *look* at the pool under the book.
+          color: kStreakCelebrationGround,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -76,7 +87,7 @@ void main() {
                   liveness: const AlwaysStoppedAnimation(0),
                   size: _stage,
                   fallback: (context) =>
-                      const SizedBox.square(dimension: _stage),
+                      SizedBox(width: _stageWidth, height: _stage),
                 ),
             ],
           ),

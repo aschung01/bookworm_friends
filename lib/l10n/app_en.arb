@@ -658,35 +658,52 @@
   "remove": "Remove",
   "removeFriendFailed": "Couldn't remove this friend",
   "streakTitle": "Reading streak",
-  "streakDays": "{days, plural, =0{No streak yet} =1{day in a row} other{days in a row}}",
+  "streakDays": "{days, plural, =0{No streak yet} other{day streak}}",
   "@streakDays": {
-    "description": "Label under the streak page's hero figure. The figure is drawn separately, so the singular and plural carry no number of their own.",
+    "description": "Label under the streak page's hero figure, in every state — it names what the figure is and says nothing about whether today is recorded. A ', and today is open' variant (streakDaysOpen) was withdrawn: the flame's tint, the week row's last cell and the record button all carry that already. The figure is drawn separately, so the label carries no number of its own — and because 'day streak' is attributive it does not inflect, which is why there is no =1 case.",
     "placeholders": {
       "days": {
         "type": "int"
       }
     }
   },
-  "streakTodayOpen": "A page is enough. Today counts until 4am.",
+  "streakTodayOpen": "A page is enough. Today counts until midnight.",
+  "@streakTodayOpen": {
+    "description": "The home-screen widget's line while the day is open and it is not yet the warning hour. Paired with streakTodayLate, which replaces it at kReadingDayWarningHour; both name the midnight deadline rather than counting down to it. It was the streak page's too until the page's status copy was withdrawn; the widget keeps it because it has no flame, week row or button to carry the state instead."
+  },
+  "streakTodayLate": "Nearly midnight. A page is enough.",
+  "@streakTodayLate": {
+    "description": "Replaces streakTodayOpen from kReadingDayWarningHour (21:00) until the day rolls over at midnight, on the home-screen widget. Amber and never red: nothing has been lost yet, so it states the deadline rather than the threat, and the sentences are inverted from streakTodayOpen's so the change is legible as a change."
+  },
   "streakTodayDone": "Today is recorded.",
-  "streakDaysOpen": "{days, plural, =0{No streak yet} =1{day, and today is open} other{days, and today is open}}",
-  "@streakDaysOpen": {
-    "description": "The hero label while the day is still open. Paired with streakDays, which is the recorded wording; the figure is drawn separately so neither carries a number.",
-    "placeholders": {
-      "days": {
-        "type": "int"
-      }
-    }
-  },
   "streakNothingYet": "Record a night and it starts here.",
-  "streakLongest": "Longest",
-  "streakDayCount": "{days, plural, =0{none} =1{1 day} other{{days} days}}",
-  "@streakDayCount": {
-    "placeholders": {
-      "days": {
-        "type": "int"
-      }
-    }
+  "streakWidgetLineDawn": "Keep it going!",
+  "@streakWidgetLineDawn": {
+    "description": "The home-screen widget's line from 05:00 while the day is unrecorded. One of seven lines forming the widget's copy ladder -- see 'The ladder, as chosen' in docs/superpowers/specs/2026-09-22-streak-widget-design.md. The voice changes with the hour on purpose (this one is the Duolingo cadence); a single register read front to back is what wears out. The Korean is not a translation but the same beat written for Korean, and every line has to stay within about 14 full-width syllables -- the tile's copy column fits roughly 6 per line over three lines."
+  },
+  "streakWidgetLineMorning": "Your book's waiting!",
+  "@streakWidgetLineMorning": {
+    "description": "The widget's line from 10:00 while the day is unrecorded. Duolingo cadence, naming the specific thing rather than the streak."
+  },
+  "streakWidgetLineAfternoon": "Anything yet?",
+  "@streakWidgetLineAfternoon": {
+    "description": "The widget's line from 14:00 while the day is unrecorded. First person -- the cat speaking for itself rather than the record speaking about the reader -- which is the 'desperate' voice from the mockup round."
+  },
+  "streakWidgetLineEvening": "You said you'd read.",
+  "@streakWidgetLineEvening": {
+    "description": "The widget's line from 18:00 while the day is unrecorded. A reproach, deliberately: sc-risk's 'the record does not scold' was amended for the widget, because a tile carrying a character and a coloured ground spreads the pressure across three channels where a bare tile had only the words. Korean uses the -janhayo ending, which means 'as you and I both know' and is exactly this voice's mechanism: you have not failed a system, you have left someone waiting."
+  },
+  "streakWidgetLineLate": "Midnight approaches. So do I.",
+  "@streakWidgetLineLate": {
+    "description": "The widget's line from 21:00 (kReadingDayWarningHour) while the day is unrecorded. It states the deadline AND the threat, which reverses sc-risk for the widget only; the app's own streakTodayLate still states the deadline alone. The Korean is a soliloquy rather than an address -- the cat wondering aloud when the book will be opened -- a register the English line does not have. It is also the longest line in the ladder at 14 syllables, which is why the widget's copy box allows three lines rather than two."
+  },
+  "streakWidgetLineFinal": "This is how it ends?",
+  "@streakWidgetLineFinal": {
+    "description": "The widget's line from 23:00 while the day is unrecorded -- the last hour before the run dies. A verdict rather than a plea, and the one line changed after the submission: the picked line ('Don't leave it like this.') made the cat a victim asking a favour at the same hour its face escalates to panic, so the words retreated while the drawing advanced. The Korean picks kkeunnaeyo over kkeunnayo, which points at the reader: 'you are ending it like this?'"
+  },
+  "streakWidgetLineNone": "Start a streak!",
+  "@streakWidgetLineNone": {
+    "description": "The widget's line when there is no run at all, at every hour. The escalation must never reach this state: of 137 production profiles exactly one has a reading day, so a deep red tile here would be shouting at someone for not having started. The Korean says 'it is a good day for reading' -- an invitation with no command in it."
   },
   "streakBooksThisMonth": "{count, plural, =0{No books} =1{1 book} other{{count} books}}",
   "@streakBooksThisMonth": {
@@ -729,33 +746,38 @@
   "streakPickBookEmpty": "Add a book and it will be here.",
   "streakPickBookNoMatch": "Nothing matches that.",
   "streakHowFar": "How far in?",
-  "streakCelebrationLabel": "{days, plural, =1{day in a row} other{days in a row}}",
+  "streakCelebrationLabel": "{days, plural, other{day streak}}",
   "@streakCelebrationLabel": {
+    "description": "Label under the celebration's figure. Same wording as streakDays, because it is the same fact and the two surfaces must not disagree.",
     "placeholders": {
       "days": {
         "type": "int"
       }
     }
   },
-  "streakCelebrationFirst": "Day one. The rest is just tomorrow.",
-  "streakCelebrationMilestone": "{days, plural, =1{1 more day to the {target}-day seal.} other{{days} more days to the {target}-day seal.}}",
-  "@streakCelebrationMilestone": {
+  "streakCelebrationFirst": "One day in!",
+  "@streakCelebrationFirst": {
+    "description": "The caption under the celebration's span ladder on the first day of a run. Checked before streakCelebrationChasing and deliberately outranks it: a run of 1 after a broken run is day one, because that is what the number above it says, so a reader coming back is told the same thing as a reader starting — the record does not hold a lapse against them. It replaced \"Day one. The rest is just tomorrow.\", which was improvised in the build rather than chosen: it appears in no spec, no plan and no mockup, and was the only string in this cluster with no description here. It read as condescending to a returning reader and its second clause did not resolve into a meaning. Note what the guard costs, which is open rather than overlooked: the ladder above reads `best`, not `streak`, so on a night where a lapsed reader has a record to chase this line is the only nearby text and it says nothing about that record, leaving the fill unexplained."
+  },
+  "streakSpanWeek": "1 week",
+  "@streakSpanWeek": {
+    "description": "A rung on the streak page's span ladder (StreakSpanTrack). Four spans, named as periods rather than counts: a row of ring badges reading 7 / 30 / 100 / 365 over Week / Month / 100 days / Year said the same thing twice and did not cohere, mixing three named periods with one raw count. 100 days has no shorter name, which is why it is the one rung still stated as a count."
+  },
+  "streakSpanMonth": "1 month",
+  "streakSpanHundred": "100 days",
+  "streakSpanYear": "1 year",
+  "streakCelebrationChasing": "{days, plural, other{{days} more days to beat your best.}}",
+  "@streakCelebrationChasing": {
+    "description": "The caption under the celebration's progress bar while a run is short of the reader's own record. No =1 case, and it is unreachable rather than forgotten: the bar only shows while best > streak, so best >= streak + 1, so the distance (best + 1 - streak) is never below 2. Beating a record takes one more day than matching it. It replaced \"{days} more days to the {target}-day seal\", which named a reward that does not exist: kStreakMilestones fed a bar and that sentence and nothing else, there is no award path in lib/, and \"seal\" was already the Library Card's logo emboss, which every card carries regardless of any streak. longestStreakProvider ships, so a reader's own record is the one stake the app can actually point at.",
     "placeholders": {
       "days": {
-        "type": "int"
-      },
-      "target": {
         "type": "int"
       }
     }
   },
-  "streakCelebrationSealed": "{target}-day seal earned.",
-  "@streakCelebrationSealed": {
-    "placeholders": {
-      "target": {
-        "type": "int"
-      }
-    }
+  "streakCelebrationRecord": "Your longest run yet.",
+  "@streakCelebrationRecord": {
+    "description": "Shown instead of the countdown when the run is the longest on record. longestReadingRun counts the current run, so this is the case where streak == best \u2014 the reader is setting the record as they read, which is a real reward that costs no new feature."
   },
   "streakCelebrationGo": "Keep it going"
 }

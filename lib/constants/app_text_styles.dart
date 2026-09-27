@@ -38,6 +38,14 @@ abstract final class AppFonts {
   /// Every style using it sets `fontFamilyFallback: [sans]`, so a syllable outside
   /// KS X 1001 renders in Pretendard rather than as a box.
   static const String serif = 'GowunBatang';
+
+  /// [AppTextStyles.streakFigure] and [AppTextStyles.streakChip] only.
+  ///
+  /// Subset to digits and a minus sign -- see `build_fonts.py`'s module
+  /// docstring -- because the only thing either style ever sets is
+  /// `int.toString()` of a streak count. Do not reach for it anywhere else;
+  /// it has no letters to reach for.
+  static const String streak = 'Nunito';
 }
 
 /// The size an emoji is **drawn** at when it is the object on screen rather than
@@ -138,6 +146,57 @@ abstract final class AppTextStyles {
     fontWeight: FontWeight.w800,
     height: 1.05,
     letterSpacing: -0.92,
+    fontFeatures: _tabular,
+    textBaseline: TextBaseline.alphabetic,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// The reading-streak page's hero numeral only.
+  ///
+  /// Same metrics as [display] -- this is the same figure at the same size,
+  /// on the same page -- with [AppFonts.streak] in place of [AppFonts.sans],
+  /// on instruction. [display] itself is left alone: it is also the Library
+  /// Card's hero figure and `StatTile`'s, and neither asked to move off the
+  /// sans.
+  static const TextStyle streakFigure = TextStyle(
+    fontFamily: AppFonts.streak,
+    fontSize: 46,
+    fontWeight: FontWeight.w800,
+    height: 1.05,
+    letterSpacing: -0.92,
+    fontFeatures: _tabular,
+    textBaseline: TextBaseline.alphabetic,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// The streak celebration's figure. **The largest type in the app**, above
+  /// [display].
+  ///
+  /// A new step rather than a `copyWith` at the call site, because the scale's own
+  /// guard says so in as many words: a call site that needs a size the scale does
+  /// not have is telling you the scale is wrong. `streak_celebration.dart` asked
+  /// for 64 and got caught by `text_style_test.dart`, which is the test working.
+  ///
+  /// **Why a second display step exists at all.** [display] is the Library Card's
+  /// hero figure and `StatTile` reads it too, so raising [display] to suit one
+  /// full-screen moment would have grown the Card as a side effect. The celebration
+  /// is the one surface in the app whose entire job is a single number — it is a
+  /// reward screen, arriving once a day at most — so it is the one place a step
+  /// above the Card's hero is earned.
+  ///
+  /// Pretendard w800 and tabular figures for the same reasons [display] gives: the
+  /// figure counts up, so proportional digits would shift its width as it rolls.
+  ///
+  /// **Tracking is scaled, not carried over.** `letterSpacing` is absolute pixels
+  /// in Flutter, so [display]'s -0.92 — which is -0.02em at 46 — would be -0.014em
+  /// here and the figure would loosen visibly against the label under it. -1.28 is
+  /// the same -0.02em at 64.
+  static const TextStyle displayStreak = TextStyle(
+    fontFamily: AppFonts.sans,
+    fontSize: 64,
+    fontWeight: FontWeight.w800,
+    height: 1.05,
+    letterSpacing: -1.28,
     fontFeatures: _tabular,
     textBaseline: TextBaseline.alphabetic,
     leadingDistribution: TextLeadingDistribution.even,
@@ -321,6 +380,24 @@ abstract final class AppTextStyles {
     leadingDistribution: TextLeadingDistribution.even,
   );
 
+  /// [ReadingStreakChip]'s numeral only.
+  ///
+  /// Same metrics as [label] -- same size, same badge -- with [AppFonts.streak]
+  /// in place of [AppFonts.sans], on instruction: the streak's own figure (the
+  /// reading-streak page's hero and the celebration) already sets Nunito, and
+  /// the chip is the same count in miniature. Bold rather than [streakFigure]'s
+  /// ExtraBold -- at 13pt, ExtraBold's tighter counters started closing up.
+  static const TextStyle streakChip = TextStyle(
+    fontFamily: AppFonts.streak,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    letterSpacing: 0,
+    fontFeatures: _tabular,
+    textBaseline: TextBaseline.alphabetic,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
   /// The title running up a book's spine — the read pile, and the Library
   /// Card's spine layout. Set by [BookVertical] and nothing else.
   ///
@@ -392,6 +469,8 @@ abstract final class AppTextStyles {
   /// Every token, for the guard in `test/text_style_test.dart`.
   static const Map<String, TextStyle> all = {
     'display': display,
+    'displayStreak': displayStreak,
+    'streakFigure': streakFigure,
     'figure': figure,
     'hero': hero,
     'title': title,

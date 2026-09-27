@@ -17,20 +17,26 @@
 //
 // The state rule is the part worth pinning, because getting it wrong inverts the
 // feature: the colour is keyed on whether **today** is recorded, never on the count.
-// The count is intact all day and only the day's own status changes at the 4am
+// The count is intact all day and only the day's own status changes at the midnight
 // rollover, so keying it on the number made the chip green at 9am on an unstamped day
 // — the opposite of a nudge. And the cold state still reads the full count in grey,
 // not red and not empty: the streak is intact until the day actually ends, and a chip
 // that panics in the morning is one readers learn to resent.
 //
-// **The cold state has no box at all**, which is a third reversal. It used to draw a
-// grey-outlined pill every day the reader had not yet read — most days — making this a
-// fourth control in a row of three real buttons (the density toggle, the shelves
-// button, the avatar). A bare flame and a grey numeral read as ambient status instead;
-// the pill returns, full-radius, only once there is something to mark. And it is a
-// drawn pill rather than native glass either way — glass exposes one tint per control
-// with no separate fill/label knob, which cannot express this chip's two-tone system,
-// and the bar underneath is opaque, so there would be nothing for glass to refract.
+// **Neither state has a box**, which took two reversals to arrive at. The chip first
+// drew a grey-outlined pill every day the reader had not yet read — most days — making
+// it a fourth control in a row of three real buttons (the density toggle, the shelves
+// button, the avatar). That deleted the *cold* outline and kept a full-radius amber
+// pill for the days there was something to mark, and this file's header said exactly
+// that for a revision. The second pass deleted the warm one too, on instruction:
+// Duolingo's bar draws its streak as a mark and a numeral on the bar's own ground, and
+// the objection that removed the cold pill applies just as well to the warm one — a
+// status readout is not a control, and the fix is to stop drawing it like one on *every*
+// day rather than on most of them.
+//
+// What that costs is pinned in the group below: the pill was load-bearing, because the
+// amber numeral is only 2.00:1 on `surface`, so the shape was carrying a state the ink
+// could not. Hot against cold is now a 2.75:1 hue delta in light mode and 1.5:1 in dark.
 //
 // The third drawn state — amber when the evening is running out — is **not built**.
 // See `docs/superpowers/plans/2026-09-16-reading-streaks-plan.md`, Task 12: the hour
@@ -50,7 +56,9 @@ import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/reading_date.dart';
 import 'package:bookworm_friends/providers/auth_provider.dart';
 import 'package:bookworm_friends/providers/reading_days_provider.dart';
+import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame_mark.dart';
 
 /// Serves a fixture instead of hitting Supabase.
 ///
@@ -135,35 +143,39 @@ Future<ProviderContainer> _pumpChip(
   return container;
 }
 
-/// The chip's own decorated box, present only while today is recorded. Excludes the
-/// transparent padding that widens its target.
-BoxDecoration _chipDecoration(WidgetTester tester) => tester
-    .widgetList<Container>(find.byType(Container))
-    .map((container) => container.decoration)
-    .whereType<BoxDecoration>()
-    .firstWhere((decoration) => decoration.borderRadius != null);
-
-/// Whether the cold chip's box is fully invisible — both its fill and its border
-/// transparent — rather than the grey outline it used to keep.
+/// Whether the chip paints no box at all — no fill, no border, in either state.
 ///
-/// **Not a null decoration.** That was the first cut, and a footprint test below
-/// caught what it actually did: `Container` folds a border's width into its own
-/// padding only when a border exists, so removing the decoration outright shrank
-/// the box by 2 × 1.5pt between states. The border stays, at the same width, and
-/// only its colour disappears.
-bool _chipHasNoBox(WidgetTester tester) {
-  final decoration = _chipDecoration(tester);
-  final border = decoration.border as Border;
-  return decoration.color == Colors.transparent &&
-      border.top.color == Colors.transparent;
-}
-
-/// The chip's tint, asserted through the icon rather than the numeral.
+/// **This inverts a helper that used to fetch the pill and assert its colours.**
+/// The chip drew a `circular(20)` stadium — [kCandleFlame] at 12% behind a 1.5pt
+/// border of the same hue at 55% — once today was recorded, and kept the identical
+/// decoration with both colours transparent when cold, so the old question was "is
+/// the box invisible?". Both states are now bare and the question is "is there a
+/// box?".
 ///
-/// Reads both and requires them to agree: the glyph and the digits are separate widgets
-/// now, so "the chip is brand" is only true if neither was left behind.
+/// **It looks for `DecoratedBox` rather than for `Container`, and that is the whole
+/// reason it has teeth.** A `Container` carrying only padding is still a
+/// `Container`, so a type check would pass on a chip that had quietly grown a fill
+/// back; and a decoration could return as a bare `DecoratedBox` without a
+/// `Container` anywhere. `Container` builds one of these whenever `decoration` is
+/// non-null, so walking the rendered subtree for it catches both spellings. An
+/// earlier draft of this helper also inspected `Container.decoration` — via
+/// `find.byType(ReadingStreakChip)`, which yields the chip widget and never a
+/// `Container`, so that clause was dead and passed unconditionally.
+bool _chipHasNoBox(WidgetTester tester) => tester
+    .widgetList<DecoratedBox>(
+      find.descendant(
+        of: find.byType(ReadingStreakChip),
+        matching: find.byType(DecoratedBox),
+      ),
+    )
+    .isEmpty;
+
+/// The chip's tint, asserted through the flame rather than the numeral.
+///
+/// Reads both and requires them to agree: the mark and the digits are separate widgets, so
+/// "the chip is flame-coloured" is only true if neither was left behind.
 Color? _tint(WidgetTester tester) {
-  final icon = tester.widget<Icon>(find.byIcon(kReadingStreakIcon));
+  final mark = tester.widget<StreakFlameMark>(find.byType(StreakFlameMark));
   final text = tester
       .widgetList<Text>(
         find.descendant(
@@ -173,11 +185,11 @@ Color? _tint(WidgetTester tester) {
       )
       .first;
   expect(
-    icon.color,
+    mark.color,
     text.style?.color,
     reason: 'the flame and the numeral must carry the same tint',
   );
-  return icon.color;
+  return mark.color;
 }
 
 Future<void> _pumpPendingChip(WidgetTester tester) async {
@@ -216,7 +228,7 @@ void main() {
     // appear to lose them. Not knowing is not zero.
     await _pumpPendingChip(tester);
 
-    expect(find.byIcon(kReadingStreakIcon), findsNothing);
+    expect(find.byType(StreakFlameMark), findsNothing);
     expect(find.text('0'), findsNothing);
   });
 
@@ -227,7 +239,7 @@ void main() {
     // reader cannot start a run they have never been shown.
     await _pumpChip(tester, days: const {});
 
-    expect(find.byIcon(kReadingStreakIcon), findsOneWidget);
+    expect(find.byType(StreakFlameMark), findsOneWidget);
     expect(find.text('0'), findsOneWidget);
   });
 
@@ -236,43 +248,58 @@ void main() {
   ) async {
     await _pumpChip(tester, days: _run(12, endingOn: today));
 
-    expect(find.byIcon(kReadingStreakIcon), findsOneWidget);
+    expect(find.byType(StreakFlameMark), findsOneWidget);
     expect(find.text('12'), findsOneWidget);
   });
 
-  testWidgets('a flame rather than a stamp, and Phosphor rather than Material', (
+  testWidgets('a drawn flame, and not a font glyph of any family', (
     tester,
   ) async {
-    // Pinned by family, package and codepoint rather than against
-    // `PhosphorIconsFill.fire` — **which cannot be referenced at all**. The package's
-    // Dart declares `PhosphorIconData extends IconData`, and `IconData` is final as of
-    // this SDK, so importing `phosphor_flutter` is a compile error. The font it ships
-    // is fine and is what the constant addresses; see `kReadingStreakIcon`.
+    // **This case used to pin a codepoint and it no longer can.** It asserted
+    // `kReadingStreakIcon.codePoint == 0xe242`, `fontFamily == 'PhosphorFill'` and
+    // `fontPackage == 'phosphor_flutter'` — three assertions, because each could rot on its
+    // own — and none of them is expressible now: the constant is deleted and the dependency
+    // is out of `pubspec.yaml`. It was a Phosphor glyph because `PhosphorIconsFill.fire`
+    // cannot be referenced at all (the package declares `PhosphorIconData extends IconData`
+    // and `IconData` is final on this SDK), and before that it was Material's
+    // `local_fire_department_rounded`, whose hollow base closes into a blob at 19pt.
     //
-    // Three assertions rather than one because each can rot on its own: a wrong
-    // codepoint is a different icon, a wrong family is a different *weight* of the
-    // same icon (Phosphor ships `fire` in six, and only the filled one carries at the
-    // 13pt the `label` token sets), and a missing `fontPackage` renders a blank box
-    // while still comparing equal on the other two.
-    expect(kReadingStreakIcon.codePoint, 0xe242);
-    expect(kReadingStreakIcon.fontFamily, 'PhosphorFill');
-    expect(kReadingStreakIcon.fontPackage, 'phosphor_flutter');
-    // And it is no longer Material's, which is the thing that changed.
-    expect(kReadingStreakIcon, isNot(Icons.local_fire_department_rounded));
+    // What replaced all of that is `StreakFlameMark`, generated from the Rive artboard's own
+    // point lists — so the assertion worth having is not *which* font but *no* font: the chip
+    // and the celebration must draw one silhouette, which is the defect the glyph caused and
+    // the reason it went.
+    await _pumpChip(tester, days: _run(12, endingOn: today));
+
+    expect(find.byType(StreakFlameMark), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(ReadingStreakChip),
+        matching: find.byType(Icon),
+      ),
+      findsNothing,
+      reason: 'no icon font anywhere in the chip',
+    );
   });
 
-  testWidgets(
-    'the glyph is derived from the token the numeral uses, not equal to it',
-    (tester) async {
-      // 1:1 with the numeral read as too small to register as a flame at all — a filled
-      // glyph at 13pt is mostly antialiasing. It is 1.5× that instead, so the two still
-      // cannot drift apart if the token changes, without pinning the ratio at 1.
-      await _pumpChip(tester, days: _run(12, endingOn: today));
+  testWidgets('the flame is derived from the token the numeral uses, not equal to it', (
+    tester,
+  ) async {
+    // 1:1 with the numeral read as too small to register as a flame at all — a filled
+    // glyph at 13pt is mostly antialiasing. It is 1.5× that instead, so the two still
+    // cannot drift apart if the token changes, without pinning the ratio at 1.
+    //
+    // **And the box is square, which is what made the swap off the glyph invisible.** The
+    // mark fills its `size` on the tall axis and centres the narrow one, exactly as `Icon`
+    // laid out, so the chip's height and the row's centring did not move.
+    await _pumpChip(tester, days: _run(12, endingOn: today));
 
-      final icon = tester.widget<Icon>(find.byIcon(kReadingStreakIcon));
-      expect(icon.size, AppTextStyles.label.fontSize! * 1.5);
-    },
-  );
+    final mark = tester.widget<StreakFlameMark>(find.byType(StreakFlameMark));
+    expect(mark.size, AppTextStyles.label.fontSize! * 1.5);
+    expect(
+      tester.getSize(find.byType(StreakFlameMark)),
+      Size.square(AppTextStyles.label.fontSize! * 1.5),
+    );
+  });
 
   group('the colour is keyed on today, never on the count', () {
     testWidgets('Given today is recorded, Then the chip is flame-coloured', (
@@ -280,9 +307,13 @@ void main() {
     ) async {
       await _pumpChip(tester, days: _run(12, endingOn: today));
 
-      final colors = AppColors.light;
-      expect(_tint(tester), colors.flame);
-      expect(_chipDecoration(tester).color, isNot(Colors.transparent));
+      // `kCandleFlame`, not `AppColors.light.flame`: the chip moved to the artboard's
+      // amber so it and the streak page draw one orange. See `reading_streak_chip.dart`,
+      // which records what that costs in contrast — and note the mark and the numeral are
+      // now all there is to move, where this comment used to say "the whole capsule".
+      expect(_tint(tester), kCandleFlame);
+      // And the hue is the *whole* readout now — see the group below.
+      expect(_chipHasNoBox(tester), isTrue);
     });
 
     testWidgets(
@@ -330,52 +361,54 @@ void main() {
     });
   });
 
-  group('the box only exists while there is something to mark', () {
-    testWidgets('Given today is recorded, Then the pill is a full stadium', (
+  // **There is no box in either state, and this group used to assert the opposite.**
+  // It held four cases about a pill: that hot drew a `circular(20)` stadium, that the
+  // border reserved 1.5pt whether or not it was visible, and that the footprint
+  // therefore never moved. The pill is gone on instruction — Duolingo's own bar draws
+  // the streak as a mark and a numeral on the bar's ground, with the hue carrying the
+  // state — so what is left to pin is that nothing paints and that the footprint still
+  // did not move.
+  //
+  // The reasoning that lost is in `reading_streak_chip.dart` and is not repeated here,
+  // but the short version is that the pill was load-bearing: the amber numeral is
+  // 2.00:1 on `surface`, so the shape was saying "recorded" where the ink could not.
+  // Removing it leaves a 2.75:1 light-mode / 1.5:1 dark-mode hue delta as the entire
+  // visual readout, which is why `Semantics` carrying the run in words is no longer a
+  // nicety.
+  group('there is no box, in either state', () {
+    testWidgets('Given today is recorded, Then nothing is painted behind it', (
       tester,
     ) async {
-      // Not a new number: `_SegmentChip`'s own radius, so this chip's shape matches
-      // the app's other pill rather than inventing its own. And the chip's own height
-      // is well under 40, so this clamps to a true stadium, not a rounded rectangle.
       await _pumpChip(tester, days: _run(12, endingOn: today));
 
-      expect(_chipDecoration(tester).borderRadius, BorderRadius.circular(20));
+      expect(_chipHasNoBox(tester), isTrue);
     });
 
-    testWidgets(
-      'Given either state, Then the border reserves the same width regardless of colour',
-      (tester) async {
-        // The mechanism behind the footprint staying put, asserted directly rather
-        // than as a derived pixel diff: pumping two fixtures into one test to compare
-        // sizes raced a pending `autoDispose` timer between them and made this flaky
-        // to run, not just to write. `Container` only folds a border's width into its
-        // own padding when a border exists at all — the bug this guards against set
-        // the whole decoration to `null` when cold, which took the border's width out
-        // of the layout along with its colour.
-        final yesterday = DateTime(today.year, today.month, today.day - 1);
-        await _pumpChip(tester, days: _run(12, endingOn: yesterday));
-
-        final cold = _chipDecoration(tester).border as Border;
-        expect(cold.top.width, 1.5);
-        expect(cold.top.color, Colors.transparent);
-      },
-    );
-
-    testWidgets('...and the same is true once there is something to mark', (
+    testWidgets('...and the same is true before today is recorded', (
       tester,
     ) async {
-      await _pumpChip(tester, days: _run(12, endingOn: today));
+      final yesterday = DateTime(today.year, today.month, today.day - 1);
+      await _pumpChip(tester, days: _run(12, endingOn: yesterday));
 
-      final hot = _chipDecoration(tester).border as Border;
-      expect(hot.top.width, 1.5);
-      expect(hot.top.color, isNot(Colors.transparent));
+      expect(_chipHasNoBox(tester), isTrue);
     });
 
     testWidgets(
       'Given either state, Then the padded footprint keeps the same fixed inset',
       (tester) async {
-        // The outer padding never changes, which is the other half of the invariant:
-        // nothing here is computed from whether today is recorded.
+        // The outer padding never changes, which is half the invariant: nothing here
+        // is computed from whether today is recorded.
+        //
+        // **16.5 × 14.5, and the halves are the point.** They are the three old insets
+        // summed — 8 + 7 + 1.5 and 11 + 2 + 1.5 — two of which belonged to the pill (an
+        // inner inset holding the ink off its edge, and a border width). Preserved
+        // rather than rounded so that dropping the pill moved nothing else: the bar's
+        // row of controls lays out to the same pixel and the target is the same 48.5pt
+        // tall. The border term is the one that would have been easy to lose, because
+        // `Container` folds a border's width into its own effective padding only when a
+        // border is present — the same mechanism that, one revision earlier, made a
+        // `null` cold decoration shrink the target by 3pt on the days the reader had not
+        // read yet.
         await _pumpChip(tester, days: _run(12, endingOn: today));
 
         final padding = tester
@@ -385,7 +418,7 @@ void main() {
             .padding;
         expect(
           padding,
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+          const EdgeInsets.symmetric(horizontal: 16.5, vertical: 14.5),
         );
       },
     );
@@ -399,10 +432,14 @@ void main() {
     // padding is transparent — the ink stays chip-sized and the touch area does not.
     await _pumpChip(tester, days: _run(12, endingOn: today));
 
+    // The ink is the `Row` now rather than the pill that used to wrap it, which is
+    // also the reason this case still means something: with no box, "the chip was not
+    // inflated to meet the touch floor" is a claim about the mark and the numeral
+    // alone, and they are 19.5pt tall against a 48.5pt target.
     final ink = tester.getSize(
-      find.ancestor(
-        of: find.byIcon(kReadingStreakIcon),
-        matching: find.byType(Container),
+      find.descendant(
+        of: find.byKey(const ValueKey('reading-streak-chip-footprint')),
+        matching: find.byType(Row),
       ),
     );
     final target = tester.getSize(find.byType(GestureDetector));
@@ -432,7 +469,7 @@ void main() {
       observers: [log],
     );
 
-    await tester.tap(find.byIcon(kReadingStreakIcon));
+    await tester.tap(find.byType(StreakFlameMark));
     await tester.pumpAndSettle();
 
     expect(log.pushed, contains(AppRoutes.readingStreak));

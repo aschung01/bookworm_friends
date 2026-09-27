@@ -23,6 +23,7 @@ void main() {
       () {
         const expected = <String, (double, FontWeight)>{
           'display': (46, FontWeight.w800),
+          'displayStreak': (64, FontWeight.w800),
           'figure': (30, FontWeight.w700),
           'hero': (30, FontWeight.w700),
           'title': (22, FontWeight.w700),

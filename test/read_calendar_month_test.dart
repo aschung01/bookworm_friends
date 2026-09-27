@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/constants/app_theme.dart';
+import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_calendar_month.dart';
 
 /// September 2026: 30 days, starting on a Tuesday. Fixed rather than `now`, so a case
@@ -339,21 +340,22 @@ void main() {
   testWidgets('today\'s rule is the warm hue, not the brand green', (
     tester,
   ) async {
-    // **A reversal.** It shipped in `brandFill` on the reasoning that green is how the app
-    // marks its own things; `flame` exists for exactly one purpose, which is to be the one
-    // warm hue in an all-green palette, and the run above this grid is already drawn in it.
-    // A green rule also competes with a green patch on any day whose book has a green
-    // jacket, which is the case the record's amber avoids.
+    // **Two reversals, stacked.** It shipped in `brandFill` on the reasoning that green is
+    // how the app marks its own things; a warm hue is the one thing an all-green palette
+    // does not already spend, and the run above this grid is already drawn in it. A green
+    // rule also competes with a green patch on any day whose book has a green jacket, which
+    // is the case the record's amber avoids. Then the hue itself moved from `colors.flame`
+    // #B54708 to `kCandleFlame` #F2A93F, on instruction, so the month matches the flame
+    // above it rather than being the one rust accent on an amber page.
     await _pump(tester, marks: const {});
 
     final rule = tester.widget<Container>(
       find.byKey(const ValueKey('streak-today-rule')),
     );
-    final palette = AppTheme.light.extension<AppColors>()!;
-    expect((rule.decoration as BoxDecoration).color, palette.flame);
+    expect((rule.decoration as BoxDecoration).color, kCandleFlame);
     expect(
       tester.widget<Text>(find.text('17')).style!.color,
-      palette.flame,
+      kCandleFlame,
       reason: 'the numeral goes with its rule',
     );
   });

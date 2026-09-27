@@ -75,6 +75,9 @@ Future<void> _pump(
   bool isEditMode = false,
   bool collapsed = false,
   void Function(int)? onFilterChanged,
+  VoidCallback? onStreakTap,
+  int streak = 0,
+  bool readToday = false,
 }) async {
   tester.view.physicalSize = _surface * tester.view.devicePixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
@@ -97,6 +100,10 @@ Future<void> _pump(
                 isEditMode: value,
                 maxExtent: _surface.height,
                 onFilterChanged: onFilterChanged ?? (_) {},
+                streak: streak,
+                longestStreak: streak,
+                onStreakTap: onStreakTap,
+                readToday: readToday,
               ),
             ),
           ],
@@ -126,6 +133,74 @@ Future<void> _pump(
 }
 
 void main() {
+  // **The streak tile is the one figure on this card with a screen behind it**, and the
+  // only reason the sheet knows about it at all is to take it away: an edit is a modal
+  // thing happening in the library *behind* this sheet, and a tap that pushed a
+  // full-screen page out from under it would strand a reader mid-drag with covers in
+  // hand. Exactly the argument that makes the year rail `enabled: !isEditMode`, and
+  // asserted the same way — one frame into the edit, while the sheet is still on its way
+  // down and the tile could still be reached.
+  group('LibraryCardSheet streak tile', () {
+    StatTile streakTile(WidgetTester tester) => tester
+        .widgetList<StatTile>(find.byType(StatTile))
+        .singleWhere((tile) => tile.label == 'Streak');
+
+    testWidgets('Given a run, Then the tile carries the tap it was handed', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        books: [_read('a', DateTime(2026, 2, 1))],
+        streak: 12,
+        onStreakTap: () {},
+      );
+
+      expect(streakTile(tester).onTap, isNotNull);
+    });
+
+    testWidgets('Given today is recorded, Then the sheet passes that through', (
+      tester,
+    ) async {
+      // The sheet's only job here is not to lose the flag: the temperature is the
+      // body's decision and the provider is the page's, so this is the seam where a
+      // default of `false` would silently make every tile cold.
+      await _pump(
+        tester,
+        books: [_read('a', DateTime(2026, 2, 1))],
+        streak: 12,
+        readToday: true,
+      );
+
+      expect(streakTile(tester).variant, StatTileVariant.warm);
+    });
+
+    testWidgets('Given today is still open, Then the tile is cool', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        books: [_read('a', DateTime(2026, 2, 1))],
+        streak: 12,
+      );
+
+      expect(streakTile(tester).variant, StatTileVariant.cool);
+    });
+
+    testWidgets('Given the library is being edited, Then the tile is inert', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        books: [_read('a', DateTime(2026, 2, 1))],
+        streak: 12,
+        onStreakTap: () {},
+        isEditMode: true,
+      );
+
+      expect(streakTile(tester).onTap, isNull);
+    });
+  });
+
   group('LibraryCardSheet share affordance', () {
     testWidgets(
       'Given finished books, When the sheet rests where it opens, Then share is offered',

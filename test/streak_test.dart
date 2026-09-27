@@ -7,8 +7,9 @@
 // What these cases really defend is one distinction the whole feature's tone depends
 // on: **an unstamped today is an open day, not a broken run.** A test suite that only
 // checked "today is stamped" would pass against an implementation that resets every
-// streak in the app at 4am each morning, which is the single most damaging thing this
-// number could do. Hence a case for a run ending yesterday, a case for one ending two
+// streak in the app at the midnight rollover each night, which is the single most
+// damaging thing this number could do. Hence a case for a run ending yesterday, a case
+// for one ending two
 // days ago, and a case proving the record outlives the break.
 //
 // The remaining cases are about arithmetic that only fails months later: the longest

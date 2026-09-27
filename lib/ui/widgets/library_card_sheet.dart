@@ -97,6 +97,14 @@ class LibraryCardSheet extends StatelessWidget {
   /// edit can be started from any tab, so every sheet has to get out of the way.
   final bool isEditMode;
 
+  /// Opens the streak page from the streak tile. Null leaves the tile inert, and so
+  /// does an edit in progress — see where this is passed on.
+  final VoidCallback? onStreakTap;
+
+  /// Whether today is recorded, which is what the streak tile takes its temperature
+  /// from. Passed straight through — see `LibraryCardBody.readToday`.
+  final bool readToday;
+
   /// See [LibrarySheet.bottomReserve].
   final double bottomReserve;
 
@@ -131,6 +139,8 @@ class LibraryCardSheet extends StatelessWidget {
     this.memberSince,
     this.maxExtent = double.infinity,
     this.isEditMode = false,
+    this.onStreakTap,
+    this.readToday = false,
     this.bottomReserve = 0,
     this.onRestingExtent,
     this.sheetKey,
@@ -316,6 +326,12 @@ class LibraryCardSheet extends StatelessWidget {
             year: filterYear,
             streak: streak,
             longestStreak: longestStreak,
+            readToday: readToday,
+            // Withheld during an edit, exactly as the year rail is at `enabled:
+            // !isEditMode` above. An edit is a modal thing happening behind this
+            // sheet; a tap that pushed a full-screen page out from under it would
+            // strand the reader mid-drag with covers in hand.
+            onStreakTap: isEditMode ? null : onStreakTap,
           ),
         ),
       ),

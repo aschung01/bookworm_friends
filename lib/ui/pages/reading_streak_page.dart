@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,10 +17,11 @@ import 'package:bookworm_friends/ui/widgets/bottom_sheets/pick_reading_book_shee
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_percent_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/adaptive_icon_button.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
-import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_calendar_month.dart';
+import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_week_row.dart';
-import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame_mark.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_celebration_route.dart';
 
 /// The ✕, keyed so a test taps a target rather than a glyph.
 const Key kStreakPageCloseKey = Key('streak-page-close');
@@ -30,7 +32,14 @@ const Key kStreakPageCloseKey = Key('streak-page-close');
 /// to match the streak — which is most days.
 const Key kStreakFigureKey = Key('streak-figure');
 
-/// The one control, keyed for the same reason.
+// **There was a `kStreakTodayLineKey` here**, for the italic line under the figure that chose
+// between "A page is enough. Today counts until midnight." and the warning-hour version of it.
+// Both the key and the line are gone on instruction, along with the ", and today is open" the
+// label above them carried. The two strings survive because the home-screen widget draws them,
+// where there is no flame, no week row and no record button to read the day's status off —
+// see `streak_widget_sync.dart`.
+
+/// The one control, keyed so a test taps a target rather than a glyph.
 const Key kStreakRecordButtonKey = Key('streak-record-button');
 
 /// The undo, which is a different control from the button it replaces.
@@ -42,7 +51,41 @@ const Key kStreakRecordButtonKey = Key('streak-record-button');
 /// reader is told the act landed, and taking it back is available without being urged.
 const Key kStreakUndoKey = Key('streak-undo');
 
-/// The run, the week, the month, the record, and one button.
+/// Whether the page offers to take tonight back.
+///
+/// **Debug builds only, on instruction.** The footer it gates is a confirmation with an
+/// undo inside it — "Today is recorded." beside a quiet `Undo` — and the undo is the part
+/// that does not belong in a shipped build: taking a night back is a developer's need while
+/// working on the feature, not a reader's. A reader who stamped the wrong day has the month
+/// grid in front of them and no way to be harmed by the extra row; a reader offered an Undo
+/// is being invited to treat their own record as provisional.
+///
+/// **The whole footer goes, not just the `Undo` inside it**, which is the literal reading of
+/// the instruction and the one that leaves nothing dangling: a confirmation banner whose
+/// only interactive element has been removed is a strip of text restating what the week row
+/// and the month grid above it already show. If the confirmation should stay and only the
+/// control go, that is a one-line change here — drop the `ElevatedActionButton` from
+/// [_DoneFooter] rather than the footer from the page.
+///
+/// A mutable top-level rather than a bare `kDebugMode` at the call site, for the reason
+/// `debugStreakFlameAssetOverride` is one: `flutter test` runs in debug, so a raw
+/// `kDebugMode` would make the shipped behaviour the only state no case can reach.
+bool get streakUndoVisible => debugStreakUndoVisibleOverride ?? kDebugMode;
+
+/// Forces [streakUndoVisible] either way, for tests. Null follows `kDebugMode`.
+@visibleForTesting
+bool? debugStreakUndoVisibleOverride;
+
+/// The run, the week, the month, and one button.
+///
+/// **The record is deliberately not here, and that took three passes to settle.** It shipped
+/// as a boxed `Longest / 2 days` row between the week and the month — ~60pt of the page's
+/// most valuable space for one secondary number — then as a caption under the hero figure,
+/// which cost a line instead of a card and was still answering a question nobody on this
+/// screen is asking. The page is about the run in progress and tonight's act. `longest` is a
+/// lifetime stat, and the Library Card's streak tile already carries it (`in a row, best N`)
+/// on the surface whose whole job is stats. `longestStreakProvider` is untouched and still
+/// feeds it; what is gone is this page's second copy.
 ///
 /// **The streak's destination, and the reason the chip is no longer a stopgap.** The figure
 /// used to have no home of its own: the chip pointed at the Library Card, which is the
@@ -52,10 +95,9 @@ const Key kStreakUndoKey = Key('streak-undo');
 /// becomes a second pointer here rather than a rival figure. One home, two pointers.
 ///
 /// **Not one figure this page draws needs a query that does not exist.**
-/// `currentStreakProvider`, `longestStreakProvider`, `readTodayProvider` and
-/// `readingDaysProvider`'s 400-day window are all shipping, and the month is
-/// [ReadCalendarMonth] — the same renderer any other surface must use, so two grids cannot
-/// drift.
+/// `currentStreakProvider`, `readTodayProvider` and `readingDaysProvider`'s 400-day window
+/// are all shipping, and the month is [ReadCalendarMonth] — the same renderer any other
+/// surface must use, so two grids cannot drift.
 ///
 /// **A full-screen cover rather than a sheet**, for the reason `app_routes.dart` already
 /// argues at length: a `CupertinoSheetRoute` is `UIModalPresentationPageSheet`, which
@@ -80,14 +122,12 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
   /// Local rather than a route, so the page underneath keeps its state and the reader lands
   /// back on the same scroll position with today now stamped. A pushed route would rebuild
   /// this page on the way back for no reason.
-  bool _celebrating = false;
 
   /// The run the celebration should show.
   ///
   /// **Captured at the moment of the write rather than read live.** The celebration is the
   /// receipt for one act; reading the provider inside it would let the figure change
   /// underneath the reader if anything else touched the set while it was up.
-  int _celebratedStreak = 0;
 
   /// Guards the pair against a second tap while a sheet is already up.
   bool _recording = false;
@@ -99,8 +139,14 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
 
     final days = ref.watch(readingDaysProvider).valueOrNull;
     final streak = ref.watch(currentStreakProvider);
-    final longest = ref.watch(longestStreakProvider);
-    final read = ref.watch(readTodayProvider);
+    // **The phase rather than `readTodayProvider`**, so there is one answer about today on
+    // this page rather than two providers that can disagree across the rollover. It is read
+    // for `recorded` alone now: the hero's status line, which was the only thing that told
+    // `open` from `openLate`, is gone — the evening warning lives on the home-screen widget.
+    // Kept as the phase anyway, because `main.dart` already invalidates it on the boundaries
+    // and swapping in a second provider would be a second clock for the same fact.
+    final phase = ref.watch(readingDayPhaseProvider);
+    final read = phase == ReadingDayPhase.recorded;
     final today = readingDate(DateTime.now());
 
     // **Watched, not read, and that distinction was a bug.** The month colours each night by
@@ -129,7 +175,7 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _Hero(streak: streak, read: read),
+                        _Hero(streak: streak, phase: phase),
                         const SizedBox(height: 18),
                         // **A week beside a month, which is not the duplication it looks
                         // like.** The month is the record; the week is the run in progress,
@@ -139,13 +185,28 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
                         // so the week behind that screen and the week inside it cannot
                         // disagree.
                         ReadWeekRow(
-                          days: _weekEndingToday(days ?? const {}, today),
+                          days: readingWeekEndingOn(
+                            (days ?? const {}).keys.toSet(),
+                            today,
+                          ),
                           endingOn: today,
                           palette: ReadWeekPalette.page(context),
                         ),
                         const SizedBox(height: 18),
-                        _RecordRow(longest: longest),
-                        const SizedBox(height: 16),
+                        // **The span ladder stood here and does not any more.** It shipped
+                        // between this row and the month card, and was moved into
+                        // `StreakCelebration` on instruction — so the note below is true
+                        // again rather than superseded, and this page is once more the run
+                        // and tonight's act and nothing else.
+                        //
+                        // The reasoning, in full, is at the track's call site in
+                        // `streak_celebration.dart`; the short version is that the ladder
+                        // standing here was a permanent list of four spans the reader has
+                        // not reached, which is what option **G** in
+                        // `docs/mockups/streak-week/index.html` objected to, and showing it
+                        // only on the night the reader has just added to it answers that
+                        // without giving up the object. Do not put it back here to "fill the
+                        // gap" — the gap is deliberate, and the ladder is not furniture.
                         _MonthCard(
                           days: days ?? const {},
                           today: today,
@@ -160,51 +221,53 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                  child: read
-                      ? _DoneFooter(onUndo: _undoToday)
-                      : SizedBox(
-                          width: double.infinity,
-                          child: ElevatedActionButton(
-                            key: kStreakRecordButtonKey,
-                            height: 50,
-                            buttonText: l10n.streakRecordToday,
-                            // The flame leads the label here the way it leads the chip, so
-                            // the control and the figure it moves are visibly the same
-                            // feature.
-                            leading: const Icon(
-                              kReadingStreakIcon,
-                              size: 18,
-                              color: Colors.white,
+                // **Nothing at all once the night is in, outside debug.** The
+                // record button is gone because there is nothing left to record, and
+                // the confirmation that used to take its place is now developer
+                // furniture — see [streakUndoVisible]. The padding goes with it rather
+                // than staying as a reserved strip: an empty 70pt band under the month
+                // reads as a control that failed to load, where the page simply ending
+                // at the card reads as a page that is finished.
+                if (!read || streakUndoVisible)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: read
+                        ? _DoneFooter(onUndo: _undoToday)
+                        : SizedBox(
+                            width: double.infinity,
+                            child: ElevatedActionButton(
+                              key: kStreakRecordButtonKey,
+                              height: 50,
+                              buttonText: l10n.streakRecordToday,
+                              // The flame leads the label here the way it leads the chip, so
+                              // the control and the figure it moves are visibly the same
+                              // feature.
+                              //
+                              // **White body, `brandFill` core** — the same treatment as the
+                              // library card's cool tile. A plain white flame has no lightness
+                              // left for `StreakFlameMark` to lift into a core, so without this
+                              // it draws as a solid droplet instead of a flame; handing it the
+                              // button's own green punches the core back through, the way the
+                              // tile hands it its own fill.
+                              leading: StreakFlameMark(
+                                size: 18,
+                                color: Colors.white,
+                                coreColor: colors.brandFill,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                              ),
+                              onPressed: _recordToday,
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 18),
-                            onPressed: _recordToday,
                           ),
-                        ),
-                ),
+                  ),
               ],
             ),
           ),
-          if (_celebrating)
-            Positioned.fill(
-              child: StreakCelebration(
-                streak: _celebratedStreak,
-                week: _weekEndingToday(days ?? const {}, today),
-                today: today,
-                onDone: () => setState(() => _celebrating = false),
-              ),
-            ),
         ],
       ),
     );
   }
-
-  /// The seven days ending today, oldest first.
-  List<bool> _weekEndingToday(Map<DateTime, String?> days, DateTime today) => [
-    for (var back = 6; back >= 0; back--)
-      days.containsKey(DateTime(today.year, today.month, today.day - back)),
-  ];
 
   /// Every book the reader owns, flattened out of the shelves.
   ///
@@ -279,13 +342,13 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
       }
       if (!mounted) return;
 
-      // Read after the write rather than incremented: the figure is derived from the set,
-      // and there is no counter here to get out of step with it.
-      final days = ref.read(readingDaysProvider).valueOrNull ?? const {};
-      setState(() {
-        _celebratedStreak = currentReadingRun(days.keys, today);
-        _celebrating = true;
-      });
+      // **The celebration is a route now, and this page no longer owns it.** It used to be
+      // a `Positioned.fill` in this page's own `Stack`, driven by `_celebrating` and
+      // `_celebratedStreak`. Recording a night is no longer something only this page can
+      // do — moving a bookmark from a book's details does it too — so the screen moved to
+      // `showStreakCelebration`, which reads the run itself. Same rule as before, one level
+      // out: read after the write rather than incremented.
+      await showStreakCelebration(context, ref);
     } finally {
       _recording = false;
     }
@@ -398,83 +461,72 @@ class _TopBar extends StatelessWidget {
 /// taught everyone to read it. So the flame leads the number and the month below draws
 /// stamps, not thirty flames.
 class _Hero extends StatelessWidget {
-  const _Hero({required this.streak, required this.read});
+  const _Hero({required this.streak, required this.phase});
 
   final int streak;
-  final bool read;
+  final ReadingDayPhase phase;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final colors = context.colors;
+    final read = phase == ReadingDayPhase.recorded;
     // The chip's own rule, at the page's size: keyed on whether *today* is recorded, never
     // on the count. Warm once the night is in, grey while the day is still open.
-    final tint = read ? colors.flame : colors.secondaryText;
+    //
+    // **[kCandleFlame] rather than `colors.flame`, on instruction.** The mark here is the
+    // same silhouette the celebration draws (see `StreakFlameMark`), and drawing it in
+    // #B54708 on the page and #F2A93F there made one object look like two — the rust read as
+    // reddish beside the amber. The theme token is the readable orange and this is the
+    // *flame's* orange; a filled 44pt shape is not type, so the 1.76:1 it would measure as
+    // text does not apply to it. `ReadWeekRow` below makes the same swap for the same reason.
+    // **The mark stays on two tints, and the late state is deliberately not a third.** The
+    // whole feature reads in one warm hue — `kCandleFlame` #F2A93F — so a warning drawn in
+    // amber would be the same hue as the state it warns about, in both themes. What carries
+    // *late* on this page is the line at the bottom of this column; the flame keeps saying
+    // only whether the night is in.
+    final tint = read ? kCandleFlame : colors.secondaryText;
 
     return Column(
       children: [
-        Icon(kReadingStreakIcon, size: 44, color: tint),
+        StreakFlameMark(size: 44, color: tint),
         const SizedBox(height: 4),
         Text(
           '$streak',
           key: kStreakFigureKey,
-          style: AppTextStyles.display.copyWith(color: colors.primaryText),
+          style: AppTextStyles.streakFigure.copyWith(color: colors.primaryText),
         ),
-        // **Two lines, and the split is the point.** The bold line names what the figure
-        // *is*, and it is the line that carries the day's status — which is what lets the
-        // number stay honest all day. A run is intact until the day actually ends, so the
-        // figure never drops at 9am; what changes at 9am is that the label says the day is
-        // still open. The line under it is the encouragement, and it is the only place on the
-        // page that asks for anything.
+        // **One line, and it only names what the figure is.** It used to carry the day's
+        // status as well -- "day streak, and today is open" -- with an italic sentence under it
+        // asking for a page, and both are gone on instruction. The figure is honest all day
+        // either way (a run ending yesterday is intact, because an unstamped today is open
+        // rather than broken), and three things on this screen already say whether tonight is
+        // in: the flame's tint directly above, the week row's last cell, and the presence of
+        // the record button at the foot. Saying it a fourth time in words was the page
+        // explaining its own drawing.
+        //
+        // **And it is never `streakNothingYet` here.** That sentence is withdrawn from this
+        // page on instruction, and `l10n.streakDays` already has a zero case of its own --
+        // "No streak yet" -- so passing the raw count through unconditionally is enough. It
+        // does not overlap with `streakNothingYet`'s job either way: `read` implies the count
+        // is at least 1, so a *recorded* night never had a chance to show "start here" copy in
+        // the first place. The home-screen widget still owns that sentence -- see
+        // `streak_widget_sync.dart` -- because it has no flame, no week row and no button to
+        // say the same thing another way.
         Text(
-          streak == 0 && !read
-              ? l10n.streakNothingYet
-              : read
-              ? l10n.streakDays(streak)
-              : l10n.streakDaysOpen(streak),
+          l10n.streakDays(streak),
           textAlign: TextAlign.center,
           style: AppTextStyles.subtitle.copyWith(color: colors.secondaryText),
         ),
-        const SizedBox(height: 2),
-        Text(
-          read ? l10n.streakTodayDone : l10n.streakTodayOpen,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.label.copyWith(
-            color: colors.secondaryText,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
+        // **No status line under the label, in any phase.** What used to sit here was the
+        // app's whole implementation of the reading-streaks design's `sc-risk`: one italic
+        // sentence while the day was open, a sharper one from the warning hour. It is
+        // withdrawn from this page and it is *not* withdrawn from the feature — the home-screen
+        // widget still draws both strings, and is the surface that needs them, having no flame,
+        // no week row and no button to carry the state instead. If a warning is ever wanted
+        // back here, note why it was a line and not a colour: `kCandleFlame` is what "recorded"
+        // means, so an amber warning would be the same hue as the state it warns about.
       ],
-    );
-  }
-}
-
-/// The record a missed night does not erase.
-class _RecordRow extends StatelessWidget {
-  const _RecordRow({required this.longest});
-
-  final int longest;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: colors.surfaceVariant,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(l10n.streakLongest, style: AppTextStyles.body),
-          Text(
-            l10n.streakDayCount(longest),
-            style: AppTextStyles.body.copyWith(color: colors.secondaryText),
-          ),
-        ],
-      ),
     );
   }
 }

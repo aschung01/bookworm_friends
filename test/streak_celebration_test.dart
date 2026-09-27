@@ -24,20 +24,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
-import 'package:bookworm_friends/ui/widgets/reading_streak_chip.dart';
 import 'package:bookworm_friends/ui/widgets/streak/read_week_row.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_flame.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame_mark.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_span_track.dart';
 
 import 'still_streak_flame.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
   required int streak,
+  int? best,
   List<bool>? week,
   bool reducedMotion = false,
   VoidCallback? onDone,
+  Size surface = const Size(393, 852),
 }) async {
+  // **A phone-shaped surface by default, because the harness default is not one.**
+  // `flutter_test` hands out 800×600, and this screen is a column of fixed-height pieces
+  // between two `Spacer`s presented full-screen on a phone. 600 points tall is shorter than
+  // any device the app supports — the smallest is an iPhone SE at 667 — so every case here
+  // was implicitly asserting against a window narrower in the one dimension that matters.
+  // The effect was not theoretical: adding the span ladder put the content at about 624
+  // points, which fits every real phone and overflowed 27 cases at 600, each of them
+  // reported as a `RenderFlex` exception with nothing to do with what it was testing. The
+  // two cases at the bottom of this file pass their own size through this parameter, so
+  // there is one place that decides how tall the screen is.
+  tester.view.physicalSize = surface;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light,
@@ -48,6 +65,10 @@ Future<void> _pump(
         data: MediaQueryData(disableAnimations: reducedMotion),
         child: StreakCelebration(
           streak: streak,
+          // `longestReadingRun` counts the run in progress, so a `best` below `streak`
+          // is unreachable in production. Defaulting to `streak` therefore means "this
+          // run is the record", which is the state most cases here do not care about.
+          best: best ?? streak,
           week: week ?? const [true, true, false, true, true, true, true],
           // A fixed day so the weekday letters are stable: the row labels its cells from
           // this, and a case that read the clock would assert a different letter each day.
@@ -93,8 +114,13 @@ int _figureValue(WidgetTester tester) => int.parse(
 );
 
 /// The colour the flame is drawn in at this instant.
+///
+/// The *body*'s colour. `StreakFlameMark` derives its core from that by lifting the
+/// lightness, so reading one number is reading both — which is deliberate here: the ignition
+/// lerps a single colour out of `dormant`, and a core lit independently of its body would be
+/// a bright tongue inside a dead shape.
 Color _flameColour(WidgetTester tester) =>
-    tester.widget<Icon>(find.byIcon(kReadingStreakIcon)).color!;
+    tester.widget<StreakFlameMark>(find.byType(StreakFlameMark)).color;
 
 void main() {
   // Force the hand-built path. See the note at the top of this file, and the longer one on
@@ -109,10 +135,13 @@ void main() {
     await _pump(tester, streak: 12, reducedMotion: true);
 
     expect(find.text('12'), findsOneWidget);
-    expect(find.text('days in a row'), findsOneWidget);
-    // The chip's own constant, not a second flame that happens to look like it. The flame
-    // names the *run*, which is why the week row under it draws stamps.
-    expect(find.byIcon(kReadingStreakIcon), findsOneWidget);
+    expect(find.text('day streak'), findsOneWidget);
+    // **The chip's own mark, and now genuinely the same silhouette rather than a promise
+    // that it is.** This used to be `kReadingStreakIcon`, shared with the chip on the
+    // reasoning that one constant is one flame — while the artboard a few lines above drew a
+    // completely different one. `StreakFlameMark` is generated from the artboard's own point
+    // lists, so the fallback and the real thing are one drawing.
+    expect(find.byType(StreakFlameMark), findsOneWidget);
   });
 
   testWidgets('today\'s cell arrives last, after the figure', (tester) async {
@@ -338,7 +367,7 @@ void main() {
     await tester.pump();
 
     final onFlame = find.ancestor(
-      of: find.byIcon(kReadingStreakIcon),
+      of: find.byType(StreakFlameMark),
       matching: find.byType(ShaderMask),
     );
     expect(onFlame, findsNothing, reason: 'not before its beat');
@@ -393,7 +422,7 @@ void main() {
     );
     expect(
       find.ancestor(
-        of: find.byIcon(kReadingStreakIcon),
+        of: find.byType(StreakFlameMark),
         matching: find.byType(ShaderMask),
       ),
       findsNothing,
@@ -408,13 +437,15 @@ void main() {
     );
   });
 
-  testWidgets('the cell that just landed is inverted, not merely stamped', (
+  testWidgets('the cell that just landed is lifted, not inverted', (
     tester,
   ) async {
-    // `.lweek s.fresh` in the record. The other six cells on this screen are already the
-    // candle's accent at a wash, so a seventh in the same wash is not somewhere for the eye
-    // to land — which is the whole point of the closing beat. It is solid, reversed out, and
-    // lifted off the card by its own shadow.
+    // **This case used to assert an inversion and the inversion no longer exists.** It was a
+    // real escalation when the other six cells were `kCandleFlame` at a 10% wash: the closing
+    // one went solid with a reversed-out letter. The row rebuild made every read day solid
+    // and gave every one of them a reversed-out check, so there is nothing left to invert to
+    // — the fill *is* the neighbours' fill. What marks this cell out is the shadow under it,
+    // plus the scale overshoot and the tilt `_WeekCard` wraps it in.
     await _pump(tester, streak: 12, reducedMotion: true);
 
     final cell = tester.widget<Container>(
@@ -426,32 +457,181 @@ void main() {
           .first,
     );
     final decoration = cell.decoration as BoxDecoration;
-    expect(decoration.color, ReadWeekPalette.candle.freshFill);
-    expect(decoration.boxShadow, isNotEmpty);
+    expect(decoration.color, ReadWeekPalette.candle.stampFill);
     expect(
-      decoration.color,
-      isNot(ReadWeekPalette.candle.stampFill),
-      reason: 'the inversion is what separates it from its neighbours',
+      decoration.boxShadow,
+      isNotEmpty,
+      reason: 'the lift is the whole of what separates it from its neighbours',
     );
   });
 
   testWidgets('day one gets its own line rather than a countdown', (
     tester,
   ) async {
-    // "29 more days to the 30-day seal" is a discouraging thing to read on the night someone
-    // started, which is the one night the copy has to be kind.
-    await _pump(tester, streak: 1, reducedMotion: true);
+    // A countdown is a discouraging thing to read on the day someone started, which is
+    // the one day the copy has to be kind — so day one keeps its own line even when
+    // there is an older record to chase. **A run of 1 after a lapse is day one**, because
+    // that is what the figure above it says; the guard is checked before `chasing` on
+    // purpose, so a reader coming back reads the same line as a reader starting.
+    await _pump(tester, streak: 1, best: 30, reducedMotion: true);
 
-    expect(find.textContaining('Day one'), findsOneWidget);
+    expect(find.text('One day in!'), findsOneWidget);
     expect(find.textContaining('more days'), findsNothing);
-    expect(find.text('day in a row'), findsOneWidget);
+    expect(find.text('day streak'), findsOneWidget);
   });
 
-  testWidgets('otherwise it names the next seal and the distance to it', (
+  testWidgets('short of the record, it names the distance left to beat it', (
     tester,
   ) async {
-    await _pump(tester, streak: 12, reducedMotion: true);
-    expect(find.text('18 more days to the 30-day seal.'), findsOneWidget);
+    // **To beat a best of 30 from 12 you need 19 more days, not 18.** The old copy
+    // counted the distance to *reach* a milestone; a record has to be passed, not met.
+    await _pump(tester, streak: 12, best: 30, reducedMotion: true);
+    expect(find.text('19 more days to beat your best.'), findsOneWidget);
+  });
+
+  testWidgets('a record is beaten rather than matched', (tester) async {
+    // **The distance is `best + 1 - streak`, so its floor is 2, not 1.** Reaching a best
+    // of 30 on day 30 only matches it. That is also why the string has no `=1` case:
+    // the bar only shows while `best > streak`, so `best >= streak + 1` and the countdown
+    // can never say "1 more day".
+    await _pump(tester, streak: 30, best: 31, reducedMotion: true);
+    expect(find.text('2 more days to beat your best.'), findsOneWidget);
+
+    // One day earlier is 3, never 2 — pinning the arithmetic rather than one value.
+    await _pump(tester, streak: 29, best: 31, reducedMotion: true);
+    expect(find.text('3 more days to beat your best.'), findsOneWidget);
+  });
+
+  testWidgets('the run being the record is the reward', (tester) async {
+    await _pump(tester, streak: 30, best: 30, reducedMotion: true);
+    expect(
+      find.text('Your longest run yet.'),
+      findsOneWidget,
+      reason:
+          'longestReadingRun counts the run in progress, so streak == best is the '
+          'record being set rather than a tie one day short of it',
+    );
+
+    await _pump(tester, streak: 31, best: 31, reducedMotion: true);
+    expect(find.text('Your longest run yet.'), findsOneWidget);
+  });
+
+  testWidgets('the span ladder is here every night, record or not', (
+    tester,
+  ) async {
+    // **This case used to assert that a progress bar disappeared on a record night, and
+    // that bar no longer exists.** `_MilestoneBar` measured `streak` against `best + 1`
+    // and was hidden once the run *was* the record, on the reasoning that a bar toward a
+    // target already passed is furniture. That reasoning was sound about that bar and is
+    // exactly why `StreakSpanTrack` replaced it: a ladder of named spans has somewhere
+    // further to go on every night there is, so it never has to vanish, and the night the
+    // record is set is the night it has the most to say.
+    for (final pair in [
+      [9, 20],
+      [9, 9],
+      [1, 1],
+      [400, 400],
+    ]) {
+      await _pump(tester, streak: pair[0], best: pair[1], reducedMotion: true);
+      expect(
+        find.byType(StreakSpanTrack),
+        findsOneWidget,
+        reason: 'streak ${pair[0]} of a best of ${pair[1]}',
+      );
+    }
+  });
+
+  testWidgets('the ladder measures tonight\'s run, not the record', (
+    tester,
+  ) async {
+    // **Which of the two numbers it reads is the whole difference from the bar it
+    // replaced, and it reads `streak`, not `best`.** It read `best` for one round, on the
+    // reasoning that the record never falls and so was the more honest number for a rail.
+    // That was backwards: right after a lapse, when `streak` has just reset to 1, a rail
+    // filled from `best` sits most of the way to a rung the *new* run has no claim on —
+    // and nothing on screen said the fill was the old run rather than this one. The record
+    // still has a home: `streakCelebrationChasing`/`streakCelebrationRecord`, in words,
+    // directly under the track.
+    await _pump(tester, streak: 2, best: 40, reducedMotion: true);
+
+    final track = tester.widget<StreakSpanTrack>(find.byType(StreakSpanTrack));
+    expect(track.streak, 2);
+    expect(
+      StreakSpanTrack.fillFraction(track.streak, track.rungs),
+      closeTo(0.25 * 2 / 7, 1e-9),
+      reason: '2 days is two sevenths of the way to the first rung',
+    );
+  });
+
+  testWidgets('the four rungs are the localised spans, in order', (
+    tester,
+  ) async {
+    // The rungs are built here rather than inside the track, because the track draws a
+    // ladder and has no opinion about what a rung is called — which is what lets `ko` say
+    // `1주` with no second code path. Pinned so a reordering or a dropped rung shows up.
+    await _pump(tester, streak: 9, best: 9, reducedMotion: true);
+
+    final track = tester.widget<StreakSpanTrack>(find.byType(StreakSpanTrack));
+    expect(track.rungs.map((r) => r.days).toList(), [7, 30, 100, 365]);
+    expect(track.rungs.map((r) => r.label).toList(), [
+      '1 week',
+      '1 month',
+      '100 days',
+      '1 year',
+    ]);
+  });
+
+  testWidgets('the ladder does not fill with the beat, only arrive with it', (
+    tester,
+  ) async {
+    // **The bar this replaced filled as the beat ran, and that would be a lie here.** The
+    // bar measured tonight's run, so growing it was the news. The ladder measures `best`,
+    // which on any night short of a record did not move — so the reveal is the `_Rise`'s
+    // fade and slide, and the fill is whatever it already was. Asserted by taking the
+    // fill's width mid-sequence and again at rest: same number, while the opacity above
+    // it is still climbing.
+    await _pump(tester, streak: 5, best: 40);
+    await tester.pump(const Duration(milliseconds: 1400));
+
+    Size fillSize() => tester.getSize(
+      find.descendant(
+        of: find.byType(StreakSpanTrack),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).color == kCandleFlame,
+        ),
+      ),
+    );
+
+    final midway = fillSize();
+    await tester.pumpAndSettle();
+    expect(fillSize().width, closeTo(midway.width, 0.01));
+    expect(
+      midway.width,
+      greaterThan(0),
+      reason: 'and it was already drawn, rather than starting at nothing',
+    );
+  });
+
+  testWidgets('no copy anywhere still promises a seal', (tester) async {
+    // `kStreakMilestones` used to drive the caption as "the 7-day seal", naming a reward
+    // with no award path anywhere in `lib/` and borrowing the noun from the Library
+    // Card's logo emboss, which every card carries regardless of any streak.
+    for (final pair in const [
+      [1, 1],
+      [12, 30],
+      [30, 30],
+      [400, 400],
+    ]) {
+      await _pump(tester, streak: pair[0], best: pair[1], reducedMotion: true);
+      expect(
+        find.textContaining('seal'),
+        findsNothing,
+        reason: 'streak ${pair[0]}, best ${pair[1]}',
+      );
+    }
   });
 
   testWidgets('the way out is the only call to action', (tester) async {
@@ -485,9 +665,15 @@ void main() {
           )
           .first,
     );
-    expect(ground.color, kCandleGlow);
     expect(
-      tester.widget<Icon>(find.byIcon(kReadingStreakIcon)).color,
+      ground.color,
+      kStreakCelebrationGround,
+      reason:
+          'white, and the constant rather than a literal so this and the '
+          "flame's golden cannot disagree about what the screen stands on",
+    );
+    expect(
+      tester.widget<StreakFlameMark>(find.byType(StreakFlameMark)).color,
       kCandleFlame,
     );
   });
@@ -496,38 +682,85 @@ void main() {
     tester,
   ) async {
     // This screen is a column of fixed-height pieces between two `Spacer`s, which is the
-    // shape that overflows first on a short phone. 393×852 is the frame the drawings use; the
-    // default 800×600 test surface would not catch it.
-    tester.view.physicalSize = const Size(393, 852);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
-    // The longest copy this screen can carry: a three-digit run past the last seal, so the
-    // figure is widest and the subtitle is the "seal earned" line rather than a countdown.
-    await _pump(tester, streak: 400, reducedMotion: true);
+    // shape that overflows first on a short phone. 393×852 is the frame the drawings use,
+    // and is also `_pump`'s default now — stated here anyway, because this case is about
+    // the size rather than merely at it.
+    //
+    // The longest copy this screen can carry: a three-digit run, so the figure is widest,
+    // and a record still being chased, so the subtitle is a countdown rather than the
+    // shorter record line.
+    await _pump(
+      tester,
+      streak: 400,
+      best: 500,
+      reducedMotion: true,
+      surface: const Size(393, 852),
+    );
 
     expect(find.text('400'), findsOneWidget);
     expect(find.text('Keep it going'), findsOneWidget);
   });
 
-  group('the milestone ladder', () {
-    test('names the next seal above the run', () {
+  testWidgets('it lays out on the shortest phone it has to', (tester) async {
+    // **375×667 is the case the flame's size is actually spent against.** The flame's box
+    // went 152 → 252 so the Rive drawing would reach the screen three times taller (see
+    // `StreakFlame.stageSize`), and 100 points of that comes straight out of the two
+    // `Spacer`s. At 393×852 there is slack to absorb it and the case above passes either
+    // way; this is an iPhone SE, which is the smallest thing the column has to survive, and
+    // before the flame grew **nothing in the suite set a surface short enough to fail**.
+    //
+    // A `RenderFlex` overflow throws rather than merely painting a stripe, so the assertions
+    // below are almost incidental — pumping at this size at all is the test.
+    // **And it is now the binding case for more than the flame.** The span ladder moved
+    // here from the streak page and cost about 30 points net over the progress bar it
+    // replaced, which leaves roughly 40 points of slack at this size. Anything else added
+    // to this column should be measured here first.
+    //
+    // **The box is no longer square, and this case is where that gets checked.** The artboard
+    // went 300×300 → 360×300 to give the burst spray somewhere to be seen, so the box is
+    // 302.4 × 252 (see `StreakFlame.artboardAspect`). The height is what the vertical slack
+    // above is about and it did not move; what is new is the *width*, and 375 is the phone
+    // where that could bite — the celebration pads itself 28 points each side, so the budget
+    // here is 319 and this leaves 17. A squeeze would show up as a width below 302.4 rather
+    // than as an overflow, which is why this asserts the size instead of trusting the pump.
+    await _pump(
+      tester,
+      streak: 400,
+      reducedMotion: true,
+      surface: const Size(375, 667),
+    );
+
+    expect(find.text('400'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(StreakFlame)),
+      Size(
+        StreakFlame.stageWidthFor(StreakFlame.stageSize),
+        StreakFlame.stageSize,
+      ),
+      reason: 'the flame must get its whole box, not a squeezed one',
+    );
+  });
+
+  group('the span ladder', () {
+    // **Nothing in `lib/` reads these any more.** They drove the bar and the caption as
+    // "the 7-day seal"; both now measure the reader's own record, because there was no
+    // seal to earn. The ladder is kept because it is where making these spans real would
+    // start, so it stays covered rather than rotting untested.
+    test('names the next span above the run', () {
       expect(streakMilestoneTarget(1), 7);
       expect(streakMilestoneTarget(7), 30);
       expect(streakMilestoneTarget(29), 30);
       expect(streakMilestoneTarget(30), 100);
     });
 
-    test('runs out rather than inventing a seal nobody set', () {
-      // Past the last rung there is no next target, and the copy says the seal is earned
-      // instead of counting toward a number the ladder does not have.
+    test('runs out rather than inventing a rung nobody set', () {
       expect(streakMilestoneTarget(kStreakMilestones.last), isNull);
       expect(streakMilestoneTarget(10000), isNull);
     });
 
-    test('the rungs are ascending, which the bar\'s arithmetic assumes', () {
-      // `streak / target` is only a fraction under 1 while the ladder is sorted. An
-      // out-of-order rung would fill the bar past its track.
+    test('the rungs are ascending, which any progress arithmetic assumes', () {
+      // A fraction of a target is only under 1 while the ladder is sorted. An
+      // out-of-order rung would fill a bar past its own track.
       for (var i = 1; i < kStreakMilestones.length; i++) {
         expect(kStreakMilestones[i], greaterThan(kStreakMilestones[i - 1]));
       }
