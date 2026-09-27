@@ -27,7 +27,6 @@ dependencies:
   package_info_plus: ^8.0.0
   firebase_analytics: ^11.2.0
   firebase_crashlytics: ^4.0.0
-  app_tracking_transparency: ^2.0.6
   cupertino_icons: ^1.0.8
   cupertino_native_better: ^1.5.4
   http: ^1.2.0

@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/core/supabase_config.dart';
@@ -106,17 +104,19 @@ class _MyAppState extends ConsumerState<MyApp> {
   /// call, and it now has to compose with the shell's chrome.
   late final TransitionBuilder _easyLoading = EasyLoading.init();
 
-  @override
-  void initState() {
-    super.initState();
-    if (Platform.isIOS) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        try {
-          await AppTrackingTransparency.requestTrackingAuthorization();
-        } catch (_) {}
-      });
-    }
-  }
+  // **No App Tracking Transparency prompt, deliberately.** One used to fire from
+  // `initState` on every iOS launch. Nothing in the app can act on the answer:
+  // there is no ad SDK, no attribution SDK, and Firebase Analytics has not touched
+  // the IDFA since Firebase 8 unless `GoogleAppMeasurementIdentitySupport` is
+  // linked, which it is not. Crash and performance diagnostics are not "tracking"
+  // under Apple's definition, which requires linking user data to third-party data
+  // for advertising or a data broker.
+  //
+  // So the prompt asked for a permission that could not be exercised, and the
+  // matching `usesIdfa` declaration in App Store Connect had no valid purpose to
+  // select from the three Apple offers. Both are gone. **Do not re-add the prompt
+  // without an SDK that actually reads the identifier**, or the declaration becomes
+  // false again.
 
   @override
   Widget build(BuildContext context) {

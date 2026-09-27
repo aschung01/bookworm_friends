@@ -123,8 +123,14 @@
 	     must be present or `Gal.putImage` fails. -->
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Used to save your Library Card to Photos</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Used to collect crash, performance data</string>
+	<!-- No NSUserTrackingUsageDescription, deliberately. It read "Used to collect
+	     crash, performance data" and backed an App Tracking Transparency prompt that
+	     fired on every iOS launch -- but crash and performance diagnostics are not
+	     "tracking" under Apple's definition, and nothing in the binary reads the
+	     advertising identifier: no ad or attribution SDK, and Firebase Analytics
+	     needs GoogleAppMeasurementIdentitySupport for the IDFA, which is not linked.
+	     The prompt and the matching usesIdfa declaration are both gone. Re-adding
+	     this key only makes sense alongside an SDK that genuinely uses the IDFA. -->
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
