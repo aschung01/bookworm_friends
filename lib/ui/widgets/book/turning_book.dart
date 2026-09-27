@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:bookworm_friends/models/book.dart';
+import 'package:bookworm_friends/providers/library_provider.dart'
+    show bookStatusReading;
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book_vertical.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
@@ -152,6 +154,12 @@ class TurningBook extends StatelessWidget {
         // The same jitter the flat spine was drawn at, handed over rather than
         // recomputed, so the cover is exactly as thick as the spine that was tapped.
         jitterOverride: size.jitter,
+        // The pile's books are finished and so wear nothing, but a compressed *plank*
+        // turns a book out through this too and that one can be open. Asked rather
+        // than assumed, so the cover a reader taps out of a spine row carries the same
+        // mark it would face-out — and so the flight it starts has one to carry.
+        bookmarked: book.status == bookStatusReading,
+        progress: book.progress,
         turnRadians: progress.drive(Tween<double>(begin: kSpineOnPose, end: 0)),
         pivot: Alignment.centerLeft,
         spine: BookVertical(

@@ -162,16 +162,94 @@ void main() {
     });
 
     testWidgets(
-      'Given an interested book, Then there is no card and so no door',
+      'Given an interested book, Then there is no card and the verb is the door',
       (tester) async {
-        // No dates means no card, which means no shape for a chevron to end. The
-        // bare badge is not a control.
+        // No dates means no card — and for a while it meant no door either, which was
+        // not a missing shortcut but a dead end: `showBookStatusBottomSheet` has one
+        // caller in the app and it is this widget, so an Interested book could not
+        // reach Reading or Read from anywhere. The verb at the end of the line is the
+        // repair.
         await pumpBookDetails(
           tester,
           book: interestedBook(ownerId: meId),
           signedInAs: meId,
+          // The sheet's Material status-selector fallback needs the room — see the
+          // harness, and the period card's own case above.
+          logicalSize: const Size(500, 900),
         );
 
+        expect(find.text('Interested'), findsOneWidget);
+        expect(find.text('Change status'), findsOneWidget);
+        // Still no card: the chip is not wrapped in a full-width white slab.
+        expect(find.textContaining('~'), findsNothing);
+
+        await tester.tap(find.text('Change status'));
+        await tester.pumpAndSettle();
+
+        // The same sheet the card opens, which is what makes one target enough for
+        // all three states rather than one destination: `BookStatusSelector` is in it.
+        expect(find.text('Change reading status'), findsOneWidget);
+        expect(find.text('Read'), findsWidgets);
+      },
+    );
+
+    testWidgets('the whole line is the target, badge included', (tester) async {
+      // Exactly as the card at status 1 and 2 is a target with the badge inside it.
+      // The badge grows no chevron and no press state of its own, but it is not a
+      // hole in the row either.
+      await pumpBookDetails(
+        tester,
+        book: interestedBook(ownerId: meId),
+        signedInAs: meId,
+        logicalSize: const Size(500, 900),
+      );
+
+      await tester.tap(find.byType(BookStatusBadge));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Change reading status'), findsOneWidget);
+    });
+
+    testWidgets('and the band is no taller for having it', (tester) async {
+      // The 14pt that gets the line past its own ink comes out of the band's 16pt
+      // bottom padding, the same trick and the same figure the progress row uses —
+      // which is why `spillsIntoBandPadding` exists rather than both rows taking it.
+      //
+      // Asserted as the accounting rather than by pumping the page twice and
+      // comparing: the harness overrides providers per pump and cannot be re-pumped
+      // with a different owner inside one test.
+      await pumpBookDetails(
+        tester,
+        book: interestedBook(ownerId: meId),
+        signedInAs: meId,
+        // Wide enough that the line's [Wrap] stays on one run. It is not a device
+        // width: `flutter_test` draws every glyph as a square of the font size, so
+        // `Interested` and `Change status` measure about 340pt here against roughly
+        // 200 on device. The wrap firing is the safety valve working, not a layout
+        // bug — but the spill accounting is only visible while it does not.
+        logicalSize: const Size(500, 900),
+      );
+
+      final line = tester.getSize(find.byType(ReadingPeriodRow)).height;
+      final chip = tester.getSize(find.byType(BookStatusBadge)).height;
+      expect(line, chip + kStatusVerbSpill);
+      // And what it took is exactly what the band stopped padding with.
+      expect(kStatusVerbSpill + kBandProgressRowResidualPadding, 16);
+    });
+
+    testWidgets(
+      "Given a friend's interested book, Then the line offers nothing",
+      (tester) async {
+        // A handle on a door nobody can open is a lie, and this is the one state where
+        // the badge would otherwise sit alone with a verb beside it that fails.
+        await pumpBookDetails(
+          tester,
+          book: interestedBook(ownerId: friendId),
+          signedInAs: meId,
+        );
+
+        expect(find.text('Interested'), findsOneWidget);
+        expect(find.text('Change status'), findsNothing);
         expect(_chevronIn(ReadingPeriodRow), findsNothing);
       },
     );

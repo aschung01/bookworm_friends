@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
 import 'package:bookworm_friends/models/book.dart';
-import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
-import 'package:bookworm_friends/ui/widgets/book/reading_bookmark.dart';
+import 'package:bookworm_friends/providers/library_provider.dart'
+    show bookStatusReading;
 import 'package:bookworm_friends/ui/widgets/book/turning_book.dart'
     show kSpineOnPose;
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
+import 'package:bookworm_friends/ui/widgets/shelf/delete_book_badge.dart';
 import 'package:bookworm_friends/ui/widgets/wiggle.dart';
 
 /// One book on a shelf, drawn face-out: its cover, the ribbon if it is in
 /// progress, and in edit mode the badge that deletes it.
+///
+/// The ribbon is the book's own — [BookWidget.bookmarked] — rather than something
+/// hung over it here, which is where it used to live. Outside the cover it was also
+/// outside the [Hero], so a tap flew the book to the details page without it.
 ///
 /// Lifted out of `_ShelfRowState` when the shelf gained more than one way to draw a
 /// book. The row still owns the slot, the draggable, the shift animation and every
@@ -68,9 +73,10 @@ class ShelfBookTile extends StatelessWidget {
   ///
   /// A widget rather than a flag, because the badge is the row's own private shape
   /// and carries a key this tile has no reason to know about. Null in
-  /// `ShelfDensity.spines` for every book except the one turned out: a 44pt disc
-  /// offset 22pt outside a ~37pt spine covers the spines either side of it, and in
-  /// that density they are touching.
+  /// `ShelfDensity.spines` for every book except the one turned out — not because the
+  /// other books go without one, but because they are spines there and
+  /// [ShelfSpineTile] mounts theirs at a placement a corner-pinned disc cannot use.
+  /// See `_ShelfRowState._deleteBadgeFor`.
   final Widget? deleteBadge;
 
   final VoidCallback? onTap;
@@ -91,6 +97,12 @@ class ShelfBookTile extends StatelessWidget {
             height: height,
             pageCount: book.pageCount,
             heroTag: withHero ? 'book_${book.isbn}' : null,
+            // The ribbon, for a book the reader has open. Drawn by the book rather
+            // than hung over it here, which is where it used to be: outside the
+            // [Hero], so opening the book flew a cover to the details page and left
+            // its mark behind on the shelf. See [BookWidget.bookmarked].
+            bookmarked: book.status == bookStatusReading,
+            progress: book.progress,
             pressEffect: !isEditMode,
             turnDrive: turnDrive,
             turnRadians: pose,
@@ -111,26 +123,12 @@ class ShelfBookTile extends StatelessWidget {
             // recognizer only raced it.
             onLongPress: null,
           ),
-          if (book.status == 1)
-            Positioned(
-              top: 0,
-              // Slid in from the fore-edge by how far through the book the reader
-              // is — display only, and it writes nothing. The mark reads; a sheet
-              // asks. A book with no recorded position keeps the shipped pin, so a
-              // shelf of unanswered books looks exactly as it did before the
-              // column existed.
-              right: readingBookmarkInsetFor(
-                book.progress,
-                coverWidth: height * kDefaultCoverAspect,
-              ),
-              // The ribbon and its shadow, from `reading_bookmark.dart` — which is
-              // also what the Library Card draws, scaled. It was drawn inline here
-              // and the card drew a red rectangle instead; one state deserves one
-              // mark.
-              child: const ReadingBookmark(),
-            ),
           if (isEditMode && badge != null)
-            Positioned(top: -22, left: -22, child: badge),
+            Positioned(
+              top: -DeleteBookBadge.halfTarget,
+              left: -DeleteBookBadge.halfTarget,
+              child: badge,
+            ),
         ],
       ),
     );

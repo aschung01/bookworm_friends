@@ -22,6 +22,13 @@
 // Both are asserted on the *painted* rect, in screen coordinates, because a
 // correctly laid out book that is painted through a distorting scale is exactly
 // the failure mode here.
+//
+// The last group is about a second thing that only motion revealed: the reading
+// ribbon used to be hung over the cover by whichever surface drew it, which put it
+// *outside* the `Hero`. So an open book flew to the details page and arrived bare,
+// and the mark reappeared on the shelf behind it on the way back. It is part of the
+// cover now; these cases pin that it flies, and that it flies at the same fraction
+// of the book at both ends so the flight has nothing to pop.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,6 +36,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
+import 'package:bookworm_friends/ui/widgets/book/reading_bookmark.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 
 const String _isbn = '9788936434120';
@@ -42,7 +50,11 @@ final Finder _coverFace = find.descendant(
   matching: find.byType(ClipRRect),
 );
 
-Widget _book({required double height, VoidCallback? onTap}) => BookWidget(
+Widget _book({
+  required double height,
+  VoidCallback? onTap,
+  bool bookmarked = false,
+}) => BookWidget(
   height: height,
   // Empty, so the cover is generated rather than fetched: a network image in a
   // widget test never resolves, and the book's aspect ratio would then depend on
@@ -51,10 +63,11 @@ Widget _book({required double height, VoidCallback? onTap}) => BookWidget(
   isbn: _isbn,
   title: '아몬드',
   heroTag: 'book_$_isbn',
+  bookmarked: bookmarked,
   onTap: onTap,
 );
 
-Future<void> _pumpShelf(WidgetTester tester) async {
+Future<void> _pumpShelf(WidgetTester tester, {bool bookmarked = false}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light,
@@ -63,6 +76,7 @@ Future<void> _pumpShelf(WidgetTester tester) async {
           body: Center(
             child: _book(
               height: _shelfHeight,
+              bookmarked: bookmarked,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => Scaffold(
@@ -70,7 +84,10 @@ Future<void> _pumpShelf(WidgetTester tester) async {
                       alignment: Alignment.topLeft,
                       child: Padding(
                         padding: const EdgeInsets.all(20),
-                        child: _book(height: _detailsHeight),
+                        child: _book(
+                          height: _detailsHeight,
+                          bookmarked: bookmarked,
+                        ),
                       ),
                     ),
                   ),
@@ -192,5 +209,89 @@ void main() {
             'cover was $painted mid-flight, which crops the artwork to fill it',
       );
     }
+  });
+
+  group('the reading ribbon flies with the book', () {
+    // What a viewer reads as "how far along the book is the mark": the ribbon as a
+    // fraction of the cover it hangs on. Both are measured against the cover's
+    // *height* because that is the dimension [kReadingBookmarkBook] names, and it is
+    // the one the ribbon's own size is derived from at every scale.
+    ({double size, double inset}) ribbonFractions(WidgetTester tester) {
+      final cover = tester.getRect(_coverFace);
+      final ribbon = tester.getRect(find.byType(ReadingBookmark));
+      return (
+        size: ribbon.height / cover.height,
+        inset: (cover.right - ribbon.right) / cover.height,
+      );
+    }
+
+    testWidgets('Given an open book, Then the mark is inside the cover face', (
+      tester,
+    ) async {
+      // The assertion that the whole change rests on. Hung as a sibling of the book
+      // — which is where every caller used to hang it — the ribbon is outside the
+      // `Hero`, and no amount of care at either end can make it fly.
+      await _pumpShelf(tester, bookmarked: true);
+
+      expect(
+        find.descendant(of: _coverFace, matching: find.byType(ReadingBookmark)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Given a book that is not open, Then it wears none', (
+      tester,
+    ) async {
+      await _pumpShelf(tester);
+      expect(find.byType(ReadingBookmark), findsNothing);
+    });
+
+    testWidgets('the mark holds its place on the cover for the whole flight', (
+      tester,
+    ) async {
+      await _pumpShelf(tester, bookmarked: true);
+      // A fixed 22 x 38 ribbon over a book [kReadingBookmarkBook] tall, which is what
+      // the shelf has always drawn and therefore what every other size has to agree
+      // with.
+      final atRest = ribbonFractions(tester);
+      expect(
+        atRest.size,
+        closeTo(kReadingBookmarkHeight / kReadingBookmarkBook, 1e-6),
+      );
+      expect(
+        atRest.inset,
+        closeTo(kReadingBookmarkInset / kReadingBookmarkBook, 1e-6),
+      );
+
+      await tester.tap(find.byType(BookChassis));
+      await tester.pump();
+
+      for (var i = 0; i < 14; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        // Both routes' heroes are placeholders during a flight, so the only ribbon on
+        // screen is the one in the overlay. Two would mean the mark had been left
+        // behind on the shelf as well as flown.
+        expect(find.byType(ReadingBookmark), findsOneWidget);
+        final mid = ribbonFractions(tester);
+        expect(
+          mid.size,
+          closeTo(atRest.size, 1e-3),
+          reason: 'the ribbon changed size against its cover mid-flight',
+        );
+        expect(
+          mid.inset,
+          closeTo(atRest.inset, 1e-3),
+          reason: 'the ribbon slid along the cover mid-flight',
+        );
+      }
+
+      await tester.pumpAndSettle();
+      // And it lands on the 180pt header still reading the same position, which is
+      // the end the flight cannot fudge: there the shuttle is swapped for the real
+      // widget, so a disagreement here is a visible jump.
+      final landed = ribbonFractions(tester);
+      expect(landed.size, closeTo(atRest.size, 1e-6));
+      expect(landed.inset, closeTo(atRest.inset, 1e-6));
+    });
   });
 }

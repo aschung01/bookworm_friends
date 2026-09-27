@@ -105,7 +105,11 @@ Book interestedBook({required String ownerId}) => Book(
   createdAt: DateTime(2023, 12, 9),
 );
 
-List<Shelf> shelvesFor(String ownerId, {List<Book> books = const []}) => [
+List<Shelf> shelvesFor(
+  String ownerId, {
+  List<Book> books = const [],
+  List<Shelf> also = const [],
+}) => [
   Shelf(
     id: shelfId,
     userId: ownerId,
@@ -114,7 +118,28 @@ List<Shelf> shelvesFor(String ownerId, {List<Book> books = const []}) => [
     createdAt: DateTime(2023),
     books: books,
   ),
+  ...also,
 ];
+
+/// A second shelf, so the name tab has somewhere to move a book **to**.
+///
+/// The tab is only a door when there is more than one shelf — with one, the picker
+/// would open on a single row that is already ticked — so a one-shelf library is also
+/// the state every other case in this suite runs in, and is why adding the door
+/// changed none of them.
+Shelf otherShelf({
+  required String ownerId,
+  String id = 's2',
+  String name = 'Essays',
+  List<Book> books = const [],
+}) => Shelf(
+  id: id,
+  userId: ownerId,
+  name: name,
+  position: 1,
+  createdAt: DateTime(2023),
+  books: books,
+);
 
 /// One reaction.
 ///
@@ -243,6 +268,19 @@ Future<void> pumpBookDetails(
   /// resolves.
   List<Book> libraryBooks = const [],
 
+  /// Shelves beyond the one [shelvesFor] always makes, in the owner's library.
+  ///
+  /// Needed by anything about the shelf name tab, which is only a door when there is
+  /// somewhere else to go — see [otherShelf].
+  List<Shelf> otherShelves = const [],
+
+  /// Stands in for the library notifier, for cases that need to see
+  /// `moveBookToShelf` happen. The real one reaches Supabase.
+  ///
+  /// Given the shelves the rest of the harness would have built, so a recording
+  /// subclass does not have to restate them.
+  LibraryNotifier Function(List<Shelf> shelves)? libraryNotifier,
+
   /// A stand-in for [LibraryActions], for cases that need to see a write happen.
   ///
   /// The real one reaches Supabase, which a widget test has no client for -- and
@@ -333,12 +371,17 @@ Future<void> pumpBookDetails(
         // Shelf names resolve against the owner's library, so both the self and
         // friend paths need stubbing.
         userLibraryProvider(book.userId).overrideWith(
-          (ref) async => shelvesFor(book.userId, books: libraryBooks),
+          (ref) async =>
+              shelvesFor(book.userId, books: libraryBooks, also: otherShelves),
         ),
-        libraryProvider.overrideWith(
-          () =>
-              FakeLibraryNotifier(shelvesFor(book.userId, books: libraryBooks)),
-        ),
+        libraryProvider.overrideWith(() {
+          final shelves = shelvesFor(
+            book.userId,
+            books: libraryBooks,
+            also: otherShelves,
+          );
+          return libraryNotifier?.call(shelves) ?? FakeLibraryNotifier(shelves);
+        }),
         if (libraryActions != null)
           libraryActionsProvider.overrideWithValue(libraryActions),
       ],

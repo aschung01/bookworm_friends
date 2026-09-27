@@ -10,7 +10,6 @@ import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/providers/library_shell_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
-import 'package:bookworm_friends/ui/widgets/book/reading_bookmark.dart';
 import 'package:bookworm_friends/ui/widgets/book/reading_day_stamp.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 import 'package:bookworm_friends/ui/widgets/reading_shelf_lamp.dart';
@@ -882,37 +881,24 @@ class _DraggedCover extends StatelessWidget {
         child: ReadingLampWash(
           // The wash goes outside the ribbon as well as the cover, exactly as [_OpenBook]
           // has it: the lamp lights the mark on the book too.
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              BookWidget(
-                imageUrl: book.thumbnail,
-                title: book.title,
-                isbn: book.isbn,
-                height: height,
-                // The jitter is hashed from the ISBN *and* the page count, so a feedback
-                // given only the ISBN is a subtly different book from the one lifted — and
-                // the gap the row opens was measured off the real slot.
-                pageCount: book.pageCount,
-                // Nothing can hold this: the drag already owns the pointer, and the
-                // feedback lives in an `Overlay` the finger never addresses.
-                pressEffect: false,
-              ),
-              // Every book on this shelf is open, so this is unconditional here — unlike
-              // [ShelfBookTile], which draws it on a status check because a plank holds
-              // books that are not.
-              //
-              // The inset is computed the same way the tile computes it, so the mark does
-              // not jump along the cover's edge at the moment a drag starts.
-              Positioned(
-                top: 0,
-                right: readingBookmarkInsetFor(
-                  book.progress,
-                  coverWidth: height * kDefaultCoverAspect,
-                ),
-                child: const ReadingBookmark(),
-              ),
-            ],
+          child: BookWidget(
+            imageUrl: book.thumbnail,
+            title: book.title,
+            isbn: book.isbn,
+            height: height,
+            // The jitter is hashed from the ISBN *and* the page count, so a feedback
+            // given only the ISBN is a subtly different book from the one lifted — and
+            // the gap the row opens was measured off the real slot.
+            pageCount: book.pageCount,
+            // Every book on this shelf is open, so this is unconditional here — unlike
+            // [ShelfBookTile], which asks the status because a plank holds books that
+            // are not. The position is passed for the same reason the tile passes it:
+            // the mark must not jump along the cover's edge at the moment a drag starts.
+            bookmarked: true,
+            progress: book.progress,
+            // Nothing can hold this: the drag already owns the pointer, and the
+            // feedback lives in an `Overlay` the finger never addresses.
+            pressEffect: false,
           ),
         ),
       ),

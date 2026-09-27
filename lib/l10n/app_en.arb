@@ -42,6 +42,10 @@
   "statusReading": "Reading",
   "statusFinished": "Read",
   "statusOther": "Other",
+  "changeStatus": "Change status",
+  "@changeStatus": {
+    "description": "The only door out of status 0. Sits at the trailing end of the status line on the book details page, where the dates will later be, and opens the same sheet the reading-period card opens. Deliberately neutral rather than a verb that picks a destination: this shipped as \"Start reading\" first and sent a reader who logs a book after finishing it to the wrong status. Shorter than changeReadingStatus, which titles the sheet this opens, because it has to sit beside a chip on one 26pt line."
+  },
   "bookDetailsTitle": "Book details",
   "bookInfoUnavailable": "Couldn't load book info",
   "readingPeriod": "Reading period",
@@ -494,6 +498,22 @@
   "appVersion": "App version",
   "logout": "Log out",
   "selectShelf": "Select shelf",
+  "moveToShelf": "Move to shelf",
+  "@moveToShelf": {
+    "description": "Heading of the popover the shelf name tab opens on the book details page. An instruction rather than selectShelf's noun phrase, because the book is already filed somewhere and this names the act; the popover also checks the shelf it is currently on, which a \"Select\" title would contradict."
+  },
+  "shelfWithCount": "{name} ({count})",
+  "@shelfWithCount": {
+    "description": "One row of the native shelf menu the name tab opens. The count rides inside the label because UIMenu items have no subtitle or trailing slot -- CNPopupMenuItem carries a label, an icon and a checkmark and nothing else -- and the count is the whole reason the tab gave its own up. The app-drawn fallback puts the two in separate columns instead, so this string is the native path's only.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
+    }
+  },
   "startDate": "Start date",
   "selectStartDate": "Select start date",
   "finishDate": "Finish date",

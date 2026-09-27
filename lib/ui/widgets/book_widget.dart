@@ -8,6 +8,7 @@ import 'package:bookworm_friends/ui/widgets/book/book_chassis.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book/cover_sample.dart';
 import 'package:bookworm_friends/ui/widgets/book/generated_cover.dart';
+import 'package:bookworm_friends/ui/widgets/book/reading_bookmark.dart';
 
 /// How long a finger must stay down before the book begins to turn.
 ///
@@ -158,6 +159,28 @@ class BookWidget extends StatefulWidget {
   /// [Alignment.centerLeft] hinges the book on its spine.
   final Alignment pivot;
 
+  /// Whether the book wears the reading ribbon.
+  ///
+  /// **The ribbon belongs to the book, not to the surface showing it.** It used to be
+  /// hung by each caller as a sibling of the cover — `ShelfBookTile` and
+  /// `reading_shelf_row.dart`'s drag feedback both did — which meant it was outside the
+  /// [Hero], so an open book flew to the details page and arrived without it. A mark
+  /// that disappears the moment you open the book is saying the wrong thing about the
+  /// only state it exists to report. Drawn here it is part of the cover: it flies with
+  /// the book, it turns with it under a finger, and every surface that draws a
+  /// [BookWidget] wears it by asking rather than by reimplementing the geometry.
+  ///
+  /// The Library Card is the one place that still hangs its own, because there is no
+  /// [BookWidget] there to ask — see `card_cover_row.dart`.
+  final bool bookmarked;
+
+  /// How far through the book the reader is, `0..1`, positioning the ribbon along the
+  /// cover's head. Read only when [bookmarked].
+  ///
+  /// Null is a real answer and not a missing one: it hangs the ribbon at the shipped
+  /// pin. See [readingBookmarkInsetFor].
+  final double? progress;
+
   /// Reports the average colour of the cover, once it has decoded.
   ///
   /// This is the backfill for `books.cover_color`. [_sampleCoverColor] already
@@ -190,6 +213,8 @@ class BookWidget extends StatefulWidget {
     this.holdSuppressesTap = false,
     this.jitter = true,
     this.pivot = Alignment.center,
+    this.bookmarked = false,
+    this.progress,
   }) : assert(
          turnDrive == null || turnRadians == null,
          'turnDrive replaces the hold and turnRadians composes with it; '
@@ -438,6 +463,53 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
     );
   }
 
+  /// The artwork with the reading ribbon over it, handed to [BookChassis] as its
+  /// cover.
+  ///
+  /// **Inside the cover rather than over the chassis**, which is what buys the three
+  /// things [BookWidget.bookmarked] promises: the ribbon is clipped to the cover's own
+  /// rounded rect, it turns with the board under a finger instead of floating flat over
+  /// a book seen at an angle, and it is inside the [Hero] subtree — so a flight carries
+  /// it without anything having to arrange that.
+  ///
+  /// The ribbon's 22 x 38 box fits inside the cover at every size the app draws, drop
+  /// shadow included: the asset spans y0–30 of its box, and the shadow is dropped 4 and
+  /// blurred 4 into the 8 of bleed below. So nothing here is clipped by the face.
+  Widget _markedCover(BookMetrics metrics) {
+    final art = _cover(metrics);
+    if (!widget.bookmarked) return art;
+    // Proportional to the book, the same rule the Library Card already uses: a fixed
+    // 22 x 38 ribbon over a book [kReadingBookmarkBook] tall is a fraction of that
+    // book, and every other size of the same book has to get the same fraction. It is
+    // also what makes a flight seamless — the shuttle scales the destination's subtree
+    // into the source's rect, so the 180pt header's ribbon arrives at exactly the size
+    // the shelf was drawing. Resolved off the *jittered* height for the same reason:
+    // both ends of a flight hash the same jitter, so the ratio is the rect ratio.
+    final scale = metrics.height / kReadingBookmarkBook;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        art,
+        Positioned(
+          top: 0,
+          // Slid in from the fore-edge by how far through the book the reader is —
+          // display only, and it writes nothing. The mark reads; a sheet asks. A book
+          // with no recorded position keeps the shipped pin, so a shelf of unanswered
+          // books looks exactly as it did before the column existed.
+          right: readingBookmarkInsetFor(
+            widget.progress,
+            // The cover's real decoded width, not `height * kDefaultCoverAspect`:
+            // in here the aspect ratio is known, so the track no longer has to be
+            // approximated at 2/3 the way each caller used to.
+            coverWidth: metrics.width,
+            scale: scale,
+          ),
+          child: ReadingBookmark(scale: scale),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final baseHeight =
@@ -470,7 +542,7 @@ class _BookWidgetState extends State<BookWidget> with TickerProviderStateMixin {
           turn: (pose?.value ?? 0) + hold.value * kBookTurnAngle,
           press: _press.value,
           boardColor: _boardColor,
-          cover: _cover(metrics),
+          cover: _markedCover(metrics),
           spine: widget.spine,
           pivot: widget.pivot,
         ),

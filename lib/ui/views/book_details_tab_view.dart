@@ -209,6 +209,25 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     // resolved against their shelves rather than the signed-in user's.
     final shelf = _shelfFor(book, shelves);
     final shelfName = shelf?.name ?? '';
+    // Whether the name tab is a door to the shelf picker.
+    //
+    // Three conditions, and each one removes a way for the tab to lie. It has to be
+    // **your** book, because a friend's shelves are not yours to file into. The shelf
+    // has to have **resolved**, or there is no current value for the picker to check
+    // and no tab drawn to hang it from. And there has to be **somewhere else to go**:
+    // with one shelf the picker would open on a single row that is already ticked,
+    // which is a handle on a door that leads back into the room.
+    final canMoveShelf = isSelf && shelf != null && shelves.length > 1;
+    // Whether the band's bottom padding has been spent on a row that reaches below
+    // its own ink. Exactly one row can, and which one depends on the state — see
+    // [kStatusVerbSpill]. `ReadingPeriodRow.spillsBelow` is asked rather than its
+    // condition restated, because a copy of it here is a copy that can drift.
+    final bandRowSpills =
+        showsProgressRow ||
+        ReadingPeriodRow.spillsBelow(
+          startDate: book.startDate,
+          tappable: isSelf,
+        );
     // Whether the shelf under the cover — the plank and the name tab on it — flies
     // in from the library with the book, or is simply here on arrival.
     //
@@ -342,6 +361,17 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                       title: book.title,
                                       pageCount: book.pageCount,
                                       heroTag: coverHeroTag,
+                                      // The library's ribbon, still on the book.
+                                      // It flies in wearing it, because the mark
+                                      // is part of the cover rather than
+                                      // something the shelf hangs over it — see
+                                      // [BookWidget.bookmarked]. A mark that
+                                      // vanished the moment you opened the book
+                                      // would be contradicting the one state it
+                                      // exists to report.
+                                      bookmarked:
+                                          book.status == bookStatusReading,
+                                      progress: book.progress,
                                       // Up close, at about two and a half times
                                       // this size and centred over a dimmed page.
                                       // The 180pt hero is the largest cover in the
@@ -421,32 +451,61 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                               // to a button the owner is never shown. It lives in
                               // the reading-period card now, which has one rule
                               // for both viewers.
+                              //
+                              // **And it is now the door to the book's shelf**, for
+                              // the owner, when there is anywhere else to put it.
+                              // Before this, `moveBookToShelf` had exactly one
+                              // caller — a long-press-then-drag across `ShelfRow`,
+                              // which asks a reader with 473 books to drag one to a
+                              // plank that is usually off screen.
                               Positioned(
                                 bottom: 0,
                                 right: 0,
-                                child: ShelfLabel(
-                                  label: shelfName,
-                                  // **The count is part of the hero contract, not
-                                  // decoration.** The tab shrink-wraps its
-                                  // contents, so a library tab reading `IT 12`
-                                  // flying to a details tab reading `IT` would
-                                  // change size in the air — which is the one
-                                  // thing `ShelfLabel`'s doc says must not happen,
-                                  // because the box is squeezed onto its text and
-                                  // a fraction of a point off ellipsizes the name
-                                  // mid-flight. Both ends therefore derive it from
-                                  // `shelvedBookCount` of the same shelf.
-                                  //
-                                  // Null when the shelf could not be resolved: the
-                                  // name is empty then too, so the tab paints
-                                  // nothing and there is no hero at either end.
-                                  count: shelf == null
-                                      ? null
-                                      : shelvedBookCount(shelf),
-                                  heroTag: flyShelfFromLibrary
-                                      ? shelfLabelHeroTag(book.shelfId)
-                                      : null,
-                                ),
+                                child: canMoveShelf
+                                    // Not a plain `ShelfLabel` with `showChevron`:
+                                    // the swap from count to chevron has to wait
+                                    // for this route to finish arriving, or it
+                                    // resizes the hero in the air. `ShelfLabelDoor`
+                                    // is that wait, and it also owns which of the
+                                    // two menus opens — a native `UIMenu` on iOS 26,
+                                    // an app-drawn popover otherwise. This page is
+                                    // told only which shelf came back.
+                                    ? ShelfLabelDoor(
+                                        label: shelfName,
+                                        count: shelvedBookCount(shelf),
+                                        shelves: shelves,
+                                        currentShelfId: book.shelfId,
+                                        onPicked: (target) =>
+                                            _moveBookToShelf(book, target),
+                                        heroTag: flyShelfFromLibrary
+                                            ? shelfLabelHeroTag(book.shelfId)
+                                            : null,
+                                      )
+                                    : ShelfLabel(
+                                        label: shelfName,
+                                        // **The count is part of the hero contract,
+                                        // not decoration.** The tab shrink-wraps its
+                                        // contents, so a library tab reading `IT 12`
+                                        // flying to a details tab reading `IT` would
+                                        // change size in the air — which is the one
+                                        // thing `ShelfLabel`'s doc says must not
+                                        // happen, because the box is squeezed onto
+                                        // its text and a fraction of a point off
+                                        // ellipsizes the name mid-flight. Both ends
+                                        // therefore derive it from
+                                        // `shelvedBookCount` of the same shelf.
+                                        //
+                                        // Null when the shelf could not be resolved:
+                                        // the name is empty then too, so the tab
+                                        // paints nothing and there is no hero at
+                                        // either end.
+                                        count: shelf == null
+                                            ? null
+                                            : shelvedBookCount(shelf),
+                                        heroTag: flyShelfFromLibrary
+                                            ? shelfLabelHeroTag(book.shelfId)
+                                            : null,
+                                      ),
                               ),
                             ],
                           ),
@@ -493,7 +552,12 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                               // than its ink, and those 14 come out of here rather
                               // than being added to the band. So the band is exactly
                               // as tall with the row as it was without it.
-                              showsProgressRow
+                              //
+                              // The status line's `Change status` verb spends the
+                              // same padding the same way when there is no progress
+                              // row to spend it — `bandRowSpills` is the one
+                              // question, asked once, because there is one padding.
+                              bandRowSpills
                                   ? kBandProgressRowResidualPadding
                                   : 16,
                             ),
@@ -537,7 +601,9 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                 // Interested book, which is 133 of 472 books in
                                 // production. `ReadingPeriodRow` drops to a bare badge
                                 // when there are no dates rather than wrapping one
-                                // chip in a full-width card.
+                                // chip in a full-width card — with, for the owner, a
+                                // `Change status` verb at the end of the line, which
+                                // is the only way out of status 0 anywhere in the app.
                                 const SizedBox(height: 12),
                                 ReadingPeriodRow(
                                   status: book.status,
@@ -551,6 +617,9 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                   onTap: isSelf
                                       ? () => _onEditStatusPressed(book)
                                       : null,
+                                  // The padding below is the progress row's when there
+                                  // is one; the verb only reaches into it otherwise.
+                                  spillsIntoBandPadding: !showsProgressRow,
                                 ),
                                 if (showsProgressRow) ...[
                                   const SizedBox(height: 10),
@@ -1109,6 +1178,42 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
         if (mounted) Navigator.pop(context);
       },
     );
+  }
+
+  /// The name tab's door, once a shelf has been chosen from it.
+  ///
+  /// **Which menu did the choosing is not this method's business.** On iOS 26 it was a
+  /// native `UIMenu`, everywhere else an app-drawn popover, and `ShelfLabelDoor` owns
+  /// that choice along with the "same shelf" no-op. What arrives here is always a shelf
+  /// the book is not on.
+  ///
+  /// **The write is `moveBookToShelf`, the same one the library's drag calls**, rather
+  /// than a new path that sets `shelf_id` on its own. That method is where the
+  /// optimistic local update, the position renumbering and the failure toast live, and
+  /// a second writer of this column would be a second place for all three to be got
+  /// wrong.
+  ///
+  /// It takes the target shelf's row *as it should read after the move*, which a
+  /// picker has no drop point for — so the book is **appended**. That is what a drag
+  /// released past the last cover would have done, and it is deliberately done even
+  /// for a reading or finished book, whose position is invisible while its status
+  /// holds: a predictable place to come back to beats an old index preserved for
+  /// nobody to see.
+  ///
+  /// Only the shelved books are listed, matching `shelvedBookCount` and the method's
+  /// own contract — "whatever it leaves out is a finished book, hidden from the
+  /// shelves, and keeps its stored position".
+  Future<void> _moveBookToShelf(Book book, Shelf target) async {
+    final ordered = [
+      for (final b in target.books)
+        if (b.status != bookStatusFinished && b.status != bookStatusReading)
+          b.id,
+      book.id,
+    ];
+
+    await ref
+        .read(libraryProvider.notifier)
+        .moveBookToShelf(book.id, target.id, ordered);
   }
 
   void _onEditStatusPressed(Book book) {

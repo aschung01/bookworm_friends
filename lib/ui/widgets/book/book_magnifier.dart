@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:bookworm_friends/models/book.dart';
+import 'package:bookworm_friends/providers/library_provider.dart'
+    show bookStatusReading;
 import 'package:bookworm_friends/ui/widgets/book/book_geometry.dart';
 import 'package:bookworm_friends/ui/widgets/book_widget.dart';
 
@@ -208,6 +210,11 @@ class MagnifiedBook extends StatelessWidget {
             title: book.title,
             pageCount: book.pageCount,
             heroTag: heroTag,
+            // Still wearing the ribbon it flew in with. The header cover has one
+            // and this is the same book at another size, so dropping it here would
+            // make the mark blink out on the way up and back in on the way down.
+            bookmarked: book.status == bookStatusReading,
+            progress: book.progress,
             // No `jitterOverride`, and that is the point: the hash and the page
             // count are the same two inputs the header cover used, so the book
             // that lands has an identical aspect ratio and an identical thickness
