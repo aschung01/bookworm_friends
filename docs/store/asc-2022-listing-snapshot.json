@@ -1,0 +1,76 @@
+{
+  "capturedAt": "2026-09-21T21:34:55-0700",
+  "appStoreVersion": {
+    "id": "31f662f9-da17-48fc-a94f-de1d1e331d7a",
+    "platform": "IOS",
+    "versionString": "1.1.0",
+    "appStoreState": "PREPARE_FOR_SUBMISSION",
+    "appVersionState": "PREPARE_FOR_SUBMISSION",
+    "copyright": "2026 Andrew Chung",
+    "reviewType": "APP_STORE",
+    "releaseType": "AFTER_APPROVAL",
+    "earliestReleaseDate": null,
+    "usesIdfa": false,
+    "downloadable": true,
+    "createdDate": "2026-09-18T22:25:51-07:00"
+  },
+  "appInfo": {
+    "id": "88ec7247-dc39-49aa-bd6a-c3f2f57991a7",
+    "appStoreState": "PREPARE_FOR_SUBMISSION",
+    "state": "PREPARE_FOR_SUBMISSION",
+    "appStoreAgeRating": "FOUR_PLUS",
+    "australiaAgeRating": null,
+    "brazilAgeRating": "L",
+    "brazilAgeRatingV2": "SELF_RATED_L",
+    "franceAgeRating": null,
+    "koreaAgeRating": null
+  },
+  "appStoreVersionLocalizations": {
+    "en-US": {
+      "description": null,
+      "locale": "en-US",
+      "keywords": null,
+      "marketingUrl": null,
+      "promotionalText": null,
+      "supportUrl": null,
+      "whatsNew": null
+    },
+    "ko": {
+      "description": "책벌레 친구들과 함께 독서 습관을 만들어 나가요!! \n\n- 내 취향대로 정리하는 서재\n내 취향대로 서재의 선반들을 구성하고, 도서를 정리해 보세요.\n\n- 간편한 도서 추가\n도서 제목, 저자, isbn 등으로 책을 쉽게 검색하고 내 서재에 추가할 수 있어요.\n\n- 간단한 메모\n기록하고 싶은 문장이 있거나, 독후감을 작성하고 싶다면?\n도서별로 간단하게 메모를 추가할 수 있어요.\n\n- 친구 추가\n닉네임으로 친구를 검색하고 팔로우해 보세요.\n팔로우한 친구의 서재는 홈에서 쉽게 확인할 수 있어요!\n\n- 읽은 책 칭찬하기\n팔로우한 친구의 '읽은 책' 선반에 있는 책을 눌러 보세요.\n칭찬을 남기면 알림이 전송돼요!\n내가 읽은 책에 친구가 남긴 칭찬도 확인하며 재미있게 독서 습관을 만들어요.",
+      "locale": "ko",
+      "keywords": "독서, 기록, 메모, 서재, 책",
+      "marketingUrl": "https://www.instagram.com/bookworm._.friends/",
+      "promotionalText": null,
+      "supportUrl": "https://bookwormfriends.notion.site/5fc0795489714614a0bf6467a37a33d6",
+      "whatsNew": null
+    }
+  },
+  "appInfoLocalizations": {
+    "ko": {
+      "locale": "ko",
+      "name": "책벌레 친구들 - 친구들과 함께하는 독서 기록",
+      "subtitle": "친구와 함께 독서 습관 만들기",
+      "privacyPolicyUrl": "https://yellow-crow-b73.notion.site/a4ffdbd423cd47cca55eac821283f728",
+      "privacyChoicesUrl": null,
+      "privacyPolicyText": null
+    },
+    "en-US": {
+      "locale": "en-US",
+      "name": "책벌레 친구들 - 친구들과 함께하는 독서 기록",
+      "subtitle": "친구와 함께 독서 습관 만들기",
+      "privacyPolicyUrl": "https://yellow-crow-b73.notion.site/a4ffdbd423cd47cca55eac821283f728",
+      "privacyChoicesUrl": null,
+      "privacyPolicyText": null
+    }
+  },
+  "appStoreReviewDetail": {
+    "contactFirstName": "순호",
+    "contactLastName": "정",
+    "contactPhone": "+8201081394632",
+    "contactEmail": "achung20@gmail.com",
+    "demoAccountName": "aschung01@snu.ac.kr",
+    "demoAccountPassword": "<redacted: 15 chars>",
+    "demoAccountRequired": true,
+    "notes": null
+  }
+}
