@@ -120,3 +120,8 @@ docs/mockups/typography/_build/.cache/
 # Bytecode from the Python asset tooling (assets/branding/build_master.py and the
 # scripts/ pipeline).
 __pycache__/
+
+# Git worktrees kept inside the checkout, so parallel branches can be edited
+# without a second clone. Each is its own working tree with its own HEAD; the
+# outer repo must not try to track their contents.
+.worktrees/
