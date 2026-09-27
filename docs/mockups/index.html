@@ -388,7 +388,7 @@
                         >Reading streaks &mdash; the bookmark, the card, the
                         list</span
                     >
-                    <span class="badge open">spec written &middot; collapsed to 1 version &middot; merged into the shipped status sheet &middot; cheap nightly path drawn &middot; streak page, flame, mandatory position &middot; <b>built: the page, the month at <code>patch</code>, the 44&times;66 picker, the celebration</b></span>
+                    <span class="badge open">spec written &middot; collapsed to 1 version &middot; merged into the shipped status sheet &middot; cheap nightly path drawn &middot; streak page, flame, mandatory position &middot; <b>built: the page, the month at <code>patch</code>, the 44&times;66 picker, the celebration</b> &middot; <b>new: (h) the cat's paw, 8 frames, nothing chosen</b></span>
                     <span class="arrow">&rarr;</span>
                 </div>
                 <div class="ds">
@@ -727,6 +727,75 @@
                     backwards drag has three readings and no chosen one; and the
                     friend row's trailing slot is <b>already spoken for</b> by
                     <code>FriendReading.finishedCount</code>.
+                </div>
+            </a>
+            <a class="row" href="streak-week/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >The week row and the stamp &mdash; compared with
+                        Duolingo</span
+                    >
+                    <span class="badge open"><b>built: option E, and F shown only in the celebration</b> &middot; 5 row options drawn at 1:1 &middot; <b>white ground, flame-orange ink, white check</b> &middot; the caption measures the reader's own record &middot; 6 questions open &middot; <b>the forward window is drawn and argues against itself</b></span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>Why: the shipped week row reads as a row of checkboxes, and
+                    the reason is structural rather than cosmetic.</b> A letter
+                    inside a box <i>is</i> a form field, and with three different
+                    unread treatments &mdash; a dashed box for today, a bare
+                    hairline for a missed day, nothing for a day that has not
+                    happened &mdash; the seven cells sit at three visual weights at
+                    once. Duolingo puts the label <b>above</b> the token, which
+                    frees the token to carry a <b>check</b> instead of a letter, and
+                    draws every unread day as one flat disc.
+                    <b>One thing could not be copied:</b> their mid-orange does not
+                    survive our ground. On <code>kCandleGlow</code> #FFE8C4,
+                    <code>kCandleFlame</code> #F2A93F as a disc measures
+                    <b>1.67:1</b> and a white check on it <b>2.00:1</b> &mdash; the
+                    token would barely exist. <code>AppColors.light.flame</code>
+                    #B54708 gives <b>4.55:1</b> and <b>5.43:1</b>, and is already
+                    the counter's new colour.
+                    <b>The chain (option C) is the strongest idea in the set and is
+                    not Duolingo's</b> &mdash; joining consecutive read days makes a
+                    run one object, so a gap costs something visible; it is the only
+                    variant where a broken week reads as broken.
+                    <b>Option E exists because you cannot rake a circle:</b> a
+                    rotated disc is a no-op, so adopting discs silently drops the
+                    hand-stamped gesture the week shares with
+                    <code>read_calendar_month.dart</code>. At 34pt the tilt is faint
+                    either way, which is the honest argument against keeping it.
+                    <b>Option A's real cost is the affordance:</b> their today is
+                    already practised, so they never draw an unread today as an
+                    invitation &mdash; drawing every unread day identically removes
+                    the one cell that says <i>tap me</i>, and tapping is what
+                    records the night. <b>Undecided, as a version rather than a
+                    sixth option: the window.</b> Ours ends on today and is a
+                    receipt; theirs starts yesterday and runs five days forward, so
+                    its caption can be a warning &mdash; but it can no longer show a
+                    gap at all, and the chain has nothing left to join. Cards are
+                    drawn at <b>1:1</b>, not at phone scale, because a 34pt cell
+                    inside a 170px phone is six pixels and cannot be judged.
+                    <b>E is now built, and two things the drawing settled turned
+                    out differently in code</b> (<code>el-built</code>): the
+                    weekday labels stayed <b>one character</b>, because the window
+                    is rolling and the month header on the same page uses the same
+                    alphabet; and <code>freshLast</code> now <b>lifts</b> rather
+                    than inverting, because a stamped day is already a solid token
+                    and there is nothing left to invert to.
+                    <b>The span ladder ended up in the celebration, not on the
+                    page</b> (<code>span-none</code>), which turns the F-versus-G
+                    fork into both: F's object shown at G's moment, so the reader
+                    meets the ladder on the night they added to it rather than as
+                    standing chrome listing four spans they have not reached. It
+                    replaced the celebration's progress bar, whose sentence said
+                    the same figure in words.
+                    <b>Three defects were found by rendering the built screens and
+                    looking</b> (<code>el-found</code>), all green in the suite:
+                    that progress bar collapsed onto its own fill and drew as a
+                    floating dash with no track behind it, F's <code>1 year</code>
+                    label was half off the page, and the celebration was 6pt from
+                    overflowing an iPhone SE. Verified with
+                    <code>node docs/mockups/streak-week/verify.js</code>.
                 </div>
             </a>
             <a class="row" href="page-progress/index.html">

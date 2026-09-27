@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The chosen ladder</title>
+<style>
+  @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-ExtraBold.otf")
+                    format("opentype");
+                font-weight: 800;
+            }
+  @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-SemiBold.otf")
+                    format("opentype");
+                font-weight: 600;
+            }
+  @font-face {
+                font-family: "GowunBatang";
+                src: url("../../../assets/fonts/GowunBatang-Bold.ttf")
+                    format("truetype");
+                font-weight: 700;
+            }
+  @font-face {
+                font-family: "Comic Relief";
+                src: url("fonts/ComicRelief-Bold.ttf") format("truetype");
+                font-weight: 700;
+            }
+  @font-face {
+                font-family: "Nunito";
+                src: url("fonts/Nunito.ttf") format("truetype-variations");
+                font-weight: 200 1000;
+            }
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 22px 20px 40px; background: #23292e; color: #e8edf2;
+         font: 13px/1.45 ui-sans-serif, -apple-system, sans-serif; }
+  h1 { font-size: 15px; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
+  h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #9fb0bd;
+        margin: 26px 0 0; }
+  p { margin: 0 0 14px; color: #9fb0bd; max-width: 112ch; }
+  p b { color: #e8edf2; }
+  code { color: #cbd6df; }
+  table { border-collapse: separate; border-spacing: 10px; }
+  th { font-size: 11px; font-weight: 600; color: #9fb0bd; text-align: left;
+        vertical-align: bottom; padding: 0 0 2px; }
+  .cell { width: 158px; vertical-align: top; }
+  .tag { display: block; margin: 6px 0 0;
+         font: 600 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: #7ee2b8; }
+  .meta { display: block; margin-top: 2px; font-size: 10.5px; line-height: 1.35; color: #8fa3b2; }
+  .flag { display: inline-block; margin-top: 4px; padding: 1px 6px; border-radius: 999px;
+          font-size: 10px; font-weight: 600; }
+  .flag.repose { background: #43301a; color: #f4dcb4; border: 1px solid #8a6535; }
+  .flag.moved { background: #1d3340; color: #a8d8ef; border: 1px solid #3b6b85; }
+  .hole { width: 158px; height: 158px; border-radius: 22px; border: 2px dashed #56616b;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          color: #7f909d; font-size: 12px; text-align: center; }
+  .hole span { font-size: 10.5px; }
+
+  /* index.html's tile geometry, copied rule for rule -- same reason as the grid builder. */
+  .fr { --tile: #ffffff; --ink: #212529; --dim: #626a72; --div: #e9ecef;
+        --flame: #f2a93f; --core: #ffd479;
+        --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+        width: 158px; height: 158px; border-radius: 22px; background: var(--tile);
+        padding: 14px; box-sizing: border-box; position: relative; overflow: hidden;
+        display: flex; flex-direction: column;
+        box-shadow: 0 1px 2px rgba(0,0,0,.2), 0 10px 24px rgba(0,0,0,.18);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+  .cat { position: absolute; left: 0; right: 0; bottom: -8%; height: 70%;
+         display: flex; align-items: flex-end; justify-content: center; z-index: 0; }
+  .cat img { height: 100%; width: auto; display: block; }
+  .fr.hascat.hasline .cat { justify-content: flex-end; right: -6%; }
+  .fr.hascat.hasline .line { max-width: 52%; }
+  .fr .runrow, .fr .line { position: relative; z-index: 1; }
+  .runrow { display: flex; align-items: center; gap: 8px; }
+  .runrow.glass { opacity: .5; }
+  .fig { font-family: "Nunito", ui-rounded, -apple-system, sans-serif; font-weight: 800;
+         color: var(--ink); letter-spacing: -.5px; font-size: 40px; line-height: 1; }
+  .fig.recorded { font-family: "Nunito", ui-rounded, cursive; font-weight: 900;
+                  letter-spacing: normal; color: #fff;
+                  -webkit-text-stroke: 6px var(--flame); paint-order: stroke fill; }
+  .line { font-size: 11px; font-style: italic; color: var(--dim); line-height: 1.25;
+          margin-top: 3px; }
+  .grow { flex: 1; }
+</style>
+</head>
+<body>
+<h1>The chosen ladder</h1>
+<p>
+  The eight tiles as actually picked, in the order a day runs through them. Assembled from
+  <code>_submissions/latest.json</code> by <code>scripts/render_chosen.py</code>; the tile
+  geometry and the ground are index.html's own. Green label = the card that was ticked,
+  amber = its pose was swapped off the proposal, blue = the card was moved to a different
+  hour than the one it was shown at.
+</p>
+<p>
+  <b>Voice walk:</b> <b>duoLike</b> &rarr; <b>duoLike</b> &rarr; <b>desperate</b> &rarr; <b>guilt</b> &rarr; <b>unhinged</b> &rarr; <b>guilt</b>. <b>Poses distinct across the open day:</b>
+  yes.
+</p>
+
+<h2>The day</h2>
+<table><tr><th>dawn</th><th>morning</th><th>afternoon</th><th>evening</th><th>late</th><th>final</th></tr><tr><td class="cell"><div class="fr hascat hasline" style="--tile:#55688A;--ink:#FFF7EA;--dim:#b2b4b9;--div:#657188;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(119,134,161,0.3) 0%, rgba(119,134,161,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(83,96,155,0.3) 0%, rgba(83,96,155,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(48,58,79,0.3) 0%, rgba(48,58,79,0) 70%),linear-gradient(158deg, #55688A 0%, #485875 52%, #3A4760 100%)"><div class="cat"><img src="cats/m01-flex.png" alt=""></div><div class="runrow glass"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--dim)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--tile)" opacity="1"/></svg><span class="fig">3</span></div><div class="line">Keep it going!</div><div class="grow"></div></div><span class="tag">D-dawn</span><span class="meta">duoLike<br>m01-flex</span></td><td class="cell"><div class="fr hascat hasline" style="--tile:#53609b;--ink:#FFF7EA;--dim:#b1b1bf;--div:#636b93;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(117,128,175,0.3) 0%, rgba(117,128,175,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(98,84,160,0.3) 0%, rgba(98,84,160,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(45,52,88,0.3) 0%, rgba(45,52,88,0) 70%),linear-gradient(158deg, #53609b 0%, #455083 52%, #37406b 100%)"><div class="cat"><img src="cats/m03-reading.png" alt=""></div><div class="runrow glass"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--dim)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--tile)" opacity="1"/></svg><span class="fig">3</span></div><div class="line">Your book's waiting!</div><div class="grow"></div></div><span class="tag">D-morning</span><span class="meta">duoLike<br>m03-reading</span></td><td class="cell"><div class="fr hascat hasline" style="--tile:#6a4fa0;--ink:#FFF7EA;--dim:#b9abc0;--div:#735f97;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(136,114,179,0.3) 0%, rgba(136,114,179,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(125,70,144,0.3) 0%, rgba(125,70,144,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(57,43,90,0.3) 0%, rgba(57,43,90,0) 70%),linear-gradient(158deg, #6a4fa0 0%, #584287 52%, #46356e 100%)"><div class="cat"><img src="cats/m05-puddle.png" alt=""></div><div class="runrow glass"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--dim)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--tile)" opacity="1"/></svg><span class="fig">3</span></div><div class="line">Anything yet?</div><div class="grow"></div></div><span class="tag">P-morning</span><span class="meta">desperate<br>m05-puddle</span><span class="flag repose">reposed</span><span class="flag moved">moved from morning</span></td><td class="cell"><div class="fr hascat hasline" style="--tile:#83438a;--ink:#FFF7EA;--dim:#c2a7b8;--div:#845786;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(156,105,161,0.3) 0%, rgba(156,105,161,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(156,52,89,0.3) 0%, rgba(156,52,89,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(71,36,75,0.3) 0%, rgba(71,36,75,0) 70%),linear-gradient(158deg, #83438a 0%, #6d3873 52%, #572c5c 100%)"><div class="cat"><img src="cats/m06-snooze.png" alt=""></div><div class="runrow glass"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--dim)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--tile)" opacity="1"/></svg><span class="fig">3</span></div><div class="line">You said you'd read.</div><div class="grow"></div></div><span class="tag">G-evening</span><span class="meta">guilt<br>m06-snooze</span></td><td class="cell"><div class="fr hascat hasline" style="--tile:#9c3459;--ink:#FFF7EA;--dim:#cba1a7;--div:#964b64;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(176,93,122,0.3) 0%, rgba(176,93,122,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(160,33,40,0.3) 0%, rgba(160,33,40,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(85,26,48,0.3) 0%, rgba(85,26,48,0) 70%),linear-gradient(158deg, #9c3459 0%, #822a4a 52%, #68203a 100%)"><div class="cat"><img src="cats/m07-drowsy.png" alt=""></div><div class="runrow glass"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--dim)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--tile)" opacity="1"/></svg><span class="fig">3</span></div><div class="line">Midnight approaches. So do I.</div><div class="grow"></div></div><span class="tag">U-late</span><span class="meta">unhinged<br>m07-drowsy</span><span class="flag repose">reposed</span></td><td class="cell"><div class="fr hascat hasline" style="--tile:#a02128;--ink:#FFF7EA;--dim:#c99994;--div:#933c3f;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(179,77,83,0.3) 0%, rgba(179,77,83,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(160,33,40,0.3) 0%, rgba(160,33,40,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(77,12,16,0.3) 0%, rgba(77,12,16,0) 70%),linear-gradient(158deg, #a02128 0%, #7f181e 52%, #5e0f14 100%)"><div class="cat"><img src="cats/m12-panic.png" alt=""></div><div class="runrow glass"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--dim)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--tile)" opacity="1"/></svg><span class="fig">3</span></div><div class="line">Don't leave it like this.</div><div class="grow"></div></div><span class="tag">G-final</span><span class="meta">guilt<br>m12-panic</span></td></tr></table>
+
+<h2>The two states that replace the day</h2>
+<table><tr><th>none</th><th>done</th></tr><tr><td class="cell"><div class="fr hascat hasline" style="--tile:#9c3459;--ink:#FFF7EA;--dim:#cba1a7;--div:#964b64;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(176,93,122,0.3) 0%, rgba(176,93,122,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(160,33,40,0.3) 0%, rgba(160,33,40,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(85,26,48,0.3) 0%, rgba(85,26,48,0) 70%),linear-gradient(158deg, #9c3459 0%, #822a4a 52%, #68203a 100%)"><div class="cat"><img src="cats/m06-snooze.png" alt=""></div><div class="runrow glass"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--dim)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--tile)" opacity="1"/></svg><span class="fig">0</span></div><div class="line">Start a streak!</div><div class="grow"></div></div><span class="tag">D-none</span><span class="meta">duoLike<br>m06-snooze</span></td><td class="cell"><div class="fr hascat" style="--tile:#FFFDF8;--ink:#212529;--dim:#7e7c75;--div:#dbd2c1;background:radial-gradient(130% 105% at 50% 112%, #FFE8C4 0%, #fff3de 52%, #FFFDF8 100%)"><div class="cat"><img src="cats/m13-blush.png" alt=""></div><div class="runrow"><svg class="fl" width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path d="M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z" fill="var(--flame)"/><path d="M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z" fill="var(--core)"/></svg><span class="fig recorded">4</span></div><div class="grow"></div></div><span class="tag">D-done</span><span class="meta">duoLike<br>m13-blush</span></td></tr></table>
+
+<h2 id="note">The note, as read</h2>
+<p><code>P-morning for afternoon (with m05-puddle)</code> &rarr; applied as
+  <code>P-morning</code> &rarr; <b>afternoon</b>.
+</p>
+</body>
+</html>

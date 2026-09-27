@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Widget graphics &mdash; full grid</title>
+<style>
+  @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-ExtraBold.otf")
+                    format("opentype");
+                font-weight: 800;
+            }
+  @font-face {
+                font-family: "Pretendard";
+                src: url("../../../assets/fonts/Pretendard-SemiBold.otf")
+                    format("opentype");
+                font-weight: 600;
+            }
+  @font-face {
+                font-family: "GowunBatang";
+                src: url("../../../assets/fonts/GowunBatang-Bold.ttf")
+                    format("truetype");
+                font-weight: 700;
+            }
+  @font-face {
+                font-family: "Comic Relief";
+                src: url("fonts/ComicRelief-Bold.ttf") format("truetype");
+                font-weight: 700;
+            }
+  @font-face {
+                font-family: "Nunito";
+                src: url("fonts/Nunito.ttf") format("truetype-variations");
+                font-weight: 200 1000;
+            }
+
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 22px 20px 60px; background: #23292e; color: #e8edf2;
+         font: 13px/1.45 ui-sans-serif, -apple-system, sans-serif; }
+  h1 { font-size: 15px; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 4px; }
+  h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #e8edf2;
+        margin: 34px 0 0; padding-top: 18px; border-top: 1px solid #333c44; }
+  h2 small { text-transform: none; letter-spacing: 0; color: #7f909d; font-weight: 400;
+              margin-left: 8px; }
+  p.lede { margin: 0 0 16px; color: #9fb0bd; max-width: 108ch; }
+  p.lede code { color: #cbd6df; }
+  .bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+          margin: 0 0 6px; padding: 10px 0; border-top: 1px solid #333c44; }
+  .bar span.lab { font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+                   color: #7f909d; margin-right: 6px; }
+  button { font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 999px;
+            border: 1px solid #3d4750; background: #2b333a; color: #cbd6df; cursor: pointer; }
+  button.on { background: #e8edf2; color: #1d2328; border-color: #e8edf2; font-weight: 600; }
+  p.gloss { margin: 2px 0 18px; color: #7f909d; max-width: 108ch; font-size: 12px; }
+
+  table { border-collapse: separate; border-spacing: 10px; }
+  th { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: #9fb0bd;
+        text-align: left; vertical-align: bottom; padding: 0 0 2px; }
+  th.state { width: 148px; vertical-align: middle; }
+  th.state b { display: block; color: #e8edf2; font-size: 12.5px; }
+  th.state i { display: block; color: #7f909d; font-style: normal; font-size: 11px; margin-top: 2px; }
+  th.state em { display: block; color: #cbd6df; font-style: italic; font-size: 11.5px; margin-top: 5px; }
+
+  /* Everything below is index.html's own tile geometry, copied rule for rule. See the
+     module docstring for why it is copied rather than approximated. */
+  .fr { --tile: #ffffff; --ink: #212529; --dim: #626a72; --div: #e9ecef;
+        --flame: #f2a93f; --core: #ffd479;
+        --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+        width: 158px; height: 158px; border-radius: 22px; background: var(--tile);
+        padding: 14px; box-sizing: border-box; position: relative; overflow: hidden;
+        flex: 0 0 auto; display: flex; flex-direction: column;
+        box-shadow: 0 1px 2px rgba(0,0,0,.2), 0 10px 24px rgba(0,0,0,.18);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+  .cat { position: absolute; left: 0; right: 0; bottom: -8%; height: 70%;
+         display: flex; align-items: flex-end; justify-content: center;
+         z-index: 0; pointer-events: none; }
+  .cat img { height: 100%; width: auto; display: block; }
+  /* The rule the first cut of this script was missing: with copy on the tile the
+     character gives up the centre and the line is capped to what it leaves. */
+  .fr.hascat.hasline .cat { justify-content: flex-end; right: -6%; }
+  .fr.hascat.hasline .line { max-width: 52%; }
+  .fr .runrow, .fr .line { position: relative; z-index: 1; }
+  .runrow { display: flex; align-items: center; gap: 8px; }
+  .runrow.glass { opacity: .5; }
+  .fig { font-family: "Nunito", ui-rounded, -apple-system, sans-serif; font-weight: 800;
+         color: var(--ink); letter-spacing: -.5px; font-size: 40px; line-height: 1; }
+  .fig.recorded { font-family: "Nunito", ui-rounded, cursive; font-weight: 900;
+                  letter-spacing: normal; color: #fff;
+                  -webkit-text-stroke: 6px var(--flame); paint-order: stroke fill; }
+  .line { font-size: 11px; font-style: italic; color: var(--dim); line-height: 1.25;
+          margin-top: 3px; }
+  .grow { flex: 1; }
+
+  /* The label chip. This is the reason the sheet exists in this shape: a line can be
+     chosen by naming `G-late-2` rather than by quoting it back, so the chip is as
+     load-bearing as the tile it sits under. */
+  .cell { width: 158px; vertical-align: top; }
+  .tag { display: flex; align-items: center; gap: 5px; margin: 5px 0 0;
+         font: 600 10.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+         letter-spacing: .02em; color: #8fa3b2; cursor: pointer; }
+  .tag input { margin: 0; accent-color: #7ee2b8; cursor: pointer; }
+  .cell textarea { display: block; width: 158px; margin-top: 3px; box-sizing: border-box;
+                   background: #1d2328; color: #cbd6df; border: 1px solid #3d4750;
+                   border-radius: 6px; padding: 4px 5px; resize: vertical;
+                   font: 10.5px/1.3 ui-sans-serif, -apple-system, sans-serif; }
+  .cell textarea:focus { outline: none; border-color: #7ee2b8; }
+  /* Picked and edited are separate signals and both need to be visible at a glance --
+     a cell can be edited without being picked, which is a state worth seeing. */
+  .cell.picked .fr { box-shadow: 0 0 0 3px #7ee2b8, 0 10px 24px rgba(0,0,0,.18); }
+  .cell.picked .tag { color: #7ee2b8; }
+  .cell.edited textarea { border-color: #e8b86b; color: #f4dcb4; }
+  .cell.edited .tag::after { content: "edited"; color: #e8b86b; font-weight: 400; }
+  th.vh { width: 148px; vertical-align: middle; }
+  th.vh b { display: block; color: #e8edf2; font-size: 12.5px; }
+  th.vh i { display: block; color: #7f909d; font-style: normal; font-size: 11px; margin-top: 2px; }
+  th.vh code { color: #e8edf2; font-size: 11px; }
+  .cell select { display: block; width: 158px; margin-top: 5px; box-sizing: border-box;
+                 background: #1d2328; color: #cbd6df; border: 1px solid #3d4750;
+                 border-radius: 6px; padding: 3px 4px;
+                 font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .cell.repose select { border-color: #e8b86b; color: #f4dcb4; }
+
+  /* The submit bar. Fixed, because the sheet is ~6000px tall and a button at the bottom
+     of that is a button nobody finds. */
+  #bar2 { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+          display: flex; gap: 12px; align-items: flex-start;
+          padding: 10px 20px; background: #1a1f24; border-top: 1px solid #3d4750;
+          box-shadow: 0 -8px 24px rgba(0,0,0,.4); }
+  #bar2 textarea { flex: 1; min-height: 34px; max-height: 90px; background: #23292e;
+                   color: #e8edf2; border: 1px solid #3d4750; border-radius: 8px;
+                   padding: 7px 9px; resize: vertical;
+                   font: 12px/1.35 ui-sans-serif, -apple-system, sans-serif; }
+  #send { background: #7ee2b8; color: #10231c; border-color: #7ee2b8; font-weight: 700;
+          padding: 9px 20px; white-space: nowrap; }
+  #send:disabled { opacity: .5; cursor: default; }
+  #tally { font-size: 11.5px; color: #9fb0bd; white-space: nowrap; align-self: center;
+           min-width: 15ch; }
+  #tally b { color: #7ee2b8; }
+  #warn { margin: 0 0 14px; padding: 9px 12px; border-radius: 8px;
+          background: #43301a; border: 1px solid #8a6535; color: #f4dcb4; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>Widget graphics &mdash; full grid</h1>
+<p class="lede">
+  Four voices, on the live <code>stages</code> ground. <b>Sheet A</b> is the copy comparison:
+  three labelled variants of every voice at every hour, with the pose held constant down each
+  column so only the words change. <b>Sheet B</b> is the pairing &mdash; each voice's proposed
+  pose ladder across the day, which is the answer to not wanting to pick a face per line.
+  <b>Sheet C</b> keeps the character axis for the fur decision still outstanding.
+  <b>Generated from index.html</b> by <code>scripts/build_widget_grid.py</code>, which runs the
+  page's own script and calls <code>groundVars</code>, <code>flame</code> and
+  <code>copyVariants</code>, and copies the tile geometry rule for rule &mdash; so these are the
+  real tiles: mesh, 0.3 blob alpha, vignette, grain, the washed-back flame, and the character
+  moved right to clear the copy. The fur is the provisional grey.
+</p>
+<p class="lede">
+  <b>Every line has a label</b> of the form <code>&lt;voice&gt;-&lt;tier&gt;-&lt;variant&gt;</code>
+  &mdash; <code>D</code> Duolingo cadence, <code>G</code> guilt, <code>P</code> pleads
+  (desperate), <code>U</code> unhinged. Variant&nbsp;1 is always the line from the previous
+  round, so nothing already judged has moved. <code>done</code> is absent from Sheet A on
+  purpose: it carries no line in any voice.
+</p>
+<p class="lede">
+  <b>Tick what you want and edit anything you want changed.</b> Typing in a box redraws the
+  tile live and ticks it for you, so what you see is what gets submitted &mdash; no line is
+  retyped anywhere between here and the answer. Selections survive a reload. On Sheet B
+  every card is its own checkbox &mdash; ticking one picks that voice at that hour
+  specifically, never a whole row &mdash; and its dropdown swaps the pose, so the ladder is
+  a proposal you can overrule one face at a time. Press <b>Submit</b> at the bottom when
+  you are done.
+</p>
+<div id="warn" hidden></div>
+
+<h2>Sheet A &mdash; the copy <small>3 variants &times; 7 states, per voice</small></h2>
+<div id="copy"></div>
+
+<h2 id="sheetB">Sheet B &mdash; the pairing <small>each voice's proposed pose ladder</small></h2>
+<p class="gloss">
+  One row per voice at variant&nbsp;1, so the ladder is readable as a sequence. Tick a card
+  to pick it &mdash; that voice, at that hour, nothing else in the row. The six open poses
+  are distinct within every voice &mdash; the mapping this replaces used
+  <code>m03-reading</code> for four consecutive tiers, so two thirds of the day differed only
+  in its ground. <code>m05-puddle</code> appears nowhere but <code>done</code>: at 145px wide
+  it overlaps the copy column by 59.5px, where every other cut-out stays under 10px.
+</p>
+<div id="poses"></div>
+
+<h2>Sheet C &mdash; character axis <small>states &times; every cut-out, one voice at a time</small></h2>
+<div class="bar" id="bar"><span class="lab">voice</span></div>
+<p class="gloss" id="gloss"></p>
+<div id="grid"></div>
+
+<div id="bar2">
+  <span id="tally"></span>
+  <textarea id="notes" placeholder="Anything else — a line you want written differently, a pose that is wrong, a voice to drop entirely."></textarea>
+  <button id="send">Submit</button>
+</div>
+
+<script>
+const ROWS = [["dawn", "--tile:#55688A;--ink:#FFF7EA;--dim:#b2b4b9;--div:#657188;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(119,134,161,0.3) 0%, rgba(119,134,161,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(83,96,155,0.3) 0%, rgba(83,96,155,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(48,58,79,0.3) 0%, rgba(48,58,79,0) 70%),linear-gradient(158deg, #55688A 0%, #485875 52%, #3A4760 100%)"], ["morning", "--tile:#53609b;--ink:#FFF7EA;--dim:#b1b1bf;--div:#636b93;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(117,128,175,0.3) 0%, rgba(117,128,175,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(98,84,160,0.3) 0%, rgba(98,84,160,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(45,52,88,0.3) 0%, rgba(45,52,88,0) 70%),linear-gradient(158deg, #53609b 0%, #455083 52%, #37406b 100%)"], ["afternoon", "--tile:#6a4fa0;--ink:#FFF7EA;--dim:#b9abc0;--div:#735f97;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(136,114,179,0.3) 0%, rgba(136,114,179,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(125,70,144,0.3) 0%, rgba(125,70,144,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(57,43,90,0.3) 0%, rgba(57,43,90,0) 70%),linear-gradient(158deg, #6a4fa0 0%, #584287 52%, #46356e 100%)"], ["evening", "--tile:#83438a;--ink:#FFF7EA;--dim:#c2a7b8;--div:#845786;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(156,105,161,0.3) 0%, rgba(156,105,161,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(156,52,89,0.3) 0%, rgba(156,52,89,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(71,36,75,0.3) 0%, rgba(71,36,75,0) 70%),linear-gradient(158deg, #83438a 0%, #6d3873 52%, #572c5c 100%)"], ["late", "--tile:#9c3459;--ink:#FFF7EA;--dim:#cba1a7;--div:#964b64;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(176,93,122,0.3) 0%, rgba(176,93,122,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(160,33,40,0.3) 0%, rgba(160,33,40,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(85,26,48,0.3) 0%, rgba(85,26,48,0) 70%),linear-gradient(158deg, #9c3459 0%, #822a4a 52%, #68203a 100%)"], ["final", "--tile:#a02128;--ink:#FFF7EA;--dim:#c99994;--div:#933c3f;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(179,77,83,0.3) 0%, rgba(179,77,83,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(160,33,40,0.3) 0%, rgba(160,33,40,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(77,12,16,0.3) 0%, rgba(77,12,16,0) 70%),linear-gradient(158deg, #a02128 0%, #7f181e 52%, #5e0f14 100%)"], ["none", "--tile:#9c3459;--ink:#FFF7EA;--dim:#cba1a7;--div:#964b64;background:var(--grain),radial-gradient(115% 95% at 50% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.36) 100%),radial-gradient(75% 60% at 16% 10%, rgba(176,93,122,0.3) 0%, rgba(176,93,122,0) 62%),radial-gradient(70% 58% at 88% 22%, rgba(160,33,40,0.3) 0%, rgba(160,33,40,0) 60%),radial-gradient(95% 80% at 50% 112%, rgba(85,26,48,0.3) 0%, rgba(85,26,48,0) 70%),linear-gradient(158deg, #9c3459 0%, #822a4a 52%, #68203a 100%)"], ["done", "--tile:#FFFDF8;--ink:#212529;--dim:#7e7c75;--div:#dbd2c1;background:radial-gradient(130% 105% at 50% 112%, #FFE8C4 0%, #fff3de 52%, #FFFDF8 100%)"]];
+const VOICES = {"duoLike": {"code": "D", "label": "Duolingo cadence \u2014 in bounds", "gloss": "The reference's register kept inside every rule in the design record: short, spoken, exclaimed, never about loss. The softest thing here and the only legal one \u2014 which is also the complaint about it, because at 23:00 on an unrecorded day it is still only cheerful. Read it against `guilt` in the same row to see how much pressure the rules are costing.", "poses": {"dawn": "m01-flex", "morning": "m03-reading", "afternoon": "m15-smug", "evening": "m13-blush", "late": "m07-drowsy", "final": "m12-panic", "none": "m06-snooze", "done": "m13-blush"}, "variants": {"dawn": [["D-dawn-1", "Keep it going!"], ["D-dawn-2", "New day, new page!"], ["D-dawn-3", "Let's read today!"]], "morning": [["D-morning-1", "Your book's waiting!"], ["D-morning-2", "Time for a page!"], ["D-morning-3", "Your book misses you!"]], "afternoon": [["D-afternoon-1", "Nice run so far!"], ["D-afternoon-2", "Still going strong!"], ["D-afternoon-3", "Good day for reading!"]], "evening": [["D-evening-1", "Evening page?"], ["D-evening-2", "Read before bed?"], ["D-evening-3", "Wind down with a page!"]], "late": [["D-late-1", "Open till midnight!"], ["D-late-2", "Still time tonight!"], ["D-late-3", "Midnight's the deadline!"]], "final": [["D-final-1", "One more page tonight!"], ["D-final-2", "Last call for pages!"], ["D-final-3", "Squeeze one in!"]], "none": [["D-none-1", "Start a streak!"], ["D-none-2", "Day one starts here!"], ["D-none-3", "Read one page tonight!"]]}}, "guilt": {"code": "G", "label": "Guilt \u2014 the cat is let down", "gloss": "AppDrum names one of the twenty-five faces \u201cThe Guilt-Tripping Duo\u201d and describes the mechanism exactly: puppy-dog eyes, disappointment, no threat. The pressure is relational rather than transactional \u2014 you have not failed a system, you have left someone waiting \u2014 which is why its ladder descends into flat stares rather than climbing into panic. Breaks \u201cthe record does not scold\u201d outright: \u201cYou forgot again\u201d is a scold, and it is meant to be.", "poses": {"dawn": "m13-blush", "morning": "m03-reading", "afternoon": "m07-drowsy", "evening": "m06-snooze", "late": "m15-smug", "final": "m12-panic", "none": "m06-snooze", "done": "m13-blush"}, "variants": {"dawn": [["G-dawn-1", "Your cat's waiting."], ["G-dawn-2", "I saved you a chapter."], ["G-dawn-3", "Morning. Still nothing."]], "morning": [["G-morning-1", "Still waiting."], ["G-morning-2", "You walked right past."], ["G-morning-3", "The book hasn't moved."]], "afternoon": [["G-afternoon-1", "All day, not one page."], ["G-afternoon-2", "Half the day, gone."], ["G-afternoon-3", "You had time."]], "evening": [["G-evening-1", "You said you'd read."], ["G-evening-2", "You promised, remember?"], ["G-evening-3", "Not even one page."]], "late": [["G-late-1", "You forgot again."], ["G-late-2", "Same as last night."], ["G-late-3", "You always do this."]], "final": [["G-final-1", "Don't leave it like this."], ["G-final-2", "This is how it ends?"], ["G-final-3", "I waited all day."]], "none": [["G-none-1", "Nobody's read a night."], ["G-none-2", "Not one page, ever."], ["G-none-3", "Zero nights. So far."]]}}, "desperate": {"code": "P", "label": "Desperate \u2014 the mascot pleads", "gloss": "First person, which is the structural difference from `guilt`: the cat speaks for itself instead of the record speaking about you. That is what the official blog is describing when it says the illustrations get \u201cmore and more desperate as it nears midnight\u201d \u2014 the escalation lives in the character, so the words can just be what the character would say. <b>The one genuinely interesting result of the round that produced it:</b> measured against the design record it never mentions loss, never counts down, never scolds and is not red, so it satisfies all four rules on the letter while pushing as hard as anything here. Either that is the way through the conflict, or it is proof the four rules were testing the wrong thing. It also leans hardest on the drawing \u2014 \u201cI'm begging\u201d under a cheerful cat is a joke, and under m12-panic it is not.", "poses": {"dawn": "m06-snooze", "morning": "m13-blush", "afternoon": "m03-reading", "evening": "m01-flex", "late": "m07-drowsy", "final": "m12-panic", "none": "m13-blush", "done": "m13-blush"}, "variants": {"dawn": [["P-dawn-1", "I'll wait."], ["P-dawn-2", "I'm ready when you are."], ["P-dawn-3", "Today? Please?"]], "morning": [["P-morning-1", "Anything yet?"], ["P-morning-2", "Just checking. Again."], ["P-morning-3", "Still hoping."]], "afternoon": [["P-afternoon-1", "Please. One page."], ["P-afternoon-2", "I'm not asking much."], ["P-afternoon-3", "Any page. Any book."]], "evening": [["P-evening-1", "I'm begging now."], ["P-evening-2", "Please. I'll be quiet."], ["P-evening-3", "One page. That's all."]], "late": [["P-late-1", "Don't do this."], ["P-late-2", "I'm still here. Waiting."], ["P-late-3", "Please, before you sleep."]], "final": [["P-final-1", "I can't watch this."], ["P-final-2", "There's still time. Barely."], ["P-final-3", "Please. Anything. Now."]], "none": [["P-none-1", "Read something. Please."], ["P-none-2", "One page. I'm asking."], ["P-none-3", "Please start tonight."]]}}, "unhinged": {"code": "U", "label": "Unhinged \u2014 the blog's own word", "gloss": "The official post promises \u201ca new set of exciting, unhinged Duos\u201d, and the owl's menace is the app's most-shared characteristic \u2014 the \u201cI know where you live\u201d register is the one people quote unprompted, which is free distribution no polite line can buy. The bet is that a threat read as a bit is not experienced as a threat. The risk is specific and worth stating: the joke is Duo's, built over a decade of earned affection, and a cat nobody has met yet making it on day one is not funny, it is a stranger being weird. Breaks \u201cthe record does not scold\u201d and, at 23:00, the rule against a stated deadline.", "poses": {"dawn": "m07-drowsy", "morning": "m01-flex", "afternoon": "m03-reading", "evening": "m13-blush", "late": "m12-panic", "final": "m15-smug", "none": "m15-smug", "done": "m13-blush"}, "variants": {"dawn": [["U-dawn-1", "Reading time. No excuses."], ["U-dawn-2", "I've been up since five."], ["U-dawn-3", "Today we read."]], "morning": [["U-morning-1", "I see you scrolling."], ["U-morning-2", "Put the phone down."], ["U-morning-3", "I'm watching. Read."]], "afternoon": [["U-afternoon-1", "The book is right there."], ["U-afternoon-2", "It's been there all day."], ["U-afternoon-3", "Pick. It. Up."]], "evening": [["U-evening-1", "I know where you live."], ["U-evening-2", "I've memorised your excuses."], ["U-evening-3", "Your couch. My book. Now."]], "late": [["U-late-1", "Midnight approaches. So do I."], ["U-late-2", "I don't sleep. Read."], ["U-late-3", "Still awake. Still waiting."]], "final": [["U-final-1", "You. Book. Now."], ["U-final-2", "Last chance. I'm serious."], ["U-final-3", "Do it. Do it now."]], "none": [["U-none-1", "We start tonight."], ["U-none-2", "Tonight. Not tomorrow."], ["U-none-3", "I've picked your first book."]]}}};
+const CATS = ["m01-flex", "m03-reading", "m05-puddle", "m06-snooze", "m07-drowsy", "m12-panic", "m13-blush", "m15-smug"];
+const NOTE = {"dawn": "07:00 &middot; the day opens", "morning": "10:00", "afternoon": "14:00", "evening": "18:00", "late": "21:00 &middot; the warning tier", "final": "23:00 &middot; last hour", "done": "recorded &middot; lit flame, no line", "none": "signed in, nothing recorded yet"};
+const FLAME_UNLIT = "<svg class=\"fl\" width=\"28\" height=\"28\" viewBox=\"0 0 100 100\" aria-hidden=\"true\"><path d=\"M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z\" fill=\"var(--dim)\"/><path d=\"M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z\" fill=\"var(--tile)\" opacity=\"1\"/></svg>";
+const FLAME_LIT = "<svg class=\"fl\" width=\"28\" height=\"28\" viewBox=\"0 0 100 100\" aria-hidden=\"true\"><path d=\"M62.434 3.762 C69.191 14.768 77.124 24.154 82.705 36.780 C88.286 49.406 92.471 60.191 90.030 69.924 C87.588 79.657 75.031 90.178 68.055 95.176 C61.078 100.174 54.800 100.174 48.172 99.911 C41.545 99.648 34.743 99.122 28.290 93.598 C21.837 88.074 11.024 76.763 9.454 66.767 C7.885 56.772 16.256 43.356 18.872 33.624 C21.488 23.891 21.919 21.368 23.443 15.240 C24.252 11.984 28.123 10.613 30.801 12.633 C32.080 13.597 33.359 14.562 34.638 15.526 C36.346 16.814 38.770 16.506 40.102 14.832 C43.246 10.881 46.390 6.929 49.534 2.977 C52.942 -1.306 59.570 -0.903 62.434 3.762Z\" fill=\"var(--flame)\"/><path d=\"M51.394 54.159 C53.948 57.770 56.448 59.520 59.055 64.992 C61.663 70.463 63.930 77.473 63.817 82.432 C63.703 87.390 60.982 92.092 58.375 94.742 C55.768 97.392 51.573 98.333 48.172 98.333 C44.771 98.333 40.577 97.392 37.970 94.742 C35.362 92.092 32.641 87.390 32.528 82.432 C32.415 77.473 34.682 70.463 37.289 64.992 C39.897 59.520 42.397 57.770 44.951 54.159 C46.523 51.935 49.821 51.935 51.394 54.159Z\" fill=\"var(--core)\"/></svg>";
+// Sheet A's columns. `done` is excluded -- see the note where `states` is built.
+const COPY_STATES = ROWS.map(([s]) => s).filter((s) => s !== "done");
+const STYLE = Object.fromEntries(ROWS);
+let voice = "duoLike";
+
+/* Text going into an attribute or a tile. Every line here is authored, not user data, but
+   the edit boxes make that untrue the moment someone types a `<` -- so this is escaping a
+   real input, not being decorative about a constant. */
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function tile(state, style, cat, text) {
+  const lit = state === "done";
+  // The run the tile actually shows. `none` means there is no live streak, so it is 0 --
+  // mxSpec says `kind === "none" ? 0 : 3` and an earlier cut of this sheet hard-coded 3,
+  // which drew eight "3" tiles under "Start a streak!" and quietly contradicted the copy.
+  const run = lit ? 4 : state === "none" ? 0 : 3;
+  // hascat is always on here; hasline follows the copy, exactly as `frame()` sets them.
+  const cls = "fr hascat" + (text ? " hasline" : "");
+  const flame = lit ? FLAME_LIT : FLAME_UNLIT;
+  const line = text ? `<div class="line">${esc(text)}</div>` : "";
+  return `<div class="${cls}" style="${style}">
+    <div class="cat"><img src="cats/${cat}.png" alt=""></div>
+    <div class="runrow${lit ? "" : " glass"}">${flame}<span class="fig${lit ? " recorded" : ""}">${run}</span></div>
+    ${line}
+    <div class="grow"></div>
+  </div>`;
+}
+
+/* Sheet A. One table per voice: columns are the hours, rows are the three variants, and
+   the pose is the voice's own for that hour -- held constant down a column so the only
+   thing changing within a column is the sentence. That is the comparison; varying the
+   face at the same time would make it two. */
+function renderCopy() {
+  let html = "";
+  for (const [k, v] of Object.entries(VOICES)) {
+    html += `<div class="vblock" id="v-${k}">` +
+      `<h3 style="margin:26px 0 2px;font-size:12.5px">${v.label} &nbsp;<code style="color:#8fa3b2">${v.code}-*</code></h3>` +
+      `<p class="gloss" style="margin:2px 0 10px">${v.gloss}</p>` +
+      "<table><tr><th class='vh'></th>" +
+      COPY_STATES.map((s) =>
+        `<th>${s}<br><span style="color:#7f909d;font-weight:400">${v.poses[s]}</span></th>`
+      ).join("") + "</tr>";
+    for (let i = 0; i < 3; i++) {
+      html += `<tr><th class="vh"><b>variant ${i + 1}</b>` +
+        (i === 0 ? "<i>the line from the last round</i>" : "") + "</th>" +
+        COPY_STATES.map((s) => {
+          const [label, text] = v.variants[s][i];
+          return `<td class="cell" data-label="${label}" data-voice="${k}"` +
+            ` data-state="${s}" data-variant="${i + 1}" data-orig="${esc(text)}">` +
+            tile(s, STYLE[s], v.poses[s], text) +
+            `<label class="tag"><input type="checkbox" class="pick">${label}</label>` +
+            `<textarea class="edit" rows="2">${esc(text)}</textarea></td>`;
+        }).join("") + "</tr>";
+    }
+    html += "</table></div>";
+  }
+  document.getElementById("copy").innerHTML = html;
+}
+
+/* Sheet B. Variant 1 only, all four voices, so the pose ladders can be read against each
+   other. `done` is included here because this is the sheet where it belongs. Each card is
+   its own checkbox -- ticking one picks that voice at that hour and nothing else in the
+   row, which is the point: the row is a proposed ladder, not a unit of selection. The
+   dropdown lets a proposal be overruled one face at a time, independently of whether the
+   card is picked. */
+function renderPoses() {
+  let html = "<table><tr><th class='vh'></th>" +
+    ROWS.map(([s]) => `<th>${s}</th>`).join("") + "</tr>";
+  for (const [k, v] of Object.entries(VOICES)) {
+    html += `<tr><th class="vh"><b>${v.label.split(" — ")[0]}</b>` +
+      `<i>${v.label.split(" — ")[1] || ""}</i><code>${v.code}</code></th>` +
+      ROWS.map(([s, style]) => {
+        const text = s === "done" ? "" : v.variants[s][0][1];
+        const label = v.code + "-" + s;
+        const opts = CATS.map((c) =>
+          `<option value="${c}"${c === v.poses[s] ? " selected" : ""}>${c}</option>`
+        ).join("");
+        return `<td class="cell pose" data-voice="${k}" data-state="${s}"` +
+          ` data-label="${label}" data-orig="${v.poses[s]}" data-text="${esc(text)}">` +
+          tile(s, style, v.poses[s], text) +
+          `<label class="tag"><input type="checkbox" class="posepick">${label}</label>` +
+          `<select class="posesel">${opts}</select></td>`;
+      }).join("") + "</tr>";
+  }
+  document.getElementById("poses").innerHTML = html + "</table>";
+}
+
+/* Sheet C. Held over from the previous round because the fur is still undecided and this
+   is the sweep that decision needs: every state against every drawing on the real ground. */
+function render() {
+  document.getElementById("gloss").textContent = VOICES[voice].gloss;
+  document.querySelectorAll("#bar button").forEach((b) =>
+    b.classList.toggle("on", b.dataset.v === voice));
+  let html = "<table><tr><th class='state'></th>" +
+    CATS.map((c) => `<th>${c}</th>`).join("") + "</tr>";
+  for (const [state, style] of ROWS) {
+    const text = state === "done" ? "" : VOICES[voice].variants[state][0][1];
+    html += `<tr><th class="state"><b>${state}</b><i>${NOTE[state] || ""}</i>` +
+      (text ? `<em>&ldquo;${text}&rdquo;</em>` : "<em>&mdash;</em>") + "</th>" +
+      CATS.map((c) => `<td>${tile(state, style, c, text)}</td>`).join("") + "</tr>";
+  }
+  document.getElementById("grid").innerHTML = html + "</table>";
+}
+
+const bar = document.getElementById("bar");
+for (const [k, v] of Object.entries(VOICES)) {
+  const b = document.createElement("button");
+  b.textContent = v.label;
+  b.dataset.v = k;
+  b.onclick = () => { voice = k; render(); };
+  bar.appendChild(b);
+}
+renderCopy();
+renderPoses();
+render();
+
+/* ---- Collecting the decision ------------------------------------------------
+
+   Three things are gathered: which labels are ticked, what any edited line now says, and
+   any pose swapped away from the proposal. All three are read out of the DOM at submit
+   time rather than accumulated in a parallel model, because the DOM is already the source
+   of truth here -- a tile shows its own current line -- and a second copy of that state is
+   a second thing to get out of sync.
+
+   localStorage is the one exception and it earns it: this sheet is ~6000px tall and losing
+   a half-finished pass to an accidental reload would be the difference between the tool
+   being used and abandoned. */
+const KEY = "libstack-widget-picks-v1";
+
+function cellState() {
+  const picks = [];
+  for (const td of document.querySelectorAll("#copy td.cell")) {
+    const box = td.querySelector(".pick");
+    const text = td.querySelector(".edit").value.trim();
+    const orig = td.dataset.orig;
+    if (!box.checked && text === orig) continue;
+    picks.push({
+      label: td.dataset.label,
+      voice: td.dataset.voice,
+      tier: td.dataset.state,
+      variant: Number(td.dataset.variant),
+      picked: box.checked,
+      edited: text !== orig,
+      original: orig,
+      text,
+    });
+  }
+  // Sheet B. `poses` is the full ladder regardless of picking, so a submission always
+  // carries what every voice currently proposes; `posePicks` is only the cards actually
+  // ticked -- per card, never per row, which is the whole point of this sheet now.
+  const poses = {}, poseChanges = [], posePicks = [];
+  for (const td of document.querySelectorAll("#poses td.cell.pose")) {
+    const to = td.querySelector(".posesel").value;
+    (poses[td.dataset.voice] ||= {})[td.dataset.state] = to;
+    const reposed = to !== td.dataset.orig;
+    if (reposed)
+      poseChanges.push({ voice: td.dataset.voice, state: td.dataset.state,
+                        from: td.dataset.orig, to });
+    if (td.querySelector(".posepick").checked)
+      posePicks.push({
+        label: td.dataset.label,
+        voice: td.dataset.voice,
+        state: td.dataset.state,
+        pose: to,
+        reposed,
+        text: td.dataset.text,
+      });
+  }
+  return {
+    submittedAt: new Date().toISOString(),
+    picks, posePicks, poses, poseChanges,
+    notes: document.getElementById("notes").value,
+  };
+}
+
+function refreshCell(td) {
+  const text = td.querySelector(".edit").value.trim();
+  td.classList.toggle("edited", text !== td.dataset.orig);
+  td.classList.toggle("picked", td.querySelector(".pick").checked);
+  const line = td.querySelector(".line");
+  const fr = td.querySelector(".fr");
+  if (text && line) line.textContent = text;
+  else if (text && !line) {
+    // The tile was rendered without a line (an empty variant); give it one so an edit is
+    // visible rather than silently accepted into a tile that cannot show it.
+    const d = document.createElement("div");
+    d.className = "line";
+    d.textContent = text;
+    fr.querySelector(".runrow").insertAdjacentElement("afterend", d);
+    fr.classList.add("hasline");
+  } else if (!text && line) {
+    line.remove();
+    fr.classList.remove("hasline");
+  }
+}
+
+function tally() {
+  const s = cellState();
+  const picked = s.picks.filter((p) => p.picked).length;
+  const edited = s.picks.filter((p) => p.edited).length;
+  document.getElementById("tally").innerHTML =
+    `<b>${s.posePicks.length}</b> pose pick${s.posePicks.length === 1 ? "" : "s"} &middot; ` +
+    `${s.poseChanges.length} repose${s.poseChanges.length === 1 ? "" : "d"} &middot; ` +
+    `${picked} copy picked &middot; ${edited} edited`;
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+// One listener on the document rather than per control: there are 84 checkboxes on Sheet
+// A, 32 checkboxes and 32 dropdowns on Sheet B, and 200-odd listeners to do what
+// delegation does is 200-odd things to leak when a sheet re-renders.
+document.addEventListener("input", (e) => {
+  const td = e.target.closest("td.cell");
+  if (td && td.classList.contains("pose")) {
+    const sel = td.querySelector(".posesel");
+    td.querySelector(".cat img").src = "cats/" + sel.value + ".png";
+    td.classList.toggle("repose", sel.value !== td.dataset.orig);
+    // The checkbox and the dropdown are independent controls on the same card, so either
+    // one changing has to re-read the other to keep `.picked` correct.
+    td.classList.toggle("picked", td.querySelector(".posepick").checked);
+  } else if (td) {
+    // Editing a line is a statement of interest, so it ticks the box. Not ticking it
+    // would mean an edit could be submitted as "changed but not wanted", which is a
+    // state nobody means.
+    if (e.target.classList.contains("edit")) td.querySelector(".pick").checked = true;
+    refreshCell(td);
+  }
+  tally();
+});
+
+// Restore. Sheet A is matched on label rather than on position, so adding a variant to a
+// voice does not silently shift a saved pick onto a different line. Sheet B is matched on
+// voice+state for the same reason.
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (saved) {
+    for (const p of saved.picks || []) {
+      const td = document.querySelector(`#copy td.cell[data-label="${p.label}"]`);
+      if (!td) continue;
+      td.querySelector(".pick").checked = !!p.picked;
+      td.querySelector(".edit").value = p.text;
+      refreshCell(td);
+    }
+    for (const c of saved.poseChanges || []) {
+      const td = document.querySelector(
+        `#poses td.cell[data-voice="${c.voice}"][data-state="${c.state}"]`);
+      if (!td) continue;
+      td.querySelector(".posesel").value = c.to;
+      td.querySelector(".cat img").src = "cats/" + c.to + ".png";
+      td.classList.add("repose");
+    }
+    for (const pp of saved.posePicks || []) {
+      const td = document.querySelector(
+        `#poses td.cell[data-voice="${pp.voice}"][data-state="${pp.state}"]`);
+      if (!td) continue;
+      td.querySelector(".posepick").checked = true;
+      td.classList.add("picked");
+    }
+    document.getElementById("notes").value = saved.notes || "";
+  }
+} catch (e) {}
+tally();
+
+// Sheet B is the one being judged right now, so land there rather than at the top.
+document.getElementById("sheetB").scrollIntoView();
+
+// Opened as a file:// URL there is nothing to POST to, and a Submit button that silently
+// fails is worse than one that is not there -- so say so up front.
+if (location.protocol === "file:") {
+  const w = document.getElementById("warn");
+  w.hidden = false;
+  w.innerHTML = "Opened from the filesystem, so <b>Submit will not work</b>. " +
+    "Run <code>.venv/bin/python scripts/mockup_server.py</code> from the repo root and " +
+    "open <code>http://127.0.0.1:8765/_widget_grid.html</code> instead. " +
+    "Ticking and editing still work here, and are saved locally.";
+  document.getElementById("send").disabled = true;
+}
+
+document.getElementById("send").onclick = async () => {
+  const btn = document.getElementById("send");
+  const payload = cellState();
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  try {
+    const res = await fetch("/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const out = await res.json();
+    if (!res.ok || !out.ok) throw new Error(out.error || res.status);
+    btn.textContent = "Sent ✓ " + out.saved;
+    setTimeout(() => { btn.textContent = "Submit"; btn.disabled = false; }, 2500);
+  } catch (err) {
+    btn.textContent = "Failed — " + err.message;
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>

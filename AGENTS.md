@@ -173,21 +173,344 @@ sheet is not enough.
 ```bash
 ./rive/streak_flame/build.sh                        # verify, inspect, build, install
 ../../.venv/bin/python rive/streak_flame/smooth.py   # cubic handles + striations, to paste
+../../.venv/bin/python rive/streak_flame/paste.py     # splice those into scene.rml, ids intact
 ../../.venv/bin/python rive/streak_flame/sheet.py    # render `Ignite` and LOOK at it
 ../../.venv/bin/python rive/streak_flame/motion.py   # `Idle`, its seam, and a GIF of both
+../../.venv/bin/python rive/streak_flame/apex.py     # how far the tip travels vs the belly
+../../.venv/bin/python rive/streak_flame/flicker.py  # consecutive frames + per-frame deltas
+../../.venv/bin/python rive/streak_flame/aspect.py   # flame vs book across the burst
+../../.venv/bin/python rive/streak_flame/sides.py    # how angular the left/right runs read
+../../.venv/bin/python rive/streak_flame/burst.py    # regenerate the burst spray, then --write
 ```
 
 Both are committed — the RML because it is the source, the `.riv` because
 `flutter build` cannot run the CLI. Edit the RML, run the script, commit both.
 
-It holds **two ordinary timelines and no state machine**: `Ignite` (54 frames, one
-shot, seeked by Dart) and `Idle` (72 frames, looping, advanced and mixed by Dart).
-This replaced a `BlendState1DViewModel` of six single-frame poses scrubbed by a
-bound Number, and the reason was not tidiness: **that file had no timeline at all,
-so nothing played it** — not the editor, not `rive .`, not any runtime. Every review
-had to go through a contact sheet and the animation could not be iterated on before
-it shipped. The easing now lives in the timelines and Dart drives `progress`
-linearly.
+It holds **two ordinary timelines**: `Ignite` (78 frames = 1300ms, one shot, seeked by
+Dart) and `Idle` (72 frames, looping, advanced and mixed by Dart). This replaced a
+`BlendState1DViewModel` of six single-frame poses scrubbed by a bound Number, and the
+reason was not tidiness: **that file had no timeline at all, so nothing played it** — not
+the editor, not `rive .`, not any runtime. Every review had to go through a contact sheet
+and the animation could not be iterated on before it shipped. The easing now lives in the
+timelines and Dart drives `progress` linearly.
+
+**There is also a state machine now, `Play`, and this file said for several rounds that
+there was not.** It exists only so a human can press play once and watch `Ignite` run into
+`Idle`; without a `defaultStateMachineId` the editor and `rive .` fall back to the
+artboard's _first animation_, so the sequence could only be reviewed in halves. It is the
+same complaint that produced the timelines, one level up.
+
+**The app still does not run it and must not start.** `_FlamePainter` is a
+`BasicArtboardPainter`, which only stores the artboard and calls `artboard.advance`; it
+instantiates no machine, so the hand-driven seek-and-mix is unaffected by the machine's
+presence. `StateMachinePainter`, in the same rive_native file, _would_ run it — switching to
+it would give the artboard two clocks.
+
+And **`_preview.py` strips `defaultStateMachineId` from its copies**, deliberately:
+`motion.py`, `apex.py` and `flicker.py` reach `Idle` only by reordering the timelines so it
+comes first, which a live machine ignores. With the machine running, a request for "Idle
+frame 20" renders frame 20 of the _sequence_ — a wrong picture that looks like a plausible
+one. `inspect`'s `problems` list is now empty, so any warning there is a real regression;
+it used to carry `no-default-state-machine` permanently, which trained everyone to skim it.
+
+`Ignite` is **strain → burst → settle**, not a rise: the flame is established small,
+fails to grow twice (with a ±1.4px `linear` judder on `fire.x` for a haptic to pair
+with), then bursts and settles about 2.2× the flame it strained from. Haptics belong
+at 633ms, 767ms and 1000ms. A single monotonic rise was legible and inert; the brief
+is Duolingo's, and its shape **needs the two failures keyed** because the failing is
+the point.
+
+### `Idle` flickers, and the difference from a bounce is rhythm rather than amount
+
+A reader's verdict on the first version was exact: Duolingo's flame _flickers_, ours
+_bounced_. Both are words about rhythm. Measured, that loop moved the apex 25px up and down
+while swelling the belly 15px wide — **1.67:1**, so the flame was breathing sideways almost as
+much as it was rising — and it did it on four evenly-eased beats, which is a 1.7Hz sine, and a
+sine is a bounce however tall you make it because the eye can predict the next frame.
+
+Three things fixed it, and the second is the counter-intuitive one:
+
+- **Both `scaleX` and `scaleY` on the shapes came down to about ±1%.** A whole silhouette
+  pulsing as a unit _is_ the bounce. Raising `scaleY` is the obvious way to buy vertical
+  travel and it lifts the belly with the tip.
+- **The tips key `Vertex::y` directly** (animatable, property key 25 — `rive schema
+StraightVertex`). This is the only way the top of a flame can move while the body holds
+  still, because a transform scales the belly by the same factor as the apex. Both flames get
+  one: the reader's note was about the inner flame too, and a core that only scales is a shape
+  breathing inside a shape that flickers.
+- **The beats are irregular and `linear`** — 18 keys on the apex at 3-to-5 frame gaps, with
+  amplitudes that vary beat to beat and straddle zero. Same reasoning as the embers' opacity.
+
+Now: apex travel 30px, belly wobble 2px, **12.5:1**.
+
+Two traps worth keeping:
+
+**The tables live in `smooth.py` in raw silhouette units, not as keyframes in `scene.rml`.**
+They go through `scaled()` (and `core()`), so a change to `SCALE_Y` or `CORE_SHRINK` moves the
+loop with the shape. A hand-written `-253.4` is correct at 1.8× and a mystery at any other
+scale, which is the same trap `IGNITE_FRAMES` and the 304×304 preview ground both fell into.
+
+**Moving a tip invalidates the Catmull-Rom fit of the vertex beneath it**, because a tangent at
+`i` is computed from `i-1` and `i+1`. Left alone the tip _sharpened on every cycle_, quietly
+undoing the rounded tip a reader had just chosen over the pointed one. `smooth.py` re-fits the
+neighbours' handles at every keyframe — note this is not the "don't hand-tune cubic handles"
+rule being broken, it is that rule being used: the fitter runs at every keyframe as easily as
+once, and the frame-0 values it emits match the authored ones to four decimals, which is the
+check that there is no step at the seam.
+
+**`MIN_LICK_SPEED` exists because a slow segment is invisible to every amplitude
+measurement.** With linear interpolation a long gap carrying a small amplitude becomes a
+_drift_ — 1px a frame for an eighth of a second, in the same place every 1.2s, which is exactly
+the regular event a flicker must not have. The span is unchanged, so only
+`flicker.py`'s per-frame delta row shows it. The check caught three tables that had
+already been eyeballed as irregular.
+
+### Sparks are drawn behind the flame, and that is structural
+
+Both spray groups sit _after_ the shapes they belong with — `burst` after `flame_outer`,
+`embers` after `fire` — so draw order (declaration order, front first) occludes any spark still
+inside the silhouette. A reader called the old arrangement measles, and the count was the
+lesser half of it: `burst` opacity peaked at **0.95 on frame 61 while its scale was still
+0.41**, so ten pale discs were at their brightest exactly when they were most bunched and most
+overlapping. Behind the flame, overlap stops being something to tune around — what reads is
+sparks leaving from behind the edge, which is where sparks come from.
+
+Six dots now, not ten, and the scale runs 0.85→1.35 rather than 0.2→1.14: the old range was a
+pop _out of the middle_, right for a spray in front and wrong for one behind.
+
+**The artboard is the binding constraint and no amount of tuning gets around it.** At the
+burst the flame is 202 units wide in a 300 frame with its tip 21 from the top — so there is a
+~49-unit band each side and **no room above**. Sparks go sideways; no dot's `x` exceeds 84,
+past which it leaves the artboard at the burst's peak `fire.scaleX` of 1.28.
+
+### The core is a teardrop, and must not go back to being a small flame
+
+`FLAME_INNER` is a symmetric belly — widest a third of the way up, tapering to a rounded point
+— at 39% of the body's width and 46% of its height. **This reverses the oldest note about that
+shape**, which said the core had to reuse the body's outline so the two would read as one flame
+rather than as a shape with a dagger inside it. The premise was right and the conclusion
+inverted: the body's silhouette is a tall tapering leaf with a lean in it, and shrunk to 40%
+that _is_ a dagger. Size was never the problem — it was 37% × 43.5% before, against a
+reference measuring 39% × 44%.
+
+A version lifted clear of the book's foot was rendered and rejected; the core stays planted.
+
+### The covers are near-black, and a teal version was built and rejected
+
+They are `kCandleWellTop` / `kCandleWellBottom` — tokens authored for the **shareable library
+card**, a dark candlelit scene where a near-black well is correct. This artboard sits on cream,
+so those make the book the darkest thing in the frame: 14.4:1 against the ground, 9.3:1 against
+the flame, where the reference contains no dark at all.
+
+So `AppColors.light.brandFill` #067657 was built and pushed — 2.8:1 against the flame, close to
+orange's complement so the fire reads hotter, and it broke the drawing out of being monochrome
+amber. **A reader looked at it and preferred the dark covers, so it came back out.** That is a
+preference and not a measurement; the figures describe what teal fixed, not whether the result
+was better. Recorded so nobody re-derives the analysis and concludes it was never tried.
+
+Two other candidates, ruled out on their own terms: `kCandleCoverLight` #D9A96B is already the
+far stop of the page-edge gradient, so the covers would merge into the pages; `brand` #09BC8A
+lands at 1.2:1 and is as bright as the fire.
+
+### The flame's size on screen is a fraction, not a dimension
+
+The artboard is **360×300** and the flame is **52% of it wide and 77% tall**. Both numbers
+have moved four times and neither is arbitrary. The trap, which cost a whole round trip:
+
+**Growing or shrinking the artboard buys exactly nothing on screen.** `_FlamePainter` is
+`Fit.contain` into a square `SizedBox`, so on-screen flame height is
+`(flame ÷ artboard) × size` — the artboard's own dimensions cancel. Tripling the
+frame to hold a taller flame and tripling the flame are opposite moves, and doing
+only the first is arithmetic that never reaches a pixel. What reaches the screen is
+the **fraction**.
+
+The other half is `StreakFlame.stageSize`, **252, and no longer `_Ignition.stageSize`**.
+Those were the same 152 because `_Ignition.stageSize` is `flameSize * 2` where
+`flameSize` is the _point size of the fallback's font glyph_ — so the Rive flame's
+size on screen was set by the fallback flame's metrics — then `kReadingStreakIcon`, a
+Phosphor glyph — which was never a decision.
+
+**This section said 480×480 and 84% for two rounds, and that is now wrong in both
+directions.** The artboard went 304 → 480 to make the flame bigger, then 480 → 300 when a
+reader said the fire overhung the book — and the second move is the instructive one, because
+it is the same identity read the other way. Shrinking the flame 40% _inside_ a 480 frame
+would have shrunk it 40% on screen too, throwing away the reason the box went to 252. The
+artboard came down by the same factor, so the flame held its size and what actually changed
+was the **book**, which went from 44% of the frame's width to 69%.
+
+Today, with `stageSize` 252:
+
+|                | units     | of the 360×300 frame | on screen  |
+| -------------- | --------- | -------------------- | ---------- |
+| flame, settled | 186 × 232 | 52% × 77%            | 195px tall |
+| flame, burst   | 270 × 256 | 75% × 85%            | 215px tall |
+| book           | 208 wide  | 58%                  | 175px wide |
+
+so the settled flame is **0.890** of the book's width. **That reverses the 0.663 this table
+carried for two rounds, and the reversal was an instruction rather than drift.** 0.663 came
+from "shrink it just around 40%" and it is what the aspect note below used to be defending;
+the later instruction was "a wider shape of similar ratio with the phosphor icon", which is a
+width decision and overrides a width decision. `SCALE_X` alone moved, so **the flame is no
+taller than it was** — 195px against 194px, i.e. nothing. Only its width changed.
+
+**At the burst it is 1.29× the book and the belly overhangs it**, which is the one cost of
+the widening and is not yet accepted or rejected. **This said "the foot leaves the paper" for a
+round, and that was wrong in a way that changes what a fix could be:** at the burst peak the
+flame spans x 21..290 against the book's 45..253, but measured at the book's own top row the
+flame is _two pixels_ across — the silhouette tapers to a narrow contact point and carries its
+width halfway up. So the flame never stands off the paper; it bulges out over the book's edges
+like a canopy, and only at the peak (at 1100ms and 1300ms the whole flame is back inside the
+book's width). Moving the foot is not an available fix, because the foot is not the problem.
+
+The arithmetic is worth having because it also rules out the obvious fix: the burst is
+`fire.scaleX` 1.28 times `flame_outer`'s own squash 1.14, so an effective 1.46, and holding 270
+down to the book's 208 needs an effective 1.13 — _less than the settled flame's 1.0 plus the
+squash_. There is no trim that keeps a sideways
+burst on the paper at this width. The live options are to accept it (it is three frames, and
+fire does flare), to widen the book past 89% of the frame, or to shrink the flame again.
+`aspect.py` prints the window and writes the frames; **look at them before choosing.**
+
+Two things that were feared and are not true, so don't re-litigate them: the book does
+**not** shrink when the artboard does (artboard-to-screen scale is 252/300 = 0.840, up from
+0.525, so every detail gained), and the burst is **not** clipped — its apex clears the top by
+21px, measured, and the golden's top row is a point rather than a cut.
+
+What the earlier enlargement cost: **the burst lost height.** The old 1.48 overshoot ran off
+the top of any frame worth having, so `fire.scaleY`'s peak is 1.17 and the overshoot moved
+sideways into `scaleX`, where there is room. And `StreakFlame` now boxes its **fallback** to
+`size` too — returned bare, the celebration's column was 100pt shorter whenever the artboard
+failed to resolve, i.e. its layout depended on whether a gitignored dylib was present.
+`streak_celebration_test.dart` pins 375×667 as well as 393×852; before this, nothing in the
+suite set a surface short enough to fail.
+
+### The artboard is 360×300, and the box is no longer square
+
+**The width was bought for the burst spray and it cost nothing.** The spray is drawn behind the
+flame, so a bit reads only once it is clear of the silhouette — and in a 300 square the field
+between the settled body (half-width 93) and the frame's edge (150) was 57 units, falling to
+**10** at the burst peak. Measured off the Duolingo still the brief came from, its particles reach
+about **2.0–2.5×** their flame's half-width; ours reached **1.61×**. At 360 it is **1.94×**.
+
+**On-screen flame height is `(flame ÷ artboard) × box`, so growing both cancels exactly** — 195px
+before and after, and `StreakFlame.stageSize` is untouched at 252. What changed is that `stageSize`
+is now the box's **height** and the width comes from `StreakFlame.artboardAspect` (360/300), giving
+a 302.4 × 252 box. **The box has to carry the artboard's aspect or `Fit.contain` letterboxes**:
+`contain` takes `min(W/artboardW, H/artboardH)`, so a square box around a 6:5 artboard would scale
+by the width ratio and draw the flame a sixth smaller — spending the new room on shrinking the
+drawing instead of on the spray it was bought for.
+
+**Horizontal, because that is the axis with slack.** Doing the same thing by shrinking the drawing
+inside a square artboard and raising `stageSize` reaches the same ratio and grows the box in _both_
+directions; the 33%-of-frame share that would match the reference's crop needs a **475pt** box,
+wider than the phone, and every point of height comes out of the ~40pt the celebration has left on
+an iPhone SE. Widening costs none of that: the celebration pads itself 28pt a side, so the width
+budget is 319 on a 375pt phone and 302.4 leaves 17. `streak_celebration_test.dart`'s shortest-phone
+case asserts the box's size for exactly this reason — a squeeze shows up as a width below 302.4
+rather than as an overflow.
+
+**Note the reference's crop includes part of a numeral below its flame**, so it is a card region
+rather than a tight box, and "share of the frame" overstates what is wanted. Reach in flame
+half-widths is the comparable number. 380 would give 2.04× and leave zero slack on an SE; 446 would
+give 2.40× but needs the flame to break out of the 28pt padding.
+
+Content is centred by hand: the artboard's origin is top-left, so widening grows it rightward and
+`fire`, `embers`, `book` and `pool` all moved +30, as did `fire.x`'s tremor keys and `book.x`'s
+slide. `_preview.py` reads the size off the `<Artboard>` tag, so the review scripts followed.
+
+### The burst spray is generated
+
+`rive/streak_flame/burst.py` owns it — twelve bits, each with its own flight, clock and morph, from
+one seeded RNG (`SEED = 3`). Change the seed or the count there and re-run with `--write`; the
+script replaces its own output, and a re-run with no edits is a byte-for-byte no-op.
+
+**It replaced six circles on one clock.** Those were children of the group while it carried
+`scaleX`/`scaleY` 0.85 → 1.35 and a single shared opacity envelope, so they left on the same radial
+line at the same speed, brightened and died on the same frame, were circles within 2 units of one
+size, and sat in near-mirrored pairs. A reader compared them to Duolingo's and named both halves of
+the problem exactly: "the shapes morph, and initial position and travel paths of each are more
+random."
+
+Four things not to undo:
+
+- **Morph is `width`/`height`/`cornerRadiusTL` on each `Rectangle`, not `scaleX`/`scaleY` on its
+  `Shape`.** Scaling the node is a zoom — the corner radius scales too, so a rounded square stays
+  the same rounded square and only gets bigger. Keying the parametric path is what turns a bar into
+  a stub.
+- **The group no longer carries `opacity="0"`.** Rive multiplies a parent's opacity into its
+  children, so with the reveal moved onto the individual bits an authored-invisible group renders
+  an **empty frame** — which looks exactly like a broken keyframe table. Each `Shape` is authored
+  at 0 instead, the way `embers` does it.
+- **`ID_BASE` is 2000 so the generated ids are four digits.** `OWN_KEYS` matched `objectId="0:2\d+"`
+  for one run, which also matches `0:20` — the `fire` node — and that run deleted the flame's
+  strain, tremor, gleam, core lick and squash keys. It still built and still verified clean; only a
+  diff against a copy taken beforehand caught it.
+- **`aspect.py` measures the flame as the connected blob through the centre line**, not every warm
+  pixel. The spray uses the flame's own two tokens on purpose, so a plain colour match counted
+  twelve confetti bits as silhouette and reported a burst 6 units wider than it is plus a
+  non-existent overhang at 1100ms.
+
+**`smooth.py` owns the flame's size, not `scene.rml`.** `SCALE_X` / `SCALE_Y` scale the
+small point list. They are **2.3869 and 1.8** and no longer equal (both were 3, then both
+1.8); see the aspect note below for why they parted, and note `SCALE_X` has to be **re-solved
+whenever `FLAME_OUTER` moves** — bowing the sides added width of its own and dropped the aspect
+to 0.8142, which nothing in the suite would have caught. `BASE_Y` then lifts the whole path so
+its lowest vertex sits 4 units into the paper rather than 24 — the base's bite is a contact
+detail with a physical size, and scaled with everything else the foot comes out through the
+underside of a 22-unit page block. The flame stands **on the paper**, not down in the gutter.
+Edit the constants, re-run, paste.
+
+### The aspect is 1:1.23, which is Phosphor's, and the fork that got there is closed
+
+Duolingo's flame measures about **1:1.15** wide-to-tall. Ours was **1:1.74**, and after colour
+and motion were dealt with a reader's "theirs is cute and ours is not" was mostly this.
+
+**`SCALE_X` and `SCALE_Y` are no longer equal, and the note that used to defend their being
+equal was overstated twice over.** It said the aspect "was never mine to spend", on the
+evidence that 3-and-2 once stretched the flame to 1:2.4 and was called weird immediately. That
+evidence is real and it does not generalise: what was wrong there was using anisotropic scale
+to fix a _width-against-the-book_ problem, and stretching **taller**. Going deliberately wider
+toward a measured reference is a different decision, and it is the one that was instructed.
+
+`aspect.py` used to render a three-way fork — current, squat (keep width, lose height), widen
+(keep height, gain width) — because those two routes to 1:1.45 are not equivalent and picking
+one silently would have thrown away a decision. **The instruction was "a wider shape of
+similar ratio with the phosphor icon", so widening won, and it went past what that script
+offered:** Phosphor Fill `fire` measures 704 × 864 in its 1024 em, so **0.8148**, and
+`SCALE_X` is solved to land `icon.py`'s fitted curve on that to four places. 1.8 → **2.3869**.
+
+| flame     | aspect | flame/book | top gap |
+| --------- | ------ | ---------- | ------- |
+| 186 × 232 | 1:1.23 | 0.890      | 42      |
+
+**And the widening needed a shape change after it, which is the part worth expecting next
+time.** A reader's verdict on the wide flame was "looks too fat .. maybe bc the left and right
+sides are too angled?" — and the diagnosis in that sentence is right where the obvious reading
+(a fat shape needs narrowing) would have undone the widening just asked for. **Anisotropic
+scale does not preserve a tangent's angle**: it flattens every slope toward the horizontal, so a
+silhouette tuned at 1.8/1.8 has straight-looking sides at 2.39/1.8. Measured as the outline's
+deviation from the apex-to-widest chord, the side bulge was **5.5%** — a plank with a kink at
+the widest point, where the curve passed going straight down. `FLAME_OUTER`'s two upper side
+points moved out and up, which put it at **8.7%**, and max width did not change (0.815 →
+0.814). Five candidates were rendered and a reader picked the mildest; the record of the others
+is in `smooth.py` and the sheet is `rive/streak_flame/sides.py`, including that bowing harder
+pushes max width up and starts swallowing the notch, and that **lifting the widest pair is the
+lever for "fat" specifically** if it comes back.
+
+So what widening cost is exactly what the old table said it would: the 0.663. What it did not
+cost is height — `SCALE_Y` never moved, so the on-screen flame is the same 195px tall it was.
+The live question the widening opened is the **burst overhanging the book**, which is in the
+size note above. Two things the widening also moved that a reader would never connect to a
+scale constant, both now fixed in `scene.rml` and both worth expecting next time:
+
+- **`gleam` is a 40-unit band, so widening the body narrowed the sweep's share of it** from 29%
+  to 22% and it stopped reading as a highlight. On a broad flame a thin band is a crease, and
+  the settle frame showed a hard diagonal line down the left shoulder. Scaled by the same
+  1.3249 to ±26.5. Note `fire.scaleX` needs no accounting for — the band is a child of `fire`,
+  so the burst scales both — it is only a **path** change that moves the ratio.
+- **The burst sparks are placed just outside the burst-time silhouette**, which is now 135
+  half-units rather than 101, so the low pair at x ±84 falls inside it at the peak. Left as
+  is: the peak lasts two or three frames, all six read at 1000ms and 1100ms, and clearing 134
+  would put them within 5 units of the artboard edge. Checked by looking, not assumed.
 
 **There is a `rive` CLI, at `/opt/homebrew/bin/rive`.** A previous session asserted
 there was not — that `.riv` is editor-only with no CLI and no public serializer —
@@ -214,6 +537,15 @@ once a second for as long as the screen is up. (`between.py` is gone: it existed
 because a blend state interpolates each property independently, so the keyed poses
 and the blends between them were two different things to check. Sampling a timeline
 by time _is_ sampling the in-betweens.)
+
+**The preview scripts hold copies of the scene's numbers, and both have gone stale
+once.** `motion.py`'s `IGNITE_FRAMES` sat at 46 for two revisions after `Ignite` grew
+to 54, so the GIF silently stopped short of the part being iterated on; `_preview.py`
+hardcoded a 304×304 cream ground, and the first render after the artboard grew to 480
+came back with a black L down two sides of every cell — which looks exactly like a
+scene bug and is not one. The ground now reads `width`/`height` off the `<Artboard>`
+tag. `IGNITE_FRAMES` still cannot be derived, so change it in the same commit as the
+RML's `duration`.
 
 **Nothing translucent may cross-fade over something dark, in either direction** —
 five instances so far, most recently a dark cover fading over the cream ground (a
@@ -356,9 +688,557 @@ still-pending, and a later `db push` then re-runs the DDL and fails on
 `schema_migrations` setting `version` to the local file's timestamp, then re-run
 `supabase migration list --linked` and confirm the two columns match.
 
+## The streak page and its celebration, as they now stand
+
+Four things shipped on this branch that earlier notes contradict. Every one of them was a
+reversal, so the reasoning that lost is kept rather than deleted.
+
+**The celebration's ground is white and its ink is the flame.** `kStreakCelebrationGround`
+is `Colors.white` — a constant so the widget, the test and the golden cannot drift apart —
+and `_kStreakCelebrationInk` is `kCandleFlame` #F2A93F. That **reverses the documented
+#B54708 choice**, which was picked because it measures 5.43:1 on white where the flame
+measures **2.00:1**; it was overruled on instruction, so the numbers below describe what
+the trade costs rather than whether to make it. Darkening the flame's hue until white on it
+clears 3:1 lands on `#BF8632`, an ochre: **saturation runs out before lightness does**, so
+there is no compliant version of "the flame's colour". `_WeekCard` lost its `Colors.white`
+@45% fill in the same move — a white wash on white is nothing — and carries a
+`kCandleStockTop` @12% hairline instead.
+
+**The seal is retired.** `streakCelebrationMilestone` and `streakCelebrationSealed` are
+deleted; `streakCelebrationChasing` ("{days} more days to beat your best.") and
+`streakCelebrationRecord` ("Your longest run yet.") replace them, and `StreakCelebration`
+takes a `required int best` wired from `longestStreakProvider`. The distance is
+**`best + 1 - streak`**, because beating a record is not matching it — which is why the
+chasing string has **no `=1` case**: the sentence only appears while `best > streak`, so the
+floor is 2 and "1 more day" is unreachable. (That gate used to be described as gating a
+_bar_; the bar is gone — see below.) `kStreakMilestones` and `streakMilestoneTarget` still
+exist and **nothing in `lib/`
+reads them**; they are kept because making the spans real would start there. The noun had
+to go because there was no seal: no award, unlock or earn path anywhere in `lib/`, and
+`_Seal` in `shareable_library_card.dart` is the app's **logo emboss**, on every Library Card
+regardless of any streak. `docs/mockups/card-seal/` had already costed that corner.
+
+**The week row is a label above a token, not a letter in a box** — option E in
+`docs/mockups/streak-week/index.html`. `ReadWeekPalette` went **nine roles to six**
+(`stampFill`, `stampMark`, `emptyFill`, `todayEdge`, `label`, `labelToday`) because the
+token now says what happened and the label only says which day it is. Four things not to
+"fix" back:
+
+- **The token is a rounded square, not a circle.** A raked disc is a no-op, and the rake is
+  the gesture the week shares with `read_calendar_month.dart`. That is the whole reason E
+  was chosen over the four circular candidates.
+- **The weekday labels are one character.** Duolingo sets two and the drawing shows two;
+  `narrowWeekdays` under `en` collides (two S's, two T's) and we keep it anyway, because the
+  window is a _rolling_ seven days ending on today so the order says which day each cell is,
+  because `ReadCalendarMonth`'s header on the same page uses the same alphabet, and because
+  the collision is `en`-only — Korean narrow weekdays are already unambiguous, so a blanket
+  `substring(0, 2)` would be wrong. `DateFormat.E` would also need
+  `AppLocalizations.localizationsDelegates` in every harness that pumps the row or it throws
+  `UninitializedLocaleData`.
+- **`freshLast` lifts rather than inverts.** Two tests used to assert the inversion. It was
+  a real escalation when neighbours were a 10% wash; every read day is now already solid and
+  already carries a reversed-out check, so there is nothing left to invert _to_. The shadow
+  plus `decorateLast`'s overshoot and tilt is what marks the closing cell.
+- **`stampMark` is `Colors.white`, never `colors.surface`.** `surface` is #1E1E1E in dark,
+  so the old `freshInk` put the reversed-out mark on `brandFill` at about 1.4:1 and a
+  stamped day was a blank green token. `brandFill` is the token for _fills that carry white
+  text_ and is dark in **both** themes for exactly that reason.
+
+**The span ladder is one track, and it lives only in the celebration.** `StreakSpanTrack`
+(`lib/ui/widgets/streak/streak_span_track.dart`). **It shipped on the streak page first,
+between the week row and the month card, and was moved on instruction — don't put it back
+to fill that gap.** The gap is deliberate (the page's own comment says so) and the move
+reconciles the two options the record had left fighting: **F** wanted a ladder, **G** wanted
+no standing reminder of what the reader has not done and the whole reward in the
+celebration. F's object shown only at G's moment is both — a reader meets the ladder on the
+night they just added to it, never as a permanent list of four things they have not managed.
+It also puts the track on the ground it was drawn for, since it paints in `kCandleStockTop`
+and `kCandleFlame` and was the only candlelit object on a `pageBackground` page.
+
+**It replaced `_MilestoneBar`, which is deleted.** That bar filled `streak / (best + 1)` and
+vanished on a record night. Two amber rails 10pt apart is one duplication; the worse one is
+that the sentence under it — "8 more days to beat your best." — _was_ the bar, in words. The
+ladder says what the sentence cannot, and is present every night. **Its fill does not
+animate.** The `_Rise` is the reveal.
+
+**The fill reads `streak`, the run in progress, not `best`, the record — and it read `best`
+for one round, which was a defect rather than a design.** The reasoning at the time was that
+the record never falls, so it was the more honest number to put on a rail. That is backwards:
+right after a lapse, when `streak` has just reset to 1, a rail filled from `best` sits most of
+the way to a rung the _new_ run has no claim on, with nothing on screen saying the fill is the
+old run rather than this one. The record still has a home — `streakCelebrationChasing` /
+`streakCelebrationRecord` name it in words, from `best`, directly under the track.
+
+Segments are **even, not proportional**: to scale, 7/30/100 all land inside the leftmost 27%
+and two thirds of the rail stays empty until someone has read every day for a year. Earned
+is **derived** from `longestReadingRun`, so there is no new field and no way to desync. The
+marks are **white 2×7 hairlines**, and getting there took three cuts: 19px circles read as a
+_slider_ (a filled bar with a round handle promises dragging), squaring them off made earned
+rungs vanish as amber-on-amber bulges, and a white halo turned the bulge into a bead. It
+replaced four ring badges, which are still drawn under `span-row`.
+
+**The celebration is now within about 40pt of overflowing an iPhone SE**, at roughly 624pt
+of fixed-height content in a column between two `Spacer`s with no scroll view. Measure
+anything added to it at 375×667 first — `streak_celebration_test.dart`'s "shortest phone"
+case is the one that fails. And note that **`flutter_test`'s default 800×600 surface is
+shorter than any phone the app supports**, so both `streak_celebration_test.dart` and
+`reading_streak_page_test.dart` now set a real size in their `_pump`. Without that, moving
+the ladder in failed 31 cases with a `RenderFlex` overflow naming a widget none of them
+mentioned.
+
+### Two defects a green suite could not see, so render and look
+
+Both were found by putting the built screens on screen — `flutter test
+test/read_week_row_render_preview.dart` writes to `build/week_preview/` for exactly this.
+
+**The celebration's progress bar had no track.** The bar itself is gone now, but the trap
+is general and the widget is still in the toolbox. Its `SizedBox` had a height and no width;
+the parent `Column` centres its children, so the width arrived loose, a `ColoredBox` sized
+itself to its child, and that child was a `FractionallySizedBox` — a fraction _of the space
+it is given_. The stack collapsed onto the fill, so the track was exactly as long as the
+filled part and the bar drew as a short amber dash floating mid-screen. Note that measuring
+the `FractionallySizedBox` cannot catch this: it is an _overflow_ box and sizes itself to the
+constraints it was handed, so a case written against it passes on the bug. Measure the inner
+`ColoredBox`. `StreakSpanTrack` is immune (a `LayoutBuilder` over the width it is handed).
+
+**`StreakSpanTrack`'s last label was half off the page.** The end rung sits _at_ the rail's
+right edge by construction, so a 60pt box centred on it drew `1 year` from `width−30` to
+`width+30`. A widget test cannot see a clip by the screen; a render can. The end label now
+hugs the edge and is right-aligned, and the case that used to bless the overhang says the
+opposite.
+
+### The app has one flame now, and it is generated from this project
+
+`StreakFlameMark` (`lib/ui/widgets/streak/streak_flame_mark.dart`) replaced
+**`kReadingStreakIcon`**, a Phosphor Fill codepoint, in all four places the app drew a flame:
+the library bar's chip, the streak page's hero, the record button, and the celebration's
+fallback. The constant is deleted and `phosphor_flutter` is out of `pubspec.yaml` — it was
+carried for that one glyph and nothing else.
+
+**The defect was not the font, it was the count.** The celebration's flame is
+`assets/rive/streak_flame.riv`; the glyph was a completely different drawing; and the glyph
+was what the celebration fell back to when the artboard was missing. So the one code path
+guaranteed to stand in for the Rive flame drew something that looked nothing like it. Three
+earlier notes argued the _opposite_ — that the flame had to stay a font glyph precisely so the
+chip and the celebration could not drift — and all three have been corrected in place. The
+premise was right; the arithmetic was backwards.
+
+**So the geometry is generated, not drawn.** `rive/streak_flame/icon.py` imports
+`FLAME_OUTER`, `FLAME_INNER`, `CORNERS`, `RADII` and `CORE_RADII` out of `smooth.py`, applies
+the same Catmull-Rom fit, reimplements Rive's corner rounding as a fillet, normalises into a
+unit box and prints Dart tables, an SVG, or a proof render:
+
+```bash
+../../.venv/bin/python rive/streak_flame/icon.py            # the Dart tables, to paste
+../../.venv/bin/python rive/streak_flame/icon.py --svg      # the SVG the design record uses
+../../.venv/bin/python rive/streak_flame/icon.py --sheet    # render it beside the artboard
+flutter test test/streak_flame_mark_render_preview.dart     # and at all four app sizes
+```
+
+Four things not to undo:
+
+- **The corner fillet is the one thing reimplemented**, because Rive rounds a
+  `StraightVertex`'s `radius` inside the renderer and there is no path data to import. `--sheet`
+  puts the generated path beside the artboard's own frame; that side-by-side is the only check
+  worth anything, since matching numbers say nothing about whether a curve came out as a flame.
+- **`size` boxes the mark square**, holding a 1:1.6 flame centred. That is what made the swap
+  invisible at every call site — a narrower box would have re-centred the chip's row and the
+  button's label. The aspect is **1:1.607**, not `FLAME_OUTER`'s raw 1:1.674, because the radii
+  round the tip in; and it is measured off the _curve_, because the control hull reports 1:1.58
+  and fitting to that drew the mark 6% small.
+- **The core is derived by lifting HSL lightness, not by lerping to white.** White desaturates,
+  which turns a rust `flame` core into tan mud where a brighter orange reads as heat. A `color`
+  that is already white gets a core it cannot show, which is correct: the mark on the green
+  record button should be one solid shape.
+- **`docs/mockups/streaks/index.html` draws the same two paths**, and its `verify.py` imports
+  `icon.py` and asserts they are byte-for-byte what the generator emits _today_. That replaced
+  a check on Phosphor's codepoint. It is the reason the record cannot quietly drift from the
+  app, so don't paste a hand-tweaked path into either.
+
+### The streak reads in one orange, `kCandleFlame` #F2A93F, and `colors.flame` is now unread
+
+Read days on the streak page went green → rust → **amber**, and the second move reverses what
+this section said for two rounds. The first was the easy one: `ReadWeekPalette.page`'s
+`stampFill` left `brandFill` for the same reason `ReadCalendarMonth`'s today-rule had already
+left it — _the run is what this page is about, and the flame above is the run_ — because with
+green the page drew three accents at once and the week was the odd one out.
+
+The second is the instruction **"use the same bright orange used in this screen"**, and it
+took the last two holdouts with it. Every flame-coloured thing in the streak feature is now
+`kCandleFlame`: the celebration's ink, the page's hero mark, the week row's tokens and its
+today label, **`ReadCalendarMonth`'s today rule and numeral**, and **`ReadingStreakChip`** —
+its mark and numeral. (It was "the capsule's mark, numeral, 12% fill and 55% border" when this
+was written; the fill and the border are gone — see the chip note below.) Those last two were
+documented here as
+deliberately staying on the theme token, on the grounds that the page should be theme-aware
+and the chip's 13pt numeral needs contrast. The instruction overrides that, and the argument
+it overrides is why: a _rust_ flame in the library bar and an _amber_ flame one tap later is
+the same "one object looked like two" defect the hero and the week row were changed to fix,
+left running on the screen the reader sees every day. `StreakFlameMark` draws all of them from
+one generated silhouette, so two hues meant two flames again.
+
+**What it costs, and it is light mode only.** #F2A93F is 2.00:1 on `surface`, 1.89:1 on
+`pageBackground`, 1.80:1 on `sheetBackground` and 1.68:1 on `surfaceVariant`, where #B54708
+measured 5.43/5.15/4.90/4.58:1 and cleared AA on all four. Dark mode is not a trade but an
+improvement — 8.35:1 on the dark surface against the token's 7.46:1, because `flame` is
+already the bright `#FF922B` there. Rendered, what this lands on is the chip's numeral and the
+month's today numeral; the week's tokens are fills and the month's rule is a 2.5pt bar.
+`build/orange_shot/` has the four surfaces if it needs looking at again.
+
+The white check on those tokens is a separate, already-accepted trade: 5.4:1 on light mode's
+rust became **2.00:1** on the amber, the same order as the celebration's and as Duolingo's own
+2.18:1. A theme-dependent mark — dark on a bright orange, 7.7:1 — would fix it and is
+deliberately not taken; the white check was chosen explicitly.
+
+**So `AppColors.flame` has no reader left in `lib/`, and it is kept rather than deleted.** It
+was authored for the chip and for nothing else. `test/color_contrast_test.dart` still holds it
+to AA on all four light surfaces, which is now a record of what the compliant orange was
+rather than a guard on a shipped one — and the place to start from if anyone asks for the
+contrast back. Same reasoning as `kStreakMilestones` above.
+
+### The chip has no pill, in either state, and the pill was load-bearing
+
+`ReadingStreakChip` draws a mark and a numeral on the bar's own ground — Duolingo's
+arrangement — and nothing behind them. It used to draw a `circular(20)` stadium filled
+`kCandleFlame` at 12% behind a 1.5pt border of the same hue at 55% once today was recorded,
+with the identical decoration kept alive in the cold state at transparent colours.
+
+**Two reversals got here and the second undid the first's exception.** The chip originally
+drew a grey-outlined pill _every_ day, which made it a fourth chrome control in a row of three
+real buttons (the density toggle, the shelves button, the avatar). That objection deleted the
+cold outline and kept the warm one, on the reasoning that there was now something to mark. It
+applies just as well to the warm one: a status readout is not a control, so it should not be
+drawn like one on the good days either.
+
+**What it costs is real, and it is the one thing to know here.** The amber numeral is 2.00:1
+on `surface`, so the fill and the border were deliberately carrying a state the ink could not
+— the pill's _shape_ said "recorded" at a glance, and the chip's own contrast note said so.
+With them gone, hot against cold is two hues: #F2A93F against `secondaryText` #626A72 is
+**2.75:1** in light mode and **1.5:1** in dark, where the two are near enough the same
+lightness that hue is doing all of the work. Same bet Duolingo makes. `Semantics` carrying the
+run in words is therefore no longer a nicety, and the amber is still the first thing to revisit
+if anyone asks why the chip is hard to read — but the answer can no longer be "the shape is
+doing it".
+
+**The footprint did not move, and the padding looks odd for that reason.** It is
+`EdgeInsets.symmetric(horizontal: 16.5, vertical: 14.5)` — the three old insets summed,
+8 + 7 + 1.5 and 11 + 2 + 1.5 — so the bar's row lays out to the same pixel and the touch target
+is the same 48.5pt tall. Measured before and after: ink 60.25 × 19.5 and footprint 94.5 × 48.5,
+both. Two of those terms belonged to the pill, and the border one is the trap: `Container` folds
+a border's width into its own effective padding **only when a border is present**, which is
+also why the cold decoration used to be kept alive with transparent colours rather than set to
+`null` — nulling it took 2 × 1.5pt out of the layout and moved the tap target by three points
+depending on whether the reader had read yet. Rounding to 8 and 11 would have re-introduced the
+same 3pt shrink on purpose.
+
+`_chipHasNoBox` in `reading_streak_chip_test.dart` looks for **`DecoratedBox`**, not
+`Container`: a `Container` carrying only padding is still a `Container`, so a type check would
+pass on a chip that had quietly grown a fill back. An earlier draft of that helper also
+inspected `Container.decoration` reached through `find.byType(ReadingStreakChip)`, which yields
+the chip widget and never a `Container` — a dead clause that passed unconditionally. Verified by
+re-adding a decoration and watching five cases fail.
+
+### The Library Card's streak tile is filled, opens the streak page, and its cool fill is a frozen literal
+
+`StatTileVariant` has **four** values now — `hero`, `tile`, `warm`, `cool` — and the streak
+tile is the only non-hero tile on that card with a fill of its own. It earns that by being a
+**state rather than a stat**: pace and most-read author are true all week, and this one
+changes tonight. Warm (`kCandleFlame`) once today is recorded, cool before.
+
+**Keyed on `readToday`, never on the count.** `readToday` is threaded `home_page.dart` →
+`LibraryCardSheet` → `LibraryCardBody`, off the same `readTodayProvider` the bar's chip uses,
+so the two cannot disagree about whether today counts. The count is intact all day and only
+the day's status changes at the 4am rollover, so a tile keyed on the number would be warm at
+9am on a day nothing had been read. Both states read the full count, because the record does
+not scold.
+
+**Cold is filled, and the alternative was the chip's own rule.** `ReadingStreakChip` recedes
+to nothing painted when cold — see the chip note above — and the same move here would make
+the streak tile identical to Pace until the day is recorded. Not taken: the chip lives in a
+bar the reader passes constantly, where a loud object is a nuisance, whereas the card is
+somewhere they go on purpose to look at figures, and a tile that changes _shape_ between
+visits is harder to read than one that changes temperature. So the shape is constant and only
+the ground moves.
+
+**`kStatTileCool` is `const Color(0xFF626A72)` and must not go back to being
+`AppColors.secondaryText`.** It shipped from a candidate that used the token, which is
+#626A72 in light and #949599 in dark — so the cold tile was a dark slate block on a white
+card and a _pale_ block on a dark one. Measured: 0.301 relative luminance against the hero
+green's 0.137, i.e. 3.04:1 against the ground where the hero is 2.97:1, which made "you have
+not read yet" the loudest object on the card, and white on it fell from 5.49:1 to **2.99:1**.
+Same trap `read_week_row.dart` records for `stampMark`: a token chosen for its role as _text_
+promises nothing about its lightness, so using one as a fill is a coin flip per theme.
+`AppColors.brandFill` is the shape of the fix — authored to carry white text, and #067657 in
+both themes for exactly this reason.
+
+The value is the light theme's `secondaryText`, frozen, which makes it a **neutral twin of
+the hero's fill** and the numbers say so almost exactly: white 5.49:1 against the hero's
+5.62:1, `statTileHeroMutedText` 4.68:1 against 4.75:1, and 5.49:1/3.04:1 against the light
+and dark grounds where the hero is 5.62:1/2.97:1.
+
+**The warm fill does not clear AA, and that is chosen rather than overlooked.** White is
+**2.00:1** on `kCandleFlame` and 3.23:1 on the darker stop; at `statTileHeroMutedText`'s 88%,
+1.84:1 and 2.85:1. A readable version was built and shown beside it — the same tile on
+`AppColors.flame` #B54708, where white is 5.43:1 rising to 7.83:1, within a hair of the
+hero's own 5.62:1 — and the amber was preferred. `library_card_contrast_test.dart` asserts
+this as an **upper** bound (`lessThan(_aaNormal)`, plus `closeTo(2.0)`), so darkening the
+fill into compliance _fails_ rather than leaving a documented exemption describing a tile
+that no longer needs one.
+
+**The mark is white with the fill's base as its `coreColor`.** `StreakFlameMark` derives a
+core by lifting HSL lightness and white has none left to lift, so a plain white flame is one
+solid shape and reads as a droplet. Handing it the ground it sits on puts the fill back
+through the middle of the flame.
+
+**Tapping the tile opens the streak page**, the same `AppRoutes.readingStreak` the chip
+pushes, on the root navigator. `StatTile.onTap` is null for every other tile and
+`library_card_body_test.dart` asserts that asymmetry — pace and most-read author are terminal,
+and the card must not become a grid of buttons that mostly go nowhere. `HitTestBehavior.opaque`,
+because a stat tile is mostly empty fill and a button that only responds where something is
+painted is not one. No `InkWell`: no guaranteed `Material` ancestor here, and a ripple on a
+gradient is not a gesture this app makes. The sheet withholds the callback during an edit
+(`isEditMode ? null : onStreakTap`), the same rule as the year rail — a tap that pushed a
+full-screen page out from under a drag would strand a reader holding covers.
+
+Four treatments were rejected before this one and are worth not re-deriving: an amber
+**figure** on the ordinary grey tile (1.68:1 falling to 1.48:1 across the gradient — fainter
+than anything the app ships, because the tile's grey gives the amber less to work against
+than the bar's white does), a flame **watermark** bleeding off the corner, an amber **mark**
+with the figure left in body ink, and a chevron. The last two are still available and
+compose with what shipped.
+
+**The final hop in `home_page.dart` is not covered by a test.** Reaching it needs the whole
+home fixture plus selecting the Card tab and opening the sheet; the body and sheet tests
+cover everything below it.
+
+### Recording a night has two doors, and the celebration is a route rather than an overlay
+
+`showStreakCelebration` (`lib/ui/widgets/streak/streak_celebration_route.dart`) is the only
+way the celebration is raised, and both callers use it: `ReadingStreakPage._recordToday` and
+`BookDetailsTabView`. It used to be a `Positioned.fill` inside the streak page's own `Stack`,
+driven by `_celebrating` and `_celebratedStreak`, which was right while that page was the only
+thing that could write a `reading_days` row.
+
+**The band's percent wheel now stamps the night, and it did not before.** That was the gap:
+nudging a bookmark is the shortest "I read some of this" in the app and the path most readers
+actually use, and it was the only one that left the streak untouched — so the reader most
+likely to have a run going was the one whose run grew silently, with no celebration, from a
+screen that never mentioned it. The status sheet's tick already wrote the day; it just never
+celebrated.
+
+**The long comment above the status sheet's two writes still stands and is not contradicted.**
+It says keeping the calls apart is what makes it impossible for a change of status to stamp a
+day _by accident_. Nothing about accident has changed: `onProgressSelected` is gated on the
+percent sheet's own `_touched`, so confirming a pre-filled position writes neither the column
+nor the day. What the wheel asserts is a reading of intent — someone who just told the app
+where they are in a book read it today. The cost, stated in place: correcting a percentage the
+reader got wrong last week also stamps _today_, and there is no way to tell that apart, because
+the wheel records a position and not a date. The narrower rule (stamp only when the position
+moved forward) is one comparison away and would refuse the night to someone re-reading a
+chapter.
+
+**Celebrate on the transition, never the state.** `readToday` stays true for the rest of the
+day, so celebrating on the state would raise the screen on every later nudge.
+`_celebrateIfTonightIsNew` takes both halves as arguments rather than reading the second back,
+because the callers already know them.
+
+**`BookDetailsTabView.build` watches `readingDaysProvider` for its side effect.** Nothing there
+draws the streak. Both write paths ask `readTodayProvider` whether today was already recorded,
+and that getter is derived from an _async_ set — so it answers `false` while the fetch is in
+flight rather than "not known yet". Unwatched, two things broke: the status sheet opened with "I
+read today" unticked on a day that **was** recorded, and saving it called `setRead(read: false)`
+and took the night away; and every first nudge looked like the first of the day, so the
+celebration fired on a run it had already celebrated. Both survive on device only because the
+library bar's chip watches the same provider and the route below stays in the tree, so the set
+is nearly always already cached — the failure showed up the moment a test pumped the page with
+nothing else alive to have asked.
+
+**Do not "fix" that watch into an `await ref.read(readingDaysProvider.future)` before opening
+the sheet.** That was tried. It is airtight about the tick and it puts a network read in front
+of the form, so a stalled fetch means the reader cannot edit their dates at all —
+`band_doors_test.dart` caught it immediately. A wrong checkbox is the lesser failure than an
+unreachable one.
+
+`readingWeekEndingOn` moved out of the streak page into `lib/models/streak.dart`, because three
+surfaces now ask for the same rolling window.
+
+### The hero says the run and nothing about today, and the evening warning left with it
+
+`_Hero` draws one label under the figure — `streakDays`, "day streak" — in every phase.
+`streakDaysOpen` ("day streak, and today is open") is **deleted from both ARBs**, and the
+italic line that sat under it is gone with `kStreakTodayLineKey`: that line was the app's
+whole implementation of the reading-streaks design's `sc-risk`, choosing between
+`streakTodayOpen` ("A page is enough. Today counts until midnight.") and `streakTodayLate`
+from the warning hour.
+
+**Withdrawn on instruction, and the reason it holds is that the page was saying it four
+times.** Whether tonight is in is already the flame's tint above the figure, the week row's
+last cell below it, and whether the foot of the page offers a record button or a
+confirmation. The words were the page explaining its own drawing.
+
+**The two strings are still live and must not be deleted.** `streak_widget_sync.dart` ships
+them to the home-screen widget, which has no flame, no week row and no button, so words are
+the only channel it has — `docs/superpowers/specs/2026-09-22-streak-widget-design.md` carries
+a correction in place saying the page no longer draws them. And if a warning is ever wanted
+back on the page, note why it was a line and not a colour: `kCandleFlame` is what _recorded_
+means, so an amber warning would be the same hue as the state it warns about.
+
+`readingDayPhaseProvider` is still what the page watches and reads `recorded` off — one clock
+for the fact, already invalidated on both boundaries by `main.dart` — it simply no longer
+tells `open` from `openLate`. `reading_streak_page_test.dart`'s `the evening warning is not on
+this page` group pins that the page reads identically either side of the warning hour.
+
+### The undo footer is debug-only
+
+`streakUndoVisible` in `reading_streak_page.dart` gates the whole "Today is recorded. / Undo"
+footer on `kDebugMode`. Taking a night back is a developer's need while working on the feature;
+a reader offered an Undo is being invited to treat their own record as provisional, and the
+month grid in front of them already shows what happened.
+
+**The whole footer, not just the `Undo` inside it** — a confirmation banner whose only control
+has been removed is a line of text restating the week row and the month card above it. If that
+ever needs reversing, drop the button from `_DoneFooter` rather than the footer from the page.
+The padding goes with it: an empty band under the month reads as a control that failed to load.
+
+**`debugStreakUndoVisibleOverride` exists because `flutter test` runs in debug.** A bare
+`kDebugMode` at the call site would make the shipped behaviour the one state no case can reach.
+Same reasoning as `debugStreakFlameAssetOverride`.
+
+### The home-screen widget has a cat, a colour ladder and seven lines
+
+`ios/StreakWidget/` draws a mascot on a ground that deepens and warms toward midnight, with one
+line of copy whose voice changes by the hour. Four things here are expensive to rediscover:
+
+- **Three rules in the design record were amended to allow it**, deliberately and in writing:
+  _the record does not scold_, _amber and never red_, and _state the deadline rather than the
+  threat_. The reasoning that lost is kept in place in
+  `docs/superpowers/specs/2026-09-22-streak-widget-design.md` (see **The ladder, as chosen**) and
+  in `sc-risk` in the 2026-09-12 spec. **Only the widget is amended; the app's own page is not.**
+  What replaced "never red" is measurable and is now a test: _late must not be confusable with
+  recorded_, worst pairing 4.71:1.
+- **The seven lines are ARB keys (`streakWidgetLine*`) and the Korean is written, not
+  translated.** The tile's copy column fits about 7 full-width syllables a line, so Korean gets
+  ~14 characters where English gets 30, and the box allows three lines for that reason alone.
+- **The font Swift asks for is `Nunito-ExtraBold`, never `Nunito`.** `build_fonts.py`'s subset
+  carries the family name _Nunito ExtraBold_, so the obvious name returns nil from `UIFont` and
+  the numeral silently becomes SF Rounded. `pubspec.yaml`'s `family: Nunito` is a Flutter-side
+  declaration and proves nothing about the file. `streak_widget_palette_test.dart` parses the
+  TTF's `name` table and pins it.
+- **The cat art's prompts are in the _main checkout_, not this worktree**:
+  `docs/mockups/mascot/art/manifest.json` (every prompt ever run, with model, route and cost),
+  `scripts/gen_mascot_art.py` (the `WIDGET` dict and `core_edit()`), and
+  `docs/mockups/mascot/CHARACTER.md`. There is no `PROMPTS.md` for the mascot — that file belongs
+  to the empty-state illustrations, which used a different pipeline. The eight cut-outs ship as
+  `ios/StreakWidget/Assets.xcassets`, resampled **by height** because the puddle pose is wider
+  than it is tall and a long-edge resize draws it short.
+
+### The widget's review page cannot see the widget, so measure a screenshot
+
+`docs/mockups/streak-widget/final.html` is generated from the shipped sources and is still not
+enough: it is a browser drawing the same numbers, so **anything WidgetKit or CoreText does around
+the tile is invisible to it.** Two defects shipped through that gap and were only found by
+measuring a simulator screenshot against the page:
+
+```bash
+xcrun simctl io booted screenshot /tmp/home.png
+python3 scripts/measure_widget_shot.py /tmp/home.png --seed 880 300   # any pixel on the tile
+```
+
+It walks the tile's edges out from that seed and prints the content inset, the cut-out's box and
+whether it reaches the bottom edge. The two it found:
+
+- **The numeral sat 7.5pt low**, because Nunito ExtraBold's natural line box is **1.364 em**
+  (ascent 1011, descent −353 on a 1000 em) and SwiftUI lays `Text` out in all of it, where the
+  page sets `line-height: 1`. `.frame(height: figureSize)` on the figure is that CSS rule spelled
+  in SwiftUI — **don't remove it.** The symptom is not an error but a 9pt dead band across the top
+  of the tile with the run row pressed toward the cat, i.e. a tile that reads as a smaller, more
+  timid version of the design.
+- **`contentMarginsDisabled()` was missing.** iOS 17 adds ~16pt of its own margins around the
+  view, on top of `StreakWidgetView`'s `.padding(14)`. It needs **no `#available` guard** and
+  cannot have one: it is `@available(iOS 15.0, *)` and `@_alwaysEmitIntoClient` with Apple's own
+  body doing the 17 check, and an `if #available` here would give the two branches different
+  opaque types.
+
+The same exercise cleared the cat: it measures 70% of the tile, cropped 8%, exactly as drawn. A
+report that it was **not** cropped was the run row's drift read one object lower down.
+
+**A third one came off a device for a different reason: the page was only ever shown a flattering
+cover.** `cover_color` is sampled from the real jacket, so a white-paper cover comes back near-white
+(`#FDFDFB`), and an unbordered rectangle of it on the recorded tile's cream ground is invisible — it
+reads as a cover that failed to load. `Jacket` now draws a 1pt `strokeBorder` in **the ground's own
+ink at 28%** (a fixed dark hairline would vanish on the 23:00 tile), and `render_final_widget.py`
+draws every medium section with both `DARK_COVER` and `PALE_COVER`. The page could always have shown
+this; it had just never been handed the input. Same trap as `kStatTileCool` above — a colour sampled
+for one role promises nothing about its lightness.
+
+### The widget draws the real cover, and the colour is the fallback that must stay
+
+`cover_color` was never a cover — it is one sampled colour, and for a white-paper jacket it is
+near-white. The app now fetches a **120px-wide PNG** and writes it into the App Group's `covers/`
+directory; `Jacket` loads it with `UIImage(contentsOfFile:)` and falls back to the colour.
+
+That fallback is why this shipped with **`v` still at 1** and no coordinated release, so don't
+"simplify" it away: it is what the tile draws on the first render after a book change, for a reader
+who was offline then, and for any cover URL that 404s. Five things not to undo:
+
+- **The snapshot is written first, the cover second.** Reversing it makes a recorded night wait on a
+  download. The extra timeline reload is affordable only because `write` is deduplicated per
+  snapshot — the refresh budget is spent by per-rebuild reloads, not by per-book-change ones.
+- **`StreakCoverThumbnail` re-fetches rather than reusing `cover_sample.dart`'s decode.** The free
+  option entangles the widget-sync path with shelf rendering for good. `test/streak_cover_thumbnail_test.dart`
+  pins that every failure returns null and none throws — the caller is a `build` method.
+- **The filename is `cover-<bookId>.png`, named in Dart and only _resolved_ in Swift** (`coverFileName`
+  → `book.coverFile` → `StreakWidgetCovers.url(for:)`). Keyed on the id so the previous book's jacket
+  can never appear under the next book's title. `AppDelegate` validates the name against a whitelist
+  and prunes to one file, because this is the only place a Postgres value becomes a path.
+- **`clear()` deletes the directory.** A hex rectangle leaked that there was a book; a jacket leaks
+  _which_ book to anyone glancing at a shared device.
+- **The hairline stays over real covers, and the spine drops to 9%.** The book this was built against
+  is artwork on a white field — which is _why_ it sampled `#FDFDFB` — so a photographed jacket is as
+  invisible on cream as the placeholder was. At the placeholder's 18% the spine reads as a black
+  stripe across the artwork.
+
+### The widget draws the library's bookmark, and it is the third copy of that ribbon
+
+`BookmarkRibbon` + `ReadingBookmarkTrack` in `StreakWidget.swift` draw `assets/icons/bookmarkIcon.svg`
+over the tile's jacket, slid in from the fore-edge by `progress` — the same track the shelf and the
+Library Card use, so one mark reads one position at three sizes. Read `lib/ui/widgets/book/reading_bookmark.dart`
+for the reasoning; none of it is repeated in the Swift.
+
+- **Parametric, not generated, and that is the opposite call from the flame.** `StreakFlameGeometry`
+  is emitted by `icon.py` because an organic curve has no description shorter than its control
+  points. This shape _is_ five numbers — a rectangle, a notch apex, two corner radii — so it is
+  written out and **held to the asset by `test/streak_widget_palette_test.dart`**, which parses
+  `static let unit*` back out of the Swift and compares with the SVG and with the Dart constants.
+- **That test also compares the two placements' _output_, not just their constants.** Flutter
+  positions the asset's 22-wide box and Swift draws only the 13.5-wide ribbon, so the insets are
+  measured from different edges; an off-by-the-bleed would misplace the mark at every position
+  while every constant still matched. The case walks null/0/0.25/0.41/1 and compares left edges.
+- **It draws for a book with no recorded position, where `ProgressBar` draws nothing.** A null
+  `progress` pins the ribbon at the fore-edge rather than sending it to the gutter — the app's own
+  rule, because every book is null until someone answers the wheel. A bar at zero is a claim about
+  how far in the reader is; the ribbon at its pin is the absence of one.
+- **Outside the clip and above the edge hairline**, because "a bookmark a clip swallows is not a
+  bookmark" and a bookmark sits on top of the book rather than under its outline.
+- **The shadow is what makes a white ribbon visible on a white cover**, which is the pale-cover
+  problem again one object down. SwiftUI's `.shadow` follows the shape's alpha so the notch is
+  respected; the app blurs a copy by hand only because `flutter_svg` will not render the SVG's own
+  filter.
+
+**The page's percentages and the Swift's resolve against different origins**, which is a drift the
+page cannot show either: an absolutely positioned box's `max-width: 43%` is 43% of the whole 338pt
+tile, where `geometry.size.width * 0.43` inside the padded content is 43% of 310pt. Both of
+medium's caps are pinned in points now so the two sides can be read as agreeing, and
+`QUAD_NUMBERS` in `scripts/render_final_widget.py` makes `--check` read every one of medium's
+literals back out of the Swift.
+
+**This machine's Xcode ships no `Simulator.app`**, so once a reboot clears the home screen the
+widget cannot be re-added — `simctl` can install and screenshot but not place a widget. Expect to
+ask for a screenshot rather than to take one.
+
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (1769 cases). There is no expected-failure list any
+`flutter test` passes completely (1851 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

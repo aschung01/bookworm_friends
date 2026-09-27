@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Ground treatment bake-off v2</title>
+        <style>
+            :root {
+                color-scheme: dark;
+            }
+            body {
+                margin: 0;
+                padding: 28px 24px 60px;
+                background: #23292e;
+                color: #e8edf2;
+                font:
+                    13px/1.45 ui-sans-serif,
+                    -apple-system,
+                    sans-serif;
+            }
+            h1 {
+                font-size: 15px;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                margin: 0 0 4px;
+            }
+            p.lede {
+                margin: 0 0 8px;
+                color: #9fb0bd;
+                max-width: 96ch;
+            }
+            h2 {
+                font-size: 12px;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: #9fb0bd;
+                margin: 32px 0 14px;
+                border-top: 1px solid #333c44;
+                padding-top: 12px;
+            }
+            .row {
+                display: flex;
+                gap: 24px;
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+            figure {
+                margin: 0;
+                width: 260px;
+            }
+            figcaption {
+                margin-top: 9px;
+                font-size: 11.5px;
+                color: #9fb0bd;
+            }
+            figcaption b {
+                color: #e8edf2;
+                display: block;
+                font-size: 12.5px;
+                margin-bottom: 2px;
+            }
+
+            .t {
+                position: relative;
+                width: 260px;
+                height: 260px;
+                border-radius: 22%;
+                overflow: hidden;
+                isolation: isolate;
+            }
+            .t .cat {
+                position: absolute;
+                left: 50%;
+                bottom: -8%;
+                height: 70%;
+                transform: translateX(-50%);
+                z-index: 3;
+            }
+            .t .cat img {
+                height: 100%;
+                display: block;
+            }
+            .t .run {
+                position: absolute;
+                top: 10%;
+                left: 10%;
+                z-index: 5;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font:
+                    800 46px/1 ui-rounded,
+                    -apple-system,
+                    sans-serif;
+                letter-spacing: -0.02em;
+                color: var(--ink, #fff7ea);
+            }
+            .t .run svg {
+                width: 34px;
+                height: 34px;
+                opacity: 0.5;
+            }
+            /* Capped hard at 50%, because the character owns the right half. */
+            .t .line {
+                position: absolute;
+                top: 31%;
+                left: 10%;
+                width: 46%;
+                z-index: 5;
+                font-size: 14px;
+                line-height: 1.3;
+                font-style: italic;
+                color: var(--dim, #cfd6dd);
+            }
+
+            /* ================= LAYER 1: the mesh base ================= */
+            .m-eve {
+                background:
+                    radial-gradient(
+                        75% 60% at 16% 10%,
+                        #d06a8a 0%,
+                        rgba(208, 106, 138, 0) 62%
+                    ),
+                    radial-gradient(
+                        70% 58% at 88% 22%,
+                        #7b3f96 0%,
+                        rgba(123, 63, 150, 0) 60%
+                    ),
+                    radial-gradient(
+                        95% 80% at 50% 112%,
+                        #3d0f22 0%,
+                        rgba(61, 15, 34, 0) 70%
+                    ),
+                    linear-gradient(
+                        158deg,
+                        #a33c5e 0%,
+                        #6b2340 52%,
+                        #4a1329 100%
+                    );
+            }
+            .m-am {
+                background:
+                    radial-gradient(
+                        75% 60% at 16% 10%,
+                        #8fa4c4 0%,
+                        rgba(143, 164, 196, 0) 62%
+                    ),
+                    radial-gradient(
+                        70% 58% at 88% 22%,
+                        #4f6f9b 0%,
+                        rgba(79, 111, 155, 0) 60%
+                    ),
+                    radial-gradient(
+                        95% 80% at 50% 112%,
+                        #1f2735 0%,
+                        rgba(31, 39, 53, 0) 70%
+                    ),
+                    linear-gradient(
+                        158deg,
+                        #5b6f92 0%,
+                        #3c4a64 52%,
+                        #27303f 100%
+                    );
+            }
+            .m-late {
+                background:
+                    radial-gradient(
+                        75% 60% at 16% 10%,
+                        #cf5a54 0%,
+                        rgba(207, 90, 84, 0) 62%
+                    ),
+                    radial-gradient(
+                        70% 58% at 88% 22%,
+                        #8e2340 0%,
+                        rgba(142, 35, 64, 0) 60%
+                    ),
+                    radial-gradient(
+                        95% 80% at 50% 112%,
+                        #37070c 0%,
+                        rgba(55, 7, 12, 0) 70%
+                    ),
+                    linear-gradient(
+                        158deg,
+                        #a8262c 0%,
+                        #71121a 52%,
+                        #4a0a10 100%
+                    );
+            }
+            .m-done {
+                background:
+                    radial-gradient(
+                        70% 55% at 18% 12%,
+                        #ffffff 0%,
+                        rgba(255, 255, 255, 0) 60%
+                    ),
+                    radial-gradient(
+                        75% 60% at 85% 20%,
+                        #fff2d2 0%,
+                        rgba(255, 242, 210, 0) 62%
+                    ),
+                    radial-gradient(
+                        100% 85% at 50% 115%,
+                        #ffdfae 0%,
+                        rgba(255, 223, 174, 0) 72%
+                    ),
+                    linear-gradient(
+                        158deg,
+                        #fffdf6 0%,
+                        #fff4df 55%,
+                        #ffe9c6 100%
+                    );
+            }
+
+            /* ================= LAYER 2: vignette ================= */
+            .vig::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                z-index: 4;
+                pointer-events: none;
+                background: radial-gradient(
+                    115% 95% at 50% 40%,
+                    rgba(0, 0, 0, 0) 40%,
+                    rgba(0, 0, 0, 0.18) 78%,
+                    rgba(0, 0, 0, 0.38) 100%
+                );
+            }
+            .light.vig::before {
+                background: radial-gradient(
+                    115% 95% at 50% 40%,
+                    rgba(120, 80, 20, 0) 42%,
+                    rgba(120, 80, 20, 0.07) 80%,
+                    rgba(120, 80, 20, 0.16) 100%
+                );
+            }
+
+            /* ================= LAYER 3: grain =================
+     Dropped to 10% from 16%: at 16% it was visible as texture rather than as
+     dithering, which is the wrong side of the line. */
+            .grain::after {
+                content: "";
+                position: absolute;
+                inset: -20%;
+                z-index: 4;
+                pointer-events: none;
+                opacity: 0.1;
+                mix-blend-mode: overlay;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+            }
+
+            /* ================= LAYER 4: backlight halo =================
+     Replaces the contact shadow, which did not work: the character is cropped at
+     the bottom edge, so an ellipse beneath it renders mostly outside the tile. The
+     reference does not use one either -- on its orange and brown tiles there is a
+     bright halo BEHIND Duo. A backlight also survives the crop. */
+            .halo .glow {
+                position: absolute;
+                left: 50%;
+                bottom: -6%;
+                width: 78%;
+                height: 74%;
+                transform: translateX(-50%);
+                z-index: 2;
+                pointer-events: none;
+                background: radial-gradient(
+                    50% 50% at 50% 42%,
+                    rgba(255, 225, 235, 0.3) 0%,
+                    rgba(255, 225, 235, 0.12) 46%,
+                    rgba(255, 225, 235, 0) 72%
+                );
+            }
+            .m-am.halo .glow {
+                background: radial-gradient(
+                    50% 50% at 50% 42%,
+                    rgba(215, 232, 255, 0.3) 0%,
+                    rgba(215, 232, 255, 0.11) 46%,
+                    rgba(215, 232, 255, 0) 72%
+                );
+            }
+            .m-late.halo .glow {
+                background: radial-gradient(
+                    50% 50% at 50% 42%,
+                    rgba(255, 206, 180, 0.32) 0%,
+                    rgba(255, 206, 180, 0.12) 46%,
+                    rgba(255, 206, 180, 0) 72%
+                );
+            }
+            .m-done.halo .glow {
+                background: radial-gradient(
+                    50% 50% at 50% 42%,
+                    rgba(255, 255, 255, 0.55) 0%,
+                    rgba(255, 250, 235, 0.22) 46%,
+                    rgba(255, 250, 235, 0) 72%
+                );
+            }
+
+            /* ================= LAYER 5: a shape behind the character =================
+     The reference puts something in the scene on most tiles -- a star behind the
+     flexing Duo, a mountain ridge on the orange one, a puddle under the melted one.
+     A soft hill is the generic version: it gives the character something to sit on
+     and stops the tile reading as a swatch. */
+            .hill .rise {
+                position: absolute;
+                left: -12%;
+                right: -12%;
+                bottom: -30%;
+                height: 58%;
+                z-index: 2;
+                pointer-events: none;
+                border-radius: 50% 50% 0 0 / 70% 70% 0 0;
+                background: rgba(255, 255, 255, 0.055);
+            }
+            .light.hill .rise {
+                background: rgba(160, 110, 30, 0.07);
+            }
+
+            /* ================= LAYER 6: particles, in a SAFE ZONE =================
+     v1 put these anywhere and they collided with the status line. The run occupies
+     the top-left and the line the left column down to ~45%, so particles are
+     confined to the right third and the lower band. */
+            .conf {
+                position: absolute;
+                inset: 0;
+                z-index: 3;
+                pointer-events: none;
+            }
+            .conf i {
+                position: absolute;
+                display: block;
+                border-radius: 2px;
+                opacity: 0.9;
+            }
+            .conf i:nth-child(1) {
+                right: 9%;
+                top: 16%;
+                width: 11px;
+                height: 11px;
+                background: #7fd4ff;
+                transform: rotate(24deg);
+            }
+            .conf i:nth-child(2) {
+                right: 22%;
+                top: 30%;
+                width: 8px;
+                height: 8px;
+                background: #ffd479;
+                transform: rotate(-18deg);
+            }
+            .conf i:nth-child(3) {
+                right: 6%;
+                top: 44%;
+                width: 9px;
+                height: 9px;
+                background: #ff9ecb;
+                transform: rotate(40deg);
+            }
+            .conf i:nth-child(4) {
+                left: 12%;
+                bottom: 12%;
+                width: 8px;
+                height: 8px;
+                background: #c8a0ff;
+                transform: rotate(-32deg);
+            }
+            /* A four-point sparkle, drawn as two tapered bars rather than a plus glyph --
+     v1's plus read as a crosshair. */
+            .conf i:nth-child(5) {
+                right: 30%;
+                top: 15%;
+                width: 20px;
+                height: 20px;
+                border-radius: 0;
+                background:
+                    radial-gradient(
+                            closest-side,
+                            rgba(255, 255, 255, 0.95) 0%,
+                            rgba(255, 255, 255, 0) 100%
+                        )
+                        center / 100% 2px no-repeat,
+                    radial-gradient(
+                            closest-side,
+                            rgba(255, 255, 255, 0.95) 0%,
+                            rgba(255, 255, 255, 0) 100%
+                        )
+                        center / 2px 100% no-repeat;
+            }
+            .conf i:nth-child(6) {
+                left: 16%;
+                bottom: 26%;
+                width: 13px;
+                height: 13px;
+                border-radius: 0;
+                opacity: 0.75;
+                background:
+                    radial-gradient(
+                            closest-side,
+                            rgba(255, 255, 255, 0.95) 0%,
+                            rgba(255, 255, 255, 0) 100%
+                        )
+                        center / 100% 1.6px no-repeat,
+                    radial-gradient(
+                            closest-side,
+                            rgba(255, 255, 255, 0.95) 0%,
+                            rgba(255, 255, 255, 0) 100%
+                        )
+                        center / 1.6px 100% no-repeat;
+            }
+
+            .light .run {
+                color: #212529;
+            }
+            .light .line {
+                color: #6b6257;
+            }
+
+            /* The current shipped treatment, for the A/B. */
+            .now-eve {
+                background: radial-gradient(
+                    120% 95% at 50% 38%,
+                    #b1596f 0%,
+                    #9c3459 55%,
+                    #571b30 100%
+                );
+            }
+            .now-am {
+                background: radial-gradient(
+                    120% 95% at 50% 38%,
+                    #74839f 0%,
+                    #485875 55%,
+                    #313c51 100%
+                );
+            }
+            .now-done {
+                background: radial-gradient(
+                    130% 105% at 50% 112%,
+                    #ffe8c4 0%,
+                    #fff6e6 52%,
+                    #fffdf8 100%
+                );
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Ground treatment bake-off &mdash; v2</h1>
+        <p class="lede">
+            v1's contact shadow was invisible (the character is cropped at the
+            bottom edge, so an ellipse beneath it lands outside the tile) and
+            its particles collided with the status line. Both fixed: a
+            <b>backlight halo</b> replaces the shadow, and particles are
+            confined to a safe zone away from the type. Grain dropped from 16%
+            to 10%. Tiles are 260px so the layers are actually judgable. Real
+            CSS throughout; the cat is the provisional grey.
+        </p>
+
+        <h2>Evening stage &middot; current vs each layer added</h2>
+        <div class="row" id="a"></div>
+
+        <h2>The full build across the day, and recorded</h2>
+        <div class="row" id="b"></div>
+
+        <script>
+            const CAT = "cats/m03-reading.png";
+            const FLAME = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c2.5 4 6 6.2 6 10.5A6 6 0 0 1 6 12.5C6 8.2 9.5 6 12 2z" fill="currentColor"/></svg>`;
+
+            function tile(cls, o) {
+                o = o || {};
+                const p = [];
+                if (o.hill) p.push('<div class="rise"></div>');
+                if (o.halo) p.push('<div class="glow"></div>');
+                if (o.conf)
+                    p.push(
+                        '<div class="conf"><i></i><i></i><i></i><i></i><i></i><i></i></div>',
+                    );
+                p.push(
+                    `<div class="run">${FLAME}<span>${o.run || 3}</span></div>`,
+                );
+                if (o.line) p.push(`<div class="line">${o.line}</div>`);
+                p.push(`<div class="cat"><img src="${CAT}" alt=""></div>`);
+                return `<div class="t ${cls}">${p.join("")}</div>`;
+            }
+
+            const LINE = "3 days need one page.";
+            const A = [
+                [
+                    "now-eve",
+                    { line: LINE },
+                    "current",
+                    "Single radial glow, one hue, light dead centre.",
+                ],
+                [
+                    "m-eve",
+                    { line: LINE },
+                    "+ mesh",
+                    "Three hues on a diagonal base, light upper-left. Rose bleeds into violet.",
+                ],
+                [
+                    "m-eve vig grain",
+                    { line: LINE },
+                    "+ vignette + grain",
+                    "Corners pulled down; 10% noise to dither the banding.",
+                ],
+                [
+                    "m-eve vig grain halo",
+                    { line: LINE, halo: 1 },
+                    "+ backlight halo",
+                    "A glow BEHIND the character, which survives the bottom crop where a shadow did not.",
+                ],
+                [
+                    "m-eve vig grain halo hill",
+                    { line: LINE, halo: 1, hill: 1 },
+                    "+ hill",
+                    "Something in the scene for the character to sit on, so the tile is not a swatch.",
+                ],
+                [
+                    "m-eve vig grain halo hill",
+                    { line: LINE, halo: 1, hill: 1, conf: 1 },
+                    "+ particles",
+                    "Safe-zoned to the right third and lower band, clear of the run and the line.",
+                ],
+            ];
+            document.getElementById("a").innerHTML = A.map(
+                ([c, o, n, d]) =>
+                    `<figure>${tile(c, o)}<figcaption><b>${n}</b>${d}</figcaption></figure>`,
+            ).join("");
+
+            const B = [
+                ["now-am", { line: LINE }, "07:00 current", "For comparison."],
+                [
+                    "m-am vig grain halo hill",
+                    { line: LINE, halo: 1, hill: 1 },
+                    "07:00 full",
+                    "No particles: the morning is not a celebration.",
+                ],
+                [
+                    "m-late vig grain halo hill",
+                    { line: "3 days end at midnight.", halo: 1, hill: 1 },
+                    "23:00 full",
+                    "Deep red, same five layers.",
+                ],
+                [
+                    "now-done light",
+                    { run: 4 },
+                    "recorded current",
+                    "The candle glow as it stands.",
+                ],
+                [
+                    "m-done light vig grain halo hill",
+                    { run: 4, halo: 1, hill: 1 },
+                    "recorded full",
+                    "Mesh cream, halo, hill.",
+                ],
+                [
+                    "m-done light vig grain halo hill",
+                    { run: 4, halo: 1, hill: 1, conf: 1 },
+                    "recorded + particles",
+                    "The one state where the reference always has them.",
+                ],
+            ];
+            document.getElementById("b").innerHTML = B.map(
+                ([c, o, n, d]) =>
+                    `<figure>${tile(c, o)}<figcaption><b>${n}</b>${d}</figcaption></figure>`,
+            ).join("");
+        </script>
+    </body>
+</html>

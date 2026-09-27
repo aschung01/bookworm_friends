@@ -447,6 +447,21 @@ screen nobody can judge.
    lost yet, and red at 21:00 punishes something that has not happened. It
    states the deadline rather than the threat ("today counts until 4am"), and
    its one button **opens the book** — it offers the act, not the anxiety.
+
+   **Amended 2026-09-26, for the widget only.** Two thirds of that rule no
+   longer bind the home-screen widget: it draws a ground that warms into a deep
+   red by 23:00, and its 23:00 line is a verdict rather than a stated deadline.
+   What replaces "amber and never red" is the requirement the colour rule was a
+   proxy for — _late must not be confusable with recorded_ — which is measurable
+   and comfortably met, because recorded is a pale candle cream and every open
+   ground clears 4.7:1 against it. What survives untouched is the last clause,
+   and it is the important one: the widget's tap still **opens the book**. The
+   reasoning, the measurements and the copy ladder are in
+   `2026-09-22-streak-widget-design.md`. **In the app this item stands as
+   written** — the page has no character and no coloured ground to distribute
+   pressure across, which is exactly why the rule was right there and wrong
+   about a tile it had never seen.
+
 4. **`sc-freeze` — a forgiven day.** The single most important mechanic in the
    feature, because people do not break streaks gradually; they break one and
    stop caring. Drawn as a dashed cell so forgiven never reads as read. Earned,

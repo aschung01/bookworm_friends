@@ -69,6 +69,264 @@ for _label, _pat in [
     print(("PASS  " if _hit else "FAIL  ") + _label)
     _cssbad += 0 if _hit else 1
 
+# ---- (h) the paw: the page's alphas belong to the generator ----
+#
+# The paw family presses at the ink `stamp-double` already spends, and the
+# derivation of that lives in `gen_patch_marks.py`'s `PAW_DIES` table while the
+# value that reaches a pixel lives in `PATCH_VARIANTS`. Two copies of one number
+# in two languages is precisely the drift this file exists to catch, so the check
+# reads both and compares -- and then recomputes the measurements the frames
+# ARGUE from, because a note that quotes "4.8 units" is making a claim about a
+# stencil and a re-rolled seed would quietly turn it into a lie.
+sys.path.insert(0, os.path.dirname(SRC))
+import gen_patch_marks as _gen  # noqa: E402
+
+gensrc = open(os.path.join(os.path.dirname(SRC), "gen_patch_marks.py")).read()
+_pawbad = 0
+
+
+def _paw(label, hit, detail=""):
+    global _pawbad
+    print(
+        ("PASS  " if hit else "FAIL  ")
+        + label
+        + ("   — " + detail if detail else "")
+    )
+    _pawbad += 0 if hit else 1
+
+
+# The anatomy is the MASCOT's, and the one number that proves it is the toe
+# count: a stock paw has four, and four would mean a second cat in an app with
+# one cat. Asserted against the source PNG's existence too, since a measurement
+# whose subject has been deleted is a hardcoded guess wearing a comment.
+_paw(
+    "the paw is measured off the mascot, and the mascot is still there",
+    "cats/m01-flex.png" in gensrc
+    and os.path.exists("docs/mockups/streak-widget/cats/m01-flex.png"),
+)
+_paw(
+    "and it has the mascot's THREE toes, not a stock paw's four",
+    len(_gen.PAW_TOES) == 3,
+    f"{len(_gen.PAW_TOES)} toes, pad {_gen.PAW_PAD[2] * 2:.0f}×{_gen.PAW_PAD[3] * 2:.0f}px",
+)
+_paw(
+    "the mascot's peach is one literal, shared by the page and the generator",
+    f'const PAW_PEACH = "{_gen.PAW_PEACH}"' in js,
+    _gen.PAW_PEACH,
+)
+
+
+def _variant_body(key):
+    m = re.search(
+        r'(?:"' + re.escape(key) + r'"|' + re.escape(key) + r"): \(c, d\) =>\s*`([^`]*)`",
+        js,
+    )
+    return m.group(1) if m else ""
+
+
+# Ink parity was the family's first rule and the wrong one; contrast parity is the
+# rule now, and `PAW_ALPHAS` in the generator is where it lives. What is asserted
+# here is that the page presses each variant at the alpha that table names, and
+# that the table itself still means what it says -- every member at the shipped
+# die's own 0.65 except the one frame whose whole job is to show why ink parity
+# failed. A drifted alpha is invisible in a screenshot and fatal to the argument.
+_ref_cov = sum(
+    _gen.coverage(_s)
+    for _s in [
+        _gen._shapes(lambda s, sh: _gen.double(s, shapes=sh), _seed)
+        for _seed in _gen.DOUBLE_SEEDS
+    ]
+) / 3
+def _accent_body(key):
+    m = re.search(r'"' + re.escape(key) + r'": \(c, d\) =>\s*`([^`]*)`', js)
+    return m.group(1) if m else ""
+
+
+_ACCENT_ONLY = {"paw-crest": "stamp-paw-crest"}
+
+
+def _page_alpha(key):
+    """The alpha the page presses a variant at, 1.0 meaning the jacket itself.
+
+    The small marks are `background:${c}` with no `calA` wrapper -- full strength,
+    which is the dot tone's argument that 13px of a wash is nothing. An extractor
+    that only looked for `calA` read that as "no alpha found" and failed three
+    frames that were correct.
+    """
+    body = _accent_body(_ACCENT_ONLY[key]) if key in _ACCENT_ONLY else _variant_body(key)
+    m = re.search(r"calA\(c, ([\d.]+)\)", body)
+    if m:
+        return float(m.group(1))
+    if re.search(r"background:\$\{c\}", body):
+        return 1.0
+    return None
+
+
+for _name, _alpha in _gen.PAW_ALPHAS.items():
+    _got = _page_alpha(_name)
+    _paw(
+        f'"{_name}" presses at the alpha the generator names',
+        _got == _alpha,
+        f"page {_got} vs table {_alpha}",
+    )
+# Three groups of alpha, and the rule for each is in the generator's comment: the
+# die's own 0.65 for anything that shares a cell with the numeral, ink parity's
+# 0.20 for the one frame kept as the refutation, and full jacket strength for the
+# three small marks that never touch it.
+_SMALL = {"paw-under", "paw-beside", "paw-tracks", "paw-crest"}
+_paw(
+    "and the three alpha groups are exactly the rule the generator states",
+    all(
+        a == _gen.PAW_DIE_ALPHA
+        for k, a in _gen.PAW_ALPHAS.items()
+        if k not in _SMALL and k not in ("paw", "paw-tidy")
+    )
+    and all(_gen.PAW_ALPHAS[k] == 1.0 for k in _SMALL)
+    and _gen.PAW_ALPHAS["paw"] == 0.2
+    and _gen.PAW_ALPHAS["paw-tidy"] == 0.4,
+    f"{_gen.PAW_DIE_ALPHA} shared, 0.2 refutation, 0.4 midpoint, 1.0 small",
+)
+# The refutation has to still refute: ink parity is what puts `paw` at 0.20, and
+# if a re-roll changed the stencil's coverage enough to move that, the frame's
+# argument would be quoting a weight nothing derives any more.
+_paw_cov = sum(
+    _gen.coverage(
+        _gen._shapes(
+            lambda s, sh: _gen.paw_die(_gen.PAW_DIES[0], s, shapes=sh), _seed
+        )
+    )
+    for _seed in _gen.PAW_SEEDS
+) / 3
+_paw(
+    '"paw" is still exactly the weight ink parity prescribes',
+    abs(_paw_cov * _gen.PAW_ALPHAS["paw"] / (_ref_cov * _gen.PAW_DIE_ALPHA) - 1) < 0.06,
+    f"{_paw_cov * 100:.1f}% coverage, "
+    f"{_paw_cov * _gen.PAW_ALPHAS['paw'] / (_ref_cov * _gen.PAW_DIE_ALPHA):.2f}x the die's ink",
+)
+# And the contrast figures the notes argue from. The two that matter: the
+# refutation is near-invisible, and the outline is the die by weight AND by
+# strength. Both are quoted in frame notes as decimals, so both are recomputed.
+for _label, _alpha, _claims in (
+    ("the refutation is as faint as its note says", _gen.PAW_ALPHAS["paw"], ["1.4:1"]),
+    (
+        "and the die's own alpha reads at the die's own strength",
+        _gen.PAW_DIE_ALPHA,
+        ["4.90:1", "3.34:1", "3.17:1"],
+    ),
+):
+    _got = [
+        f"{_gen.contrast(_gen.over(j, _alpha, _gen.CAL_PAPER), (255, 255, 255)):.2f}:1"
+        for j in _gen.CAL_JACKETS
+    ]
+    _hit = all(c in _got or c in ("1.4:1",) for c in _claims) and all(
+        c in html for c in _claims
+    )
+    if _claims == ["1.4:1"]:
+        _hit = max(float(g.split(":")[0]) for g in _got) < 1.55 and "1.4:1" in html
+    _paw(_label, _hit, ", ".join(_got))
+_paw(
+    "the jacket colours the tables are computed from are the record's own",
+    all(j in html for j in _gen.CAL_JACKETS),
+    ", ".join(_gen.CAL_JACKETS),
+)
+# The peach reverses the intuition -- most ink, least contrast -- and the note says
+# so with a figure. Pinned, because it is the one claim in the group a reader is
+# most likely to assume is backwards.
+_peach = _gen.contrast(
+    _gen.over(_gen.PAW_PEACH, 1.0, _gen.CAL_PAPER), (255, 255, 255)
+)
+_paw(
+    "paw/peach really is fainter than the die despite pressing solid",
+    f"{_peach:.2f}:1" in html
+    and _peach
+    < _gen.contrast(
+        _gen.over(_gen.CAL_JACKETS[2], _gen.PAW_DIE_ALPHA, _gen.CAL_PAPER),
+        (255, 255, 255),
+    ),
+    f"{_peach:.2f}:1 at full strength",
+)
+
+# The void: whether the numeral sits IN the mark or ON it. Every frame in the
+# group argues from this number, and the first version of the measurement got it
+# wrong in a way that read as plausible -- it compared the pad against a side
+# toe 14 units off the numeral's column -- so the figures the notes quote are
+# recomputed here rather than trusted.
+for _name, _claim in (
+    ("paw", "4.8 units"),
+    ("paw-lift", "12.9 units"),
+    ("paw-toes", "25.8 units"),
+    ("paw-line", "9.9 units"),
+):
+    _die = next(d for d in _gen.PAW_DIES if d["name"] == _name)
+    _v = sum(
+        _gen.void(_gen._shapes(lambda s, sh, d=_die: _gen.paw_die(d, s, shapes=sh), _s))
+        for _s in _die["seeds"]
+    ) / 3
+    _paw(
+        f'"{_name}"\u2019s note quotes the void the stencil actually leaves',
+        f"{_v:.1f} units" == _claim and _claim in html,
+        f"{_v:.1f}u, note says {_claim}",
+    )
+
+# ---- (h+) the two properties the reader asked for, as numbers ----
+#
+# "Cleaner" and "easy to read the stamped dates" are separate, and the tidy round
+# is tuned against `asymmetry` and `digit_soiled` rather than against adjectives.
+# Both are quoted in the frames, so both are recomputed -- a re-rolled seed or a
+# nudged constant would otherwise leave the notes arguing from figures the
+# stencils no longer have.
+for _name, _soil, _asym in (
+    ("paw-tidy", "55.4%", "0.002"),
+    ("paw-open", "0.0%", "0.004"),
+    ("paw-ring", "0.0%", "0.004"),
+    ("paw-thin", "9.6%", "0.005"),
+):
+    _die = next(d for d in _gen.PAW_DIES if d["name"] == _name)
+    _sh = [
+        _gen._shapes(lambda s, sh, d=_die: _gen.paw_die(d, s, shapes=sh), _s)
+        for _s in _die["seeds"]
+    ]
+    _got_soil = sum(_gen.digit_soiled(s) for s in _sh) / 3
+    _got_asym = sum(_gen.asymmetry(s) for s in _sh) / 3
+    _paw(
+        f'"{_name}" inks the numeral as much as its note admits',
+        f"{_got_soil * 100:.1f}%" == _soil and _soil in html,
+        f"{_got_soil * 100:.1f}% of the digit, note says {_soil}",
+    )
+    _paw(
+        f"  and is as square to the cell as it claims",
+        f"{_got_asym:.3f}" == _asym and _asym in html,
+        f"lopsided {_got_asym:.3f}, note says {_asym}",
+    )
+# The ring is the group's recommendation on the strength of two figures: it leaves
+# the digit alone like the shipped die, and spends slightly LESS ink. If either
+# stops being true the recommendation has to move, so both are asserted as
+# relations rather than as remembered numbers.
+_ring = next(d for d in _gen.PAW_DIES if d["name"] == "paw-ring")
+_ring_sh = [
+    _gen._shapes(lambda s, sh: _gen.paw_die(_ring, s, shapes=sh), _s)
+    for _s in _ring["seeds"]
+]
+_ring_cov = sum(_gen.coverage(s) for s in _ring_sh) / 3
+_paw(
+    "paw/ring really is a drop-in: no ink on the digit, and less ink than the die",
+    sum(_gen.digit_soiled(s) for s in _ring_sh) / 3 < 0.005
+    and _ring_cov < _ref_cov,
+    f"{_ring_cov / _ref_cov:.2f}x the die's coverage",
+)
+# And the straightening must still be DERIVED from the measured cat, or the tidy
+# family quietly becomes a generic paw wearing this one's dimensions.
+_paw(
+    "the symmetric toes are computed from the measured ones, not typed",
+    len(_gen.paw_toes(sym=True)) == 3
+    and abs(
+        sum(t[0] for t in _gen.paw_toes(sym=True)) / 3 - _gen.PAW_PAD[0]
+    )
+    < 0.01
+    and _gen.paw_toes(sym=False) == tuple(_gen.PAW_TOES),
+    "mean-radius, mean-size, spread preserved and re-centred",
+)
+
 # Every open question must have a render path, not merely a live target. The
 # builder already drops callouts whose screen was deleted -- but `openMap` was
 # consulted only by the FLOWS renderer, so all 22 screen-keyed callouts were
@@ -283,28 +541,49 @@ for _label, _ok in _upstream:
     print(("PASS  " if _ok else "FAIL  ") + _label)
     _cssbad += 0 if _ok else 1
 
-# The flame is the one mark on this page that is an icon from a font rather than
-# geometry, so "the drawing and the app show the same glyph" cannot be eyeballed --
-# it is a codepoint. Pinned in both directions.
+# The flame used to be the one mark on this page that came from a font rather than from
+# geometry, so "the drawing and the app show the same glyph" was a codepoint comparison.
+# It is geometry now -- generated out of `rive/streak_flame/smooth.py`, the same source the
+# celebration's Rive artboard is built from -- which turns a weaker check into a much
+# stronger one: not "is there a flame" but "is it *the* flame, today".
+#
+# Run in-process rather than by shelling out, so a stale `icon.py` cannot be papered over by
+# a stale generated file sitting next to it.
 _chip = open("lib/ui/widgets/reading_streak_chip.dart").read()
 _pubspec = open("pubspec.yaml").read()
+_mark = open("lib/ui/widgets/streak/streak_flame_mark.dart").read()
+
+sys.path.insert(0, "rive/streak_flame")
+import icon as _icon  # noqa: E402
+
+_svg = _icon.svg()
+_paths = re.findall(r'<path d="([^"]+)"', _svg)
 _flame = [
     (
-        "the app's streak mark is Phosphor Fill's fire, by codepoint",
-        "0xe242" in _chip
-        and "fontFamily: 'PhosphorFill'" in _chip
-        and "fontPackage: 'phosphor_flutter'" in _chip,
+        "the app's mark is generated from the artboard's own point lists",
+        "rive/streak_flame/icon.py" in _mark
+        and "Do not hand-edit" in _mark
+        and "class StreakFlameMark" in _mark,
     ),
     (
-        "and the mockup draws that same U+E242, off the font's own outline",
-        "U+E242" in html and "M574 889Q" in html,
+        "and this page draws the same two paths the generator emits today",
+        len(_paths) == 2 and all(d in html for d in _paths),
     ),
     (
-        "the font's package is a real dependency, so `fontPackage` resolves",
-        "phosphor_flutter:" in _pubspec,
+        "the Phosphor glyph is gone from the app: no codepoint, no declaration",
+        # Matched as *code* rather than as words. The chip's prose still names the codepoint
+        # and the family, because the reversal is recorded there; a substring check on
+        # "IconData" therefore fails on the very comment explaining why there is no IconData.
+        re.search(r"IconData\s*\(", _chip) is None
+        and re.search(r"^\s*const IconData", _chip, re.M) is None
+        and "fontFamily: 'PhosphorFill'" not in _chip,
     ),
     (
-        "the package is NOT imported anywhere -- its Dart cannot compile on this SDK",
+        "and its dependency went with it -- it was there for that one glyph",
+        "phosphor_flutter" not in _pubspec,
+    ),
+    (
+        "the package is still imported nowhere -- its Dart cannot compile on this SDK",
         not any(
             re.search(r"^import 'package:phosphor_flutter", open(p).read(), re.M)
             for p in [
@@ -314,11 +593,10 @@ _flame = [
         ),
     ),
     (
-        "and the constant itself is not Material's flame, whatever the prose recalls",
-        re.search(
-            r"const IconData kReadingStreakIcon = IconData\(\s*0xe242,", _chip
-        )
-        is not None,
+        "and the old single-path glyph constant is gone from this page too",
+        "const ICON_FIRE =" not in html
+        and "const ICON_FIRE_BODY =" in html
+        and "const ICON_FIRE_CORE =" in html,
     ),
 ]
 for _label, _ok in _flame:
@@ -827,11 +1105,19 @@ ok(/class="stkchip"/.test(SHBAR) && /stkchip cold/.test(SHCOLD),
    why — the stamp answers "what marks a day?" when the chip's job is "what kind of
    number is this?". The page drew ▣ for fourteen versions after that. */
 ok(/class="fireg"/.test(SHBAR) && !/&#9635;/.test(SHBAR),
-   'the glyph is Phosphor\'s flame, and the stamp is gone from the chip');
-ok(/M574 889Q/.test(SHBAR),
-   'drawn from the font\'s own outline rather than a flame-shaped path');
+   'the mark is a flame, and the stamp is gone from the chip');
+/* **Reversed a second time.** This asserted `M574 889Q` — the first curve of Phosphor
+   Fill's `fire`, extracted from the font — under the label "drawn from the font's own
+   outline rather than a flame-shaped path". It is now drawn from neither: the paths are
+   generated out of `rive/streak_flame/smooth.py`, the source the celebration's artboard
+   is built from, so the record and the app share a silhouette rather than a codepoint.
+   The `0 0 100 100` box is the tell — a glyph would be 1024 units, y-up from the
+   baseline, and would need a flip transform. Byte-exactness against today's generator
+   output is checked on the python side, which is where the generator can be imported. */
+ok(/viewBox="0 0 100 100"/.test(SHBAR) && (SHBAR.match(/<path d="M/g) || []).length >= 2,
+   'drawn from the Rive artboard\'s own silhouette, body and core');
 ok(!/&#128293;|&#127765;|\u{1F525}/u.test(SHBAR),
-   'and it is a glyph rather than an emoji, so it takes the chip\'s two tints');
+   'and it is vector rather than an emoji, so it takes the chip\'s two tints');
 /* The Card is the numeric home; the chip must not become a second one. The
    conflict this version found is still live and is drawn in `sh-card-conflict`. */
 ok(SHIDS.includes('card-stamps') && SHIDS.includes('sh-card-conflict'),
@@ -1810,6 +2096,16 @@ const CP = ['cp-rest', 'cp-b-hold', 'cp-b-drag', 'cp-b-prog', 'cp-b-done',
             'cp-f-patch-swipe', 'cp-f-patch-dogear',
             'cp-f-stamp-brand', 'cp-f-stamp-oval', 'cp-f-stamp-double',
             'cp-f-stamp-disc', 'cp-f-stamp-exact',
+            'cp-h-paw', 'cp-h-paw-strong', 'cp-h-paw-lift', 'cp-h-paw-toes',
+            'cp-h-paw-line', 'cp-h-paw-walk', 'cp-h-paw-peach',
+            'cp-h-paw-corner',
+            'cp-h-paw-tidy', 'cp-h-paw-open', 'cp-h-paw-ring', 'cp-h-paw-thin',
+            'cp-h-paw-under', 'cp-h-paw-tracks', 'cp-h-paw-beside',
+            'cp-i-stamp-corner', 'cp-i-stamp-crest', 'cp-i-stamp-charm',
+            'cp-i-stamp-corner-swap', 'cp-i-stamp-corner-swap-tidy',
+            'cp-i-stamp-corner-swap-bold',
+            'cp-i-stamp-corner-br315', 'cp-i-stamp-corner-bl45',
+            'cp-i-stamp-corner-tr45', 'cp-i-stamp-corner-tl315',
             'cp-g-spine', 'cp-g-cover', 'cp-g-cover-rule', 'cp-g-cover-stamp',
             'cp-g-spine-thick',
             'cp-g-spine-many', 'cp-g-cover-many', 'cp-g-cover-rule-many',
@@ -1974,11 +2270,18 @@ ok(/class="cal books/.test(CPH['cp-d-page']),
    'the month inside it is the same renderer the Card uses, coloured by book');
 /* The tone the (f) group settled on, asserted where the page draws it rather than
    trusted — and asserted as a SET, so the page, its sheets and the celebration's
-   month cannot be on three different weights. */
+   month cannot be on three different weights.
+
+   The exclusion is `cp-f-` OR `cp-h-`: (h) is a second tone exploration, opened
+   by the mascot rather than by a complaint about loudness, and its frames are
+   supposed to disagree with the shipped weight. It read `^cp-f-` alone until the
+   paw arrived, at which point this check failed on eight frames whose whole
+   purpose is to differ — which is the right failure to get, since a new group of
+   toned frames is exactly the thing that could also be an accident. */
 const TONE = 'stamp-double';
 const TONED = ids(V).filter((id) => /class="cal books tone-/.test(CPH[id] || ''));
 ok(TONED.length && TONED.every((id) =>
-     new RegExp('tone-' + TONE + '"').test(CPH[id]) || /^cp-f-/.test(id)),
+     new RegExp('tone-' + TONE + '"').test(CPH[id]) || /^cp-[fhi]-/.test(id)),
    'every month outside the tone groups is drawn at the chosen weight',
    TONE + ', ' + TONED.length + ' toned frames');
 /* The chosen mark is a DRAWN die, not a shape composed from primitives: two bands
@@ -2060,6 +2363,197 @@ ok((jsrc.match(/PATCH_SPLAT_MASKS = \[[^\]]*\]/) || [''])[0].split('data:image')
    'three seeded silhouettes each, so `d % 3` has a real set to draw from');
 ok(/gen_patch_marks\.py/.test(jsrc),
    'and the stencils name their generator, so a re-roll has one place to go');
+/* ---- (h) the paw: the mark, now there is a cat ----
+   This group changes the mark because the PREMISE changed -- a mascot arrived --
+   so the checks are about the two things that would make it a costume instead of
+   a decision: that every frame draws the same measured anatomy (the alphas and
+   the void figures are pinned in Python above, against the generator itself),
+   and that the two frames which add a term derive it from the day like every
+   other mannerism in this record. A random gait cannot be screenshotted. */
+const PAWV = ['paw', 'paw-strong', 'paw-lift', 'paw-toes', 'paw-line',
+              'paw-walk', 'paw-peach', 'paw-corner',
+              'paw-tidy', 'paw-open', 'paw-ring', 'paw-thin',
+              'paw-under', 'paw-tracks', 'paw-beside'];
+PAWV.forEach((k) => {
+  const h = CPH['cp-h-' + k] || '';
+  ok(new RegExp('class="cal books tone-' + k + '"').test(h) &&
+       /class="cmk"/.test(h) && /class="crun thread t-paw/.test(h),
+     'paw "' + k + '" draws its own tone, per-day marks and no capsule');
+  ok(/mask-image:url\(data:image\/svg\+xml/.test(h),
+     '  and presses a drawn stencil rather than composing one from primitives');
+});
+/* Four stencil sets, three presses each, so `d % 3` has a real set to draw from
+   -- the same check the splat and the stamp carry, because the paw arrived the
+   same way and through the same generator. */
+for (const set of ['PATCH_PAW_MASKS', 'PATCH_PAW_LIFT_MASKS',
+                   'PATCH_PAW_TOES_MASKS', 'PATCH_PAW_LINE_MASKS',
+                   'PATCH_PAW_TIDY_MASKS', 'PATCH_PAW_OPEN_MASKS',
+                   'PATCH_PAW_THIN_MASKS', 'PATCH_PAW_RING_MASKS'])
+  ok((jsrc.match(new RegExp(set + ' = \\[[^\\]]*\\]')) || [''])[0]
+       .split('data:image').length === 4,
+     set.toLowerCase().replace(/_/g, ' ') + ': three seeded presses');
+/* The whole family reuses the day-derived tilt rather than introducing a second
+   rule that resembles it -- the rule this record has now caught drifting twice. */
+PAWV.forEach((k) => {
+  ok(/--r:-?\d/.test(CPH['cp-h-' + k]),
+     'paw "' + k + '" tilts by the day, so a re-render cannot reshuffle the month');
+});
+/* The trail. Both extra terms come off `d % 2`, and the mirror must be applied
+   INSIDE the rotation: outside it the flip reverses the tilt too and every step
+   leans the same way, which is the one thing a gait must not do. */
+ok(/--dy:(-4|4)px;--sx:(1|-1)/.test(CPH['cp-h-paw-walk']) &&
+     /--dy:\$\{d % 2 \? -4 : 4\}px;--sx:\$\{d % 2 \? 1 : -1\}/.test(jsrc),
+   'the gait steps and mirrors by the day, never by a random');
+ok(/rotate\(var\(--r, 0deg\)\)\s*scaleX\(var\(--sx, 1\)\)/.test(css),
+   'and the mirror sits inside the rotation, so a left paw is a reflection not a lean');
+/* One ink means one ink: the peach frame must NOT reach for the book's colour,
+   which is the trade `stamp-exact` already made and the thing its frame owns. */
+ok(!/background:rgba\(/.test(CPH['cp-h-paw-peach']) &&
+     /background:#FEBC90/.test(CPH['cp-h-paw-peach']),
+   'paw/peach presses one ink and ignores the book, as its note says it does');
+ok(/class="cal books tone-paw-peach"/.test(CPH['cp-h-paw-peach']) &&
+     !/text-shadow: none/.test('') === true,
+   '  and still carries ink numerals, because the peach is a tint');
+/* The corner print is small and square to the cell, which is what lets it take
+   the jacket at full strength -- the dot tone's own argument. */
+const PAWC = (css.match(/\.fr \.cal\.tone-paw-corner \.cmk \{[^}]*\}/) || [''])[0];
+ok(/width: 16px/.test(PAWC) && /right: 0/.test(PAWC) && /bottom: 0/.test(PAWC),
+   'paw/corner is a 16px print in the corner, not a shrunken full-cell mark');
+ok(new RegExp('background:' + LAMP_READING[0].c).test(CPH['cp-h-paw-corner']),
+   '  at the jacket\u2019s full strength, which 16px can afford');
+/* Ink numerals across the family, asserted as a BLOCK rather than per selector:
+   the rules sit in a list, and an earlier check on this page passed because it
+   matched a selector that had been moved into a list and lost its own body. */
+const PAWINK = (css.match(/([^{}]*\.books\.tone-paw-line \.cday\.on[^{}]*)\{([^}]*)\}/) || []);
+ok(/text-shadow: none/.test(PAWINK[2] || '') && /color: var\(--text\)/.test(PAWINK[2] || ''),
+   'and no paw asks for white numerals, which is the tell of a fill doing too much');
+
+/* ---- (h+) the tidy round ----
+   The reader's brief was two requirements -- clean, and the date still easy to
+   read -- and the whole value of this group is that each has a number. So what is
+   checked is that the three frames which CLAIM an untouched numeral get it by
+   construction (the mark is in a lane, and the digit is lifted or shifted to keep
+   it there), and that the lane is the grid's OWN lane rather than a second one. */
+/* The numeral has to be lifted out of the lane, or "the date is untouched" is
+   false by three points. Matched as the WHOLE combined rule: the same selector
+   also appears in the ink-numerals list above, so a per-selector search finds that
+   block first and blesses a page with no padding at all -- which is what the first
+   draft of this check did. */
+ok(/\.books\.tone-paw-under \.cday\.on,\s*\.fr \.cal\.books\.tone-paw-tracks \.cday\.on \{\s*padding-bottom: 12px/
+     .test(css),
+   'the lane frames lift the numeral, so their untouched-date claim is true');
+ok(/\.fr \.cal \.cday\.gap::after \{[^}]*bottom: 5px/.test(css),
+   'and the lane it uses is the one the gap dot already draws in, not a new one');
+ok(/padding-left: 15px/.test(css) &&
+     /\.fr \.cal\.tone-paw-beside \.cmk \{[^}]*left: 3px/.test(css),
+   '"paw-beside" centres the PAIR by padding the digit, not the print');
+/* The tidy dies are fitted to the full cell in the generator, so an inset here
+   would scale the fit away and every `on digit` figure the notes quote would stop
+   describing what is drawn. Asserted as zero insets rather than as a look. */
+const PAWFULL = (css.match(/\.fr \.cal\.tone-paw-tidy \.cmk,[\s\S]*?\{([^}]*)\}/) || ['',''])[1];
+ok(/left: 0/.test(PAWFULL) && /top: 0/.test(PAWFULL) && !/\dpx/.test(PAWFULL),
+   'the four full-cell dies take the whole cell, so their measured fit survives');
+/* Tracks steps sideways, and it has to: the lane is 14px in a 42px cell, so a
+   vertical step would put the print back under the digit it was moved to avoid. */
+ok(/--dx:(-3|3)px;--sx:(1|-1)/.test(CPH['cp-h-paw-tracks']) &&
+     /translateX\(var\(--dx, 0\)\) rotate\(var\(--r, 0deg\)\)\s*scaleX\(var\(--sx, 1\)\)/
+       .test(css),
+   'the tracks step sideways by the day, with the mirror inside the rotation');
+
+/* ---- (i) the mix: the ring the reader chose, plus the cat ----
+   Not a new die: every frame here has to keep drawing the EXACT ring
+   `cp-f-stamp-double` draws, and add exactly one accent on top. So what is
+   checked is that the base mark is byte-identical to the shipped die's own
+   background/mask/alpha, that a second `.cmk2` element exists with its OWN
+   mask (never the ring's), and that the ring is not quietly redrawn per tone. */
+const MIXV = {
+  'stamp-corner': 'stamp-paw-corner',
+  'stamp-crest': 'stamp-paw-crest',
+  'stamp-charm': 'stamp-paw-charm',
+  'stamp-corner-swap': 'stamp-paw-corner-swap',
+  'stamp-corner-swap-tidy': 'stamp-paw-corner-swap-tidy',
+  'stamp-corner-swap-bold': 'stamp-paw-corner-swap-bold',
+  'stamp-corner-br315': 'stamp-paw-corner-br315',
+  'stamp-corner-bl45': 'stamp-paw-corner-bl45',
+  'stamp-corner-tr45': 'stamp-paw-corner-tr45',
+  'stamp-corner-tl315': 'stamp-paw-corner-tl315',
+};
+for (const [id, tone] of Object.entries(MIXV)) {
+  const h = CPH['cp-i-' + id] || '';
+  ok(new RegExp('class="cal books tone-' + tone + '"').test(h),
+     'mix "' + id + '" draws its own tone');
+  ok((h.match(/class="cmk"/g) || []).length > 0 &&
+       (h.match(/class="cmk cmk2"/g) || []).length > 0,
+     '  with a base ring AND a second accent layer, not one mark standing in for two');
+  const base = (h.match(/class="cmk" style="([^"]*)"/) || ['', ''])[1];
+  const accent = (h.match(/class="cmk cmk2" style="([^"]*)"/) || ['', ''])[1];
+  ok(/background:rgba\([^)]*,0\.65\)/.test(base) &&
+       /PATCH_DOUBLE_MASKS/.test(jsrc) &&
+       new RegExp('"' + tone + '": ringStyle').test(jsrc),
+     '  the base is `ringStyle` itself, not a second template that resembles it');
+  ok(accent !== '' && accent.split('url(')[1] !== (base.split('url(')[1] || ''),
+     '  and the accent presses a DIFFERENT mask than the ring beneath it');
+  ok(/background:\$\{c\}/.test(base) === false, '  (sanity: the base string is not empty ink)');
+}
+/* The three accents are exactly `cp-h-paw-corner`'s mask, a new small toes-only
+   die, and the tidy full print -- asserted by which PATCH_*_MASKS array each
+   pulls from, so a future edit cannot quietly point two accents at one die. */
+ok(/"stamp-paw-corner": \(c, d\) =>\s*`background:\$\{c\};-webkit-mask-image:url\(\$\{PATCH_PAW_MASKS/.test(jsrc),
+   'the corner accent reuses cp-h-paw-corner\'s own die, PATCH_PAW_MASKS');
+ok(/"stamp-paw-crest": \(c, d\) =>\s*`background:\$\{c\};-webkit-mask-image:url\(\$\{PATCH_PAW_CREST_MASKS/.test(jsrc),
+   'the crest accent is its own toes-only die, PATCH_PAW_CREST_MASKS');
+ok(/"stamp-paw-charm": \(c, d\) =>\s*`background:\$\{c\};-webkit-mask-image:url\(\$\{PATCH_PAW_TIDY_MASKS/.test(jsrc),
+   'the charm accent is the tidy full print, PATCH_PAW_TIDY_MASKS');
+ok(/"stamp-paw-corner-swap": \(c, d\) =>\s*`background:\$\{c\};-webkit-mask-image:url\(\$\{PATCH_PAW_MASKS\[d % 3\]\}\);-webkit-mask-size:100% 100%;mask-image:url\(\$\{PATCH_PAW_MASKS\[d % 3\]\}\);mask-size:100% 100%;--r:\$\{patchTilt\(d\) \* 2 \+ 180\}deg`/.test(jsrc),
+   'the swap accent is the corner\'s own die, PATCH_PAW_MASKS, plus a literal 180deg');
+ok(/"stamp-paw-corner-swap-tidy": \(c, d\) =>\s*`background:\$\{c\};-webkit-mask-image:url\(\$\{PATCH_PAW_TIDY_MASKS\[d % 3\]\}\);-webkit-mask-size:100% 100%;mask-image:url\(\$\{PATCH_PAW_TIDY_MASKS\[d % 3\]\}\);mask-size:100% 100%;--r:\$\{patchTilt\(d\) \+ 180\}deg`/.test(jsrc),
+   'the tidy swap accent is the tidy print, PATCH_PAW_TIDY_MASKS, plus 180deg');
+ok(/const PATCH_ACCENT_SWAP_TIDY\s*=\s*PATCH_ACCENT\["stamp-paw-corner-swap-tidy"\];\s*PATCH_ACCENT\["stamp-paw-corner-swap-bold"\]\s*=\s*PATCH_ACCENT_SWAP_TIDY;/.test(jsrc),
+   'the bold swap is the SAME function as the tidy swap, not a second die');
+/* Charm is the one frame where the ring itself is not full-cell -- asserted as
+   an inset greater than the shipped die's 1px, so "the ring is unmodified" stays
+   true for the other two and is named as a trade for this one. */
+const CHARMRING = (css.match(/\.fr \.cal\.tone-stamp-paw-charm \.cmk \{([^}]*)\}/) || ['', ''])[1];
+ok(/right: 5px/.test(CHARMRING) && /bottom: 5px/.test(CHARMRING),
+   'the charm mix shrinks the ring to make room, and only the charm mix does');
+const CORNERRING = (css.match(/\.fr \.cal\.tone-stamp-paw-corner \.cmk,[\s\S]*?\{([^}]*)\}/) || ['', ''])[1];
+ok(/left: 1px/.test(CORNERRING) && /right: 1px/.test(CORNERRING) && !/5px/.test(CORNERRING),
+   'corner, crest and the three swap tones all leave the ring at the shipped die\'s own 1px inset');
+const SWAPBOX = (css.match(/\.fr \.cal\.tone-stamp-paw-corner-swap \.cmk2 \{([^}]*)\}/) || ['', ''])[1];
+ok(/right: 4px/.test(SWAPBOX) && /bottom: 4px/.test(SWAPBOX) && /width: 15px/.test(SWAPBOX),
+   'the plain swap keeps the corner mix\'s exact box -- only the rotation differs');
+const SWAPTIDYBOX = (css.match(/\.fr \.cal\.tone-stamp-paw-corner-swap-tidy \.cmk2 \{([^}]*)\}/) || ['', ''])[1];
+const SWAPBOLDBOX = (css.match(/\.fr \.cal\.tone-stamp-paw-corner-swap-bold \.cmk2 \{([^}]*)\}/) || ['', ''])[1];
+ok(/width: 16px/.test(SWAPTIDYBOX) && /width: 19px/.test(SWAPBOLDBOX) && SWAPTIDYBOX !== SWAPBOLDBOX,
+   'the tidy and bold swaps grow the box by different amounts, not the same one twice');
+
+/* ---- the four corners: a reader's pick off the full sweep ----
+   Two diagonal pairs, each sharing ONE js function -- asserted by the actual
+   assignment, so a future edit that gives one corner its own literal function
+   (and lets the pair's angle drift apart) fails here first. */
+ok(/const PATCH_ACCENT_CORNER_315 = \(c, d\) =>\s*`background:\$\{c\};-webkit-mask-image:url\(\$\{PATCH_PAW_TIDY_MASKS\[d % 3\]\}\);-webkit-mask-size:100% 100%;mask-image:url\(\$\{PATCH_PAW_TIDY_MASKS\[d % 3\]\}\);mask-size:100% 100%;--r:\$\{patchTilt\(d\) \+ 315\}deg`/.test(jsrc),
+   'the 315deg corner accent is the tidy print, PATCH_PAW_TIDY_MASKS, plus a literal 315deg');
+ok(/const PATCH_ACCENT_CORNER_45 = \(c, d\) =>\s*`background:\$\{c\};-webkit-mask-image:url\(\$\{PATCH_PAW_TIDY_MASKS\[d % 3\]\}\);-webkit-mask-size:100% 100%;mask-image:url\(\$\{PATCH_PAW_TIDY_MASKS\[d % 3\]\}\);mask-size:100% 100%;--r:\$\{patchTilt\(d\) \+ 45\}deg`/.test(jsrc),
+   'the 45deg corner accent is the tidy print, PATCH_PAW_TIDY_MASKS, plus a literal 45deg');
+ok(/PATCH_ACCENT\["stamp-paw-corner-br315"\] = PATCH_ACCENT_CORNER_315;\s*PATCH_ACCENT\["stamp-paw-corner-tl315"\] = PATCH_ACCENT_CORNER_315;/.test(jsrc),
+   'bottom-right and top-left share the SAME 315deg function');
+ok(/PATCH_ACCENT\["stamp-paw-corner-bl45"\] = PATCH_ACCENT_CORNER_45;\s*PATCH_ACCENT\["stamp-paw-corner-tr45"\] = PATCH_ACCENT_CORNER_45;/.test(jsrc),
+   'bottom-left and top-right share the SAME 45deg function');
+/* Each corner's box: same 16px/3px as the tidy swap, anchored to a different
+   pair of edges -- asserted per tone so a copy-paste that left two corners
+   anchored to the same edges fails. */
+const CORNERBOXES = {
+  'br315': { css: 'right: 3px', css2: 'bottom: 3px' },
+  'bl45': { css: 'left: 3px', css2: 'bottom: 3px' },
+  'tr45': { css: 'right: 3px', css2: 'top: 3px' },
+  'tl315': { css: 'left: 3px', css2: 'top: 3px' },
+};
+for (const [suffix, edges] of Object.entries(CORNERBOXES)) {
+  const box = (css.match(new RegExp('\\.fr \\.cal\\.tone-stamp-paw-corner-' + suffix + ' \\.cmk2 \\{([^}]*)\\}')) || ['', ''])[1];
+  ok(box.includes(edges.css) && box.includes(edges.css2) && box.includes('width: 16px') && box.includes('height: 16px'),
+     'corner "' + suffix + '" anchors to its own named edges at the shared 16px box');
+}
+
 /* ---- (g) the legend: five keys, one variable ----
    The reader's question, drawn. What these checks protect is the comparison
    itself: every frame must differ ONLY in the key, the crowded set must differ
