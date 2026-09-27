@@ -1,0 +1,1896 @@
+<!doctype html>
+<!--
+  Design mockup: changing a book's *shelf* and its *reading status* from the book
+  details page.
+
+  Self-contained. No build, no server, no network -- open it straight from disk. No
+  raster images: the cover, the plank, the name tab, the band and both popovers are
+  drawn in the DOM at 1px = 1pt from the tokens in `lib/constants/app_theme.dart`.
+
+  WHY THIS PAGE EXISTS
+  --------------------
+  Neither fact can be changed from this page, and one of them cannot be changed
+  anywhere.
+
+  STATUS. `showBookStatusBottomSheet` has exactly one caller in the app --
+  `book_details_tab_view.dart:563` -- and it is `ReadingPeriodRow.onTap`, which only
+  exists when the book has a start date. At status 0 that widget returns a bare,
+  untappable chip (`reading_period_row.dart:113`). So an *Interested* book, 133 of
+  472 in production by the badge's own doc, has no route to *Reading* or *Read* from
+  anywhere in the app. The comment at `reading_period_row.dart:104` saying such a
+  book "is edited from the library's own sheets" is stale; there are no such sheets.
+
+  SHELF. `moveBookToShelf` is reachable from one gesture: long-press-then-drag
+  across `ShelfRow`. Workable at 12 books, not at 473.
+
+  WHAT THE REVIEW ASKED FOR, AND WHERE IT LANDED
+  ----------------------------------------------
+  Two directions came out of the first pass, and both have since been decided.
+
+    1. A one-tap verb in the empty half of the status line is the right shape, but
+       it cannot decide the destination -- a reader who only opens Libstack *after*
+       finishing a book wants status 2 immediately, not "Start reading" followed by
+       a second edit.
+
+       DECIDED: `change-status`. The slot keeps a single verb, and the verb is
+       renamed rather than joined by a second control. **`Change status` promises a
+       choice instead of making one**, so one target reaches all three states --
+       what it opens is `showBookStatusBottomSheet`, which already contains
+       `BookStatusSelector`. One new string, one tap target, no new sheet, no new
+       write path, and `BookStatusBadge` is left as the read-out it is everywhere
+       else in the app. `verb-plus-menu` (a one-tap verb *and* a tappable badge) was
+       the recommendation here for one round and was rejected as two targets on one
+       26pt line to edit one fact.
+
+    2. The shelf tab should trade its count for a chevron and open a glass popover.
+
+       DECIDED: `tab-chevron`, as asked, with the two findings below.
+
+  Direction 2 has a constraint this page exists to record, and **this note got it
+  wrong twice before getting it right.**
+
+  It first said the menu *behaviour* could not be native, because `CNPopupMenuButton`
+  draws its own button -- it is a platform view with a `buttonLabel`, so using it *as*
+  the tab means the tab stops being the tab and cannot be a `Hero`. **Wrong: with
+  `CNButtonStyle.plain` and an empty label, that button draws nothing at all.** So it
+  can be stacked *over* a tab Flutter paints and contribute only
+  `showsMenuAsPrimaryAction`, which is what ships -- the tab opens a real `UIMenu`, with
+  the platform's glass, entrance, checkmarks and dismissal, hung off furniture that is
+  still ours. `_shot_native_probe.png` is that platform view with its style temporarily
+  set to `glass`, which is how its existence and its rect were confirmed on a machine
+  with no Simulator GUI: the pill lands exactly on the tab, and hides the tab's text --
+  the other half of why `plain` is required.
+
+  The part of that first claim which does hold is about `CNPopupGesture`
+  (`cupertino_native_better-1.5.4/lib/components/popup_gesture.dart`), the package's
+  attach-to-a-child alternative: long-press-only, 220pt fixed-width, drawn in hardcoded
+  `CupertinoColors`, no checkmark support, and every icon rendered as
+  `CupertinoIcons.circle` behind a `// TODO: Add SF Symbol rendering support`.
+
+  From that first claim the page then concluded the *material* could not be native
+  either, and that was wrong as well. **`LiquidGlassContainer` applies iOS 26's glass to
+  an arbitrary child** -- `Positioned.fill(IgnorePointer(UiKitView))` stacked under the
+  child, sized by it -- the same division of labour `read_filter.dart`'s `_Capsule` uses
+  for the selected year pill: Flutter draws every pixel of content, the platform supplies
+  the material behind it. That is how the app-drawn card is built, and that card is now
+  the **fallback**: off iOS 26, while a sheet covers the page, and under `flutter test`.
+  The `BackdropFilter` the `.pop` class below models is the fallback's own last resort.
+
+  The first build shipped that fallback everywhere and it read as **flat opaque white**,
+  for two compounding reasons worth keeping: a blur of a near-uniform background is that
+  background, so the fill did all the work and looked like paint; and the `boxShadow`
+  sat on a `DecoratedBox` *inside* the `ClipRRect`, which clips a shadow away entirely,
+  so the card had none and read as pasted onto the page rather than floating over it.
+
+  And the count-for-chevron swap has a measured cost, printed live in SECTION 5:
+  the tab is a `Hero` at exactly status 0 (`flyShelfFromLibrary`,
+  `book_details_tab_view.dart:243`), its doc pins the width contract, and the swap
+  moves that width in both locales -- and not in the same direction, because
+  `bookCountLabel` is a bare `{count}` in English and `{count}권` in Korean. No
+  sentence on the page states the sign; the page measures it.
+
+  Sections, in the order they appear in the script:
+    SECTION 1  TOKENS    - mirrors app_theme.dart / app_text_styles.dart
+    SECTION 2  CORPUS    - the book and shelves from the reported screenshot
+    SECTION 3  OPTIONS   - 5 for status, 4 for the shelf, each with its cost
+    SECTION 4  DRAW      - the hero, the band, the line, the popovers
+    SECTION 5  MEASURE   - the hero width delta, read off the DOM
+    SECTION 6  ENGINE    - controls, contact sheets, table, assertions
+
+  WHAT SHIPPED
+  ------------
+  Both decided options are built. Where the code and this page disagree the code
+  wins; the `As built` notes on the two decided cards record every place they did.
+
+    lib/ui/widgets/reading_period_row.dart    the status-0 line, its verb and the
+                                              spill accounting
+    lib/ui/widgets/shelf_label.dart           the chevron mode, the press state, the
+                                              native `UIMenu`, and `ShelfLabelDoor` --
+                                              the wait for the hero to land and the one
+                                              place that chooses between the two menus
+    lib/ui/widgets/shelf_picker_popover.dart  the fallback card: Liquid Glass through
+                                              `LiquidGlassContainer` where it is
+                                              reached on iOS 26, a `BackdropFilter`
+                                              elsewhere, and a capped, scrolling list
+    lib/ui/views/book_details_tab_view.dart   both doors wired, and `canMoveShelf`. It
+                                              is told which shelf came back, never
+                                              which menu did the asking
+    lib/l10n/app_*.arb                        `changeStatus`, `moveToShelf`,
+                                              `shelfWithCount`
+
+    test/band_doors_test.dart                 the verb, the target, the accounting
+    test/shelf_tab_door_test.dart             the door's three conditions, the
+                                              picker, the cap, and the width contract
+
+    lib/main_details_preview.dart             a simulator entrypoint for this page,
+                                              because the one thing `flutter test`
+                                              cannot do is measure type -- and, with
+                                              no Simulator GUI in this Xcode, the one
+                                              way to photograph a state behind a tap.
+                                              `_shot_device.png` is the resting line;
+                                              `_shot_device_glass.png` is the popover,
+                                              photographed before the menu went native;
+                                              `_shot_native_tab.png` is the shipped tab
+                                              with the invisible `UIMenu` button over
+                                              it, and `_shot_native_probe.png` is that
+                                              same button made visible on purpose.
+
+  Four findings came out of the build rather than out of this page.
+
+  **`ModalRoute.animation` reports completed during a route's first build**, because
+  it is a `ProxyAnimation` still parented to `kAlwaysCompleteAnimation` at that point.
+  Trusting it drew the chevron for exactly one frame -- the frame the hero flight
+  measures the destination child from, which is the one frame the width contract above
+  exists to protect. The swap is decided on the first post-frame callback instead. See
+  `ShelfLabelDoor`.
+
+  **The card had to be capped and made scrollable.** Ten shelves is 472pt at 44pt a
+  row, which fits; twenty is 912 on an 874pt screen, where every row past the fold is
+  simply unreachable.
+
+  **The entrance does not fade on the native path.** Flutter cannot apply opacity to a
+  `UiKitView`, so a `FadeTransition` over the card would fade the list while the glass
+  behind it arrived at full strength. A transform is composited, so the scale survives
+  and is kept; the fallback keeps both.
+
+  **A `UIMenu` cannot be opened by a synthesized pointer, so the preview's auto-tap
+  turned into a negative check.** Flutter forwards real `UITouch`es to a platform view,
+  never fabricated ones, and with no Simulator GUI here there is no way to produce a real
+  one. What the auto-tap now proves is that the tap opens **nothing in Flutter** -- if the
+  app-drawn card appeared in `_shot_native_tab.png`, both paths would be wired at once,
+  which is the failure `ShelfLabel.onTap`'s assert exists to make impossible. Only one of
+  the two may hold the gesture: two tap recognizers in the arena for one pointer means
+  the one that wins can be the one that does nothing.
+
+  Deferred, deliberately: `New shelf...` in the picker. Creating a shelf and then
+  moving a book into it is two writes and a text field, and a picker is not where that
+  belongs.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Libstack &mdash; changing a book's shelf and status</title>
+        <style>
+            /* ---- SECTION 1  TOKENS (mirrors lib/constants/app_theme.dart) ---- */
+            :root {
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+                --cut: #d92b2b;
+                --keep: #1f8f5f;
+                --warn: #b26a00;
+            }
+            .light {
+                --surface: #ffffff;
+                --surfaceVariant: #e9ecef;
+                --primaryText: #212529;
+                --secondaryText: #626a72;
+                --brandText: #067657;
+                /* Color.lerp(surface, surfaceVariant, 0.63) -- reading_period_row.dart */
+                --pressed: #f1f3f5;
+                --glass: rgba(255, 255, 255, 0.72);
+                --glassLine: rgba(0, 0, 0, 0.08);
+                --sep: rgba(0, 0, 0, 0.07);
+            }
+            .dark {
+                --surface: #1c1c1e;
+                --surfaceVariant: #2c2c2e;
+                --primaryText: #f1f3f5;
+                --secondaryText: #949599;
+                --brandText: #09bc8a;
+                --pressed: #262628;
+                --glass: rgba(44, 44, 46, 0.76);
+                --glassLine: rgba(255, 255, 255, 0.12);
+                --sep: rgba(255, 255, 255, 0.1);
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                padding: 40px 22px 90px;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.55;
+            }
+            .wrap {
+                max-width: 900px;
+                margin: 0 auto;
+            }
+            h1 {
+                font-size: 26px;
+                letter-spacing: -0.5px;
+                margin: 0 0 6px;
+            }
+            .lead {
+                color: #55555c;
+                font-size: 14px;
+                margin: 0 0 26px;
+            }
+            h2 {
+                font-size: 12px;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin: 40px 0 6px;
+                border-top: 1px solid var(--line);
+                padding-top: 14px;
+            }
+            h2:first-of-type {
+                border-top: 0;
+            }
+            p.sec {
+                font-size: 13.5px;
+                color: #55555c;
+                margin: 0 0 18px;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            b.rec {
+                color: var(--keep);
+            }
+            b.no {
+                color: var(--cut);
+            }
+
+            /* ---- controls ---- */
+            .bar {
+                position: sticky;
+                top: 0;
+                z-index: 40;
+                background: rgba(255, 255, 255, 0.93);
+                backdrop-filter: blur(8px);
+                border-bottom: 1px solid var(--line);
+                padding: 10px 0 11px;
+                margin-bottom: 8px;
+                display: flex;
+                gap: 20px;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .grp {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+            }
+            .grp > span.k {
+                font-size: 10.5px;
+                letter-spacing: 0.6px;
+                text-transform: uppercase;
+                color: var(--muted);
+                font-weight: 700;
+            }
+            button.seg {
+                font: inherit;
+                font-size: 12.5px;
+                font-weight: 600;
+                padding: 4px 10px;
+                border: 1px solid var(--line);
+                background: #fff;
+                border-radius: 20px;
+                cursor: pointer;
+                color: #55555c;
+            }
+            button.seg[aria-pressed="true"] {
+                background: var(--ink);
+                border-color: var(--ink);
+                color: #fff;
+            }
+
+            /* ---- contact sheet ---- */
+            .sheet {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 26px 20px;
+            }
+            .cell {
+                width: 390px;
+            }
+            .cap {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                margin: 0 0 7px;
+                flex-wrap: wrap;
+            }
+            .cap .id {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--ink);
+            }
+            .cap .vd {
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 0.4px;
+                text-transform: uppercase;
+                padding: 2px 7px;
+                border-radius: 20px;
+                background: #f0efec;
+                color: #6c6c72;
+            }
+            .cap .vd.rec {
+                background: #e7f6ef;
+                color: var(--keep);
+            }
+            .cap .vd.no {
+                background: #fdeeea;
+                color: #c05746;
+            }
+            .gist {
+                font-size: 12.5px;
+                color: #55555c;
+                margin: 0 0 9px;
+                /* Holds the frames in one row across a sheet, so two options are
+                   compared at the same y rather than offset by a line of prose. */
+                min-height: 54px;
+            }
+            .cost {
+                font-size: 12px;
+                color: #6c6c72;
+                margin: 8px 0 0;
+                border-left: 3px solid var(--line);
+                padding-left: 10px;
+            }
+
+            /* ---- the phone frame, 1px = 1pt ---- */
+            .frame {
+                width: 390px;
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                overflow: hidden;
+                position: relative;
+                background: var(--surface);
+                font-family:
+                    "Pretendard",
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+            }
+            .appbar {
+                height: 44px;
+                background: var(--surfaceVariant);
+                display: flex;
+                align-items: center;
+                padding: 0 6px;
+                gap: 2px;
+            }
+            .abtn {
+                width: 32px;
+                height: 32px;
+                display: grid;
+                place-items: center;
+                color: var(--primaryText);
+                font-size: 17px;
+            }
+            .abtn.sp {
+                margin-left: auto;
+            }
+            .hero {
+                background: var(--surfaceVariant);
+                padding: 20px 20px 0;
+            }
+            .stack {
+                position: relative;
+                display: flex;
+                align-items: flex-start;
+                height: 180px;
+            }
+            /* The cover. Drawn rather than loaded -- the page stays offline. */
+            .cover {
+                width: 120px;
+                height: 180px;
+                border-radius: 2px 5px 5px 2px;
+                background: linear-gradient(
+                    103deg,
+                    #1b4f3c,
+                    #2a7a5b 55%,
+                    #1b4f3c
+                );
+                box-shadow:
+                    0 2px 5px rgba(0, 0, 0, 0.28),
+                    inset 3px 0 0 rgba(0, 0, 0, 0.22);
+                color: #eef6f1;
+                padding: 14px 10px 10px 14px;
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1.35;
+                letter-spacing: -0.2px;
+                overflow: hidden;
+            }
+            .cover .cauth {
+                position: absolute;
+                bottom: 10px;
+                left: 14px;
+                font-size: 9px;
+                font-weight: 600;
+                opacity: 0.8;
+            }
+            /* The shelf name tab. `ShelfLabel` -- top corners 3pt, 9/5 padding. */
+            .tab {
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                max-width: 140px;
+                background: var(--surface);
+                border-radius: 3px 3px 0 0;
+                padding: 5px 9px;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--primaryText);
+                white-space: nowrap;
+            }
+            .tab .cnt {
+                color: var(--secondaryText);
+                font-variant-numeric: tabular-nums;
+            }
+            .tab .chev {
+                /* A fixed box, because that is what `Icon(size: 16)` occupies in
+                   Flutter — the glyph inside it is narrower, and measuring the
+                   glyph instead is what made an early pass of SECTION 5 report
+                   the wrong sign. 16 rather than the card's 20: the tab is 23pt
+                   tall, and a 20pt glyph in it reads as a button. */
+                width: 16px;
+                height: 16px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--secondaryText);
+                font-size: 16px;
+                line-height: 1;
+                margin-right: -3px;
+            }
+            .tab.door {
+                cursor: pointer;
+            }
+            .tab.pressed {
+                background: var(--pressed);
+            }
+            /* `ShelfWidget`: 8pt, surface, 95% of the width, lit from above. */
+            .plank {
+                height: 8px;
+                width: 370px;
+                margin: 0 auto;
+                background: var(--surface);
+                box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+            }
+            .band {
+                background: var(--surfaceVariant);
+                border-radius: 0 0 30px 30px;
+                padding: 8px 30px 16px;
+                position: relative;
+            }
+            .btitle {
+                font-size: 17px;
+                font-weight: 600;
+                letter-spacing: -0.2px;
+                color: var(--primaryText);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .bauth {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--primaryText);
+                margin-top: 10px;
+            }
+            .line {
+                margin-top: 12px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                min-height: 26px;
+            }
+            /* `BookStatusBadge`. Status 0 is unfilled; 1 and 2 carry a 10% tint. */
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                border-radius: 10px;
+                padding: 4px 10px;
+                font-size: 13px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+            .badge.s0 {
+                color: var(--primaryText);
+                border: 1px solid
+                    color-mix(in srgb, var(--primaryText) 55%, transparent);
+            }
+            .badge.s1 {
+                color: var(--brandText);
+                background: color-mix(
+                    in srgb,
+                    var(--brandText) 10%,
+                    transparent
+                );
+                border: 1px solid
+                    color-mix(in srgb, var(--brandText) 40%, transparent);
+            }
+            .badge.s2 {
+                color: var(--primaryText);
+                background: color-mix(
+                    in srgb,
+                    var(--primaryText) 10%,
+                    transparent
+                );
+                border: 1px solid
+                    color-mix(in srgb, var(--primaryText) 40%, transparent);
+            }
+            .badge .chev {
+                width: 14px;
+                height: 14px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 15px;
+                line-height: 1;
+                opacity: 0.75;
+                margin-right: -3px;
+            }
+            .badge.door {
+                cursor: pointer;
+            }
+            .badge.pressed {
+                background: var(--pressed);
+            }
+            .verb {
+                margin-left: auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--brandText);
+                white-space: nowrap;
+                cursor: pointer;
+            }
+            .verb.second {
+                margin-left: 0;
+                color: var(--secondaryText);
+            }
+            /* `ReadingPeriodRow`'s card: label left, value right, chevron last. */
+            .card {
+                margin-top: 12px;
+                background: var(--surface);
+                border-radius: 10px;
+                padding: 8px 10px;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .card .vals {
+                margin-left: auto;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--primaryText);
+                font-variant-numeric: tabular-nums;
+            }
+            .card .days {
+                color: var(--brandText);
+            }
+            .card .chev {
+                color: var(--secondaryText);
+                font-size: 17px;
+                line-height: 1;
+                transform: translateX(10px);
+            }
+            .prow {
+                margin-top: 10px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--primaryText);
+                height: 30px;
+            }
+            .prow .track {
+                flex: 1;
+                height: 4px;
+                border-radius: 2px;
+                background: color-mix(
+                    in srgb,
+                    var(--primaryText) 12%,
+                    transparent
+                );
+                overflow: hidden;
+            }
+            .prow .fill {
+                height: 4px;
+                background: var(--brandText);
+            }
+            .prow .chev {
+                color: var(--secondaryText);
+                font-size: 17px;
+                line-height: 1;
+            }
+            /* A settings-style row in the band -- option `shelf-row`. */
+            .frow {
+                margin-top: 8px;
+                background: var(--surface);
+                border-radius: 10px;
+                padding: 8px 10px;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            .frow .lbl {
+                color: var(--secondaryText);
+            }
+            .frow .val {
+                margin-left: auto;
+                color: var(--primaryText);
+            }
+            .frow .chev {
+                color: var(--secondaryText);
+                font-size: 17px;
+                line-height: 1;
+                margin-left: 4px;
+            }
+            /* The segmented control -- option `segmented`. */
+            .segctl {
+                margin-top: 12px;
+                display: flex;
+                background: color-mix(
+                    in srgb,
+                    var(--primaryText) 8%,
+                    transparent
+                );
+                border-radius: 9px;
+                padding: 2px;
+            }
+            .segctl > div {
+                flex: 1;
+                text-align: center;
+                font-size: 13px;
+                font-weight: 600;
+                padding: 7px 0;
+                border-radius: 7px;
+                color: var(--secondaryText);
+            }
+            .segctl > div.on {
+                background: var(--surface);
+                color: var(--primaryText);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+            }
+
+            /* The pinned tab bar and a slice of the Book info tab. Drawn because
+               the popover has to land somewhere: the status line is the last thing
+               in the band, so a menu that drops *under* it opens over this. A frame
+               cropped at the band would have hidden that entirely. */
+            .tabbar {
+                display: flex;
+                background: var(--surface);
+                padding: 0 30px;
+                gap: 26px;
+                border-bottom: 0.5px solid var(--sep);
+            }
+            .tabbar > div {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--secondaryText);
+                padding: 14px 0 11px;
+            }
+            .tabbar > div.on {
+                color: var(--primaryText);
+                box-shadow: inset 0 -2px 0 var(--primaryText);
+            }
+            .tabbody {
+                background: var(--surface);
+                padding: 16px 30px 20px;
+                /* Deep enough for a popover to drop *under* the status line without
+                   being clipped, which is the case on device: the band ends around
+                   y=370 of an 844pt screen. A shorter frame would have made the
+                   menu look as though it had to open upward. */
+                height: 186px;
+            }
+            .tabbody .k {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--secondaryText);
+            }
+            .tabbody .v {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--primaryText);
+                margin: 2px 0 12px;
+                font-variant-numeric: tabular-nums;
+            }
+
+            /* ---- the app-drawn glass popover ---- */
+            .scrim {
+                position: absolute;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.06);
+                z-index: 8;
+            }
+            .pop {
+                position: absolute;
+                z-index: 10;
+                width: 232px;
+                border-radius: 13px;
+                background: var(--glass);
+                backdrop-filter: blur(22px) saturate(180%);
+                -webkit-backdrop-filter: blur(22px) saturate(180%);
+                border: 0.5px solid var(--glassLine);
+                box-shadow:
+                    0 10px 30px rgba(0, 0, 0, 0.18),
+                    0 1px 2px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+                font-size: 14px;
+            }
+            .pop .it {
+                height: 44px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 0 13px;
+                color: var(--primaryText);
+                font-weight: 500;
+                border-bottom: 0.5px solid var(--sep);
+            }
+            .pop .it:last-child {
+                border-bottom: 0;
+            }
+            .pop .it .nm {
+                flex: 1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .pop .it .sub {
+                color: var(--secondaryText);
+                font-size: 13px;
+                font-variant-numeric: tabular-nums;
+            }
+            .pop .it .ck {
+                color: var(--brandText);
+                font-weight: 700;
+            }
+            .pop .it.muted .nm {
+                color: var(--brandText);
+            }
+            .pop .it.gap {
+                border-top: 6px solid var(--sep);
+                height: 44px;
+            }
+            .pop .hd {
+                padding: 9px 13px 5px;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                color: var(--secondaryText);
+                border-bottom: 0.5px solid var(--sep);
+            }
+
+            /* ---- measurement + table + assertions ---- */
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                font-size: 12.5px;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 7px 9px;
+                border-bottom: 1px solid var(--line);
+                vertical-align: top;
+            }
+            th {
+                font-size: 10.5px;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+            td.n {
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+            .mrow {
+                display: flex;
+                gap: 26px;
+                align-items: flex-end;
+                flex-wrap: wrap;
+                margin: 6px 0 12px;
+            }
+            .mcell {
+                background: var(--surfaceVariant);
+                padding: 14px 16px 0;
+                border-radius: 10px;
+            }
+            .mcell .lab {
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.4px;
+                text-transform: uppercase;
+                color: var(--secondaryText);
+                margin-bottom: 8px;
+            }
+            .mcell .host {
+                position: relative;
+                height: 30px;
+                width: 160px;
+            }
+            .mcell .host .tab {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: auto;
+            }
+            .delta {
+                font-size: 13px;
+                font-weight: 700;
+            }
+            .as {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 12px;
+                margin: 2px 0;
+            }
+            .as .ok {
+                color: var(--keep);
+                font-weight: 700;
+            }
+            .as .bad {
+                color: var(--cut);
+                font-weight: 700;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <h1>Changing a book&rsquo;s shelf and its status</h1>
+            <p class="lead">
+                Two facts on the book details page that nothing on it can edit
+                &mdash; and one of them, on an <i>Interested</i> book, that
+                nothing <i>anywhere</i> can edit. Five treatments for the status
+                line, four for the shelf tab, drawn at 1px&nbsp;=&nbsp;1pt over
+                the real hero. <b>Decided and built:</b>
+                <code>change-status</code> and <code>tab-chevron</code> &mdash;
+                see <i>What shipped</i> in this file&rsquo;s header comment, and
+                the <b>As built</b> notes on those two cards.
+            </p>
+
+            <div class="bar" id="bar"></div>
+
+            <h2>Status &mdash; the line under the author</h2>
+            <p class="sec" id="statusIntro"></p>
+            <div class="sheet" id="statusSheet"></div>
+
+            <h2>Shelf &mdash; the name tab on the cover</h2>
+            <p class="sec" id="shelfIntro"></p>
+            <div class="sheet" id="shelfSheet"></div>
+
+            <h2>The hero width delta, measured</h2>
+            <p class="sec" id="mIntro"></p>
+            <div class="mrow" id="measure"></div>
+            <p class="sec" id="mFinding"></p>
+
+            <h2>What each option costs</h2>
+            <table id="tbl">
+                <thead>
+                    <tr>
+                        <th>Option</th>
+                        <th>Taps to<br />any state</th>
+                        <th>Reaches<br />status&nbsp;2</th>
+                        <th>New<br />strings</th>
+                        <th>Band<br />height</th>
+                        <th>Verdict</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <h2>Traps any implementation has to respect</h2>
+            <div id="traps"></div>
+
+            <h2>Assertions</h2>
+            <div id="asserts"></div>
+        </div>
+
+        <script>
+            "use strict";
+
+            /* ================= SECTION 2  CORPUS ================= */
+
+            /* The book from the reported screenshot, and the shelves around it.
+               Counts are `shelvedBookCount`, i.e. covers actually on the plank --
+               the same function both ends of the hero read, which is what keeps the
+               tab the same width at both ends of its flight. */
+            const BOOK = {
+                title: "경제기사 궁금증 300문 300답(2022)",
+                author: "곽해선",
+                shelf: "금융",
+                pages: 528,
+                progress: 0.34,
+                start: "2026.09.21",
+                finish: "2026.10.02",
+            };
+
+            const SHELVES = [
+                { name: "금융", count: 3 },
+                { name: "에세이", count: 12 },
+                { name: "기술서", count: 7 },
+                { name: "소설", count: 21 },
+            ];
+
+            /* Only strings that already exist in app_en.arb / app_ko.arb are marked
+               `existing`. Everything else is a string this design adds, and the table
+               counts them -- a design that needs six new strings to say one thing is
+               usually saying it twice. */
+            const L10N = {
+                en: {
+                    interested: "Interested" /* existing */,
+                    reading: "Reading" /* existing */,
+                    read: "Read" /* existing */,
+                    count: (n) => String(n) /* bookCountLabel, existing */,
+                    startReading:
+                        "Start reading" /* new, rejected option only */,
+                    changeStatus: "Change status" /* new, the decided option */,
+                    markRead: "Mark as read" /* new */,
+                    editDates: "Edit dates…" /* new */,
+                    moveToShelf: "Move to shelf" /* new */,
+                    newShelf: "New shelf…" /* deferred, drawn nowhere */,
+                    shelfLabel: "Shelf" /* new */,
+                    status: "Status" /* new */,
+                    days: (n) => n + " days",
+                    pageOf: (p, t) => "p." + p + " of " + t,
+                },
+                ko: {
+                    interested: "관심" /* existing */,
+                    reading: "읽는 중" /* existing */,
+                    read: "읽음" /* existing */,
+                    count: (n) => n + "권" /* bookCountLabel, existing */,
+                    startReading: "읽기 시작" /* new, rejected option only */,
+                    changeStatus: "상황 변경" /* new, the decided option */,
+                    markRead: "다 읽음" /* new */,
+                    editDates: "날짜 수정…" /* new */,
+                    moveToShelf: "서재 옮기기" /* new */,
+                    newShelf: "새 서재…" /* deferred, drawn nowhere */,
+                    shelfLabel: "서재" /* new */,
+                    status: "상태" /* new */,
+                    days: (n) => n + "일",
+                    pageOf: (p, t) => p + " / " + t + "p",
+                },
+            };
+
+            /* ================= SECTION 3  OPTIONS ================= */
+
+            /* `reachesRead` is the requirement the review added: from status 0, can
+               the reader land on status 2 without a detour through status 1? An
+               option that cannot is not a candidate, however good it looks. */
+            const STATUS_OPTIONS = [
+                {
+                    id: "current",
+                    verdict: "shipped",
+                    vd: "no",
+                    taps: "—",
+                    reachesRead: false,
+                    newStrings: 0,
+                    band: "0pt",
+                    gist: "What is on device today. A bare chip, and at status 0 it is not a control at all.",
+                    cost: "The defect, drawn. `ReadingPeriodRow` returns an `Align`ed badge with no `GestureDetector` above it (reading_period_row.dart:113), so this book cannot leave status 0 from here — or from anywhere else.",
+                },
+                {
+                    id: "change-status",
+                    verdict: "decided",
+                    vd: "rec",
+                    taps: "3, any state",
+                    reachesRead: true,
+                    newStrings: 1,
+                    band: "0pt",
+                    gist: "One neutral verb in the empty half of the line, opening the sheet the app already has. The badge stays a read-out.",
+                    cost: "<b>This began as `verb-only` labelled `Start reading`, and the label is the whole difference.</b> That version was rejected for deciding the destination: a reader who logs a book <i>after</i> finishing it was sent to status 1 and had to edit again. `Change status` promises a choice instead of making one, so the same single target now reaches all three states — because what it opens is `showBookStatusBottomSheet`, which already has `BookStatusSelector` in it. <b>That makes this the smallest change on the page that closes the dead end:</b> one string, one tap target, no new sheet, no new write path, and the badge is left exactly as it shipped. The cost is that it is three taps rather than one for the common `Interested → Reading` move — accepted, because a form that shows the reader what they are choosing is worth more here than a tap. <b>As built:</b> the target is the whole line, badge included, exactly as the card at status 1 is; 14pt of it comes out of the band's bottom padding the way `BandProgressRow`'s does, so the band is **not** taller and the target is **40pt rather than 44** — the one deliberate shortfall, against 18pt of permanent band height for the alternative. The line is a `Wrap`, so at accessibility text sizes the verb drops to a second row instead of overflowing.",
+                },
+                {
+                    id: "verb-plus-menu",
+                    verdict: "rejected",
+                    vd: "no",
+                    taps: "1 common / 2 any",
+                    reachesRead: true,
+                    newStrings: 2,
+                    band: "0pt",
+                    gist: "A one-tap verb for the common move, and the badge itself as a second door to all three states.",
+                    cost: "Was the recommendation, and rejected on review: <b>two targets on one 26pt line to edit one fact.</b> It buys a tap on the common case and pays for it with a chip that looks like a read-out on every other surface in the app suddenly being a control here, plus a second string. `change-status` reaches the same three states through one target, and the slot it sits in is the same slot.",
+                },
+                {
+                    id: "menu-only",
+                    verdict: "considered",
+                    vd: "",
+                    taps: "2",
+                    reachesRead: true,
+                    newStrings: 1,
+                    band: "0pt",
+                    gist: "No verb. The badge grows a chevron and is the only door — one rule, and the same rule the shelf tab gets.",
+                    cost: "The most symmetric option: both facts in the header become chips that open popovers. Two reasons it lost to `change-status`. It needs a popover built for three items that a sheet already covers, and it makes `BookStatusBadge` — which is drawn on the read pile, the month grid and a friend's book, where it is never a control — conditionally tappable. A word in an empty slot carries no such ambiguity.",
+                },
+                {
+                    id: "two-verbs",
+                    verdict: "rejected",
+                    vd: "no",
+                    taps: "1",
+                    reachesRead: true,
+                    newStrings: 2,
+                    band: "0pt",
+                    gist: "Both destinations as verbs. One tap for either reader, no menu at all.",
+                    cost: "Fits: at 390pt the slot is ~205pt and the two labels measure ~150pt in English, less in Korean. But it reads as a pair of buttons wedged beside a chip, it has no route <i>back</i> to Interested, and it commits the same sin `verb-only` was rejected for twice over — two writes with no sight of what is being written.",
+                },
+                {
+                    id: "segmented",
+                    verdict: "considered",
+                    vd: "",
+                    taps: "1",
+                    reachesRead: true,
+                    newStrings: 0,
+                    band: "+34pt",
+                    gist: "`BookStatusSelector`, the add-sheet's own control, inlined in the band.",
+                    cost: "Recognisable, and it reuses a control with no new strings. But it spends 34pt of band on every book in order to display two states that are false, and it puts a destructive-ish write one stray thumb away with no confirmation — the add sheet can afford that because nothing has happened yet.",
+                },
+            ];
+
+            const SHELF_OPTIONS = [
+                {
+                    id: "current",
+                    verdict: "shipped",
+                    vd: "no",
+                    taps: "drag only",
+                    newStrings: 0,
+                    band: "0pt",
+                    gist: "The tab names the shelf and does nothing. Moving a book means a long-press-and-drag in the library.",
+                    cost: "`moveBookToShelf` has one caller, `ShelfRow`'s drag. On a 473-book library the target shelf is usually off screen.",
+                },
+                {
+                    id: "tab-chevron",
+                    verdict: "decided",
+                    vd: "rec",
+                    taps: "2",
+                    // Two as built, not the one this said while the menu was still
+                    // app-drawn: `moveToShelf` names the action, and `shelfWithCount`
+                    // exists only because a `UIMenu` item has nowhere but its label to
+                    // put the count.
+                    newStrings: 2,
+                    band: "0pt",
+                    gist: "The count gives way to a chevron, and the tab opens a glass menu of shelves — each with its own count, and a check against this one.",
+                    cost: "The fact is the control, which is the rule that retired the app bar's pencil. Nothing is added to a header that is already tall, and the count is not lost — it moves into the menu, where it is finally comparative (`금융 3` beside `소설 21`) rather than a lone number. Two costs: the tab has no other affordance than the chevron, so it needs a press state and a `Semantics(button: true)`; and the swap changes the tab's width, which is a `Hero` at status 0 — see the measurement below. <b>As built:</b> the door appears only when there is a second shelf to move to, and `New shelf…` is <i>not</i> in the menu — creating a shelf and then moving into it is two writes and a text field, and it is deferred rather than smuggled into a picker. <b>And the menu is the platform's own, not the card drawn below:</b> a chrome-free `CNPopupMenuButton` (`CNButtonStyle.plain`, empty label) stacked over the Flutter-drawn tab presents a real `UIMenu` on iOS 26 — the same control the settings page's <i>Edit profile</i> button is — with the app-drawn popover kept as the fallback. One consequence of that: a `UIMenu` item has no subtitle and no trailing slot, so the count rides inside the label (`shelfWithCount`), which is where the comparison above actually lives.",
+                },
+                {
+                    id: "tab-both",
+                    verdict: "considered",
+                    vd: "",
+                    taps: "2",
+                    newStrings: 2,
+                    band: "0pt",
+                    gist: "Keep the count, add the chevron after it.",
+                    cost: "Loses nothing and still announces the door, at the price of a third element in a box that is squeezed onto its text — at 140pt `maxWidth` a long shelf name now ellipsizes sooner. Strictly worse for the hero than `tab-chevron`: the width delta is larger, not smaller.",
+                },
+                {
+                    id: "shelf-row",
+                    verdict: "fallback",
+                    vd: "",
+                    taps: "2",
+                    newStrings: 2,
+                    band: "+52pt",
+                    gist: "Leave the tab alone; put a labelled row in the band, under the status line.",
+                    cost: "The discoverable answer, and a third door of a shape the band already has twice. But it names the shelf twice on one screen 40pt apart, with the tab beside it still inert — which is the 'two places for one thing' defect that both the badge and the period card were refactored to remove. Take it only if the tab's chevron tests as undiscoverable.",
+                },
+            ];
+
+            const TRAPS = [
+                "<b>The count-for-chevron swap has to happen after the hero lands.</b> `ShelfLabel`'s doc pins a width contract — the box shrink-wraps its text, so two ends of a flight that measure differently ellipsize the name mid-air — and `flyShelfFromLibrary` is true at <i>exactly</i> status 0 (`book_details_tab_view.dart:243`), the state in the report. Flutter's default flight shuttle is the destination hero's child, so the details tab must render the <i>count</i> while the flight runs and crossfade to the chevron once `ModalRoute.of(context).animation` completes. The tab is a `Positioned(bottom: 0, right: 0)` in a `Stack`, so whichever way the width moves it moves leftward over the cover and nothing reflows.",
+                "<b>Both the menu <i>and</i> the material can be native — and this page claimed neither could, in that order.</b> The first claim was that `CNPopupMenuButton` is a platform view that draws its own button, so the tab would stop being a tab and could not be a `Hero`. It is a platform view, but with <b>`CNButtonStyle.plain` and an empty label it draws nothing</b>, so it can be stacked <i>over</i> the tab and contribute only `showsMenuAsPrimaryAction`. That is what ships; `_shot_native_probe.png` is the same view with its style set to `glass` on purpose, which is how its rect was confirmed. (`CNPopupGesture` really is unusable: long-press-only, 220pt fixed, hardcoded `CupertinoColors`, no checkmarks.) The second claim followed from the first, and <b>`LiquidGlassContainer` applies iOS 26’s glass to an arbitrary child</b>, stacking an `IgnorePointer(UiKitView)` under it with `Positioned.fill` — the idiom `read_filter.dart`’s `_Capsule` already uses — which is how the fallback card gets glass where it is reached at all. <b>Two things that make a `BackdropFilter` read as paint rather than glass:</b> a fill opaque enough to hide the blur (a blur of a near-uniform background is that background), and a `boxShadow` nested <i>inside</i> the `ClipRRect`, which clips it away entirely — the shadow has to sit outside the clip, and on the native path there should be none of ours at all.",
+                "<b>Exactly one of the two menus may hold the tap.</b> A Flutter `GestureDetector` and the platform view’s own recognizer both in the arena for one pointer means the winner can be the one with nothing to do — so `ShelfLabel` asserts that `onTap` and `overlay` are never both set, and `ShelfLabelDoor` picks one. The platform view also has to be <b>last in the `Stack`</b>: underneath it, the tab’s own `Text` wins the hit test wherever the glyphs are and `RenderStack` stops at the first child that reports one, so tapping the middle of the target would do nothing. And it is withheld until the route has landed and while anything covers the page — a `UiKitView` inside a flying `Hero`, or live under a Flutter sheet, is the hybrid-composition case that leaks its own rectangle through a scrim.",
+                "<b>A one-tap verb must not stamp a reading day.</b> `updateBookStatus` only; `readingDaysProvider.setRead` stays out of it. That separation is the single rule the status sheet's whole design rests on.",
+                "<b>`updateBookStatus` already assigns `reading_shelf_index`</b> via `_readingHeadIndex`, so one tap correctly puts the book at the head of the Reading shelf. It also throws up an `EasyLoading` overlay — for a single-tap verb that deserves a silent variant, the way `deleteBookSilently` exists beside `deleteBook`.",
+                "<b>`moveBookToShelf(bookId, targetShelfId, orderedBookIds)` wants the target shelf's order after the move.</b> A popover has no drop point, so append: the target's visible ids, then this book.",
+                "<b>Do not restore the app bar's pencil</b> for either of these. Its headstone is at `book_details_tab_view.dart:290`.",
+                "<b>Fix the stale comment</b> at `reading_period_row.dart:96–106`, which tells the next reader that an Interested book is edited from library sheets that do not exist.",
+                "<b>Tests that will go red:</b> `test/book_details_status_badge_test.dart`, and anything pumping `ReadingPeriodRow`'s no-dates branch expecting an inert chip.",
+            ];
+
+            /* ================= SECTION 4  DRAW ================= */
+
+            const state = {
+                locale: "en",
+                theme: "light",
+                status: 0,
+                open: true,
+            };
+
+            const el = (tag, cls, html) => {
+                const n = document.createElement(tag);
+                if (cls) n.className = cls;
+                if (html != null) n.innerHTML = html;
+                return n;
+            };
+
+            /* Backtick-to-<code>, so the option prose can name real symbols the
+               way the rest of the repo's writing does. */
+            const md = (s) => s.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+            const t = () => L10N[state.locale];
+            const statusLabel = (s) =>
+                [t().interested, t().reading, t().read][s];
+
+            /* The chip. `door` adds the chevron and the press affordance. */
+            function badge(status, door) {
+                const b = el(
+                    "div",
+                    "badge s" + status + (door ? " door" : ""),
+                    "<span>" + statusLabel(status) + "</span>",
+                );
+                if (door) b.appendChild(el("span", "chev", "&#8250;"));
+                return b;
+            }
+
+            function verb(label, secondary) {
+                const v = el(
+                    "div",
+                    "verb" + (secondary ? " second" : ""),
+                    "<span>" + label + "</span>",
+                );
+                v.appendChild(el("span", "", "&nbsp;&#8250;"));
+                return v;
+            }
+
+            /* The status line, per option, at the current status.
+
+               At status 1 and 2 every option collapses to the card the band already
+               ships: the dates are there, so the card exists, and the card is
+               already the door. These options only differ at status 0 -- which is
+               the whole point, because status 0 is the only state with no door. */
+            function statusLine(optId) {
+                const wrap = el("div");
+
+                if (state.status !== 0) {
+                    const card = el("div", "card");
+                    card.appendChild(badge(state.status, false));
+                    const vals = el("div", "vals");
+                    vals.appendChild(
+                        el(
+                            "div",
+                            "",
+                            BOOK.start +
+                                " ~ " +
+                                (state.status === 2 ? BOOK.finish : ""),
+                        ),
+                    );
+                    vals.appendChild(
+                        el(
+                            "div",
+                            "days",
+                            t().days(state.status === 2 ? 11 : 4),
+                        ),
+                    );
+                    card.appendChild(vals);
+                    card.appendChild(el("div", "chev", "&#8250;"));
+                    wrap.appendChild(card);
+
+                    if (state.status === 1) {
+                        const p = el("div", "prow");
+                        p.appendChild(el("div", "", "34%"));
+                        const tr = el("div", "track");
+                        const fl = el("div", "fill");
+                        fl.style.width = "34%";
+                        tr.appendChild(fl);
+                        p.appendChild(tr);
+                        p.appendChild(
+                            el(
+                                "div",
+                                "",
+                                t().pageOf(
+                                    Math.round(BOOK.pages * BOOK.progress),
+                                    BOOK.pages,
+                                ),
+                            ),
+                        );
+                        p.appendChild(el("div", "chev", "&#8250;"));
+                        wrap.appendChild(p);
+                    }
+                    return wrap;
+                }
+
+                if (optId === "segmented") {
+                    const s = el("div", "segctl");
+                    [t().interested, t().reading, t().read].forEach((l, i) => {
+                        s.appendChild(el("div", i === 0 ? "on" : "", l));
+                    });
+                    wrap.appendChild(s);
+                    return wrap;
+                }
+
+                const line = el("div", "line");
+                const door =
+                    optId === "verb-plus-menu" || optId === "menu-only";
+                const chip = badge(0, door);
+                if (door) chip.dataset.anchor = "status";
+                line.appendChild(chip);
+
+                if (optId === "change-status") {
+                    line.appendChild(verb(t().changeStatus));
+                } else if (optId === "verb-plus-menu") {
+                    line.appendChild(verb(t().startReading));
+                } else if (optId === "two-verbs") {
+                    const holder = el("div", "verb");
+                    holder.style.gap = "14px";
+                    holder.appendChild(verb(t().startReading));
+                    holder.appendChild(verb(t().markRead, true));
+                    line.appendChild(holder);
+                }
+                wrap.appendChild(line);
+                return wrap;
+            }
+
+            /* The name tab, per shelf option. */
+            function shelfTab(optId) {
+                const shelf = SHELVES[0];
+                const tab = el("div", "tab");
+                tab.appendChild(el("span", "nm", shelf.name));
+                if (
+                    optId === "current" ||
+                    optId === "tab-both" ||
+                    optId === "shelf-row"
+                ) {
+                    tab.appendChild(el("span", "cnt", t().count(shelf.count)));
+                }
+                if (optId === "tab-chevron" || optId === "tab-both") {
+                    tab.appendChild(el("span", "chev", "&#8250;"));
+                }
+                if (optId !== "current" && optId !== "shelf-row") {
+                    tab.classList.add("door");
+                    tab.dataset.anchor = "shelf";
+                }
+                return tab;
+            }
+
+            /* The popovers. Drawn as the app would draw them: a blurred, tinted
+               card with 44pt rows, a hairline between them, and a check on the
+               current value. */
+            function statusPopover() {
+                const p = el("div", "pop");
+                [0, 1, 2].forEach((s) => {
+                    const it = el("div", "it");
+                    it.appendChild(el("div", "nm", statusLabel(s)));
+                    if (s === state.status)
+                        it.appendChild(el("div", "ck", "&#10003;"));
+                    p.appendChild(it);
+                });
+                const ed = el("div", "it gap muted");
+                ed.appendChild(el("div", "nm", t().editDates));
+                p.appendChild(ed);
+                return p;
+            }
+
+            function shelfPopover() {
+                const p = el("div", "pop");
+                p.appendChild(el("div", "hd", t().moveToShelf));
+                SHELVES.forEach((s, i) => {
+                    const it = el("div", "it");
+                    it.appendChild(el("div", "nm", s.name));
+                    it.appendChild(el("div", "sub", t().count(s.count)));
+                    if (i === 0) it.appendChild(el("div", "ck", "&#10003;"));
+                    p.appendChild(it);
+                });
+                return p;
+            }
+
+            /* One phone. `which` is 'status' or 'shelf'; the other axis draws its
+               shipped form, so each sheet changes one thing at a time. */
+            function frame(which, optId) {
+                const f = el("div", "frame " + state.theme);
+
+                const ab = el("div", "appbar");
+                ab.appendChild(el("div", "abtn", "&#8249;"));
+                ab.appendChild(el("div", "abtn sp", "&#8599;"));
+                ab.appendChild(el("div", "abtn", "&#9003;"));
+                f.appendChild(ab);
+
+                const hero = el("div", "hero");
+                const stack = el("div", "stack");
+                const cover = el("div", "cover", BOOK.title);
+                cover.style.position = "relative";
+                cover.appendChild(el("div", "cauth", BOOK.author));
+                stack.appendChild(cover);
+                stack.appendChild(
+                    shelfTab(which === "shelf" ? optId : "current"),
+                );
+                hero.appendChild(stack);
+                f.appendChild(hero);
+
+                const pw = el("div");
+                pw.style.background = "var(--surfaceVariant)";
+                pw.appendChild(el("div", "plank"));
+                f.appendChild(pw);
+
+                const band = el("div", "band");
+                band.appendChild(el("div", "btitle", BOOK.title));
+                band.appendChild(el("div", "bauth", BOOK.author));
+                band.appendChild(
+                    statusLine(which === "status" ? optId : "current"),
+                );
+                if (which === "shelf" && optId === "shelf-row") {
+                    const r = el("div", "frow");
+                    r.appendChild(el("div", "lbl", t().shelfLabel));
+                    r.appendChild(el("div", "val", SHELVES[0].name));
+                    r.appendChild(el("div", "chev", "&#8250;"));
+                    band.appendChild(r);
+                }
+                f.appendChild(band);
+
+                const tbar = el("div", "tabbar");
+                tbar.appendChild(
+                    el(
+                        "div",
+                        "on",
+                        state.locale === "ko" ? "책 정보" : "Book info",
+                    ),
+                );
+                tbar.appendChild(
+                    el("div", "", state.locale === "ko" ? "메모" : "Memo"),
+                );
+                f.appendChild(tbar);
+                const tbody = el("div", "tabbody");
+                tbody.appendChild(el("div", "k", "ISBN"));
+                tbody.appendChild(el("div", "v", "9791195611072"));
+                tbody.appendChild(
+                    el(
+                        "div",
+                        "k",
+                        state.locale === "ko" ? "출판사" : "Publisher",
+                    ),
+                );
+                tbody.appendChild(el("div", "v", "더난출판사"));
+                tbody.appendChild(
+                    el(
+                        "div",
+                        "k",
+                        state.locale === "ko" ? "출간일" : "Published",
+                    ),
+                );
+                tbody.appendChild(el("div", "v", "2022.01.20"));
+                tbody.appendChild(
+                    el("div", "k", state.locale === "ko" ? "총 분량" : "Pages"),
+                );
+                tbody.appendChild(el("div", "v", String(BOOK.pages)));
+                f.appendChild(tbody);
+
+                /* A popover is drawn only where the option actually has one, and
+                   only when the toggle asks for it. Placed after layout, off the
+                   anchor's own measured box. */
+                const wantsPop =
+                    state.open &&
+                    ((which === "status" &&
+                        (optId === "verb-plus-menu" || optId === "menu-only") &&
+                        state.status === 0) ||
+                        (which === "shelf" &&
+                            (optId === "tab-chevron" || optId === "tab-both")));
+                if (wantsPop) f.dataset.pop = which;
+                return f;
+            }
+
+            function placePopovers(root) {
+                root.querySelectorAll(".frame[data-pop]").forEach((f) => {
+                    const kind = f.dataset.pop;
+                    const anchor = f.querySelector(
+                        '[data-anchor="' + kind + '"]',
+                    );
+                    if (!anchor) return;
+                    anchor.classList.add("pressed");
+                    f.appendChild(el("div", "scrim"));
+                    const pop =
+                        kind === "status" ? statusPopover() : shelfPopover();
+                    f.appendChild(pop);
+
+                    const fb = f.getBoundingClientRect();
+                    const ab = anchor.getBoundingClientRect();
+                    const w = pop.offsetWidth;
+                    /* Under the anchor, as `PopupMenuPosition.under` puts it: a
+                       disclosure should drop away from the thing that disclosed it
+                       rather than cover it. */
+                    let left =
+                        kind === "shelf"
+                            ? ab.right - fb.left - w
+                            : ab.left - fb.left;
+                    left = Math.max(8, Math.min(left, fb.width - w - 8));
+                    pop.style.left = left + "px";
+                    pop.style.top = ab.bottom - fb.top + 6 + "px";
+                });
+            }
+
+            /* ================= SECTION 5  MEASURE ================= */
+
+            /* The delta the hero contract cares about, read off the DOM rather than
+               estimated: the same tab, with a count and with a chevron. Measured in
+               **both** locales, because `bookCountLabel` is a bare `{count}` in
+               English and `{count}권` in Korean, so the swap does not even move the
+               width in the same direction in the two. Nothing below states a sign;
+               the page reads it. */
+            function measure() {
+                const host = document.getElementById("measure");
+                host.innerHTML = "";
+                const made = [];
+                [
+                    ["with count \u2014 the library end", "current"],
+                    ["with chevron \u2014 the details end", "tab-chevron"],
+                    ["with both \u2014 tab-both", "tab-both"],
+                ].forEach(([lab, id]) => {
+                    const c = el("div", "mcell " + state.theme);
+                    c.appendChild(el("div", "lab", lab));
+                    const h = el("div", "host");
+                    const tab = shelfTab(id);
+                    tab.classList.remove("pressed");
+                    h.appendChild(tab);
+                    c.appendChild(h);
+                    host.appendChild(c);
+                    made.push([id, tab]);
+                });
+
+                /* An off-screen rig, so both locales can be measured without
+                   disturbing the sheets above. */
+                const rig = el("div", state.theme);
+                rig.style.cssText =
+                    "position:absolute;left:-9999px;top:0;visibility:hidden";
+                document.body.appendChild(rig);
+                const was = state.locale;
+                const per = {};
+                ["en", "ko"].forEach((loc) => {
+                    state.locale = loc;
+                    const w = {};
+                    ["current", "tab-chevron", "tab-both"].forEach((id) => {
+                        const holder = el("div", "host");
+                        holder.style.position = "relative";
+                        const tab = shelfTab(id);
+                        holder.appendChild(tab);
+                        rig.appendChild(holder);
+                        w[id] =
+                            Math.round(tab.getBoundingClientRect().width * 10) /
+                            10;
+                    });
+                    per[loc] = {
+                        w,
+                        d:
+                            Math.round((w["tab-chevron"] - w["current"]) * 10) /
+                            10,
+                        d2:
+                            Math.round((w["tab-both"] - w["current"]) * 10) /
+                            10,
+                    };
+                });
+                state.locale = was;
+                rig.remove();
+
+                const sign = (n) => (n > 0 ? "+" + n : String(n));
+                const say = (loc) => {
+                    const p = per[loc];
+                    return (
+                        "<b>" +
+                        loc +
+                        "</b> \u2014 count <b>" +
+                        p.w["current"] +
+                        "pt</b>, chevron <b>" +
+                        p.w["tab-chevron"] +
+                        "pt</b> (<span class='delta' style='color:" +
+                        (Math.abs(p.d) < 0.5 ? "var(--keep)" : "var(--warn)") +
+                        "'>" +
+                        sign(p.d) +
+                        "pt</span>), both " +
+                        sign(p.d2) +
+                        "pt"
+                    );
+                };
+                document.getElementById("mFinding").innerHTML =
+                    say("en") +
+                    ".<br>" +
+                    say("ko") +
+                    ".<br><br>" +
+                    "The swap moves the tab in <b>both</b> locales and not even in the " +
+                    "same direction, because the English count is a bare " +
+                    "<code>{count}</code> where the Korean is <code>{count}권</code>. " +
+                    "The number is small and it does not need to be large: the box is " +
+                    "squeezed onto its text, so a fraction of a point of disagreement " +
+                    "between the two ends of the flight ellipsizes the shelf name in " +
+                    "mid-air. That is an argument for crossfading the chevron in " +
+                    "<i>after</i> the hero lands \u2014 trap 1 \u2014 not an argument " +
+                    "against the chevron. <code>tab-both</code> is strictly worse here: " +
+                    "it keeps the count <i>and</i> adds the box.";
+                return per;
+            }
+
+            /* ================= SECTION 6  ENGINE ================= */
+
+            function controls() {
+                const bar = document.getElementById("bar");
+                bar.innerHTML = "";
+                const group = (key, label, opts) => {
+                    const g = el("div", "grp");
+                    g.appendChild(el("span", "k", label));
+                    opts.forEach(([val, txt]) => {
+                        const b = el("button", "seg", txt);
+                        b.setAttribute(
+                            "aria-pressed",
+                            String(state[key] === val),
+                        );
+                        b.onclick = () => {
+                            state[key] = val;
+                            render();
+                        };
+                        g.appendChild(b);
+                    });
+                    bar.appendChild(g);
+                };
+                group("status", "book status", [
+                    [0, "0 Interested"],
+                    [1, "1 Reading"],
+                    [2, "2 Read"],
+                ]);
+                group("locale", "locale", [
+                    ["en", "en"],
+                    ["ko", "ko"],
+                ]);
+                group("theme", "theme", [
+                    ["light", "light"],
+                    ["dark", "dark"],
+                ]);
+                group("open", "popover", [
+                    [true, "open"],
+                    [false, "closed"],
+                ]);
+            }
+
+            function cell(which, opt) {
+                const c = el("div", "cell");
+                const cap = el("div", "cap");
+                cap.appendChild(el("span", "id", opt.id));
+                cap.appendChild(
+                    el("span", "vd " + (opt.vd || ""), opt.verdict),
+                );
+                c.appendChild(cap);
+                c.appendChild(el("div", "gist", md(opt.gist)));
+                c.appendChild(frame(which, opt.id));
+                c.appendChild(el("div", "cost", md(opt.cost)));
+                return c;
+            }
+
+            function table() {
+                const tb = document.querySelector("#tbl tbody");
+                tb.innerHTML = "";
+                const row = (o, kind) => {
+                    const tr = el("tr");
+                    tr.appendChild(
+                        el(
+                            "td",
+                            "",
+                            "<code>" +
+                                o.id +
+                                "</code><br><span style='color:var(--muted);font-size:11px'>" +
+                                kind +
+                                "</span>",
+                        ),
+                    );
+                    tr.appendChild(el("td", "n", o.taps));
+                    tr.appendChild(
+                        el(
+                            "td",
+                            "n",
+                            kind === "shelf"
+                                ? "—"
+                                : o.reachesRead
+                                  ? "<span style='color:var(--keep);font-weight:700'>yes</span>"
+                                  : "<span style='color:var(--cut);font-weight:700'>no</span>",
+                        ),
+                    );
+                    tr.appendChild(el("td", "n", String(o.newStrings)));
+                    tr.appendChild(el("td", "n", o.band));
+                    tr.appendChild(
+                        el(
+                            "td",
+                            "",
+                            o.vd === "rec"
+                                ? "<b class='rec'>" + o.verdict + "</b>"
+                                : o.vd === "no"
+                                  ? "<b class='no'>" + o.verdict + "</b>"
+                                  : o.verdict,
+                        ),
+                    );
+                    tb.appendChild(tr);
+                };
+                STATUS_OPTIONS.forEach((o) => row(o, "status"));
+                SHELF_OPTIONS.forEach((o) => row(o, "shelf"));
+            }
+
+            function traps() {
+                const host = document.getElementById("traps");
+                host.innerHTML = "";
+                const ol = el("ol");
+                ol.style.fontSize = "13px";
+                ol.style.color = "#55555c";
+                ol.style.paddingLeft = "20px";
+                TRAPS.forEach((tx) => {
+                    const li = el("li", "", md(tx));
+                    li.style.marginBottom = "9px";
+                    ol.appendChild(li);
+                });
+                host.appendChild(ol);
+            }
+
+            /* Assertions. Not decoration: three of these are claims the prose makes
+               that would otherwise be able to rot. */
+            function assertions(m) {
+                const host = document.getElementById("asserts");
+                host.innerHTML = "";
+                const results = [];
+                const check = (name, fn) => {
+                    let ok = false,
+                        detail = "";
+                    try {
+                        const r = fn();
+                        ok = r === true || (r && r.ok);
+                        detail = (r && r.detail) || "";
+                    } catch (e) {
+                        detail = String(e);
+                    }
+                    results.push([ok, name, detail]);
+                };
+
+                check(
+                    "every status option but `current` reaches status 2 from status 0",
+                    () => {
+                        const bad = STATUS_OPTIONS.filter(
+                            (o) => o.id !== "current" && !o.reachesRead,
+                        ).map((o) => o.id);
+                        return {
+                            ok: bad.length === 0,
+                            detail:
+                                bad.length === 0
+                                    ? "all " +
+                                      (STATUS_OPTIONS.length - 1) +
+                                      " do"
+                                    : "failing: [" + bad.join(", ") + "]",
+                        };
+                    },
+                );
+                check(
+                    "exactly one option per gap is decided, and nothing else claims to be",
+                    () => {
+                        const s = STATUS_OPTIONS.filter((o) => o.vd === "rec");
+                        const h = SHELF_OPTIONS.filter((o) => o.vd === "rec");
+                        return {
+                            ok:
+                                s.length === 1 &&
+                                h.length === 1 &&
+                                s[0].verdict === "decided" &&
+                                h[0].verdict === "decided",
+                            detail: s[0].id + " / " + h[0].id,
+                        };
+                    },
+                );
+                check(
+                    "the decided status option adds one string and no band height",
+                    () => {
+                        const o = STATUS_OPTIONS.find((x) => x.vd === "rec");
+                        return {
+                            ok: o.newStrings === 1 && o.band === "0pt",
+                            detail:
+                                o.id +
+                                ": " +
+                                o.newStrings +
+                                " string, band " +
+                                o.band,
+                        };
+                    },
+                );
+                check(
+                    "every status option but `current` draws a control at status 0",
+                    () => {
+                        const was = state.status;
+                        state.status = 0;
+                        const missing = STATUS_OPTIONS.filter((o) => {
+                            const n = statusLine(o.id);
+                            return !n.querySelector(
+                                ".badge.door, .verb, .segctl",
+                            );
+                        }).map((o) => o.id);
+                        state.status = was;
+                        return {
+                            ok:
+                                missing.length === 1 &&
+                                missing[0] === "current",
+                            detail: "inert: [" + missing.join(", ") + "]",
+                        };
+                    },
+                );
+                check(
+                    "the count-for-chevron swap moves the tab's width in BOTH locales (the hero finding)",
+                    () => ({
+                        ok: Math.abs(m.en.d) > 0.5 && Math.abs(m.ko.d) > 0.5,
+                        detail:
+                            "en " +
+                            m.en.d +
+                            "pt, ko " +
+                            m.ko.d +
+                            "pt (tab-both en " +
+                            m.en.d2 +
+                            "pt)",
+                    }),
+                );
+                check(
+                    "tab-both is never a smaller width change than tab-chevron",
+                    () => ({
+                        ok:
+                            Math.abs(m.en.d2) >= Math.abs(m.en.d) &&
+                            Math.abs(m.ko.d2) >= Math.abs(m.ko.d),
+                        detail:
+                            "en " +
+                            m.en.d2 +
+                            " vs " +
+                            m.en.d +
+                            ", ko " +
+                            m.ko.d2 +
+                            " vs " +
+                            m.ko.d,
+                    }),
+                );
+                check(
+                    "the shelf popover lists every shelf, with its count and exactly one check",
+                    () => {
+                        const p = shelfPopover();
+                        const items = p.querySelectorAll(".it:not(.gap)");
+                        return {
+                            ok:
+                                items.length === SHELVES.length &&
+                                p.querySelectorAll(".ck").length === 1 &&
+                                p.querySelectorAll(".sub").length ===
+                                    SHELVES.length,
+                            detail:
+                                items.length +
+                                " shelves, " +
+                                p.querySelectorAll(".ck").length +
+                                " check",
+                        };
+                    },
+                );
+                check(
+                    "the status popover offers all three states plus a way to the full form",
+                    () => {
+                        const p = statusPopover();
+                        return {
+                            ok:
+                                p.querySelectorAll(".it").length === 4 &&
+                                p.querySelectorAll(".ck").length === 1,
+                            detail: p.querySelectorAll(".it").length + " rows",
+                        };
+                    },
+                );
+                check(
+                    "no option silently adds band height except the two that say so",
+                    () => {
+                        const grows = STATUS_OPTIONS.concat(SHELF_OPTIONS)
+                            .filter((o) => o.band !== "0pt")
+                            .map((o) => o.id);
+                        return {
+                            ok:
+                                grows.length === 2 &&
+                                grows.includes("segmented") &&
+                                grows.includes("shelf-row"),
+                            detail: "grows: [" + grows.join(", ") + "]",
+                        };
+                    },
+                );
+
+                const pass = results.filter((r) => r[0]).length;
+                host.appendChild(
+                    el(
+                        "div",
+                        "as",
+                        "<b>" +
+                            pass +
+                            "/" +
+                            results.length +
+                            " passing</b> &middot; re-run on every control change",
+                    ),
+                );
+                results.forEach(([ok, name, detail]) => {
+                    host.appendChild(
+                        el(
+                            "div",
+                            "as",
+                            (ok
+                                ? "<span class='ok'>PASS</span>"
+                                : "<span class='bad'>FAIL</span>") +
+                                "  " +
+                                name +
+                                (detail
+                                    ? "  <span style='color:var(--muted)'>" +
+                                      detail +
+                                      "</span>"
+                                    : ""),
+                        ),
+                    );
+                });
+            }
+
+            function render() {
+                controls();
+
+                document.getElementById("statusIntro").innerHTML =
+                    "At status 1 and 2 every treatment collapses to the card the band " +
+                    "already ships — the dates exist, so the card exists, and the card " +
+                    "is already the door. <b>They differ only at status 0</b>, which is " +
+                    "the one state with no door at all. Switch the status control above " +
+                    "to confirm that the five options converge.";
+                document.getElementById("shelfIntro").innerHTML =
+                    "Drawn on an Interested book, because that is the state whose tab " +
+                    "<i>flies</i> from the library (<code>flyShelfFromLibrary</code>) and " +
+                    "therefore the state the width contract binds.";
+                document.getElementById("mIntro").innerHTML =
+                    "Measured in the browser at 1px&nbsp;=&nbsp;1pt, from the same " +
+                    "13/w600 tabular label the app sets, with the chevron drawn as a " +
+                    "<b>16pt box</b> because that is what <code>Icon(size: 16)</code> " +
+                    "occupies. The cells below are the current locale; the figures " +
+                    "under them are both.";
+
+                const ss = document.getElementById("statusSheet");
+                ss.innerHTML = "";
+                STATUS_OPTIONS.forEach((o) =>
+                    ss.appendChild(cell("status", o)),
+                );
+                const hs = document.getElementById("shelfSheet");
+                hs.innerHTML = "";
+                SHELF_OPTIONS.forEach((o) => hs.appendChild(cell("shelf", o)));
+
+                placePopovers(ss);
+                placePopovers(hs);
+
+                const m = measure();
+                table();
+                traps();
+                assertions(m);
+            }
+
+            render();
+        </script>
+    </body>
+</html>

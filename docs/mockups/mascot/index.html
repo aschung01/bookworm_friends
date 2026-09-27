@@ -1,0 +1,1988 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Libstack — mascot directions A / B / C</title>
+        <style>
+            :root {
+                --page: #f8f9fa;
+                --surface: #fff;
+                --variant: #e9ecef;
+                --text: #212529;
+                --muted: #626a72;
+                --divider: #e9ecef;
+                --brand: #09bc8a;
+                --brandText: #067657;
+                --sheet: #eff5ef;
+                --dark: #121212;
+                --flame: #b54708;
+                --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+                --sans:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+                    sans-serif;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                padding: 0 0 96px;
+                background: var(--page);
+                color: var(--text);
+                font: 15px/1.55 var(--sans);
+                -webkit-font-smoothing: antialiased;
+            }
+            header {
+                padding: 40px 32px 28px;
+                background: var(--surface);
+                border-bottom: 1px solid var(--divider);
+            }
+            h1 {
+                margin: 0 0 6px;
+                font-size: 26px;
+                letter-spacing: -0.02em;
+            }
+            .sub {
+                margin: 0;
+                color: var(--muted);
+                max-width: 66ch;
+            }
+            .sub b {
+                color: var(--text);
+            }
+            .prov {
+                margin-top: 16px;
+                font: 12px/1.5 var(--mono);
+                color: var(--muted);
+            }
+            .prov b {
+                color: var(--text);
+                font-weight: 600;
+            }
+
+            .controls {
+                position: sticky;
+                top: 0;
+                z-index: 20;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 22px;
+                align-items: center;
+                padding: 12px 32px;
+                background: rgba(248, 249, 250, 0.94);
+                backdrop-filter: saturate(180%) blur(12px);
+                border-bottom: 1px solid var(--divider);
+            }
+            .grp {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .grp > span {
+                font: 11px/1 var(--mono);
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                color: var(--muted);
+            }
+            .seg {
+                display: flex;
+                border: 1px solid var(--divider);
+                border-radius: 8px;
+                overflow: hidden;
+                background: #fff;
+            }
+            .seg button {
+                border: 0;
+                background: #fff;
+                padding: 6px 11px;
+                font: 12px var(--sans);
+                color: var(--muted);
+                cursor: pointer;
+                border-left: 1px solid var(--divider);
+            }
+            .seg button:first-child {
+                border-left: 0;
+            }
+            .seg button[aria-pressed="true"] {
+                background: var(--brandText);
+                color: #fff;
+            }
+            label.chk {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                color: var(--muted);
+                cursor: pointer;
+            }
+
+            main {
+                padding: 0 32px;
+            }
+            .round {
+                margin: 44px 0 0;
+                padding: 24px;
+                border-radius: 16px;
+                background: var(--surface);
+                border: 1px solid var(--divider);
+            }
+            .round.dead {
+                background: #fbfbfc;
+            }
+            .rhead {
+                display: flex;
+                align-items: baseline;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            .rhead h2 {
+                margin: 0;
+                font-size: 21px;
+                letter-spacing: -0.015em;
+            }
+            .rlead {
+                margin: 12px 0 0;
+                color: var(--muted);
+                max-width: 84ch;
+            }
+            .rlead b {
+                color: var(--text);
+                font-weight: 600;
+            }
+            .rlead code,
+            .ds code {
+                font: 12px var(--mono);
+                background: var(--variant);
+                padding: 1px 5px;
+                border-radius: 4px;
+            }
+
+            section {
+                margin: 30px 0 0;
+            }
+            .shead {
+                display: flex;
+                align-items: baseline;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .shead h3 {
+                margin: 0;
+                font-size: 16px;
+            }
+            .tag {
+                font: 11px/1 var(--mono);
+                padding: 4px 8px;
+                border-radius: 999px;
+                background: var(--variant);
+                color: var(--muted);
+            }
+            .tag.win {
+                background: #d7f5ea;
+                color: var(--brandText);
+            }
+            .tag.fail {
+                background: #fde4d3;
+                color: var(--flame);
+            }
+            .thesis {
+                margin: 9px 0 0;
+                color: var(--muted);
+                max-width: 82ch;
+                font-size: 14px;
+            }
+            .thesis b {
+                color: var(--text);
+                font-weight: 600;
+            }
+
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 18px;
+                margin-top: 16px;
+            }
+            .card {
+                border: 1px solid var(--divider);
+                border-radius: 14px;
+                background: #fff;
+                padding: 14px;
+                width: 292px;
+            }
+            .card.picked {
+                border-color: var(--brand);
+                box-shadow: 0 0 0 3px rgba(9, 188, 138, 0.18);
+            }
+            .swatch {
+                border-radius: 10px;
+                display: grid;
+                place-items: center;
+                height: 262px;
+                background: var(--page);
+                overflow: hidden;
+            }
+            .swatch[data-s="sheet"] {
+                background: var(--sheet);
+            }
+            .swatch[data-s="dark"] {
+                background: var(--dark);
+            }
+            /* Chalk round: unkeyed grey-on-white, so multiply keys it visually on light
+     and invert+screen fakes it on dark. */
+            .swatch img.chalk {
+                mix-blend-mode: multiply;
+            }
+            .swatch[data-s="dark"] img.chalk {
+                mix-blend-mode: screen;
+                filter: invert(1);
+            }
+            /* Cute round: full colour on white. Multiply still drops the white plate on a
+     light surface, but nothing can fake a keyed colour character on dark -- so
+     on dark it sits on its own white plate and says so. */
+            .swatch img.cute {
+                mix-blend-mode: multiply;
+            }
+            .swatch[data-s="dark"] img.cute {
+                mix-blend-mode: normal;
+                background: #fff;
+                border-radius: 12px;
+            }
+            .cap {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-top: 11px;
+                gap: 8px;
+            }
+            .cap code {
+                font: 12px var(--mono);
+            }
+            .pick {
+                border: 1px solid var(--divider);
+                background: #fff;
+                border-radius: 7px;
+                font: 11px var(--sans);
+                color: var(--muted);
+                padding: 4px 9px;
+                cursor: pointer;
+            }
+            .card.picked .pick {
+                background: var(--brandText);
+                color: #fff;
+                border-color: var(--brandText);
+            }
+            .chips {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                margin-top: 9px;
+            }
+            .chip {
+                font: 10.5px/1 var(--mono);
+                padding: 4px 6px;
+                border-radius: 5px;
+                background: var(--variant);
+                color: var(--muted);
+            }
+            .chip.ok {
+                background: #d7f5ea;
+                color: var(--brandText);
+            }
+            .chip.warn {
+                background: #fde4d3;
+                color: var(--flame);
+            }
+            .sw {
+                display: inline-block;
+                width: 9px;
+                height: 9px;
+                border-radius: 2px;
+                vertical-align: -1px;
+                margin-right: 4px;
+            }
+            .note {
+                margin: 9px 0 0;
+                font-size: 12.5px;
+                color: var(--muted);
+            }
+
+            .band {
+                margin-top: 22px;
+                border: 1px solid var(--divider);
+                border-radius: 14px;
+                background: #fff;
+                overflow: hidden;
+            }
+            .band h3 {
+                margin: 0;
+                padding: 13px 16px;
+                font-size: 13px;
+                border-bottom: 1px solid var(--divider);
+            }
+            .band h3 span {
+                color: var(--muted);
+                font-weight: 400;
+            }
+            .strip {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 26px;
+                padding: 24px 16px;
+                align-items: flex-end;
+            }
+            .strip[data-s="sheet"] {
+                background: var(--sheet);
+            }
+            .strip[data-s="dark"] {
+                background: var(--dark);
+            }
+            .cell {
+                text-align: center;
+                margin: 0;
+            }
+            .cell .box {
+                display: grid;
+                place-items: center;
+                overflow: hidden;
+                margin: 0 auto;
+            }
+            .cell figcaption {
+                margin-top: 9px;
+                font: 10.5px var(--mono);
+                color: var(--muted);
+            }
+            .strip[data-s="dark"] .cell figcaption {
+                color: #949599;
+            }
+
+            /* Streak matrix. Tile geometry follows the reference grid; the palette
+               is this app's own state vocabulary from the streaks spec, not the
+               reference's five-step heat ramp. */
+            .tiles {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+                gap: 18px;
+                padding: 24px 16px;
+                background: var(--dark);
+            }
+            .tile {
+                border-radius: 18px;
+                padding: 12px;
+                aspect-ratio: 1/1;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .tile .cnt {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font: 700 21px/1 var(--sans);
+                color: #fff;
+                letter-spacing: -0.02em;
+            }
+            .tile .glyph {
+                font-size: 15px;
+                opacity: 0.95;
+            }
+            .tile .cap2 {
+                margin-top: 3px;
+                font: 12px/1.3 var(--sans);
+                color: rgba(255, 255, 255, 0.93);
+            }
+            .tile .art {
+                position: absolute;
+                left: 50%;
+                bottom: -4%;
+                transform: translateX(-50%);
+                width: 78%;
+                height: 78%;
+                object-fit: contain;
+            }
+            .tile .st {
+                position: absolute;
+                top: 10px;
+                right: 11px;
+                font: 9.5px/1 var(--mono);
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .callout {
+                margin: 34px 0 0;
+                padding: 18px 20px;
+                border-radius: 12px;
+                background: #fff;
+                border: 1px solid var(--divider);
+                border-left: 3px solid var(--flame);
+            }
+            .callout.good {
+                border-left-color: var(--brand);
+            }
+            .callout h3 {
+                margin: 0 0 8px;
+                font-size: 14px;
+            }
+            .callout p,
+            .callout li {
+                color: var(--muted);
+                font-size: 13.5px;
+                margin: 6px 0;
+            }
+            .callout b {
+                color: var(--text);
+            }
+            details {
+                margin-top: 14px;
+            }
+            summary {
+                cursor: pointer;
+                font: 12px var(--mono);
+                color: var(--brandText);
+            }
+            pre {
+                white-space: pre-wrap;
+                font: 11.5px/1.6 var(--mono);
+                color: var(--muted);
+                background: var(--page);
+                padding: 14px;
+                border-radius: 9px;
+                margin-top: 10px;
+                border: 1px solid var(--divider);
+            }
+            table {
+                border-collapse: collapse;
+                margin-top: 12px;
+                font-size: 13px;
+                width: 100%;
+                max-width: 680px;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 7px 10px;
+                border-bottom: 1px solid var(--divider);
+            }
+            th {
+                font: 11px var(--mono);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: var(--muted);
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>Mascot directions — worm, then cat</h1>
+            <p class="sub">
+                Six rounds. <b>Round 6 is the live one</b> — the library cat,
+                and a shift from single portraits to a <b>state matrix</b>. What
+                the earlier rounds settled: round 1 borrowed the empty-state
+                chalk pipeline, which is built for
+                <b>pictograms, not characters</b>; round 2 over-corrected into
+                cute blobs; round 4 proved it was a <b>prompting</b> problem and
+                fixed the register; and round 5 found the two levers that had
+                nothing to do with wording — <b>resolution</b>, and
+                <b>refining against our own output</b>.
+            </p>
+            <p class="prov">
+                model <b>grok-imagine-image-2.0</b> · text-to-image
+                <b>api.x.ai /v1/images/generations</b> · re-posing and
+                refinement <b>/v1/images/edits</b> via <code>--reference</code
+                ><br />
+                37 images · 1k $0.04 · 2k $0.06 · 2k+reference $0.09 · total
+                <b>$1.63</b> ($0.09 of it on fal, the rest on xAI) · prompts in
+                <b>scripts/gen_mascot_art.py</b>
+                (<code>--style cat | probe | cute | chalk | character</code>) ·
+                provenance in <b>art/manifest.json</b>, keyed by filename
+            </p>
+        </header>
+
+        <div class="controls">
+            <div class="grp">
+                <span>surface</span>
+                <div class="seg" id="surf">
+                    <button data-v="page" aria-pressed="true">
+                        pageBackground
+                    </button>
+                    <button data-v="sheet" aria-pressed="false">
+                        sheet mint
+                    </button>
+                    <button data-v="dark" aria-pressed="false">
+                        dark page
+                    </button>
+                </div>
+            </div>
+            <div class="grp">
+                <span>call site</span>
+                <div class="seg" id="size">
+                    <button data-v="40" aria-pressed="false">40</button>
+                    <button data-v="48" aria-pressed="false">48</button>
+                    <button data-v="96" aria-pressed="true">96</button>
+                    <button data-v="120" aria-pressed="false">120</button>
+                    <button data-v="240" aria-pressed="false">240</button>
+                </div>
+            </div>
+            <label class="chk"
+                ><input type="checkbox" id="trim" checked /> fit to
+                drawing</label
+            >
+            <label class="chk"
+                ><input type="checkbox" id="onlyPicks" /> only my picks</label
+            >
+        </div>
+
+        <main>
+            <!-- ==================== ROUND 6 — THE LIBRARY CAT ==================== -->
+            <div class="round">
+                <div class="rhead">
+                    <h2>Round 6 — the library cat, and a state matrix</h2>
+                    <span class="tag win">live</span>
+                </div>
+                <p class="rlead">
+                    New subject, and a format shift. The reference is Duolingo's
+                    streak-widget grid:
+                    <b>25 tiles of one character across escalating states</b>,
+                    not a single portrait.
+                    <b
+                        >Why a cat beats the worm at the thing that kept
+                        failing:</b
+                    >
+                    ears and a tail are exactly the distinctive bumps the
+                    silhouette test wants, so a cat survives being flattened to
+                    black where a worm barely does — and a cat has a canonical
+                    pose vocabulary (loaf, stretch, curl, arch) so one design
+                    covers many states without redesign, which is what a
+                    six-moment feature needs.
+                </p>
+                <p class="rlead">
+                    <b
+                        >What this deliberately does not copy from the reference
+                        grid is its emotional arc.</b
+                    >
+                    That set escalates into guilt — hellfire, a skeleton, a
+                    demon, “Last chance!” — and
+                    <code>2026-09-12-reading-streaks-design.md</code> already
+                    refuses all of it: <i>“amber and never red”</i>,
+                    <i>“no red, no broken-flame illustration, no guilt copy”</i
+                    >, and a broken streak prints <b>the record, not a zero</b>.
+                    That spec also says <b><i>“No flame”</i></b> outright — the
+                    counter's glyph is the <b>ink stamp</b> and a milestone
+                    earns a <b>wax seal</b>. So the grid below escalates
+                    <b>awake → asleep</b> rather than calm → damnation, and uses
+                    the four state colours that spec defines instead of the
+                    reference's five-step heat ramp.
+                </p>
+
+                <section data-dir="cat" data-style="cat">
+                    <div class="shead">
+                        <h3>Does the cat carry brand green, or wear it?</h3>
+                        <span class="tag">settled visually, not argued</span>
+                    </div>
+                    <p class="thesis">
+                        <b>Green wins.</b> It is ownable, brand-carrying and
+                        Duo-precedented — a green animal is a mascot, a grey
+                        tabby is stock illustration, and in the cream version
+                        the books end up carrying the brand instead of the
+                        character. The cream variant is kept only as the
+                        evidence for why.
+                    </p>
+                    <div class="row" id="row-c-cat"></div>
+                </section>
+
+                <section data-dir="pose" data-style="cat">
+                    <div class="shead">
+                        <h3>
+                            Four poses from one reference — the consistency test
+                        </h3>
+                        <span class="tag win">it holds</span>
+                    </div>
+                    <p class="thesis">
+                        All four are <code>/v1/images/edits</code> at 2k against
+                        <code>cat-green-cat-v2.png</code>.
+                        <b>This is the result that makes the grid feasible:</b>
+                        fur colour, cream chest and muzzle, orange inner ears
+                        and paws, whiskers, eye treatment and the chalk book
+                        with its cream ribbon all survive a complete change of
+                        pose. A mascot that can be re-posed can carry six streak
+                        states; one that cannot is a single illustration.
+                    </p>
+                    <div class="row" id="row-p-cat"></div>
+                </section>
+
+                <div class="band">
+                    <h3>
+                        The streak matrix
+                        <span
+                            >— the reference's tile format, this app's state
+                            vocabulary: stamp not flame, amber never red, and a
+                            break that prints the record.</span
+                        >
+                    </h3>
+                    <div class="tiles" id="tiles"></div>
+                </div>
+
+                <div class="band">
+                    <h3>
+                        Silhouette test, round 6
+                        <span
+                            >— ears and a tail do the work a worm could
+                            not.</span
+                        >
+                    </h3>
+                    <div class="strip" id="strip-sil6"></div>
+                </div>
+
+                <div class="callout good">
+                    <h3>What is decided, and the one thing that is not</h3>
+                    <p>
+                        <b>Decided by this round:</b> the cat is green; the
+                        character re-poses reliably from a single reference; and
+                        the escalation axis is sleepiness rather than
+                        punishment.
+                    </p>
+                    <p>
+                        <b
+                            >Not decided — and it matters more than the
+                            drawing.</b
+                        >
+                        A cat has no heritage here. The package is
+                        <code>bookworm_friends</code>, the retired mascot was a
+                        worm, and <code>docs/APP_IDENTITY.md</code> records the
+                        rename as touching the display name only. Picking a cat
+                        means the character has no relationship to the app's own
+                        history, where the worm <i>is</i> the original idea.
+                        <b
+                            >The cat is the better character; the worm is the
+                            better story.</b
+                        >
+                        Worth deciding on purpose rather than by whichever
+                        happens to render nicer.
+                    </p>
+                    <p>
+                        <b>Two bugs this round exposed, both fixed.</b>
+                        <code>--reference</code> with a relative path crashed
+                        the run <i>after</i> four images had been generated and
+                        written — billing for work whose provenance died with
+                        the traceback. The path is now resolved, an out-of-tree
+                        reference is recorded rather than raising, and the four
+                        lost manifest entries are reconstructed and flagged.
+                    </p>
+                    <p>
+                        <b>Still unkeyed.</b> 2k output is PNG so there are no
+                        JPEG artefacts to clean, but the white plate still has
+                        to come off via <code>scripts/cutout_bg.py</code> before
+                        any of this sits on the dark theme. The tiles above fake
+                        it by compositing on the tile colour.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ==================== ROUND 5 — RESOLUTION + REFINE ==================== -->
+            <div class="round">
+                <div class="rhead">
+                    <h2>Round 5 — 2k, then refine against ourselves</h2>
+                    <span class="tag"
+                        >the worm direction · superseded by round 6</span
+                    >
+                </div>
+                <p class="rlead">
+                    Two levers, neither of them the prompt.
+                    <b
+                        >First: every one of the previous 25 images was
+                        generated at <code>1k</code>.</b
+                    >
+                    The endpoint supports <code>2k</code>, and it is a larger
+                    quality jump than anything prompt wording bought — clean
+                    vector-grade edges, articulated hands, real eyebrows. It
+                    also <b>returns PNG instead of JPEG</b>, which quietly
+                    invalidates the note in <code>PROMPTS.md</code> that the
+                    endpoint “returns JPEG regardless of
+                    <code>response_format</code>”: that is 1k-only behaviour, so
+                    2k skips the lossy step and the artefacts
+                    <code>cutout_bg.py</code> has to clean up.
+                    <b
+                        >Second: an img2img refinement pass seeded with our own
+                        best output</b
+                    >
+                    — the <code>/v1/images/edits</code> route,
+                    <code>--reference</code>, asking for the same character with
+                    better execution. It holds the design, pose and palette
+                    while tightening the linework, which means the character can
+                    now be <b>iterated rather than re-rolled</b>.
+                </p>
+                <p class="rlead">
+                    <b>On seeding with a real commercial mascot instead:</b> not
+                    done, and the practical reason is as strong as the legal
+                    one. This route copies the seed's geometry —
+                    <code>PROMPTS.md</code> already recorded it “faithfully
+                    reproduced a crown-shaped ribbon” — so an owl reference
+                    returns an owl, which is both off-brief and a trademark
+                    exposure for an app that ships. Seeding with
+                    <i>our own</i> character gets the same in-context quality
+                    lift with neither problem. (Checked while looking: fal has
+                    no mascot character to borrow from — their identity is
+                    gradient and illustration, no Duo-equivalent.)
+                </p>
+
+                <section data-dir="hires" data-style="probe">
+                    <div class="shead">
+                        <h3>
+                            s5-hybrid at 2k — same prompt, four times the pixels
+                        </h3>
+                        <span class="tag">$0.06/image vs $0.04</span>
+                    </div>
+                    <p class="thesis">
+                        Identical prompt to the 1k round below. Everything that
+                        reads as “low quality” in the 1k set — mushy edges,
+                        mitten hands, soft-focus shapes — is a resolution
+                        artefact, not a prompt failure.
+                    </p>
+                    <div class="row" id="row-h-probe"></div>
+                </section>
+
+                <section data-dir="refine" data-style="probe">
+                    <div class="shead">
+                        <h3>s6-refine — img2img over s5-hybrid-v2</h3>
+                        <span class="tag win"
+                            >cleanest execution in the set</span
+                        >
+                    </div>
+                    <p class="thesis">
+                        Reference: <code>s5-hybrid-probe-v2.png</code>. The
+                        character survives the pass nearly unchanged while the
+                        edges, fills and hands tighten — and the book loses the
+                        speckled texture noise that the 2k text-only pass left
+                        on it. This is the loop that reaches production quality:
+                        <b>generate → pick → refine</b>, rather than generating
+                        a new character each time and hoping.
+                    </p>
+                    <div class="row" id="row-r-probe"></div>
+                </section>
+
+                <div class="band">
+                    <h3>
+                        Silhouette test, round 5
+                        <span
+                            >— the test round 2 failed with nine identical
+                            blobs.</span
+                        >
+                    </h3>
+                    <div class="strip" id="strip-sil5"></div>
+                </div>
+
+                <div class="callout good">
+                    <h3>Where this leaves it</h3>
+                    <p>
+                        <b
+                            ><code>s6-refine-probe-v2.png</code> is the current
+                            best.</b
+                        >
+                        2048×2048 PNG, 28.6% ink, brand-green delta 24.1 —
+                        inside the close-match band but looser than
+                        <code>s5-hybrid-probe-v1.png</code> at 12.2, so if
+                        colour fidelity matters more than linework, that is the
+                        trade.
+                    </p>
+                    <p>
+                        <b
+                            >Two things the pipeline still needs, and neither is
+                            a prompting problem.</b
+                        >
+                        The plate has to be keyed
+                        (<code>scripts/cutout_bg.py</code>) before the character
+                        can sit on the dark theme. And the six streak moments
+                        need the <i>same</i> character in six poses — the
+                        refinement pass shows consistency is achievable, so the
+                        honest next experiment is whether
+                        <code>--reference</code> holds identity across a
+                        <i>changed</i> pose, not just a re-rendered one.
+                    </p>
+                    <p>
+                        <b>A provenance bug this round exposed and fixed:</b>
+                        the manifest was keyed by piece-and-variant, but the
+                        endpoint picks the file extension from the resolution —
+                        so the 2k run overwrote the 1k entry for the same
+                        variant while both files stayed on disk, orphaning two
+                        images from their prompts. The manifest is now keyed by
+                        filename and the lost entries are recovered and flagged.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ==================== ROUND 4 — PROMPT ENGINEERING ==================== -->
+            <div class="round">
+                <div class="rhead">
+                    <h2>Round 4 — vary the prompt, not the subject</h2>
+                    <span class="tag">superseded by round 5 · 1k</span>
+                </div>
+                <p class="rlead">
+                    Rounds 1–3 all varied the <i>subject</i> and re-rolled one
+                    prompt. Round 4 does the opposite: the subject is fixed —
+                    the bookworm holding the chalk book, per the decision below
+                    — and the <b>prompt strategy</b> is the variable.
+                    <b
+                        >What was actually wrong with rounds 1 and 2 was
+                        register, not content.</b
+                    >
+                    Both prompts ran ~2700 characters of rules and negations;
+                    long negative lists are weak levers, and naming a thing to
+                    forbid it can summon it — round 1 said
+                    <i>“NOT a spoon”</i> and returned three spoons. Both
+                    described a <b>spec rather than a picture</b>: “10–14
+                    deliberate shapes, two arms, two feet” makes the model do
+                    bookkeeping instead of design. Neither named the
+                    <b>artifact type</b>. And neither gave the character any
+                    <b>personality</b>, which is where appeal actually comes
+                    from.
+                </p>
+
+                <section data-dir="probe" data-style="probe">
+                    <div class="shead">
+                        <h3>The four strategies, one roll each</h3>
+                        <span class="tag">$0.16 to find the register</span>
+                    </div>
+                    <p class="thesis">
+                        Each is a complete prompt passed verbatim,
+                        positive-voice, under ~800 characters. Every one of the
+                        four beat every image in rounds 1 and 2 — arms, feet,
+                        eyebrows, a mouth, a book, and a silhouette you can
+                        read. The differences between them are what round 5 was
+                        built from.
+                    </p>
+                    <div class="row" id="row-p-probe"></div>
+                </section>
+
+                <section data-dir="s5" data-style="probe">
+                    <div class="shead">
+                        <h3>s5-hybrid — the synthesis</h3>
+                        <span class="tag win">best of the exploration</span>
+                    </div>
+                    <p class="thesis">
+                        <b>s1's art-direction voice</b> (it won on both appeal
+                        and silhouette) plus
+                        <b>s4's flat-vector discipline</b> (no gloss, so it
+                        survives being redrawn as vector), plus two specific
+                        fixes the probe exposed: the book is
+                        <b
+                            >closed and held out to one side so it breaks the
+                            outline</b
+                        >
+                        — s2's worst-in-set silhouette came from an open book
+                        held flat against the belly, which sits
+                        <i>inside</i> the body mass — and the
+                        <b>tail curl is stated explicitly</b>, because it is the
+                        single cue that separates a worm from a chick and only
+                        s1 kept it. Three short targeted negations survive (no
+                        text, no fangs, no gloss), because
+                        <b>s3 proved negation is not the problem</b>: with “no
+                        text” dropped it wrote <i>BEST BOOK</i> on the cover and
+                        grew fangs. A twenty-item wall was the problem.
+                    </p>
+                    <div class="row" id="row-s-probe"></div>
+                </section>
+
+                <div class="band">
+                    <h3>
+                        Silhouette test, round 4
+                        <span
+                            >— the same test round 2 failed. Head, segments,
+                            curled tail, arm, book with ribbon, two feet.</span
+                        >
+                    </h3>
+                    <div class="strip" id="strip-sil4"></div>
+                </div>
+
+                <div class="callout good">
+                    <h3>What this round settles</h3>
+                    <p>
+                        <b>It was a prompting problem.</b> Same model, same
+                        endpoint, same subject, no reference image — the only
+                        thing that changed between round 2's blobs and these is
+                        how the prompt was written. The transferable rules, in
+                        order of how much they bought:
+                    </p>
+                    <p>
+                        <b>1. Describe the picture, not the rules.</b>
+                        Art-direction voice over specification voice.
+                        <b>2. Name the artifact type</b> — “app mascot character
+                        design”, “character design sheet”. That single phrase is
+                        what produced limbs and a readable build.
+                        <b>3. Give it personality and a moment</b>, not
+                        geometry; appeal follows acting.
+                        <b>4. Keep negations few and targeted</b> — three known
+                        failure modes, not twenty prohibitions.
+                        <b>5. Say which feature carries the identity</b> (the
+                        tail curl, the protruding book) instead of assuming the
+                        model will infer it.
+                    </p>
+                    <p>
+                        <b>Brand green landed too:</b>
+                        <code>s5-hybrid-v1</code> at
+                        <b>#00B888, delta 10.0</b> from #09BC8A, with v3 at 22.4
+                        and v2 at 26.9 — all inside the close-match band,
+                        uncorrected.
+                    </p>
+                    <p>
+                        <b>Still to do before this is an asset:</b> pick one,
+                        then key the plate (<code>scripts/cutout_bg.py</code>)
+                        and redraw it as vector — which is what lets it be posed
+                        across the six streak moments rather than existing as
+                        one fixed JPEG.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ==================== ROUND 2 — CUTE ==================== -->
+            <div class="round">
+                <div class="rhead">
+                    <h2>Round 2 — cuteness first</h2>
+                    <span class="tag fail"
+                        >rejected · all three lost identity</span
+                    >
+                </div>
+                <p class="rlead">
+                    Deliberately <b>outside</b> the chalk system. The brief was
+                    baby proportions, oversized low-set eyes with a catchlight,
+                    a smile, blush, plush rounded forms,
+                    <b>three or four shapes total</b>, brand green plus one warm
+                    accent, one character alone with no props.
+                    <b>It got cuter and it failed.</b> The silhouette test below
+                    is the proof: flatten all nine to black and they are
+                    <b>the same blob</b> — three subjects, nine images, one
+                    shape. An earlier draft of this page claimed the worm
+                    survived. It did not; that read was wrong, and the
+                    silhouettes are why.
+                    <b>The cause was the brief, not the model.</b> Four of its
+                    rules multiply out to a blob and leave nothing to tell one
+                    creature from another: <i>three or four shapes</i>,
+                    <i>no thin lines or long limbs</i>,
+                    <i>nothing else in the frame</i>, and
+                    <i>head at least half the height</i>. The mistake underneath
+                    was treating <b>cute</b> and <b>minimal</b> as one axis. The
+                    reference mascot of this genre is not minimal — beak,
+                    eyebrows, two wings, two feet, three tail feathers, 15+
+                    deliberate shapes, several of them thin. It is cute
+                    <i>and</i> articulated.
+                </p>
+
+                <section data-dir="a-mark" data-style="cute">
+                    <div class="shead">
+                        <h3>A — the bookmark</h3>
+                        <span class="tag fail">identity lost</span>
+                    </div>
+                    <p class="thesis">
+                        Cute, and no longer a bookmark. With the book gone there
+                        is nothing left to read the ribbon against, so the
+                        notched body becomes a generic blob and the orange
+                        accents land as ears or arms. The thesis needed the
+                        book; the book made it a scene; the scene was the thing
+                        that wasn't cute.
+                    </p>
+                    <div class="row" id="row-a-cute"></div>
+                </section>
+
+                <section data-dir="b-worm" data-style="cute">
+                    <div class="shead">
+                        <h3>B — the bookworm</h3>
+                        <span class="tag fail">identity lost</span>
+                    </div>
+                    <p class="thesis">
+                        With no book anywhere in the frame a worm is just a
+                        slug, and the silhouettes confirm it reads as the same
+                        lump as A and C. The one thing worth keeping:
+                        <code>b-worm-cute-v3</code> landed on
+                        <b
+                            >#10C088 against the brand's #09BC8A — a delta of
+                            8.3</b
+                        >, the closest any generated art in this repo has come
+                        to brand green without correction, so that colour clause
+                        is worth carrying forward even though the drawing is
+                        not.
+                    </p>
+                    <div class="row" id="row-b-cute"></div>
+                </section>
+
+                <section data-dir="c-lamp" data-style="cute">
+                    <div class="shead">
+                        <h3>C — the reading lamp</h3>
+                        <span class="tag fail">reads as a mushroom</span>
+                    </div>
+                    <p class="thesis">
+                        A lamp needs the contrast between a wide shade and a
+                        thin stem to read as a lamp, and "no thin lines, plump
+                        forms only" removes exactly that contrast. All three
+                        rolls are toadstools. Cute, entirely off-brief.
+                    </p>
+                    <div class="row" id="row-c-cute"></div>
+                </section>
+
+                <div class="band">
+                    <h3>
+                        The silhouette test
+                        <span
+                            >— nine images, three subjects, one blob. This is
+                            the finding.</span
+                        >
+                    </h3>
+                    <div class="strip" id="strip-sil"></div>
+                </div>
+
+                <div class="band">
+                    <h3>
+                        Round 2 at the selected size
+                        <span
+                            >— a mascot lives at 96pt+; 48 is the stress
+                            test.</span
+                        >
+                    </h3>
+                    <div class="strip" id="strip-cute"></div>
+                </div>
+
+                <div class="callout good">
+                    <h3>
+                        Decided: (2) — a character inside a chalk-branded app
+                    </h3>
+                    <p>
+                        The launcher icon stays the chalk book. The mascot
+                        appears in the six streak moments and the auth hero, at
+                        96pt+ and in colour. Option (1), where the mascot
+                        becomes the brand and the chalk book retires to the
+                        empty states, is what Duolingo does and is
+                        <b>not</b> what we are doing.
+                    </p>
+                    <p>
+                        <b
+                            >That decision has a consequence which also fixes
+                            the identity failure.</b
+                        >
+                        Under (2) the mascot and the chalk artwork share
+                        screens, so rather than merely tolerating two visual
+                        registers,
+                        <b>the mascot holds the chalk book from the icon.</b>
+                        The character is smooth full-colour vector; the prop is
+                        the brand's own chalk mark, textured and white. That
+                        single move does three things at once: it restores the
+                        identity anchor round 2 deleted — a worm with no book is
+                        a slug, a ribbon with no book is a blob — it gives the
+                        silhouette something distinctive to break its outline,
+                        and it reconciles the two registers by making them touch
+                        instead of sitting side by side.
+                    </p>
+                    <p>
+                        <b>Round 3 is written and not yet run:</b>
+                        <code>--style character</code> in
+                        <code>scripts/gen_mascot_art.py</code>. It keeps round
+                        2's proportions, face and the colour clause that
+                        produced the 8.3 delta, and reverses the rest — 10–14
+                        deliberate shapes, two arms, two feet, thin elements
+                        where they carry meaning, eyebrows for expression, the
+                        chalk book as the prop, and the silhouette test stated
+                        as a requirement inside the prompt itself.
+                    </p>
+                    <p>
+                        <b>And a limit worth stating plainly:</b> a
+                        text-to-image model produces a <i>concept</i>, not a
+                        shippable character. The reference mascot was designed
+                        in vector by a studio against a style guide and iterated
+                        for years. The realistic path is to use generation to
+                        settle which creature and which pose, then have the
+                        chosen one redrawn as vector — which is also the only
+                        way it survives <code>flutter_launcher_icons</code>, the
+                        Android monochrome layer, and being animated across six
+                        streak states. Expect round 3 to be good enough to
+                        <i>decide</i> from, not good enough to ship.
+                    </p>
+                    <p>
+                        <b>Still unkeyed.</b> These are JPEGs on flat white. On
+                        the dark surface above they sit on their own white
+                        plate, because nothing in CSS can fake a keyed colour
+                        character. Run <code>scripts/cutout_bg.py</code> before
+                        judging dark placement.
+                    </p>
+                </div>
+            </div>
+
+            <!-- ==================== ROUND 1 — CHALK ==================== -->
+            <div class="round dead">
+                <div class="rhead">
+                    <h2>Round 1 — the chalk pipeline</h2>
+                    <span class="tag fail">rejected · kept as evidence</span>
+                </div>
+                <p class="rlead">
+                    Generated through the shipped empty-state hand: mid-grey
+                    chalk on keyable white, flat, one solid mass, details
+                    knocked out as holes.
+                    <b>Why it failed, stated so it isn't repeated:</b> that
+                    pipeline is a <i>pictogram</i> system, and its constraints
+                    are individually the opposite of what a character needs. It
+                    mandated <b><code>no mouth</code></b> and <i>small</i> eyes.
+                    It is monochrome, so nothing could be endearing by colour.
+                    It is flat and grainy, so nothing read as soft. It says
+                    nothing about proportion, so the model returned adult
+                    proportions. And the subjects were <b>scenes</b> — a worm
+                    plus a three-book stack, a lamp plus a book — where this
+                    genre's mascots are one creature alone. Every one of those
+                    is corrected in round 2.
+                </p>
+
+                <section data-dir="a-mark" data-style="chalk">
+                    <div class="shead">
+                        <h3>A — bookmark ribbon</h3>
+                        <span class="tag fail">reads as a utensil, 3 of 3</span>
+                    </div>
+                    <p class="thesis">
+                        A head on a stalk above a book is a spoon or a gear
+                        shift. The prompt denied "NOT a spoon" explicitly and
+                        got one anyway.
+                    </p>
+                    <div class="row" id="row-a-chalk"></div>
+                </section>
+                <section data-dir="b-worm" data-style="chalk">
+                    <div class="shead">
+                        <h3>B — bookworm on a stack</h3>
+                        <span class="tag">best of the round</span>
+                    </div>
+                    <p class="thesis">
+                        Correct construction, clean knock-outs, no antennae so
+                        no Bugdroid silhouette — and still not a character
+                        anyone would want to meet.
+                    </p>
+                    <div class="row" id="row-b-chalk"></div>
+                </section>
+                <section data-dir="c-lamp" data-style="chalk">
+                    <div class="shead">
+                        <h3>C — reading lamp</h3>
+                        <span class="tag fail">a scene, not a character</span>
+                    </div>
+                    <p class="thesis">
+                        Two objects with a gap, so the gap closes into clutter
+                        at 40pt, and the cut-out eyes land as stickers on
+                        furniture.
+                    </p>
+                    <div class="row" id="row-c-chalk"></div>
+                </section>
+
+                <div class="callout">
+                    <h3>What round 1 still proves</h3>
+                    <p>
+                        <b>Ink coverage worked as a predictor.</b> All nine
+                        landed 21.6–28.3% against the shipped set's 21.3–34.7%
+                        and the 7.3% that got dashed
+                        <code>nomatch</code> rejected, so knocking details out
+                        as holes does reliably keep a pictogram legible at spot
+                        size. That lesson survives; it just isn't what makes a
+                        mascot.
+                    </p>
+                    <table>
+                        <tr>
+                            <th>round</th>
+                            <th>coverage</th>
+                            <th>brand-green delta</th>
+                            <th>verdict</th>
+                        </tr>
+                        <tr>
+                            <td>1 · chalk</td>
+                            <td>21.6 – 28.3%</td>
+                            <td>n/a (monochrome)</td>
+                            <td>legible, unlovable</td>
+                        </tr>
+                        <tr>
+                            <td>2 · cute</td>
+                            <td>23.0 – 41.4%</td>
+                            <td>8.3 – 104.6</td>
+                            <td>lovable; B keeps its meaning</td>
+                        </tr>
+                    </table>
+                    <details>
+                        <summary>the two prompt scaffolds</summary>
+                        <pre>
+round 1 (chalk, /v1/images/edits, icon as reference)
+  "Draw a NEW chalk illustration - do not copy or return &lt;IMAGE_0&gt;..."
+  + SURFACE + subject + MASS + GRAIN + FLAT
+  SURFACE/MASS/GRAIN/FLAT imported from gen_empty_state_art.py so the mascot
+  set and the shipped empty-state set cannot drift apart.
+
+round 2 (cute, /v1/images/generations, NO reference)
+  "Draw: " + subject + CUTE_PROPORTION + CUTE_FACE + CUTE_FORM
+  + CUTE_SIMPLE + CUTE_COLOUR + CUTE_FRAME
+  No reference image on purpose: passing the chalk icon drags the output
+  straight back into round 1's monochrome grain.
+
+re-roll:  python3 scripts/gen_mascot_art.py --style cute --only b-worm --variants 4</pre>
+                    </details>
+                </div>
+            </div>
+        </main>
+
+        <script>
+            const DATA = {
+                cat: {
+                    cat: [
+                        {
+                            v: 1,
+                            f: "cat-green-cat-v2.png",
+                            cov: 22.0,
+                            green: "#009070",
+                            d: 51.9,
+                            note: "THE PICK. Brand-green fur, cream chest and muzzle, orange inner ears and paws, sitting alert on two chalk books with cream ribbons. Used as the reference for all four poses. Note the colour drift: 51.9 from brand, a deeper teal than #09BC8A — correctable, and correcting the base propagates to every pose.",
+                        },
+                        {
+                            v: 2,
+                            f: "cat-green-cat-v1.png",
+                            cov: 27.6,
+                            green: "#008870",
+                            d: 58.8,
+                            note: "Same brief, looser sit, slightly heavier. Kept as the alternate roll.",
+                        },
+                        {
+                            v: 3,
+                            f: "cat-cream-cat-v1.png",
+                            cov: 25.4,
+                            green: "#007048",
+                            d: 101.1,
+                            note: "Natural fur with brand green pushed onto the eyes and the books. Handsome, and the reason green wins: the books carry the brand instead of the character, the cat reads as stock illustration, and the only green left in frame is 101 off brand.",
+                        },
+                    ],
+                    pose: [
+                        {
+                            v: 1,
+                            f: "pose-alert-cat-v1.png",
+                            cov: 21.7,
+                            green: "#008878",
+                            d: 55.8,
+                            note: "sc-increment. Ears perked, tail hooked, mouth open in a delighted little smile — nearly the reference pose with the expression lifted.",
+                        },
+                        {
+                            v: 2,
+                            f: "pose-loaf-cat-v1.png",
+                            cov: 20.7,
+                            green: "#008878",
+                            d: 55.8,
+                            note: "sc-milestone / idle. Paws tucked, settled on a taller three-book stack. Using stack height as the progress indicator is worth pursuing on its own.",
+                        },
+                        {
+                            v: 3,
+                            f: "pose-stretch-cat-v1.png",
+                            cov: 24.0,
+                            green: "#008878",
+                            d: 55.8,
+                            note: "sc-risk, and the most important tile in the set: a wide yawn and a long stretch read as sleepy and content, never as scolding. This is what 'amber and never red' looks like as a drawing rather than as a colour rule.",
+                        },
+                        {
+                            v: 4,
+                            f: "pose-curled-cat-v1.png",
+                            cov: 23.7,
+                            green: "#008878",
+                            d: 55.8,
+                            note: "sc-freeze / sc-broken. Curled asleep on a closed book, keeping the place. A sleeping cat is not a guilt trip — exactly the no-guilt break state the spec asks for and the reference grid gets wrong.",
+                        },
+                    ],
+                },
+                probe: {
+                    hires: [
+                        {
+                            v: 1,
+                            f: "s5-hybrid-probe-v1.png",
+                            cov: 28.6,
+                            green: "#08B088",
+                            d: 12.2,
+                            note: "2k, text-only. Best brand green of the 2k set (delta 12.2). Book is held tighter to the body than v2 so it breaks the outline less, and the cover carries visible speckle texture.",
+                        },
+                        {
+                            v: 2,
+                            f: "s5-hybrid-probe-v2.png",
+                            cov: 27.9,
+                            green: "#00B080",
+                            d: 18.0,
+                            note: "2k, text-only. Best pose and best silhouette of the 2k set — book held clear of the body, tail curl fully legible, hands actually articulated. Used as the reference for the refinement pass.",
+                        },
+                    ],
+                    refine: [
+                        {
+                            v: 1,
+                            f: "s6-refine-probe-v1.png",
+                            cov: 28.6,
+                            green: "#00A880",
+                            d: 24.1,
+                            note: "Refined from s5-hybrid-v2. Design held almost exactly; edges and fills tightened. Retains a little speckle on the book cover.",
+                        },
+                        {
+                            v: 2,
+                            f: "s6-refine-probe-v2.png",
+                            cov: 28.6,
+                            green: "#00A880",
+                            d: 24.1,
+                            note: "Cleanest execution of all 29 images: crisp flat fills, no texture noise, tidiest hands and feet, ribbon reads clearly. Green sits 24.1 from brand — looser than the 2k v1, so colour is the one thing to correct in vector.",
+                        },
+                    ],
+                    probe: [
+                        {
+                            v: 1,
+                            f: "s1-direction-probe-v1.jpg",
+                            cov: 32.3,
+                            green: "#0FA87A",
+                            d: 22,
+                            note: "s1 · art-direction voice. Won the probe on both counts: best face (double catchlights, real eyebrows) and best silhouette, with the book breaking the outline and a tail curl that reads as a worm. Only fault: glossy, faintly plastic shading.",
+                        },
+                        {
+                            v: 2,
+                            f: "s2-idiom-probe-v1.jpg",
+                            cov: 32.2,
+                            green: "#1E7A32",
+                            d: 120,
+                            note: "s2 · aesthetic-family anchor. Cleanest flat vector of the four, but the worst silhouette in the set: an OPEN book held flat against the belly sits inside the body mass and vanishes. Reads as a chick, not a worm — no tail. Green went forest.",
+                        },
+                        {
+                            v: 3,
+                            f: "s3-acting-probe-v1.jpg",
+                            cov: 30.9,
+                            green: "#6CC024",
+                            d: 130,
+                            note: "s3 · character acting. Most personality by a wide margin, and the proof that targeted negation still matters: with 'no text' dropped it wrote BEST BOOK on the cover, and it grew fangs. Green went lime.",
+                        },
+                        {
+                            v: 4,
+                            f: "s4-sheet-probe-v1.jpg",
+                            cov: 27.8,
+                            green: "#0E8F70",
+                            d: 48,
+                            note: "s4 · artifact-type anchor ('character design sheet'). Best construction discipline: crisp flat fills, real outline, no gloss, clearly separable parts. Body reads as a snowman stack rather than a worm, and no tail.",
+                        },
+                    ],
+                    s5: [
+                        {
+                            v: 1,
+                            f: "s5-hybrid-probe-v1.jpg",
+                            cov: 30.0,
+                            green: "#00B888",
+                            d: 10.0,
+                            note: "Closest to brand green of any image in the whole exploration (delta 10.0). Book is held tight to the body, so it breaks the outline less than v2 or v3.",
+                        },
+                        {
+                            v: 2,
+                            f: "s5-hybrid-probe-v2.jpg",
+                            cov: 37.0,
+                            green: "#08A878",
+                            d: 26.9,
+                            note: "Strongest pose: book held well out to the side so it reads unmistakably in silhouette, tail curl at its most legible, best weight distribution. Green sits slightly deep.",
+                        },
+                        {
+                            v: 3,
+                            f: "s5-hybrid-probe-v3.jpg",
+                            cov: 33.0,
+                            green: "#08A880",
+                            d: 22.4,
+                            note: "Cleanest silhouette of the three and the tidiest linework; the ribbon reads even as a black shape. Eyes sit slightly high, so it is a touch less babyish than v2.",
+                        },
+                    ],
+                },
+                cute: {
+                    "a-mark": [
+                        {
+                            v: 1,
+                            f: "a-mark-cute-v1.jpg",
+                            cov: 23.0,
+                            green: "#50C0A0",
+                            d: 74.4,
+                            note: "Palest green of the set and the least legible as anything in particular. The orange nubs read as ears.",
+                        },
+                        {
+                            v: 2,
+                            f: "a-mark-cute-v2.jpg",
+                            cov: 37.9,
+                            green: "#30C890",
+                            d: 41.2,
+                            note: "Best-drawn of the three and closest to brand, but it reads as a small green monkey. The V notch in the base is the only bookmark cue left and it does not carry.",
+                        },
+                        {
+                            v: 3,
+                            f: "a-mark-cute-v3.jpg",
+                            cov: 29.9,
+                            green: "#38C090",
+                            d: 47.5,
+                            note: "Same blob problem, flatter. Confirms A is not recoverable without the book, and the book is what made it a scene.",
+                        },
+                    ],
+                    "b-worm": [
+                        {
+                            v: 1,
+                            f: "b-worm-cute-v1.jpg",
+                            cov: 28.0,
+                            green: "#58C888",
+                            d: 79.9,
+                            note: "Most charming curl and the cream belly reads well, but the green drifted pastel — visibly off brand beside a real #09BC8A surface.",
+                        },
+                        {
+                            v: 2,
+                            f: "b-worm-cute-v2.jpg",
+                            cov: 32.9,
+                            green: "#50C898",
+                            d: 73.4,
+                            note: "Face patch has grown to swallow most of the head, so the silhouette is closer to a ball than a worm. Green also drifted.",
+                        },
+                        {
+                            v: 3,
+                            f: "b-worm-cute-v3.jpg",
+                            cov: 29.5,
+                            green: "#10C088",
+                            d: 8.3,
+                            note: "The pick. Largest eyes, cleanest C-curl, tail tip still reads, and the green is effectively exact brand (delta 8.3). One nit: no orange accent survived, so the warm second colour is missing.",
+                        },
+                    ],
+                    "c-lamp": [
+                        {
+                            v: 1,
+                            f: "c-lamp-cute-v1.jpg",
+                            cov: 41.4,
+                            green: "#70C898",
+                            d: 104.6,
+                            note: "Furthest off brand of all 18 images, and unmistakably a toadstool.",
+                        },
+                        {
+                            v: 2,
+                            f: "c-lamp-cute-v2.jpg",
+                            cov: 32.1,
+                            green: "#18C888",
+                            d: 19.3,
+                            note: "Good green, and the orange collar is the one successful use of the warm accent in the whole round. Still a mushroom.",
+                        },
+                        {
+                            v: 3,
+                            f: "c-lamp-cute-v3.jpg",
+                            cov: 30.8,
+                            green: "#38B888",
+                            d: 47.2,
+                            note: "Stem has vanished entirely into the base, which is precisely how a lamp stops being a lamp.",
+                        },
+                    ],
+                },
+                chalk: {
+                    "a-mark": [
+                        {
+                            v: 1,
+                            f: "a-mark-v1.png",
+                            cov: 22.7,
+                            tone: 153,
+                            note: "Widest head, most spoon-like; eyes sit high enough to read as a skull.",
+                        },
+                        {
+                            v: 2,
+                            f: "a-mark-v2.png",
+                            cov: 21.6,
+                            tone: 140,
+                            note: "Best chalk grain in either round. Still a spatula.",
+                        },
+                        {
+                            v: 3,
+                            f: "a-mark-v3.png",
+                            cov: 22.1,
+                            tone: 145,
+                            note: "Diamond head is the least utensil-like, and now reads as a kite or a key.",
+                        },
+                    ],
+                    "b-worm": [
+                        {
+                            v: 1,
+                            f: "b-worm-v1.png",
+                            cov: 23.8,
+                            tone: 143,
+                            note: "Tall graceful curve, but the top book has a 3D face (breaks FLAT) and the eyes have white rings, so they are drawn on rather than knocked out.",
+                        },
+                        {
+                            v: 2,
+                            f: "b-worm-v2.png",
+                            cov: 28.3,
+                            tone: 146,
+                            note: "Flattest and most on-brief; clean knock-outs. Stubbier and less expressive.",
+                        },
+                        {
+                            v: 3,
+                            f: "b-worm-v3.png",
+                            cov: 24.9,
+                            tone: 123,
+                            note: "Closest chalk tone to the #626A72 target, but the grain thinned toward vector — the failure GRAIN exists to prevent.",
+                        },
+                    ],
+                    "c-lamp": [
+                        {
+                            v: 1,
+                            f: "c-lamp-v1.png",
+                            cov: 23.3,
+                            tone: 141,
+                            note: "Curved stem gives it the most life; this is the Luxo read.",
+                        },
+                        {
+                            v: 2,
+                            f: "c-lamp-v2.png",
+                            cov: 22.3,
+                            tone: 136,
+                            note: "Widest gap, so the two-objects problem is most obvious here.",
+                        },
+                        {
+                            v: 3,
+                            f: "c-lamp-v3.png",
+                            cov: 23.3,
+                            tone: 141,
+                            note: "Eyes came back as outlined googly eyes rather than holes, and the shade lost its tilt.",
+                        },
+                    ],
+                },
+            };
+
+            // Measured drawing bbox as a share of canvas, used to approximate the shipped trim.
+            const BBOX = {
+                "cat-green-cat-v1.png": [59, 87],
+                "cat-green-cat-v2.png": [51, 86],
+                "cat-cream-cat-v1.png": [57, 88],
+                "cat-cream-cat-v2.png": [61, 89],
+                "pose-alert-cat-v1.png": [51, 87],
+                "pose-curled-cat-v1.png": [64, 60],
+                "pose-loaf-cat-v1.png": [45, 90],
+                "pose-stretch-cat-v1.png": [88, 73],
+                "s5-hybrid-probe-v1.png": [64, 82],
+                "s5-hybrid-probe-v2.png": [80, 87],
+                "s6-refine-probe-v1.png": [81, 88],
+                "s6-refine-probe-v2.png": [81, 88],
+                "s1-direction-probe-v1.jpg": [57, 92],
+                "s2-idiom-probe-v1.jpg": [49, 93],
+                "s3-acting-probe-v1.jpg": [56, 89],
+                "s4-sheet-probe-v1.jpg": [46, 86],
+                "s5-hybrid-probe-v1.jpg": [67, 86],
+                "s5-hybrid-probe-v2.jpg": [83, 86],
+                "s5-hybrid-probe-v3.jpg": [79, 81],
+                "a-mark-v1.png": [42, 89],
+                "a-mark-v2.png": [40, 90],
+                "a-mark-v3.png": [40, 88],
+                "b-worm-v1.png": [82, 69],
+                "b-worm-v2.png": [83, 54],
+                "b-worm-v3.png": [82, 54],
+                "c-lamp-v1.png": [80, 64],
+                "c-lamp-v2.png": [80, 67],
+                "c-lamp-v3.png": [71, 67],
+                "a-mark-cute-v1.jpg": [62, 76],
+                "a-mark-cute-v2.jpg": [66, 82],
+                "a-mark-cute-v3.jpg": [64, 78],
+                "b-worm-cute-v1.jpg": [74, 86],
+                "b-worm-cute-v2.jpg": [72, 82],
+                "b-worm-cute-v3.jpg": [76, 84],
+                "c-lamp-cute-v1.jpg": [70, 88],
+                "c-lamp-cute-v2.jpg": [66, 86],
+                "c-lamp-cute-v3.jpg": [68, 84],
+            };
+
+            const state = {
+                surface: "page",
+                size: 96,
+                trim: true,
+                onlyPicks: false,
+                picks: new Set(
+                    JSON.parse(
+                        localStorage.getItem("libstack.mascot.picks") || "[]",
+                    ),
+                ),
+            };
+            const save = () =>
+                localStorage.setItem(
+                    "libstack.mascot.picks",
+                    JSON.stringify([...state.picks]),
+                );
+            const scale = (f) =>
+                state.trim ? 100 / Math.max(BBOX[f][0], BBOX[f][1]) : 1;
+
+            function chip(label, value, verdict, swatch) {
+                const dot = swatch
+                    ? '<span class="sw" style="background:' +
+                      swatch +
+                      '"></span>'
+                    : "";
+                return (
+                    '<span class="chip' +
+                    (verdict ? " " + verdict : "") +
+                    '">' +
+                    dot +
+                    label +
+                    " " +
+                    value +
+                    "</span>"
+                );
+            }
+
+            function buildCards() {
+                // Round 4 first: two groups keyed by pseudo-direction, since the
+                // variable here is the prompt strategy rather than the subject.
+                for (const [tbl, grp, host] of [
+                    ["cat", "cat", "row-c-cat"],
+                    ["cat", "pose", "row-p-cat"],
+                    ["probe", "hires", "row-h-probe"],
+                    ["probe", "refine", "row-r-probe"],
+                    ["probe", "probe", "row-p-probe"],
+                    ["probe", "s5", "row-s-probe"],
+                ]) {
+                    const el = document.getElementById(host);
+                    if (!el) continue;
+                    el.innerHTML = DATA[tbl][grp]
+                        .map(function (it) {
+                            const id = it.f.replace(/\.(jpg|png)$/, "");
+                            const picked = state.picks.has(id);
+                            return (
+                                '<div class="card' +
+                                (picked ? " picked" : "") +
+                                '" data-id="' +
+                                id +
+                                '"><div class="swatch" data-s="' +
+                                state.surface +
+                                '"><img class="cute" src="art/' +
+                                it.f +
+                                '" alt="' +
+                                id +
+                                '" width="232" height="232"></div>' +
+                                '<div class="cap"><code>' +
+                                id.replace("-probe", "") +
+                                "</code>" +
+                                '<button class="pick">' +
+                                (picked ? "picked" : "pick") +
+                                "</button></div>" +
+                                '<div class="chips">' +
+                                chip(
+                                    "ink",
+                                    it.cov + "%",
+                                    it.cov >= 20 ? "ok" : "warn",
+                                ) +
+                                chip("green", it.green, "", it.green) +
+                                chip(
+                                    "\u0394brand",
+                                    it.d,
+                                    it.d <= 40 ? "ok" : "warn",
+                                ) +
+                                "</div>" +
+                                '<p class="note">' +
+                                it.note +
+                                "</p></div>"
+                            );
+                        })
+                        .join("");
+                }
+                for (const style of ["cute", "chalk"]) {
+                    for (const dir of ["a-mark", "b-worm", "c-lamp"]) {
+                        const host = document.getElementById(
+                            "row-" + dir[0] + "-" + style,
+                        );
+                        if (!host) continue;
+                        host.innerHTML = DATA[style][dir]
+                            .map(function (it) {
+                                const id = it.f.replace(/\.(png|jpg)$/, "");
+                                const picked = state.picks.has(id);
+                                const chips = [
+                                    chip(
+                                        "ink",
+                                        it.cov + "%",
+                                        it.cov >= 20 ? "ok" : "warn",
+                                    ),
+                                ];
+                                if (style === "cute") {
+                                    chips.push(
+                                        chip("green", it.green, "", it.green),
+                                    );
+                                    chips.push(
+                                        chip(
+                                            "Δbrand",
+                                            it.d,
+                                            it.d <= 40 ? "ok" : "warn",
+                                        ),
+                                    );
+                                } else {
+                                    chips.push(
+                                        chip(
+                                            "tone",
+                                            it.tone,
+                                            it.tone >= 110 && it.tone <= 160
+                                                ? "ok"
+                                                : "warn",
+                                        ),
+                                    );
+                                }
+                                return (
+                                    '<div class="card' +
+                                    (picked ? " picked" : "") +
+                                    '" data-id="' +
+                                    id +
+                                    '">' +
+                                    '<div class="swatch" data-s="' +
+                                    state.surface +
+                                    '">' +
+                                    '<img class="' +
+                                    style +
+                                    '" src="art/' +
+                                    it.f +
+                                    '" alt="' +
+                                    id +
+                                    '" width="232" height="232">' +
+                                    "</div>" +
+                                    '<div class="cap"><code>' +
+                                    id +
+                                    "</code>" +
+                                    '<button class="pick">' +
+                                    (picked ? "picked" : "pick") +
+                                    "</button></div>" +
+                                    '<div class="chips">' +
+                                    chips.join("") +
+                                    "</div>" +
+                                    '<p class="note">' +
+                                    it.note +
+                                    "</p></div>"
+                                );
+                            })
+                            .join("");
+                    }
+                }
+            }
+
+            function buildStrip() {
+                const strip = document.getElementById("strip-cute");
+                strip.dataset.s = state.surface;
+                const px = state.size,
+                    out = [];
+                for (const dir of ["a-mark", "b-worm", "c-lamp"]) {
+                    for (const it of DATA.cute[dir]) {
+                        const id = it.f.replace(/\.jpg$/, "");
+                        if (state.onlyPicks && !state.picks.has(id)) continue;
+                        const inner = Math.round(px * scale(it.f));
+                        out.push(
+                            '<figure class="cell"><div class="box" style="width:' +
+                                px +
+                                "px;height:" +
+                                px +
+                                'px">' +
+                                '<img class="cute" src="art/' +
+                                it.f +
+                                '" style="width:' +
+                                inner +
+                                "px;height:" +
+                                inner +
+                                'px">' +
+                                "</div><figcaption>" +
+                                id.replace("-cute", "") +
+                                "<br>" +
+                                px +
+                                "px</figcaption></figure>",
+                        );
+                    }
+                }
+                strip.innerHTML = out.length
+                    ? out.join("")
+                    : '<p style="color:var(--muted);font-size:13px;margin:0">No picks yet — click <b>pick</b> on any card.</p>';
+            }
+
+            // Silhouettes are pre-rendered by flattening every non-white pixel to
+            // black. Always shown at a fixed size on a light plate: the point is the
+            // OUTLINE, so the surface and call-site controls would only get in the way.
+            function silStrip(id, files, w) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.innerHTML = files
+                    .map(function (f) {
+                        const n = f.replace(/\.(jpg|png)$/, "");
+                        return (
+                            '<figure class="cell"><div class="box" style="width:' +
+                            w +
+                            "px;height:" +
+                            w +
+                            'px"><img src="art/silhouette/' +
+                            n +
+                            '.png" style="width:' +
+                            w +
+                            "px;height:" +
+                            w +
+                            'px"></div><figcaption>' +
+                            n.replace("-cute", "").replace("-probe", "") +
+                            "</figcaption></figure>"
+                        );
+                    })
+                    .join("");
+            }
+
+            // The streak matrix. Palette and glyph come from the streaks spec, not
+            // from the reference grid: the spec's four states are green (today
+            // recorded), grey (today open), amber (open and late) and blue+snowflake
+            // (a freeze covering a gap) -- and it says "No flame" outright, so the
+            // counter's glyph is the ink stamp and a milestone earns a wax seal.
+            const TILES = [
+                {
+                    st: "sh-bar",
+                    n: 12,
+                    glyph: "\u25c9",
+                    cap: "12 days in a row",
+                    bg: "linear-gradient(160deg,#0E9C74,#067657)",
+                    art: "pose-loaf-cat-v1.png",
+                },
+                {
+                    st: "sc-increment",
+                    n: 13,
+                    glyph: "\u25c9",
+                    cap: "Today\u2019s stamped!",
+                    bg: "linear-gradient(160deg,#12B888,#09BC8A)",
+                    art: "pose-alert-cat-v1.png",
+                },
+                {
+                    st: "sc-milestone",
+                    n: 30,
+                    glyph: "\u2738",
+                    cap: "30 days \u00b7 sealed",
+                    bg: "linear-gradient(160deg,#0E9C74,#0B5B46)",
+                    art: "pose-loaf-cat-v1.png",
+                },
+                {
+                    st: "today open",
+                    n: 13,
+                    glyph: "\u25cb",
+                    cap: "Today\u2019s still open",
+                    bg: "linear-gradient(160deg,#6B7280,#4B5563)",
+                    art: "pose-loaf-cat-v1.png",
+                },
+                {
+                    st: "sc-risk",
+                    n: 13,
+                    glyph: "\u25cb",
+                    cap: "Today counts until 4am",
+                    bg: "linear-gradient(160deg,#D97706,#B54708)",
+                    art: "pose-stretch-cat-v1.png",
+                },
+                {
+                    st: "sc-freeze",
+                    n: 14,
+                    glyph: "\u2744",
+                    cap: "Yesterday\u2019s forgiven",
+                    bg: "linear-gradient(160deg,#3B82F6,#1D4ED8)",
+                    art: "pose-curled-cat-v1.png",
+                },
+                {
+                    st: "sc-broken",
+                    n: 31,
+                    glyph: "\u25c9",
+                    cap: "Your record \u00b7 start again?",
+                    bg: "linear-gradient(160deg,#4B5563,#1F2937)",
+                    art: "pose-curled-cat-v1.png",
+                },
+                {
+                    st: "dormant",
+                    n: 0,
+                    glyph: "\u25cb",
+                    cap: "I kept your place",
+                    bg: "linear-gradient(160deg,#374151,#111827)",
+                    art: "pose-curled-cat-v1.png",
+                },
+            ];
+
+            function buildTiles() {
+                const el = document.getElementById("tiles");
+                if (!el) return;
+                el.innerHTML = TILES.map(
+                    (t) =>
+                        '<div class="tile" style="background:' +
+                        t.bg +
+                        '"><span class="st">' +
+                        t.st +
+                        '</span><div class="cnt"><span class="glyph">' +
+                        t.glyph +
+                        "</span>" +
+                        t.n +
+                        '</div><div class="cap2">' +
+                        t.cap +
+                        '</div><img class="art" src="art/' +
+                        t.art +
+                        '" alt=""></div>',
+                ).join("");
+            }
+
+            function buildSilhouettes() {
+                silStrip(
+                    "strip-sil6",
+                    DATA.cat.cat.concat(DATA.cat.pose).map((it) => it.f),
+                    150,
+                );
+                silStrip(
+                    "strip-sil5",
+                    DATA.probe.hires
+                        .concat(DATA.probe.refine)
+                        .map((it) => it.f),
+                    150,
+                );
+                silStrip(
+                    "strip-sil4",
+                    DATA.probe.probe.concat(DATA.probe.s5).map((it) => it.f),
+                    150,
+                );
+                const cute = [];
+                for (const dir of ["a-mark", "b-worm", "c-lamp"])
+                    for (const it of DATA.cute[dir]) cute.push(it.f);
+                silStrip("strip-sil", cute, 128);
+            }
+
+            const render = () => {
+                buildCards();
+                buildStrip();
+                buildTiles();
+                buildSilhouettes();
+            };
+
+            document
+                .getElementById("surf")
+                .addEventListener("click", function (e) {
+                    const b = e.target.closest("button");
+                    if (!b) return;
+                    state.surface = b.dataset.v;
+                    [...this.children].forEach((c) =>
+                        c.setAttribute("aria-pressed", String(c === b)),
+                    );
+                    document.querySelectorAll(".swatch").forEach((el) => {
+                        el.dataset.s = state.surface;
+                    });
+                    buildStrip();
+                });
+            document
+                .getElementById("size")
+                .addEventListener("click", function (e) {
+                    const b = e.target.closest("button");
+                    if (!b) return;
+                    state.size = Number(b.dataset.v);
+                    [...this.children].forEach((c) =>
+                        c.setAttribute("aria-pressed", String(c === b)),
+                    );
+                    buildStrip();
+                });
+            document
+                .getElementById("trim")
+                .addEventListener("change", function () {
+                    state.trim = this.checked;
+                    buildStrip();
+                });
+            document
+                .getElementById("onlyPicks")
+                .addEventListener("change", function () {
+                    state.onlyPicks = this.checked;
+                    buildStrip();
+                });
+            document.addEventListener("click", function (e) {
+                const btn = e.target.closest(".pick");
+                if (!btn) return;
+                const id = btn.closest(".card").dataset.id;
+                if (state.picks.has(id)) state.picks.delete(id);
+                else state.picks.add(id);
+                save();
+                render();
+            });
+            document.addEventListener("keydown", function (e) {
+                const map = { 1: "40", 2: "48", 3: "96", 4: "120", 5: "240" };
+                if (!map[e.key]) return;
+                const b = document.querySelector(
+                    '#size button[data-v="' + map[e.key] + '"]',
+                );
+                if (b) b.click();
+            });
+
+            render();
+        </script>
+    </body>
+</html>

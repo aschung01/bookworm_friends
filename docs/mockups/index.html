@@ -142,6 +142,161 @@
             </p>
 
             <h2>Open questions</h2>
+            <a class="row" href="mascot/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >A character mascot &mdash; four rounds, and the two ways a
+                        prompt can be wrong</span
+                    >
+                    <span class="badge">solved in round 4 &middot; s5-hybrid</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>It was a prompting problem, and round 4 proves it.</b> Same model,
+                    same endpoint, same subject, no reference image &mdash; the only thing
+                    that changed between round 2&rsquo;s blobs and round 4&rsquo;s
+                    characters is how the prompt was written. Rounds 1&ndash;3 varied the
+                    <i>subject</i> and re-rolled one prompt; round 4 fixed the subject and
+                    varied the <b>prompt strategy</b> across four registers, then
+                    synthesised the winner. The five transferable rules, in order of what
+                    they bought: <b>describe the picture, not the rules</b> &mdash; rounds
+                    1 and 2 ran ~2700 characters of spec and prohibition;
+                    <b>name the artifact type</b>, since &ldquo;app mascot character
+                    design&rdquo; / &ldquo;character design sheet&rdquo; is the phrase that
+                    produced limbs and a readable build;
+                    <b>give it personality and a moment</b>, because appeal follows acting
+                    rather than geometry; <b>keep negations few and targeted</b> &mdash;
+                    round 1 said <i>&ldquo;NOT a spoon&rdquo;</i> and returned three
+                    spoons, yet dropping <i>&ldquo;no text&rdquo;</i> entirely made one
+                    strategy write BEST BOOK on the cover, so a twenty-item wall was the
+                    problem and not negation itself; and
+                    <b>say which feature carries the identity</b>, because the tail curl is
+                    the only cue separating a worm from a chick and just one of four
+                    strategies kept it unprompted.
+                    <b>Measured, not argued:</b> flattened to black silhouettes, all nine
+                    round-2 images are <i>the same blob</i> &mdash; three subjects, nine
+                    images, one shape &mdash; while round 4&rsquo;s resolve head, segments,
+                    curled tail, arm, book and feet. <code>s5-hybrid-v1</code> also lands
+                    on <b>#00B888, a delta of 10.0 from the brand&rsquo;s #09BC8A</b>,
+                    uncorrected.
+                    <b>Decided: (2)</b> &mdash; the launcher icon stays the chalk book and
+                    the mascot lives in the six streak moments and the auth hero, which is
+                    also what motivates the prop: <b>the mascot holds the chalk book from
+                    the icon</b>, restoring the identity anchor round 2 deleted and making
+                    the two visual registers touch rather than merely coexist.
+                    <b>Still open:</b> pick one of the three, key the plate, and redraw it
+                    as vector so it can be posed across all six streak states. Prompts are
+                    code in <code>scripts/gen_mascot_art.py</code>
+                    (<code>--style probe | cute | chalk | character</code>).
+                </div>
+            </a>
+            <a class="row" href="book-details-edit/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Changing a book&rsquo;s shelf and its reading status from
+                        the details page</span
+                    >
+                    <span class="badge">decided &middot; built</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Five treatments for the status line, four for the shelf tab,
+                    drawn over the real hero at 1px&nbsp;=&nbsp;1pt and switchable
+                    by status, locale and theme.
+                    <b>The finding that should be read first:</b> this was not a
+                    missing shortcut, it was a
+                    <b>dead end</b>. <code>showBookStatusBottomSheet</code> had one
+                    caller in the app and it sat behind
+                    <code>ReadingPeriodRow</code>&rsquo;s <code>startDate != null</code>
+                    guard, so an <i>Interested</i> book &mdash;
+                    <b>133 of 472 in production</b> &mdash; could not reach
+                    <i>Reading</i> or <i>Read</i> from anywhere, and the comment
+                    saying it was edited from &ldquo;the library&rsquo;s own
+                    sheets&rdquo; described sheets that do not exist. Shelf was
+                    drag-only: <code>moveBookToShelf</code> had exactly one caller,
+                    <code>ShelfRow</code>&rsquo;s drag. <b>Shipped:</b>
+                    <b><code>change-status</code></b> &mdash; one neutral verb at the
+                    trailing end of the status line, opening the sheet that already
+                    holds <code>BookStatusSelector</code>, so a reader who only logs a
+                    book after finishing it is not routed through status 1 &mdash; and
+                    <b><code>tab-chevron</code></b>, where the shelf tab trades its
+                    count for a chevron and opens a menu of shelves, the count moving
+                    into the menu where it is finally comparative.
+                    <b>Three constraints the page exists to record:</b> the menu is the
+                    platform&rsquo;s own after all &mdash; this page twice claimed it
+                    could not be, first about the behaviour and then about the material.
+                    <code>CNPopupMenuButton</code> does draw its own button, but with
+                    <code>CNButtonStyle.plain</code> and an empty label it draws
+                    <i>nothing</i>, so it can be stacked over the Flutter-drawn tab and
+                    supply only the <code>UIMenu</code> &mdash; the same control the
+                    settings page&rsquo;s <i>Edit profile</i> button is &mdash; with the
+                    app-drawn popover kept as the fallback and
+                    <code>LiquidGlassContainer</code> giving <i>that</i> real glass.
+                    (<code>CNPopupGesture</code> genuinely is unusable: long-press-only,
+                    hardcoded Cupertino colours, no checkmarks.) The
+                    count-for-chevron swap moves the tab&rsquo;s width (<b>+4.5pt in
+                    en, &minus;6.7pt in ko</b>, measured live on the page), which
+                    breaks <code>ShelfLabel</code>&rsquo;s hero width contract at
+                    exactly status 0, the one state whose tab flies; and
+                    <code>ModalRoute.animation</code> reports <b>completed</b> during a
+                    route&rsquo;s first build, which drew the chevron on the one frame
+                    the flight measures from &mdash; the same frame a
+                    <code>UiKitView</code> must not be inside a flying
+                    <code>Hero</code> for. Tokens read from
+                    <code>app_theme.dart</code> and <code>app_text_styles.dart</code>;
+                    9 assertions run on every control change.
+                </div>
+            </a>
+            <a class="row" href="landing-longform/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >The long-form landing page &mdash;
+                        <code>/</code>, with flighty.app as the reference</span
+                    >
+                    <span class="badge open">proposed &middot; 4 open</span>
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    Section-by-section options for the page <code>/</code> does
+                    not serve yet. 19 screens, 2 flows, 11 UI elements, 3
+                    versions: <b><code>flighty-long</code></b> is the faithful
+                    read of Flighty&rsquo;s structure, <b><code>paper</code></b>
+                    argues the dark cinematic hero is borrowed clothing, and
+                    <b><code>shipnow</code></b> is what could deploy this week on
+                    top of what is already live. Frames are a desktop browser at
+                    860pt, a whole-page mini pinned to a real 1120pt desktop
+                    measure, and a <b>390pt phone</b> &mdash; the phone is the
+                    honest primary view, and every flow step draws it.
+                    <b>The finding that should be read first
+                    (<code>proof-honest</code>):</b> about half of
+                    Flighty&rsquo;s page is social proof &mdash; two Apple
+                    awards, five press quotes, a testimonial wall and
+                    &ldquo;+4&nbsp;million users&rdquo; stated twice &mdash; and
+                    every number it rests on is one this product does not have.
+                    Production is <b>137 profiles, 473 books, 11 friendships and
+                    2 App Store ratings</b>, on a 2022 listing whose binary
+                    cannot sign in. So four of Flighty&rsquo;s sections can only
+                    be filled by fabricating them: the wall is drawn as the real
+                    grid with every cell naming <i>the source it would need</i>,
+                    the awards strip is reproduced only to be rejected, and the
+                    proof strip ships <b>guarantees instead of counts</b>.
+                    <b>Also blocked, and not by design:</b> every store badge
+                    here points at that 2022 build, so a converted reader
+                    installs Libstack and cannot sign in &mdash; which is why
+                    <code>shipnow</code> uses a notify field. The recommendation
+                    is <code>hero-card</code>: the artifact is the one asset no
+                    other reading app can show, and the card already prints
+                    <code>@LIBSTACK.APP</code> into the artwork, so a stranger
+                    typing the host by hand should land on the object they saw.
+                    Colours, the white-plank shelf and the flame chip are read
+                    from <code>app_theme.dart</code>,
+                    <code>ShelfRow</code> and
+                    <code>reading_streak_chip.dart</code>. Verified with
+                    <code>node --check</code>, a DOM stub and 39 assertions
+                    covering search, version inheritance, diff direction and a
+                    render pass over all 103 specs.
+                </div>
+            </a>
             <a class="row" href="store-links/index.html">
                 <div class="nm">
                     <span class="t"
