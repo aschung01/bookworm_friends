@@ -17,7 +17,7 @@ un-reviewable. A geometry change is a diff.
 ```bash
 ./rive/streak_flame/build.sh                        # verify, inspect, build, install
 ../../.venv/bin/python rive/streak_flame/smooth.py  # cubic handles and striations, to paste
-../../.venv/bin/python rive/streak_flame/sheet.py   # Ignite, sampled across its 900ms
+../../.venv/bin/python rive/streak_flame/sheet.py   # Ignite, sampled across its 1300ms
 ../../.venv/bin/python rive/streak_flame/motion.py  # the Idle loop, and a GIF of all of it
 ```
 
@@ -52,9 +52,16 @@ bytes rather than the runtime, so unlike the rest of the file it holds on every 
 | `progress` | **seeks** `Ignite` — `animation.time = progress * duration`, then `apply()` |
 | `liveness` | **mixes** `Idle` — `advance(dt)`, then `apply(mix: liveness)`               |
 
-`progress` is **linear** and spans exactly the timeline's own 900ms. That is the whole point of
-the arrangement: the host decides _how far through_ the sequence is, and the artboard decides
-what the sequence _looks like_.
+`progress` is **linear** and spans 900ms of wall time, mapped across the whole of `Ignite`'s own
+**1300ms**. That is the point of the arrangement: the host decides _how far through_ the
+sequence is, and the artboard decides what the sequence _looks like_.
+
+**Timeline milliseconds and wall milliseconds are therefore not the same clock**, and this line
+used to conflate them by calling the timeline 900ms. Every `ms` quoted against a keyframe in
+this document — the strain peaks at 633 and 767, the burst at 1000 — is a position on the
+1300ms timeline. Multiply by 900/1300 to get the wall time it happens at, which is what matters
+when reasoning about overlap with the celebration's other beats: the burst peaks at 692ms of
+wall time, which is why `_alive` starting at 820ms cannot collide with it.
 
 Two consequences fall out of who owns the clock, and both are the reason Rive was acceptable:
 
@@ -90,8 +97,16 @@ What it also delivered:
   [the blend state that never stopped](#three-runtime-defects-the-artboard-exposed).
 
 The rework keeps the clock in Dart and moves the _easing_ into the timelines, where the editor
-and the previewer can both play it. The state machine, the blend state, the view model and the
-data bind are all gone, and the file got smaller.
+and the previewer can both play it. The blend state, the view model and the data bind are all
+gone, and the file got smaller.
+
+**A state machine came back later, and it is not the one that was removed.** `Play` holds two
+`AnimationState`s and one time-gated transition, and exists purely so that pressing play once
+shows `Ignite` running into `Idle` — without a `defaultStateMachineId` the editor and `rive .`
+fall back to the artboard's first animation and the sequence can only be reviewed in halves.
+What was deleted above was a machine the _app_ depended on to pose the artboard, through a
+`StateMachineNamed` selector and a bound view model. Nothing on the Flutter side touches this
+one: `_FlamePainter` is a `BasicArtboardPainter`, which instantiates no machine.
 
 ### And `Idle` reverses an explicit rule
 
@@ -118,21 +133,31 @@ the first version and it looks like an optimisation — it saves a ticker stop/s
 but it means an artboard parked at any value strictly between 0 and 1 asks for frames forever,
 and `streak_flame_golden_test.dart` renders six of those side by side.
 
-## Judging it: four tools, none a superset of another
+## Judging it: seven tools, none a superset of another
 
-|                            | catches                                                        |
-| -------------------------- | -------------------------------------------------------------- |
-| `rive . --verify`          | Luau and shader compilation; exits 1 on error                  |
-| `rive inspect . --summary` | bind paths, animations, and the only `problems` list           |
-| `sheet.py`                 | **whether `Ignite` looks like anything**, sampled across 900ms |
-| `motion.py`                | **whether `Idle` looks like anything**, and whether it seams   |
+|                            | catches                                                         |
+| -------------------------- | --------------------------------------------------------------- |
+| `rive . --verify`          | Luau and shader compilation; exits 1 on error                   |
+| `rive inspect . --summary` | bind paths, animations, and the only `problems` list            |
+| `sheet.py`                 | **whether `Ignite` looks like anything**, sampled across 1300ms |
+| `motion.py`                | **whether `Idle` looks like anything**, and whether it seams    |
+| `apex.py`                  | how far the tip travels vertically against the belly's width    |
+| `flicker.py`               | consecutive frames, and the **per-frame deltas**                |
+| `aspect.py`                | the open squat-vs-widen fork, measured                          |
 
-**Only the last two look at a picture**, and the first two will happily bless a scene that draws
-nonsense. This one passed both with zero problems on its first attempt and still rendered the
-pages _behind_ the covers (a dark mountain with a cream sliver on top), an egg instead of a
-flame, a black peg where the gutter poked out below the flame's base, and — after the rework — an
-idle loop in which **every ember was hidden behind the flame it came off**. None of those is a
-structural error.
+**Only the picture-producing ones find drawing defects**, and the first two will happily bless a
+scene that draws nonsense. This one passed both with zero problems on its first attempt and
+still rendered the pages _behind_ the covers (a dark mountain with a cream sliver on top), an egg
+instead of a flame, a black peg where the gutter poked out below the flame's base, and — after
+the rework — an idle loop in which **every ember was hidden behind the flame it came off**. None
+of those is a structural error.
+
+**And a strip is not a superset of the numbers either**, which is the lesson `apex.py` and
+`flicker.py` were written for. "The tip bounces sideways more than up and down" and "a segment
+stalls for five frames" are both claims about a handful of pixels: the first was settled by a
+ratio (25px of rise against 15px of belly swell) and the second appears _only_ in a per-frame
+delta row, because the total span is identical either way. Both had already been eyeballed on a
+contact sheet and passed.
 
 `sheet.py` is not enough on its own, and the reason changed with the architecture. It used to be
 that a blend state interpolates every property independently, so two correct poses could pass
@@ -358,10 +383,225 @@ real fix to a real defect, and the hinge needs none of them:
   runs to #B54708 at its base were invisible. In front of it, they spend almost their whole life
   over the `#FFE8C4` cream ground, where the two pale tokens are a four-point difference and
   simply are not there. `kCandleFlame` #F2A93F is the one token that reads against both.
-- **The artboard renders at half scale.** `stageSize` is 152pt against a 304×304 artboard. The
-  empty upper half is not waste — it is where the burst and the embers fly.
+- **The artboard is 300×300 and the flame is 46% of it wide and 80% tall — and _neither_ of
+  those numbers is where you change the flame's size.** This bullet has now been wrong twice in
+  opposite directions: it once read "the artboard renders at half scale, `stageSize` is 152pt
+  against a 304×304 artboard", then "the artboard is 480×480 and the flame is 84% of it". Both
+  were true when written and both became setups for the same mistake.
+
+  A reader called the flame small. Measured off a render it was 134 of the artboard's 304 units,
+  so 44% of the frame. The obvious response — grow the artboard so a three-times-taller flame
+  fits — **cannot work on its own**, because `_FlamePainter` is `Fit.contain` into a square
+  `SizedBox`, so on-screen flame height is `(flame ÷ artboard) × size`. The artboard's own
+  dimensions cancel. Growing the frame and growing the drawing inside it are opposite moves,
+  and the first is undone exactly by the fit.
+
+  What reached the screen was two changes made together: the **fraction** (via `smooth.py`'s
+  `SCALE_X` / `SCALE_Y`, with the artboard following so the burst still fits), and the **box**,
+  `StreakFlame.stageSize` 152 → 252.
+
+  **Then a reader said the fire overhung the book, and the identity had to be read the other
+  way.** `SCALE_X` / `SCALE_Y` came down 3 → 1.8 and the artboard 480 → 300 _in the same
+  change_, because shrinking the flame 40% inside a 480 frame would have shrunk it 40% on
+  screen as well and thrown away the reason the box went to 252. Holding the ratio fixed meant
+  the flame kept its size and the **book** grew instead — 44% of the frame's width to 69%. The
+  flame is now 0.663 of the book's width, down from 1.10, which is the "shrink it just around
+  40%" that was asked for. Don't re-inflate it silently.
+
+  |                | units     | of the 300 frame | on screen at `stageSize` 252 |
+  | -------------- | --------- | ---------------- | ---------------------------- |
+  | flame, settled | 138 × 231 | 46% × 77%        | 194px tall                   |
+  | book           | 208 wide  | 69%              | 175px wide                   |
+
+  **`SCALE_X` was 2 for one revision, and that entry used to end with a rule that is too
+  strong.** The argument for 2 was geometric and correct as far as it went: a uniform belly is
+  231 units across against a book 170 wide, so the fire ends up wider than the thing it is
+  burning on. What it missed is that the flame stops reading as a flame first. The aspect went
+  1:1.7 to 1:2.4 and the very next review called the ratio weird.
+
+  The rule written from that was "an aspect ratio arrived at by iteration is not a free
+  parameter to spend on a layout problem", and the narrower claim is the durable one: **using
+  anisotropic scale to fix width-against-the-book is the error, and stretching taller is what
+  made it obvious.** Deliberately going _squatter_ toward a measured reference is a different
+  decision, and is currently open — see [the aspect](#the-aspect-is-the-one-open-question).
+  Uniform scale does preserve tangent angles exactly, so while `SCALE_X == SCALE_Y`,
+  `smooth.py` re-emitting the same `inRotation` / `outRotation` values is a cheap confirmation
+  that the shape is untouched; that check stops being free the moment the two differ.
+
+  The other half of going uniform is that the flame had to be allowed to **stand on the
+  paper**. The base is authored 8 units _into_ the page block, because at 1× that is what
+  stopped it balancing on the gutter and meeting the book in a maroon pinch. Scaled 3× that
+  bite becomes 24 units against a block only 22 thick, so the foot came out of the underside
+  of the book — which is what the earlier `FOOT_Y` hack existed to dodge, by holding the base
+  vertices at their 1× y while everything above them tripled. That is a distortion too, just a
+  local one. `BASE_Y` replaces it: scale everything uniformly, then translate the whole path up
+  so its lowest vertex sits 4 units in. The bite is a contact detail with a physical size and
+  has no business growing with the flame.
+
+  `stageSize` deserves its own note. It was `_Ignition.stageSize`, which is `flameSize * 2`,
+  where `flameSize` is the point size of the flame mark **in the hand-built fallback** (then
+  `kReadingStreakIcon`, a Phosphor glyph; now `StreakFlameMark`, generated from this
+  project's own point lists by `rive/streak_flame/icon.py`). So
+  the Rive flame's size on screen was set by a font glyph's metrics in the code path that only
+  runs when the artboard is missing. That was never a decision — it was the artboard inheriting
+  the only box that already existed — and it is what made the flame un-growable without
+  touching the fallback.
+
+  Two fears about the change that turned out to be unfounded, recorded so they are not
+  re-litigated. The **book does not shrink**: artboard-to-screen scale is now 252/300 = 0.840,
+  up from 0.500 at 152/304 and 0.525 at 252/480, so every detail in the drawing — including the
+  1.2-unit page-edge hairlines, which were the specific worry — has gained at every step. And
+  the **burst is not clipped**: its apex clears the top of the artboard by 21 units, and in
+  `test/goldens/streak_flame_poses.png` the burst cell's topmost lit row is a point rather than
+  a cut. Both of those were settled by measuring pixels, after an earlier round in this same
+  file was lost to eyeballing a zoom.
+
+  What it did cost: **the burst lost height.** The old 1.48 overshoot leaves the top of any
+  frame worth having, so `fire.scaleY`'s peak is 1.17 and the overshoot moved sideways into
+  `scaleX`, where there is room. The burst is therefore a smaller _relative_ jump than the one
+  it replaced, and roughly the same absolute growth in units.
+
+### The aspect is the one open question
+
+Duolingo's flame measures about **1:1.15** wide-to-tall. Ours is **1:1.74**. Once the colour
+and the motion had been dealt with, a reader's "theirs is cute and ours is not" is largely
+this one number, and it is **deliberately unresolved** — because the two ways to close the gap
+cost different things and one of them silently reverses an instruction.
+
+`rive/streak_flame/aspect.py` renders the fork and prints the measurements:
+
+|                   | flame     | aspect | flame/book | top gap | on screen  |
+| ----------------- | --------- | ------ | ---------- | ------- | ---------- |
+| current           | 138 × 231 | 1:1.74 | 0.663      | 43      | 194px tall |
+| squat, keep width | 138 × 200 | 1:1.45 | 0.663      | 74      | 168px tall |
+| wide, keep height | 159 × 231 | 1:1.45 | **0.764**  | 43      | 194px tall |
+
+Widening gives up the 0.663 flame-to-book ratio a reader explicitly asked for; squatting gives
+up 26px of on-screen height. Neither reaches 1:1.15 — that needs a factor near 1.45, not the
+1.15 in the script. **Do not pick one silently**, and note that the prohibition on unequal
+`SCALE_X` / `SCALE_Y` in the size bullet above is narrower than it used to read: what was
+wrong before was using anisotropic scale to fix width-against-the-book, by stretching _taller_.
+
+### `Idle` flickers, and flicker is a claim about rhythm
+
+The first version of the loop was rejected in four words — Duolingo's flame flickers, ours
+bounced — and the measurement explains it exactly. That loop moved the apex 25px vertically
+while swelling the belly 15px horizontally, a ratio of **1.67:1**, on four evenly-spaced beats
+eased with the symmetric `0.45, 0, 0.55, 1` curve. Four smooth symmetric beats over 1.2s is a
+1.7Hz sine, and **a sine is a bounce at any amplitude**, because the eye can predict the next
+frame. Amplitude was never the variable.
+
+What changed:
+
+- **Both scale axes came down to about ±1%** on `flame_outer` and ±4% on `flame_inner`. A
+  silhouette pulsing as a unit _is_ the bounce. Raising `scaleY` for more vertical travel is the
+  obvious move and the wrong one — it lifts the belly along with the tip.
+- **The tips key `Vertex::y` directly**, property key 25, which `rive schema StraightVertex`
+  reports as animatable. This is the only way the top of a flame moves while the body holds
+  still, because any transform scales the belly by the same factor as the apex. **Both** flames
+  get one; the note was about the inner flame too, and a core that only scales is a shape
+  breathing inside a shape that flickers.
+- **The beats are irregular and `linear`** — 18 keys on the body's apex at 3-to-5 frame gaps,
+  13 on the secondary lick, 14 on the core, amplitudes varying beat to beat and straddling
+  zero. Same argument as the embers' opacity: at four-frame gaps each segment is under 70ms,
+  where easing is barely perceptible, so it is the irregularity doing the work.
+
+Result: apex travel 30px, belly wobble 2px, **12.5:1**.
+
+Three things not to undo:
+
+**The tables live in `smooth.py` in raw silhouette units.** They pass through `scaled()` and,
+for the core, `core()`, so a change to `SCALE_Y` or `CORE_SHRINK` carries the loop with the
+shape. Written as keyframes, `-253.4` is correct at 1.8× and an unexplainable constant at any
+other scale — the same class of bug as `motion.py`'s stale `IGNITE_FRAMES` and `_preview.py`'s
+hardcoded 304×304 ground.
+
+**Moving a tip invalidates the Catmull-Rom fit of its neighbours**, since a tangent at `i` is
+computed from `i-1` and `i+1`. Unfitted, the apex climbed past stationary neighbours and the
+curve into it narrowed — the tip _sharpened on every cycle_, quietly undoing the rounded tip
+that had just been chosen over the pointed one. An earlier comment called this unavoidable, on
+the grounds that fixing it meant hand-keying handles and `smooth.py` exists so nobody does
+that. The premise was right and the conclusion wrong: `smooth.py` does not _tune_ handles, it
+**fits** them, and a fitter runs at every keyframe as easily as once. The frame-0 values it
+emits match the authored ones to four decimals, which is the check that there is no step at the
+seam.
+
+**`MIN_LICK_SPEED` guards something no amplitude measurement can see.** With linear
+interpolation, a long gap carrying a small amplitude is not a small beat — it is a _drift_, 1px
+a frame for an eighth of a second, recurring at the same point every 1.2s, which is precisely
+the predictable event a flicker must not contain. The span is unchanged, so it shows up only in
+`flicker.py`'s per-frame delta row. The check rejected three tables that had already
+been eyeballed and passed as irregular.
+
+### Sparks are drawn behind the flame, and that is structural rather than tuned
+
+`burst` is declared after `flame_outer`, and `embers` after `fire`. Draw order is declaration
+order with the front first, so both sprays sit behind the flame and a spark is visible only
+where it has actually cleared the silhouette.
+
+The old arrangement was called measles, and the ten-dot count was the lesser half of it. The
+real defect was visible only with two numbers side by side: **`burst` opacity peaked at 0.95 on
+frame 61 while the node's scale was still 0.41.** The spray was at its brightest exactly when
+it was most bunched and most overlapping. Moving it behind makes overlap self-solving instead
+of something to tune around — dots still inside are occluded, and what reads is sparks leaving
+from behind the flame's edge, which is where sparks come from.
+
+Six dots now, and the scale runs 0.85→1.35 rather than 0.2→1.14. The old range was a pop _out
+of the middle_, correct for a spray drawn in front and wrong for one drawn behind, where
+starting near 1 puts each dot at the silhouette's edge as it lights.
+
+**The artboard is the binding constraint and no tuning gets around it.** At the burst the flame
+is 202 units wide in a 300 frame with its tip 21 from the top, leaving a ~49-unit band each
+side and **no room above**. Sparks go sideways; no dot's `x` exceeds 84, past which it leaves
+the artboard at the burst's peak `fire.scaleX` of 1.28. A spray rising above the tip — which is
+what the reference actually shows — is not available in this frame.
+
+### The core is a teardrop, reversing the oldest note about it
+
+`FLAME_INNER` is a symmetric belly: widest about a third of the way up, tapering to a rounded
+point, 39% of the body's width and 46% of its height.
+
+It used to be the body's own silhouette scaled down, and the note defending that said the core
+had to reuse the outline so the two would read as one flame rather than as a shape with a
+dagger inside it. **The premise was right and the conclusion was inverted.** The body is a tall
+tapering leaf with a lean in it; at 40% that is precisely a dagger. Reusing the outline was
+causing the problem it was written to prevent.
+
+Size was never the issue and is worth stating so it is not "fixed" again: it was 37% × 43.5%
+before against a reference measuring 39% × 44%. Only the shape changed. A variant lifted clear
+of the book's foot was rendered alongside and rejected — the core stays planted.
 
 ### Motion
+
+- **`Ignite` is strain → burst → settle, and the two failures have to be keyed.** It was a single
+  monotonic rise for several revisions: the flame simply got bigger over 22 frames and arrived.
+  That was legible and it was inert. The brief is Duolingo's — _strains to grow, with haptics,
+  then bursts with large fire, then grows down again but larger than before to a lively flame_ —
+  and no curve on one segment can express it, because the point is that the first two attempts
+  **fail**. So the flame is established small (0.44 of where it finishes), pushes up and narrows
+  twice, is dragged back each time to slightly _more_ than it left so the trend under the sawtooth
+  is upward, then bursts. `fire.x` judders ±1.4px on `linear` keys underneath — a tremor is a
+  vibration, and an eased vibration is a wobble. Haptics belong at 633ms, 767ms and 1000ms.
+
+- **Fast and instantaneous are not the same thing, and at 60fps the difference is three frames.**
+  The burst was first keyed across 54→58 on `easeOut` (0.16, 1, 0.3, 1). That curve is so
+  front-loaded that 85% of the growth lands in the _first frame of four_ — rendered frame by
+  frame it is one cell of small flame followed by one cell of large flame, a cut with no gesture
+  in between. Six frames on the milder `0:204` gives five distinct sizes on the way up. This is
+  only visible in an every-frame strip; `sheet.py`'s spaced samples showed a perfectly plausible
+  burst.
+
+- **Don't counter-phase a descendant against its ancestor.** The obvious secondary animation on
+  the burst — `fire` stretches tall, `flame_outer` also stretches tall — _multiplies_, because
+  one contains the other: 1.48 × 1.18 is 1.75, and the fireball came out as a tall thin spike,
+  which is the opposite of bursting. `flame_outer` now balloons _wide_ at the peak (1.14 × 0.94)
+  so the product rounds off to roughly 1.41 × 1.39. Same correction for `flame_inner`: it peaks
+  two frames **ahead** of the body rather than bigger than it, because a core that leads in time
+  reads as the source and a core scaled past its own body comes out through the top of it.
+
+- **Spray has to stay in contact with what it sprayed from.** Scaled up to match a flame three
+  times as tall, the burst ring threw its dots ~230 units clear of a flame 160 wide; at that size
+  pale circles floating free of the fire read as soap bubbles. Its reach is 1.9, not 2.6.
 
 - **Nothing translucent may cross-fade over something dark, in either direction** -- and the
   final answer to this was to stop needing to. Five instances, and the last three were all the
@@ -436,15 +676,37 @@ own, because inventing brand colours is a mistake this repo has already made onc
 |                         |                                                                 |
 | ----------------------- | --------------------------------------------------------------- |
 | `FFFFF3DD`              | the flame's hot tip — `kShareChromeLitInk`                      |
-| `FFFFD479`              | flame core — the record's lit-today highlight                   |
-| `FFF2A93F`              | flame body, and every ember — `kCandleFlame`                    |
-| `FFB54708`              | the flame's burnt foot — `AppColors.light.flame`                |
+| `FFFFD479`              | flame core, and every ember — the record's lit-today highlight  |
+| `FFF2A93F`              | flame body — `kCandleFlame`                                     |
+| `FFB54708`              | _(retired with the burnt foot)_ — `AppColors.light.flame`       |
 | `FF26190A`              | the page-edge hairlines, at a fifth or less — `kCandleStockTop` |
 | `FF130D05`              | _(retired with the gutter wedge)_ — `kCandleStockBottom`        |
 | `FF35230E` / `FF1B1106` | cover board edge — `kCandleWellTop` / `kCandleWellBottom`       |
 | `FFFDFAF1`              | page edges, lit — the record's paper                            |
 | `FFFFE8C4`              | page edges, falling off — `kCandleGlow`                         |
 | `FFD9A96B`              | page edges at the fore edge — `kCandleCoverLight`               |
+
+**A teal cover was built, pushed, and then rejected — recorded because the argument for it was
+strong and still lost.** The objection to the near-black pair is real: those tokens were
+authored for the shareable library card, a dark candlelit scene in which a near-black well is
+correct, and this artboard sits on cream. They make the book the heaviest thing in the frame at
+14.4:1 against the ground and 9.3:1 against the flame body, where the reference being chased
+contains no dark anywhere. `AppColors.light.brandFill` #067657 fixed all of that — 2.8:1 against
+the flame, close to orange's complement so the fire reads hotter against it, and it broke the
+drawing out of being monochrome amber.
+
+**A reader looked at the result and preferred the dark covers.** That is a preference, not a
+measurement, and it settles the question: the contrast figures describe what teal _fixed_, not
+whether the drawing was better for it. The numbers are kept here so the analysis is not re-run
+from scratch by someone who assumes the change was never considered.
+
+Two further candidates, both ruled out on their own terms rather than by preference:
+**`kCandleCoverLight` `#D9A96B`** is already the fore-edge stop in the table above, so the covers
+would have merged into the pages, and **`brand` `#09BC8A`** measures 1.2:1 against the flame — as
+bright as the fire, so the boards stop reading as the thing being burnt on.
+
+The flame's `FFB54708` foot did go, and for a related reason that survives: it put the drawing's
+darkest value exactly where the flame met a near-black cover. Both flames are flat fills now.
 
 The ground is `kCandleGlow` `#FFE8C4`. **A lighter halo is invisible on it**, so the glow is
 warmer rather than brighter.
@@ -467,10 +729,13 @@ page.
 `didAdvance && active`, and a blend state reports itself as always advancing, so with `active`
 left at its default the ticker ran forever. It surfaced as `pumpAndSettle timed out`. The
 workaround was `controller.active = false`, which does not stop the drawing being drawn — it
-gates the ticker, the hit test and the pointer handlers, not `paint`. **This is now moot**: there
-is no state machine, and `_FlamePainter.advance` returns a value it computes itself. Recorded
-because it is a property of blend states rather than of this file, and because the failure it
-produced is the same one the idle loop produces deliberately.
+gates the ticker, the hit test and the pointer handlers, not `paint`. **This is now moot**: no
+blend state remains, nothing instantiates the `Play` machine, and `_FlamePainter.advance`
+returns a value it computes itself. Recorded because it is a property of blend states rather
+than of this file, and because the failure it produced is the same one the idle loop produces
+deliberately. (An earlier wording said "there is no state machine", which stopped being true
+when `Play` was added; the point survives, because what matters is that no _controller_
+advances one.)
 
 **`RiveWidgetBuilder` documents a `RiveFailed` state and a missing asset does not reach it.**
 `FileLoader.file` throws `RiveFileLoaderException` out of `initState`, which takes the subtree
@@ -495,6 +760,17 @@ pointing the widget at a name that cannot resolve; `streak_celebration_test.dart
 `reading_streak_page_test.dart` both call it. In the other direction,
 `streak_flame_test.dart` asserts only what is true on both paths, and its one case that needs the
 library skips itself with a reason.
+
+And it meant, until the flame grew, that **the celebration's layout depended on that gitignored
+library too.** `StreakFlame.build` returned `widget.fallback(context)` bare on the absent path,
+so the widget's height was whatever the fallback happened to be — `_Ignition`'s 152 — while the
+artboard path was 252. A hundred points of column, decided by whether someone had run
+`rive_native:setup`. Worse, it made the new 375×667 case in `streak_celebration_test.dart`
+dishonest: that case exists to prove the taller flame still fits an iPhone SE, and because the
+suite forces the fallback it was measuring the _short_ path while claiming to cover the tall one.
+The fallback is now boxed to `size`, with `Center` rather than a tight box — `_Ignition` lays its
+spark field out across `_Ignition.stageSize`, so forcing it wider would silently rescale the
+hand-built choreography.
 
 ## The drawing itself
 

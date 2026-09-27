@@ -30,7 +30,11 @@ from PIL import Image, ImageDraw
 
 from _preview import BUILD, FPS, GROUND, preview_project, shot
 
-IGNITE_FRAMES = 46
+# Must match `Ignite`'s duration in scene.rml. **This was 46 for two revisions after the
+# timeline went to 54**, so the GIF quietly stopped at 767ms and the tail of the ignition --
+# the part being iterated on -- was never in it. There is no way to read the duration out of
+# the previewer, so the only defence is to change this line in the same commit as the RML.
+IGNITE_FRAMES = 78
 IDLE_FRAMES = 72
 
 # Every other frame: 30fps is enough to judge choreography, and halves a render loop

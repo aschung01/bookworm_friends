@@ -44,9 +44,21 @@ from pathlib import Path
 HERE = Path(__file__).parent
 BUILD = HERE / "build"
 
-# kCandleGlow, the ground `streak_celebration.dart` paints behind the artboard.
-GROUND = (255, 232, 196)
-GROUND_HEX = "FFFFE8C4"
+# The ground the celebration paints behind the artboard.
+#
+# **White, and the app still paints `kCandleGlow` #FFE8C4 — so these disagree on purpose.**
+# Duolingo's streak screen is flat white and the decision was to follow it, but the ground is
+# not in the artboard: `scene.rml` deliberately has no background Fill, because a filled
+# artboard would sit on whatever the app paints as a visible panel. So "the background is
+# white" is one line in `streak_celebration.dart` (`color: kCandleGlow`) plus the `ColoredBox`
+# in `streak_flame_golden_test.dart`, and both are parked while the iteration is Rive-only.
+#
+# Until they move, every strip these scripts write is showing the *intended* ground rather than
+# the shipped one. That is the right way round for judging art — there is no point tuning a
+# flame against a colour we are about to drop — but it means a render from here and a simulator
+# screenshot will not match, and the simulator is the one telling the truth.
+GROUND = (255, 255, 255)
+GROUND_HEX = "FFFFFFFF"
 
 # The previewer's own canvas, for the strips that judge silhouette instead of colour.
 CANVAS = (29, 29, 29)
@@ -66,6 +78,20 @@ def preview_project(
 
     scene = (HERE / "scene.rml").read_text()
 
+    # **The machine has to go, or `first_animation` below is a no-op.** The shipped artboard
+    # carries a `defaultStateMachineId` so a human can press play once and watch `Ignite` run
+    # into `Idle` -- see the note on `<StateMachine>` in `scene.rml`. But the previewer falls
+    # back to the artboard's first animation *only when there is no machine*, and reordering
+    # timelines is the sole means these scripts have of reaching `Idle`. With the machine live,
+    # a request for "Idle frame 20" would quietly render frame 20 of the sequence, which is
+    # `Ignite` -- a wrong picture that looks like a plausible one, which is the worst kind.
+    scene, dropped = re.subn(r'\s*defaultStateMachineId="[^"]*"', "", scene, count=1)
+    if dropped != 1:
+        raise SystemExit(
+            "expected a defaultStateMachineId to strip; if the state machine was removed "
+            "on purpose, delete this block rather than leaving it to fail"
+        )
+
     if first_animation:
         blocks = re.findall(
             r"[ \t]*<LinearAnimation\b.*?</LinearAnimation>\n", scene, re.S
@@ -84,9 +110,21 @@ def preview_project(
 
     # The ground goes immediately before the first interpolator, which is after every
     # shape and therefore backmost: draw order is declaration order, front first.
+    #
+    # **Its size is read out of the artboard rather than written here.** It was hardcoded
+    # 304x304 at (152,152), and the first render after the artboard grew to 480 came back
+    # with a black L down two sides of every cell -- the previewer's own #1D1D1D showing
+    # through where the ground had run out. That looks like a scene bug and is not one,
+    # which is the worst kind of stale constant. `motion.py` had the same defect with
+    # `IGNITE_FRAMES`; anything a preview script needs to know about the scene should be
+    # asked of the scene.
+    box = re.search(r'<Artboard\b[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"', scene)
+    if not box:
+        raise SystemExit("could not read the artboard's size")
+    w, h = box.group(1), box.group(2)
     ground = (
-        f'        <Shape x="152" y="152" name="__ground">\n'
-        f'            <Rectangle width="304" height="304" name="P"/>\n'
+        f'        <Shape x="{float(w) / 2:g}" y="{float(h) / 2:g}" name="__ground">\n'
+        f'            <Rectangle width="{w}" height="{h}" name="P"/>\n'
         f'            <Fill name="Fill"><SolidColor colorValue="{GROUND_HEX}" name="C"/></Fill>\n'
         f"        </Shape>\n\n"
     )

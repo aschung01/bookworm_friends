@@ -29,8 +29,11 @@ from PIL import Image, ImageDraw
 
 from _preview import BUILD, CANVAS, GROUND, preview_project, shot
 
-# Even samples across the 900ms of `Ignite`, plus the last frame.
-SAMPLES_MS = (0, 70, 140, 210, 280, 350, 420, 490, 560, 660, 780, 900)
+# Samples across the 1300ms of `Ignite`. **Not evenly spaced**, and that is the point: the
+# first half-second is one continuous swing with nothing to catch, while 560..1070ms holds
+# two strain peaks (633ms, 767ms) and the burst (1000ms) and needs a cell on each. An even
+# strip across this timeline shows the strain as two arbitrary mid-sizes and reads as noise.
+SAMPLES_MS = (0, 100, 300, 500, 567, 633, 700, 767, 833, 900, 967, 1000, 1067, 1167, 1300)
 
 PAD = 8
 LABEL_H = 14
