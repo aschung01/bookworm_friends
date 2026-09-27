@@ -7,7 +7,7 @@
 // That is the failure mode worth a file of its own. The chip, the sheet's checkbox and
 // the Library Card's tile all depend on `readingDate(DateTime.now())`, and reading the
 // clock separately in three widgets is exactly how they come to disagree across the
-// 4am rollover — one of them says the streak is 12 and another says 11, for ten
+// midnight rollover — one of them says the streak is 12 and another says 11, for ten
 // minutes a night, and nothing reproduces it in daylight. So the clock is read in these
 // providers and nowhere downstream.
 //
@@ -28,8 +28,17 @@ class _FakeReadingDays extends ReadingDaysNotifier {
 
   final Set<DateTime> days;
 
+  /// Takes a set and serves the log the notifier now holds.
+  ///
+  /// **The fixture stayed a set deliberately.** Every case in this file is about
+  /// *membership* — which days are in, and what run that makes — and none of them is about
+  /// attribution, so widening the fixtures would add a null to every line without testing
+  /// anything new. A null book is also a real state rather than a stand-in: it is what a
+  /// row written before the `book_id` column existed looks like.
   @override
-  Future<Set<DateTime>> build() async => days;
+  Future<Map<DateTime, String?>> build() async => {
+    for (final day in days) day: null,
+  };
 }
 
 Future<ProviderContainer> _container(Set<DateTime> days) async {
@@ -145,7 +154,7 @@ void main() {
   group('the three surfaces agree', () {
     test('a run ending today is both current and recorded', () async {
       // One clock read, in the providers, so a chip and a tile cannot land on
-      // different sides of the 4am boundary.
+      // different sides of the midnight boundary.
       final container = await _container(_run(5, endingOn: today));
       expect(container.read(readTodayProvider), isTrue);
       expect(container.read(currentStreakProvider), 5);

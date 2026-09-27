@@ -1,0 +1,2046 @@
+<Rive version="1" kind="fragment">
+    <!--
+      The streak celebration's flame: a book lying flat, opening, with a flame rising out of
+      the gutter.
+
+      ORIENTATION, and this is the second attempt at it. The book lies on the floor and the
+      spine runs away from the camera along Z, so the camera sits **at the book's own level**
+      looking along the spine. What that shows is the *tail edge and nothing else*: the stacked
+      edges of the pages, the edge of the cover boards under them, and a dark notch at the
+      centre where the two halves part. The first version drew the page surfaces splaying open
+      in a V, which is the view from above -- a camera looking down into the book. Wrong: from
+      here the interior is edge-on and invisible. The drawing is a low horizontal slab.
+
+      WHAT OPENING IS. A shut book seen down its spine is one board wide and its full
+      thickness. Opened flat it is nearly two boards wide and about half as thick. So the whole
+      transformation is two properties on one node -- `scaleX` 0.52 -> 1 and `scaleY` 1.9 -> 1
+      -- plus the notch fading in, because a shut book has no visible gutter. That is also why
+      there is no page-surface geometry left to fade or unfold: earlier drafts rotated the
+      halves (which crossed them into a bow tie) and then cross-faded them (which spent the
+      first fifth of the sequence as a grey slab). Neither problem exists in a drawing that
+      never shows the inside.
+
+      WHO OWNS THE MOTION, which changed too. **The easing lives in these timelines, and
+      Flutter drives time linearly.** Previously the poses were six single-frame animations in
+      a 1D blend state scrubbed by a bound number, and the consequence was that the file had no
+      timeline at all: nothing to play in the editor, nothing to play in the previewer, nothing
+      to iterate against. Every review had to go through a contact sheet, and a timing defect
+      hid there for days -- the driving curve crossed the whole sequence in three frames and
+      then held for 470ms, and no still image can show that.
+
+      Now `Ignite` is an ordinary 46-frame timeline with cubic keyframes. It plays in the
+      editor, it plays in `rive .`, and `--advance=250ms` samples it. Flutter seeks it by
+      setting `Animation.time` (see `lib/ui/widgets/streak/streak_flame.dart`), so the host
+      still decides *how far through* the sequence is -- which keeps reduced motion working
+      with no special case and keeps the beat greppable in Dart -- while the *shape* of the
+      motion is authored here, where it can be watched.
+
+      There is deliberately **no state machine, no blend state and no view model**. None of
+      them was earning anything once the timelines existed, and dropping them is what let the
+      file shrink.
+
+      `Idle` is the second timeline and it **loops**: the flame breathes and throws embers so
+      it reads as alive rather than as a decal. Flutter advances it and mixes it in as the
+      ignition lands. That reverses an earlier rule in this file which said nothing may move
+      after the last beat; it was overruled deliberately, and the cost is real and worth
+      stating -- an idle loop repaints for as long as the screen is up. It is a transient
+      celebration with one way out rather than a screen left open, `Idle` is mixed to zero
+      under reduced motion, and the host stops advancing it when it is not wanted.
+
+      COLOURS are shipped tokens, not new ones. `library_card/card_lighting.dart` and
+      `app_theme.dart` own them; this file has picked none of its own, because inventing brand
+      colours is a mistake this repo has already made once.
+
+      **The covers are near-black, and a teal version was built and then rejected.** Worth
+      recording in full, because the argument for changing them was strong and still lost.
+
+      `kCandleWellTop` / `kCandleWellBottom` were authored for the shareable library card — a
+      dark candlelit scene where a near-black well is correct — and this artboard sits on cream.
+      That makes the book the darkest thing in the frame by a wide margin, 14.4:1 against the
+      ground and 9.3:1 against the flame body, where the Duolingo reference being chased
+      contains no dark at all. So `AppColors.light.brandFill` #067657 was tried: a shipped
+      token, 2.8:1 against the flame, close to orange's complement so the fire reads hotter,
+      and it broke the drawing out of being monochrome amber.
+
+      **A reader looked at it and preferred the dark covers.** Not a measurement anyone can
+      re-derive, and it settles it — the contrast figures above describe what teal fixed, not
+      whether the result was better. Keep them here so nobody re-runs the analysis and
+      concludes the change was never considered.
+
+      Two other candidates, both still ruled out on their own terms: `kCandleCoverLight`
+      #D9A96B is already the far stop of the page-edge gradient below, so the covers would
+      merge into the pages; `brand` #09BC8A measures 1.2:1 against the flame, as bright as the
+      fire, so the boards stop reading as the thing being burnt on.
+        FFFFD479  flame core     - the record's lit-today highlight
+        FFF2A93F  flame body     - kCandleFlame
+        FFB54708  flame edge     - AppColors.light.flame
+        FF26190A  the striations  - kCandleStockTop, at 18%
+        FF35230E / FF1B1106  cover board edge - kCandleWellTop / kCandleWellBottom
+        FF130D05  the gutter's floor - kCandleStockBottom
+        FFFDFAF1  page edges, lit    - the record's paper
+        FFFFE8C4  page edges, falling off - kCandleGlow
+        FFD9A96B  page edges, far    - kCandleCoverLight
+        FFFFF3DD  the flame's hot tip - kShareChromeLitInk
+
+      The ground this sits on is kCandleGlow #FFE8C4, painted by `streak_celebration.dart`.
+      A *lighter* halo is invisible on it, so the glow below is warmer rather than brighter.
+    -->
+    <Artboard styleId="0:5" defaultStateMachineId="0:1264" width="360" height="300" name="Flame" id="0:2">
+        <LayoutComponentStyle name="Artboard Style" id="0:5"/>
+
+        <!-- No background Fill: the celebration paints its own cream ground, and a filled
+             artboard would sit on it as a visible panel. `sheet.py` patches a copy of this
+             project to composite against that cream rather than the previewer's #1D1D1D,
+             which is why no preview-only shape ships here any more. -->
+
+        <!-- Draw order is declaration order, FRONT FIRST. -->
+
+        <!-- ============================ THE FIRE ============================ -->
+
+        <!-- The living embers, which belong to `Idle` and not to the ignition. Separate shapes
+             from `burst` on purpose: the burst is a one-off that must be *gone* at rest, and
+             reusing it would mean the resting frame could never be still.
+
+             **Declared in front of the fire, which is not a detail -- it is why the loop was
+             invisible.** They were behind it, spawning around the tip and rising through the
+             body, which is exactly the region the flame occupies; every one of them was
+             occluded for its whole flight, and the first render of `Idle` showed a flame
+             breathing on its own with no spray at all. Nothing else about the timeline was
+             wrong. Drawn in front they read as sparks carried off the tip, which is what they
+             are.
+
+             **All five are `kCandleFlame` #F2A93F, and that reverses an earlier rule here.**
+             When the embers were *behind* the flame the note said never to use #B54708 because
+             an ember the colour of the body it just left is invisible -- and the same argument
+             now rules out the two pale tokens, because in front of the flame an ember spends
+             almost its whole life over the #FFE8C4 cream ground, where #FFD479 is a four-point
+             difference and simply is not there. #F2A93F is the one token in the set that reads
+             against both the ground and the core. The first tuned version used the pale pair at
+             three to five pixels and rendered as dust on the lens.
+
+             **Each is invisible at both ends of its flight, and that is what makes the loop
+             seamless.** Rive holds a keyed property at its *first* keyframe's value for every
+             frame before it, so an ember whose window is 14..40 simply sits at its birthplace
+             from 0 to 14 and at its death place from 40 to 72 -- and jumps back at the seam
+             while its opacity is zero. No snap-back keyframes are needed, and the earlier ones
+             (`frame 45 value -34` and friends) were noise. -->
+        <Node x="180" y="270" name="fire" id="0:20">
+
+            <!-- The shimmer sweep, clipped to the flame's own silhouette: the point is that
+                 the flame gleams, not that a white stripe crosses the screen. Authored
+                 invisible for the same reason as the burst.
+
+                 **26.5 and not 20, because the band's width is absolute and the body's is
+                 not.** `smooth.py`'s `SCALE_X` went 1.8 -> 2.3869 to reach Phosphor's aspect,
+                 which widened the body by a third and left this at 40 units -- so the sweep
+                 fell from 29% of the silhouette to 22% and stopped reading as a gleam. On a
+                 narrow flame a thin band is a highlight; on a broad one it is a crease, and
+                 the render of the settle at 1100ms showed exactly that: a hard diagonal line
+                 down the left shoulder that looks like a fold in the drawing. Scaled by the
+                 same 1.326 it holds its old share, which is the number this was chosen at.
+
+                 Note `fire.scaleX` does *not* need accounting for: this shape is a child of
+                 `fire`, so the burst scales the band and the body together and the ratio is
+                 constant through the animation. Only a change to the *path* moves it. -->
+            <Shape y="-120" rotation="-0.45" opacity="0" name="gleam" id="0:23">
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:260">
+                    <StraightVertex x="-26.5" y="-198" id="0:261"/>
+                    <StraightVertex x="26.5" y="-198" id="0:262"/>
+                    <StraightVertex x="26.5" y="198" id="0:263"/>
+                    <StraightVertex x="-26.5" y="198" id="0:264"/>
+                </PointsPath>
+                <Fill name="Fill" id="0:265">
+                    <LinearGradient startX="-26.5" startY="0" endX="26.5" endY="0" name="Gradient" id="0:266">
+                        <GradientStop colorValue="00FDFAF1" position="0" id="0:267"/>
+                        <GradientStop colorValue="6BFDFAF1" position="0.5" id="0:268"/>
+                        <GradientStop colorValue="00FDFAF1" position="1" id="0:269"/>
+                    </LinearGradient>
+                </Fill>
+                <ClippingShape sourceId="0:25" name="Clip" id="0:270"/>
+            </Shape>
+
+            <!-- The bright core. Its own shape rather than a lighter fill, so it can lick
+                 independently of the body: `rotation` on this and not on the body is the flame
+                 moving rather than the whole flame tilting. -->
+            <Shape y="3" name="flame_inner" id="0:24">
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:271">
+                    <StraightVertex x="0" y="-110.75" radius="9" id="0:272"/>
+                    <CubicDetachedVertex x="24.8238" y="-75.65" inRotation="4.2677" inDistance="13.82" outRotation="1.1261" outDistance="13.82" id="0:273"/>
+                    <CubicDetachedVertex x="35.6842" y="-35.87" inRotation="4.7352" inDistance="11.31" outRotation="1.5937" outDistance="11.31" id="0:274"/>
+                    <CubicDetachedVertex x="23.2723" y="-7.79" inRotation="5.4896" inDistance="8.48" outRotation="2.3481" outDistance="8.48" id="0:275"/>
+                    <CubicDetachedVertex x="0" y="0.4" inRotation="0.0000" inDistance="7.76" outRotation="3.1416" outDistance="7.76" id="0:276"/>
+                    <CubicDetachedVertex x="-23.2723" y="-7.79" inRotation="0.7935" inDistance="8.48" outRotation="3.9351" outDistance="8.48" id="0:277"/>
+                    <CubicDetachedVertex x="-35.6842" y="-35.87" inRotation="1.5479" inDistance="11.31" outRotation="4.6895" outDistance="11.31" id="0:278"/>
+                    <CubicDetachedVertex x="-24.8238" y="-75.65" inRotation="2.0155" inDistance="13.82" outRotation="5.1571" outDistance="13.82" id="0:279"/>
+                </PointsPath>
+                <Fill name="Fill" id="0:280">
+                    <!-- **Flat, and it was a gradient for every revision before this one.** The
+                         core ramped #FFF3DD to #FFD479 down its own height, which is what you
+                         draw when you are rendering fire. A reader's verdict on the rendered
+                         version was that it looked unrefined next to Duolingo's, and the single
+                         largest difference between the two is not shape -- it is that theirs is
+                         two flat colours and ours was four gradient stops across two shapes.
+                         Flat fills read as illustration; ramps read as an attempt at realism
+                         that did not get there. -->
+                    <SolidColor colorValue="FFFFD479" name="C" id="0:281"/>
+                </Fill>
+            </Shape>
+
+            <!-- The body. **A sharp apex, a base wide enough to sit in the gutter, and the
+                 widest point low.**
+                 A flame is widest about a quarter of the way up and tapers over the whole
+                 upper two thirds to a leaning tip. Four mirrored vertices gave an egg; putting
+                 the widest point too low and the base as wide as the shoulders gave a tulip,
+                 flaring and pinching and flaring again; six evenly spaced ones with the widest
+                 at mid-height gave a gothic leaf with near-parallel sides and a maroon pinch
+                 where it met the book. Eight, with a *shoulder* between the apex and the belly
+                 and a base wide enough to sit down in the gutter rather than balance on it, is
+                 what finally read as fire. The apex is a `StraightVertex` so the curves meet in
+                 a corner rather than rounding over, and it sits right of centre so the whole
+                 silhouette leans. Gradient-filled, because a flat fill is what made the
+                 hand-built version read as a sticker.
+
+                 **The handles are `rive/streak_flame/smooth.py`'s output, not hand-tuned, and
+                 that is what fixed the faceting.** A mirrored vertex spends one angle and one
+                 length on both of its segments, so a tangent chosen to suit one neighbour kinks
+                 the other; detached vertices let the script fit a Catmull-Rom tangent through
+                 each point instead. Move a point there and paste, rather than nudging numbers
+                 here.
+
+                 **The ramp is held flat for the top half and only falls to `flame` at the
+                 base.** Run linearly over the whole height -- which is how this started -- the
+                 midtone is a brown-orange nothing, the silhouette has no value contrast
+                 against the core, and the result is the soft airbrushed blob the reader
+                 called plain. A flat saturated body with a burnt foot is both bolder and more
+                 like what fire does. -->
+            <Shape name="flame_outer" id="0:25">
+                <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:285">
+                    <StraightVertex x="19.0952" y="-237.2" radius="18" id="0:286"/>
+                    <CubicDetachedVertex x="78.7677" y="-140" inRotation="4.2962" inDistance="31.49" outRotation="1.1546" outDistance="31.49" id="0:287"/>
+                    <CubicDetachedVertex x="95.476" y="-64.4" inRotation="4.9582" inDistance="22.89" outRotation="1.8166" outDistance="22.89" id="0:288"/>
+                    <CubicDetachedVertex x="45.3511" y="-6.8" inRotation="5.6615" inDistance="19.57" outRotation="2.5199" outDistance="19.57" id="0:289"/>
+                    <CubicDetachedVertex x="0" y="4" inRotation="0.0397" inDistance="15.13" outRotation="3.1813" outDistance="15.13" id="0:290"/>
+                    <CubicDetachedVertex x="-45.3511" y="-10.4" inRotation="0.7080" inDistance="19.38" outRotation="3.8496" outDistance="19.38" id="0:291"/>
+                    <CubicDetachedVertex x="-88.3153" y="-71.6" inRotation="1.4150" inDistance="23.08" outRotation="4.5566" outDistance="23.08" id="0:292"/>
+                    <CubicDetachedVertex x="-66.8332" y="-147.2" inRotation="1.8334" inDistance="22.99" outRotation="4.9750" outDistance="22.99" id="0:293"/>
+                    <StraightVertex x="-52.5118" y="-204.8" radius="14" id="0:299"/>
+                    <StraightVertex x="-23.869" y="-183.2" radius="9" id="0:300"/>
+                </PointsPath>
+                <Fill name="Fill" id="0:294">
+                    <!-- **One flat colour, and the burnt foot is gone entirely.** It ramped to
+                         `flame` #B54708 over the last 12% -- itself a correction from the last
+                         48%, which had put the drawing's darkest value exactly where the flame
+                         meets a near-black cover. The remaining sliver went the same way for
+                         the same reason a reader gave about the whole thing: **there is no dark
+                         anywhere in Duolingo's flame.** A burnt base is an observation about
+                         real fire, and this is not a picture of real fire.
+
+                         This reverses the oldest note in this file, which said a flat saturated
+                         body with a burnt foot is bolder than a linear ramp and more like what
+                         fire does. Both halves of that were true and the second one stopped
+                         being the goal. -->
+                    <SolidColor colorValue="FFF2A93F" name="C" id="0:295"/>
+                </Fill>
+            </Shape>
+
+            <!-- The ignition burst. **Generated, not authored: see `burst.py`.** Twelve bits,
+                 each with its own flight, its own clock and its own morph, drawn from one seeded
+                 RNG. Everything below this comment down to the closing `</Node>`, plus the
+                 `KeyedObject`s for it in `Ignite`, is that script's output; edit the recipe there
+                 and re-run, do not nudge numbers here.
+
+                 **It is declared after `flame_outer`, which is deliberate.** Draw order is
+                 declaration order, front first, so this sits *behind* both flame shapes and a bit
+                 is visible only where it has cleared the silhouette. It used to be the first
+                 child of `fire`, i.e. frontmost, and a reader called the result measles. The
+                 count was part of it -- ten dots -- but the real defect was the timing, and it
+                 was invisible until the two numbers were put side by side: opacity peaked at
+                 **0.95 on frame 61** while the node's scale was still only **0.41**, so ten pale
+                 discs lit up at their brightest while they were still bunched on top of the body.
+                 Behind the flame, overlap is self-solving rather than something to tune around.
+
+                 **What replaced the six dots, and why.** A reader compared the spray to a
+                 Duolingo still: "the shapes morph, and initial position and travel paths of each
+                 are more random". The old six were children of this node while it carried
+                 `scaleX`/`scaleY` 0.85 -> 1.35 and one shared opacity envelope -- so they left on
+                 the same radial line at the same speed, brightened and died on the same frame,
+                 were circles within 2 units of one size, and sat in near-mirrored pairs (+-76,
+                 +-84, +-58). The `embers` group below already did the opposite, per-particle, so
+                 this was the odd one out rather than the file lacking a pattern.
+
+                 **Morph is `width`/`height`/`cornerRadiusTL` on each `Rectangle`, never
+                 `scaleX`/`scaleY` on its `Shape`.** Scaling the node is a zoom: the corner radius
+                 scales with everything else, so a rounded square stays the same rounded square
+                 and only gets bigger. Keying the parametric path turns a bar into a stub and a
+                 pill into a rounded square, which is the thing the reference is doing.
+
+                 **This node no longer carries `opacity="0"`, and that is load-bearing.** Rive
+                 multiplies a parent's opacity into its children, so with the reveal moved onto
+                 the individual bits an authored-invisible group renders an empty frame -- which
+                 looks exactly like a broken keyframe table. Each `Shape` is authored at 0
+                 instead, the way `embers` does it, so the resting artboard still wears no spray.
+
+                 **The artboard is 360 wide because of this spray.** At 300 square the field
+                 between the settled silhouette (half-width 93) and the frame's edge (150) was 57
+                 units, and 10 at the burst peak, so bits placed for the old narrower flame spent
+                 their whole flight occluded. Widening to 360 puts the reach at 1.94 flame
+                 half-widths against the reference's estimated 2.0-2.5, and it costs nothing on
+                 screen because the box grew with it -- see `StreakFlame.artboardAspect`. Bits go
+                 sideways and up; there is no room below (the book) and little above (the burst's
+                 tip clears the top by 19).
+
+                 **Only the two bright tokens and never `flame` #B54708**: some of these cross a
+                 book cover, and an ember the colour of what it left is an ember nobody can see.
+                 The mix is weighted toward `#F2A93F` because these now sit on white paper rather
+                 than on the flame, and `#FFD479` nearly disappears there. -->
+            <Node y="-48" name="burst" id="0:21">
+                <Shape x="-39.57" y="-197.62" rotation="3.4534" opacity="0" id="0:2001"><Rectangle width="8.52" height="5.62" cornerRadiusTL="2.49" name="Path" id="0:2002"/>
+                    <Fill name="Fill" id="0:2003"><SolidColor colorValue="FFF2A93F" name="C" id="0:2004"/></Fill></Shape>
+                <Shape x="110.28" y="-88.21" rotation="5.7874" opacity="0" id="0:2005"><Rectangle width="4.23" height="5.82" cornerRadiusTL="2.01" name="Path" id="0:2006"/>
+                    <Fill name="Fill" id="0:2007"><SolidColor colorValue="FFF2A93F" name="C" id="0:2008"/></Fill></Shape>
+                <Shape x="-29.20" y="-188.93" rotation="3.6710" opacity="0" id="0:2009"><Rectangle width="3.76" height="7.97" cornerRadiusTL="1.39" name="Path" id="0:2010"/>
+                    <Fill name="Fill" id="0:2011"><SolidColor colorValue="FFFFD479" name="C" id="0:2012"/></Fill></Shape>
+                <Shape x="143.42" y="-23.38" rotation="3.0380" opacity="0" id="0:2013"><Rectangle width="8.27" height="10.32" cornerRadiusTL="3.28" name="Path" id="0:2014"/>
+                    <Fill name="Fill" id="0:2015"><SolidColor colorValue="FFF2A93F" name="C" id="0:2016"/></Fill></Shape>
+                <Shape x="-126.98" y="-12.54" rotation="3.7684" opacity="0" id="0:2017"><Rectangle width="4.96" height="9.31" cornerRadiusTL="1.79" name="Path" id="0:2018"/>
+                    <Fill name="Fill" id="0:2019"><SolidColor colorValue="FFF2A93F" name="C" id="0:2020"/></Fill></Shape>
+                <Shape x="97.65" y="-113.08" rotation="5.9101" opacity="0" id="0:2021"><Rectangle width="3.00" height="7.30" cornerRadiusTL="1.23" name="Path" id="0:2022"/>
+                    <Fill name="Fill" id="0:2023"><SolidColor colorValue="FFF2A93F" name="C" id="0:2024"/></Fill></Shape>
+                <Shape x="-127.08" y="-24.05" rotation="4.2681" opacity="0" id="0:2025"><Rectangle width="5.34" height="7.19" cornerRadiusTL="2.27" name="Path" id="0:2026"/>
+                    <Fill name="Fill" id="0:2027"><SolidColor colorValue="FFF2A93F" name="C" id="0:2028"/></Fill></Shape>
+                <Shape x="47.21" y="-213.05" rotation="0.6589" opacity="0" id="0:2029"><Rectangle width="3.87" height="6.76" cornerRadiusTL="1.37" name="Path" id="0:2030"/>
+                    <Fill name="Fill" id="0:2031"><SolidColor colorValue="FFFFD479" name="C" id="0:2032"/></Fill></Shape>
+                <Shape x="-54.62" y="-194.21" rotation="0.5023" opacity="0" id="0:2033"><Rectangle width="3.62" height="6.44" cornerRadiusTL="1.67" name="Path" id="0:2034"/>
+                    <Fill name="Fill" id="0:2035"><SolidColor colorValue="FFFFD479" name="C" id="0:2036"/></Fill></Shape>
+                <Shape x="70.49" y="-79.68" rotation="4.9880" opacity="0" id="0:2037"><Rectangle width="6.13" height="9.68" cornerRadiusTL="2.00" name="Path" id="0:2038"/>
+                    <Fill name="Fill" id="0:2039"><SolidColor colorValue="FFF2A93F" name="C" id="0:2040"/></Fill></Shape>
+                <Shape x="-97.96" y="-33.10" rotation="6.0530" opacity="0" id="0:2041"><Rectangle width="6.03" height="7.89" cornerRadiusTL="2.72" name="Path" id="0:2042"/>
+                    <Fill name="Fill" id="0:2043"><SolidColor colorValue="FFF2A93F" name="C" id="0:2044"/></Fill></Shape>
+                <Shape x="106.86" y="-14.85" rotation="4.1651" opacity="0" id="0:2045"><Rectangle width="9.51" height="5.72" cornerRadiusTL="1.91" name="Path" id="0:2046"/>
+                    <Fill name="Fill" id="0:2047"><SolidColor colorValue="FFF2A93F" name="C" id="0:2048"/></Fill></Shape>
+            </Node>
+        </Node>
+
+        <!-- The idle spray, and **it is declared after `fire` for the same reason the burst is
+             declared after `flame_outer`**: behind the flame, so an ember is seen only once it
+             has left the silhouette. It was in front, and had the same defect as the burst in a
+             quieter form -- e1 is born at (125, 154) in artboard space, which is squarely inside
+             the body, so the first third of every ember's flight was a pale disc sliding across
+             the flame. Behind, the birth is hidden and what reads is the part that matters: an
+             ember clearing the edge and rising past the tip, which is the one spark the reference
+             actually shows.
+
+             **Each is invisible at both ends of its flight, and that is what makes the loop
+             seamless.** Rive holds a keyed property at its *first* keyframe's value for every
+             frame before it, so an ember whose window is 14..40 simply sits at its birthplace
+             from 0 to 14 and at its death place from 40 to 72 -- and jumps back at the seam
+             while its opacity is zero. No snap-back keyframes are needed, and the earlier ones
+             (`frame 45 value -34` and friends) were noise. -->
+        <Node x="180" y="270" name="embers" id="0:30">
+            <Shape x="-25.2" y="-116.16" opacity="0" name="e1" id="0:31">
+                <Ellipse width="7" height="7" name="Path" id="0:205"/>
+                <Fill name="Fill" id="0:206"><SolidColor colorValue="FFF2A93F" name="C" id="0:207"/></Fill>
+            </Shape>
+            <Shape x="25.2" y="-105.6" opacity="0" name="e2" id="0:32">
+                <Ellipse width="6" height="6" name="Path" id="0:208"/>
+                <Fill name="Fill" id="0:209"><SolidColor colorValue="FFF2A93F" name="C" id="0:210"/></Fill>
+            </Shape>
+            <Shape x="3.6" y="-155.76" opacity="0" name="e3" id="0:33">
+                <Ellipse width="5" height="5" name="Path" id="0:211"/>
+                <Fill name="Fill" id="0:212"><SolidColor colorValue="FFF2A93F" name="C" id="0:213"/></Fill>
+            </Shape>
+            <Shape x="36" y="-81.84" opacity="0" name="e4" id="0:34">
+                <Ellipse width="4.5" height="4.5" name="Path" id="0:214"/>
+                <Fill name="Fill" id="0:215"><SolidColor colorValue="FFF2A93F" name="C" id="0:216"/></Fill>
+            </Shape>
+            <Shape x="-32.4" y="-92.4" opacity="0" name="e5" id="0:35">
+                <Ellipse width="6" height="6" name="Path" id="0:217"/>
+                <Fill name="Fill" id="0:218"><SolidColor colorValue="FFF2A93F" name="C" id="0:219"/></Fill>
+            </Shape>
+        </Node>
+
+        <!-- ============================ THE BOOK ============================ -->
+        <!--
+          **The spine is the hinge, and that is the whole rig.** This is the second mechanism
+          and the first one was wrong in a way that showed: the book used to be a single node
+          whose "opening" was `scaleX` 0.52 -> 1 and `scaleY` 1.9 -> 1, which contains no spine
+          anywhere. The consequence was that the shut pose was two parallel dark bars with a
+          cream filling and read as an equals sign, and the covers never hinged -- they slid
+          apart. A reader called it immediately.
+
+          From this camera the spine runs away along Z, so it is a *point* in our view, and
+          opening a book is the front cover plus half the page block **rotating 180 degrees
+          about that point** -- an ordinary in-plane rotation. `leaf` is that half. `base` is the
+          half that stays. The 2:1 thickness relationship a book has between shut and open then
+          falls out of the geometry instead of being faked: shut, the two halves are stacked
+          (44 units); open, they are side by side (22).
+
+          Three properties and no opacity anywhere, which is the other thing this bought. The
+          old rig needed a front board to fade or collapse, a filler to cover the page taper,
+          and a gutter to fade in, and every gradual version of that handoff composited to grey
+          mud -- see the history in `docs/streak-flame-rive.md`. A hinge needs none of them:
+          `leaf.rotation`, `spine.scaleY`, and `book.x` so the spine ends up centred.
+
+          The cross-section, shut, from the ground up:
+              0 ..  -8   the back board, edge-on
+             -8 .. -30   its half of the page block
+            -30 .. -52   the leaf's half of the block, resting on it
+            -52 .. -60   the front board
+          and the spine capping all four on the left, from -60 to 0.
+
+          **But the authored values here are the OPEN pose, not the shut one, and that matters
+          outside the app.** `Ignite` keys every one of these properties at frame 0, so the shut
+          pose is established by the timeline and the authored value is never what the app
+          draws. What the authored value *is* is what anything that plays a different timeline
+          sees -- and `Idle` keys the flame, the core and the glow and nothing else, because it
+          has no business re-stating a pose the ignition already reached. Authored shut, playing
+          `Idle` on its own in the Rive Editor therefore showed a living flame standing on a
+          **closed book**, which is nonsense, and the same was true of any runtime that named
+          `Idle` first.
+
+          The scripts in this directory used to paper over it by patching these attributes in a
+          copy of the project before rendering, which meant the preview was right and the file
+          was wrong. Authoring the resting pose is the actual fix: it costs nothing, it deletes
+          that whole mechanism, and it makes a still render of the artboard -- or a runtime that
+          fails to find `Ignite` at all -- show a book lying open with a flame on it, which is
+          the only sensible thing for either to show.
+
+          **Twenty-two units of paper per half, up from fifteen, and no fore-edge chamfer.**
+          At fifteen the open book was a five-pixel cream sliver on a three-pixel dark line and
+          read as a ruler with graduations rather than as a book -- the striations filled the
+          whole band because there was no band to speak of. The chamfer went at the same time:
+          bevelling both halves' outer top corners opened a wedge between them as they stacked,
+          which drew a dark notch in the shut book's fore edge and made the whole thing read as
+          a battery icon. A rounded corner does the same job with nothing to misalign.
+
+          **The page block is a constant thickness, which is a concession.** Half a text block
+          in an open book does thin toward the gutter, and it was drawn that way -- but a taper
+          reflected through the hinge leaves a wedge-shaped *gap* between the two halves when
+          they are stacked, and a shut book has no gap in the middle of its pages. The shallow V
+          an open book rests in is carried instead by tilting each half three degrees, which is
+          cheaper and has no such side effect.
+        -->
+        <Node x="180" y="290" name="book" id="0:40">
+
+            <!-- The half that travels: the front cover and the pages above the midline. Its
+                 own origin is the hinge, so `rotation` is the only thing that moves it.
+                 Declared first, therefore frontmost, because it passes over the other half on
+                 its way round.
+
+                 Note the *reversed* stacking: going up from the hinge it is pages then board,
+                 because the front cover is on top of a shut book. After 180 degrees the board
+                 is underneath, which is where a cover laid open belongs -- so the flip sorts
+                 the layering out by itself and nothing has to be keyed for it. Both gradients
+                 are authored to be read *after* the flip for the same reason. -->
+            <Node y="-30" rotation="-3.0892" name="leaf" id="0:42">
+                <!-- The page-edge hairlines. **They run ACROSS the block, parallel to the
+                     cover -- not up it**, and this was drawn the other way round for several
+                     passes. It is the most basic thing the drawing got wrong: the pages are
+                     sheets lying flat, stacked through the block's thickness, so looking at
+                     the block's edge each sheet is one thin *horizontal* band and the shadows
+                     between them are horizontal too. Vertical hairlines correspond to nothing
+                     physical at all -- they read as a comb, or as a ruler's graduations, which
+                     is how every review described them, without anyone (including the reviews
+                     that used those exact words) naming the cause.
+
+                     **Dark, at a fifth or less.** Five wide *pale* bars per side, over a band
+                     that itself runs pale-to-tan, meant that near the fore edge the striation
+                     was lighter than what it sat on. A paper edge is a shadow between sheets:
+                     the same ink the copy is set in, nearly transparent, with the alpha varied
+                     so the stack does not read as ruled notepaper.
+
+                     **Generated by `smooth.py`, not hand-fitted**, because the leaf's have to
+                     be authored in mirrored local space -- its 180-degree flip runs its y the
+                     other way -- so that both halves' layers line up across the gutter once the
+                     book is open, and stack into an evenly ruled slab when it is shut. Run the
+                     script and paste. -->
+                <Shape x="55" y="-3" name="ls1" id="0:830"><Rectangle width="86" height="1.2" name="P" id="0:831"/>
+                    <Fill name="Fill" id="0:832"><SolidColor colorValue="3026190A" name="C" id="0:833"/></Fill></Shape>
+                <Shape x="55" y="-7" name="ls2" id="0:834"><Rectangle width="86" height="1.2" name="P" id="0:835"/>
+                    <Fill name="Fill" id="0:836"><SolidColor colorValue="2226190A" name="C" id="0:837"/></Fill></Shape>
+                <Shape x="55" y="-11" name="ls3" id="0:838"><Rectangle width="86" height="1.2" name="P" id="0:839"/>
+                    <Fill name="Fill" id="0:840"><SolidColor colorValue="2C26190A" name="C" id="0:841"/></Fill></Shape>
+                <Shape x="55" y="-15" name="ls4" id="0:842"><Rectangle width="86" height="1.2" name="P" id="0:843"/>
+                    <Fill name="Fill" id="0:844"><SolidColor colorValue="1C26190A" name="C" id="0:845"/></Fill></Shape>
+                <Shape x="55" y="-19" name="ls5" id="0:846"><Rectangle width="86" height="1.2" name="P" id="0:847"/>
+                    <Fill name="Fill" id="0:848"><SolidColor colorValue="2826190A" name="C" id="0:849"/></Fill></Shape>
+                <Shape name="leaf_pages" id="0:650">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:651">
+                        <StraightVertex x="6" y="-22" id="0:652"/>
+                        <StraightVertex x="104" y="-22" radius="4" id="0:653"/>
+                        <StraightVertex x="104" y="0" radius="4" id="0:654"/>
+                        <StraightVertex x="6" y="0" id="0:655"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:656">
+                        <LinearGradient startX="6" startY="-11" endX="104" endY="-11" name="Gradient" id="0:657">
+                            <GradientStop colorValue="FFFDFAF1" position="0" id="0:658"/>
+                            <GradientStop colorValue="FFFFE8C4" position="0.55" id="0:659"/>
+                            <GradientStop colorValue="FFD9A96B" position="1" id="0:660"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+                <Shape name="leaf_board" id="0:661">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:662">
+                        <StraightVertex x="0" y="-30" id="0:663"/>
+                        <StraightVertex x="104" y="-30" radius="3" id="0:664"/>
+                        <StraightVertex x="104" y="-22" radius="3" id="0:665"/>
+                        <StraightVertex x="0" y="-22" id="0:666"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:667">
+                        <LinearGradient startX="0" startY="-30" endX="0" endY="-22" name="Gradient" id="0:668">
+                            <GradientStop colorValue="FF1B1106" position="0" id="0:669"/>
+                            <GradientStop colorValue="FF35230E" position="1" id="0:670"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+            </Node>
+
+            <!-- The half that stays: the back cover and the pages below the midline. It only
+                 tilts, by the same three degrees the leaf overshoots 180 by, so the pair comes to
+                 rest in the shallow V an open book actually lies in rather than dead flat. -->
+            <Node rotation="-0.0524" name="base" id="0:43">
+                <Shape x="55" y="-27" name="bs1" id="0:850"><Rectangle width="86" height="1.2" name="P" id="0:851"/>
+                    <Fill name="Fill" id="0:852"><SolidColor colorValue="3026190A" name="C" id="0:853"/></Fill></Shape>
+                <Shape x="55" y="-23" name="bs2" id="0:854"><Rectangle width="86" height="1.2" name="P" id="0:855"/>
+                    <Fill name="Fill" id="0:856"><SolidColor colorValue="2226190A" name="C" id="0:857"/></Fill></Shape>
+                <Shape x="55" y="-19" name="bs3" id="0:858"><Rectangle width="86" height="1.2" name="P" id="0:859"/>
+                    <Fill name="Fill" id="0:860"><SolidColor colorValue="2C26190A" name="C" id="0:861"/></Fill></Shape>
+                <Shape x="55" y="-15" name="bs4" id="0:862"><Rectangle width="86" height="1.2" name="P" id="0:863"/>
+                    <Fill name="Fill" id="0:864"><SolidColor colorValue="1C26190A" name="C" id="0:865"/></Fill></Shape>
+                <Shape x="55" y="-11" name="bs5" id="0:866"><Rectangle width="86" height="1.2" name="P" id="0:867"/>
+                    <Fill name="Fill" id="0:868"><SolidColor colorValue="2826190A" name="C" id="0:869"/></Fill></Shape>
+                <Shape name="base_pages" id="0:703">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:704">
+                        <StraightVertex x="6" y="-30" id="0:705"/>
+                        <StraightVertex x="104" y="-30" radius="4" id="0:706"/>
+                        <StraightVertex x="104" y="-8" radius="4" id="0:707"/>
+                        <StraightVertex x="6" y="-8" id="0:708"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:709">
+                        <LinearGradient startX="6" startY="-19" endX="104" endY="-19" name="Gradient" id="0:710">
+                            <GradientStop colorValue="FFFDFAF1" position="0" id="0:711"/>
+                            <GradientStop colorValue="FFFFE8C4" position="0.55" id="0:712"/>
+                            <GradientStop colorValue="FFD9A96B" position="1" id="0:713"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+                <Shape name="base_board" id="0:714">
+                    <PointsPath isClosed="true" isClockwise="true" name="Path" id="0:715">
+                        <StraightVertex x="0" y="-8" id="0:716"/>
+                        <StraightVertex x="104" y="-8" radius="3" id="0:717"/>
+                        <StraightVertex x="104" y="0" radius="3" id="0:718"/>
+                        <StraightVertex x="0" y="0" id="0:719"/>
+                    </PointsPath>
+                    <Fill name="Fill" id="0:720">
+                        <LinearGradient startX="0" startY="-8" endX="0" endY="0" name="Gradient" id="0:721">
+                            <GradientStop colorValue="FF35230E" position="0" id="0:722"/>
+                            <GradientStop colorValue="FF1B1106" position="1" id="0:723"/>
+                        </LinearGradient>
+                    </Fill>
+                </Shape>
+            </Node>
+
+            <!-- The spine: **one shape doing two jobs, which is why there is no cross-fade
+                 left in this drawing.** Shut, it is the rounded cap joining the two covers down
+                 the left-hand side -- the thing whose absence made the old shut pose read as
+                 two floating bars. Open, squashed to half its height, it is the dark gutter the
+                 flame comes out of, flush with the page tops so it never stands proud of them.
+                 The previous rig needed a separate gutter shape fading in over the cream, which
+                 is mud; a hinge only needs `scaleY`.
+
+                 Behind both halves, so shut it shows only as the cap past their left edge, and
+                 open only as the strip between their inner ends. -->
+            <Shape scaleY="0.5" name="spine" id="0:41">
+                <Rectangle width="18" height="60" originY="1" cornerRadiusTL="6" name="P" id="0:724"/>
+                <Fill name="Fill" id="0:725">
+                    <LinearGradient startX="0" startY="-60" endX="0" endY="0" name="Gradient" id="0:726">
+                        <GradientStop colorValue="FF35230E" position="0" id="0:727"/>
+                        <GradientStop colorValue="FF1B1106" position="1" id="0:728"/>
+                    </LinearGradient>
+                </Fill>
+            </Shape>
+
+            <!-- The contact shadow, which is the only thing telling the eye the book is lying
+                 on something rather than floating. Inside the book node so it travels with it,
+                 and keyed to widen and re-centre as the halves spread. -->
+            <Shape y="1" name="shadow" id="0:44">
+                <Ellipse width="250" height="20" name="Path" id="0:729"/>
+                <Fill name="Fill" id="0:730">
+                    <RadialGradient startX="0" startY="0" endX="0" endY="10" name="Gradient" id="0:731">
+                        <GradientStop colorValue="3826190A" position="0" id="0:732"/>
+                        <GradientStop colorValue="0026190A" position="1" id="0:733"/>
+                    </RadialGradient>
+                </Fill>
+            </Shape>
+        </Node>
+
+        <!--
+          The light, behind the thing making it. **A flattened pool on the table now, not a
+          halo behind the flame**, and the change was forced by the ground going white.
+
+          It used to be a 520-unit circle of `kCandleFlame` centred behind the flame's middle.
+          On the cream `#FFE8C4` ground that was nearly invisible, which is why the note here
+          used to say the halo is warmer rather than brighter -- a *lighter* halo on cream is
+          not there at all. On white the opposite problem appeared: the same shape reads as a
+          large diffuse smudge behind the flame, and it was immediately the least convincing
+          element on the screen. Duolingo's streak flame has no halo whatsoever; what it has is
+          a pale pool directly beneath the flame, which grounds the object and reads as spill in
+          a single shape.
+
+          **It stays backmost, and that is what makes it safe.** The tempting move is to draw
+          the pool *on* the paper, in front of the book -- light falls on paper, after all. But
+          the book's boards are a near-black bar across y 454..469, exactly where a pool
+          belongs, and a translucent warm shape fading in over them is the grey-mud failure this
+          file has hit five times. Left behind the book, the book simply sits *in* the pool: the
+          boards occlude its middle and what shows is the light spreading past them onto the
+          table. Same read, no compositing risk, and no reordering.
+
+          `kCandleFlame` #FFD479 rather than the ground token, because the pool has to be warmer
+          than *both* things it lies on -- the white table and the book's near-white paper. A
+          cream pool on cream paper is nothing, which is the same mistake as the halo on cream,
+          one layer down.
+
+          **The ellipse and its gradient are circular, and `pool` flattens them. Do not flatten
+          the ellipse itself.** A `RadialGradient` has one radius vector, so on a 420x116 path
+          the gradient cannot fade inside the short axis: alpha is still around 60% where the
+          path ends, and the ellipse's own boundary shows up as a hard horizontal arc running
+          the full width of the frame. It reads as a horizon, or a hill behind the book, and it
+          was worse than the halo it replaced. Rendered and rejected once. Scaling a circle
+          keeps the falloff isotropic in its own space, so the pool has no edge anywhere.
+        -->
+        <Node x="180" y="260" scaleY="0.18" name="pool" id="0:36">
+            <Shape opacity="0.58" name="glow" id="0:50">
+                <Ellipse width="340" height="340" name="Path" id="0:405"/>
+                <Fill name="Fill" id="0:406">
+                    <RadialGradient startX="0" startY="0" endX="0" endY="170" name="Gradient" id="0:407">
+                        <GradientStop colorValue="B3FFD479" position="0" id="0:408"/>
+                        <GradientStop colorValue="80FFD479" position="0.5" id="0:409"/>
+                        <GradientStop colorValue="00FFD479" position="1" id="0:410"/>
+                    </RadialGradient>
+                </Fill>
+            </Shape>
+        </Node>
+
+
+        <!-- The easing. Authored here rather than in Dart, so the timeline the editor plays is
+             the motion that ships. -->
+        <CubicEaseInterpolator x1="0.16" y1="1" x2="0.3" y2="1" id="0:200"/>
+        <CubicEaseInterpolator x1="0.45" y1="0" x2="0.55" y2="1" id="0:201"/>
+        <CubicEaseInterpolator x1="0.34" y1="1.56" x2="0.64" y2="1" id="0:202"/>
+        <CubicEaseInterpolator x1="0.55" y1="0" x2="1" y2="0.45" id="0:203"/>
+        <!-- A *mild* ease-out, for the embers. `0:200` is a (0.16,1,0.3,1) snap that is right
+             for something arriving and wrong for something drifting: a quarter of the way
+             through its flight an ember was already four fifths of the way up, so the spray
+             appeared as specks pinned near the top of the frame with a gap between them and the
+             flame they supposedly came off. A spark slows as it cools; it does not stop. -->
+        <CubicEaseInterpolator x1="0.33" y1="0.5" x2="0.7" y2="1" id="0:204"/>
+
+        <!--
+          ============================ IGNITE ============================
+          78 frames at 60fps = 1300ms, one shot. Flutter seeks this by time; the editor plays
+          it. The beats:
+
+            0 .. 6    the shut book, HELD. Without this hold the reader never saw a closed
+                      book at all: `backOut` front-loads so hard that at frame 4 -- 66ms --
+                      the covers were already 70% of the way open, and the whole point of the
+                      sequence is that a book opens. A held pose is the cheapest possible fix
+                      and the only one that works, because the curve is what gives the landing
+                      its knock and softening it costs that.
+            6 .. 30   the cover swings. `leaf` rotates -177 degrees about the spine, sweeping
+                      up and over; `base` tilts the matching 3 degrees the other way so the
+                      pair lands in a shallow V; the spine squashes to half height and becomes
+                      the gutter; and the whole book slides right so the spine finishes centred
+                      under the flame. Four properties, no opacity, nothing to composite.
+           20 .. 34   the room lights, and only to 0.75. **Not from frame 0.** It used to,
+                      which lit a warm halo behind a book that was still shut and nothing was
+                      burning -- light before its source, visible in every contact sheet and
+                      noticed in none of them for three passes.
+           22 .. 30   a spark lifts out of the gutter and settles as a *small* flame, 0.44 of
+                      the size it finishes at. That smallness is the whole setup.
+           34 .. 54   **the strain.** Two attempts to grow, each one pushing up and narrowing
+                      and then being dragged back down -- but dragged back to a little more
+                      than it left, so the trend is upward and the failure is not a reset.
+                      Underneath, `fire.x` judders +-1.4px on `linear` keys: a tremor, and the
+                      thing a haptic pairs with.
+           54 .. 60   **the burst.** 100ms, which is the second thing here that had to be
+                      corrected: it was 67ms on `easeOut`, and `easeOut` is so front-loaded
+                      that 85% of the growth landed in the *first frame of four*. Rendered
+                      frame by frame that is one cell of small flame followed by one cell of
+                      large flame -- a cut, not a burst, with no gesture in between. Six frames
+                      on the milder `0:204` gives five distinct sizes on the way up, which is
+                      what makes it read as erupting. Fast and instantaneous are not the same
+                      thing, and at 60fps the difference is three frames.
+           60 .. 78   it draws back down -- undershooting to 0.94 and easing back -- to a
+                      lively flame about 2.2x the one it strained from.
+           78         everything has settled, so `Idle` can take over with nothing to correct.
+
+          **The strain and the burst replaced a single monotonic rise**, and not because the
+          rise was broken. It was legible and it was inert: the flame simply got bigger over
+          22 frames and arrived. The brief is the Duolingo feel -- *strains to grow, with
+          haptics, then bursts with large fire, then grows down again but larger than before
+          to a lively flame* -- and that shape cannot be expressed by a curve on one segment,
+          because the whole point is that the first two attempts **fail**. It needs the
+          failures keyed.
+
+          **Haptics go at the two strain peaks and the burst**, i.e. 633ms, 767ms and 967ms,
+          with the light rumble spanning 567..900ms alongside the tremor. Recorded here so the
+          Dart side has somewhere to read it from; nothing is wired yet.
+
+          **The body's squash is NOT counter-phased against the node's during the burst.** The
+          obvious construction -- `fire` stretches tall, `flame_outer` also stretches tall for
+          a secondary -- multiplies, because they are ancestor and descendant: 1.48 x 1.18 is
+          1.75 and the fireball came out as a tall thin spike, the opposite of bursting. So
+          `flame_outer` *balloons* at the peak (1.14 wide x 0.94 tall) to round the product off
+          to roughly 1.41 x 1.39, then over-narrows on the rebound. Same principle for
+          `flame_inner`: it peaks at frame 58, two frames *ahead* of the body, rather than
+          bigger than it -- a core that leads in time reads as a core that leads, and a core
+          scaled past its own body pokes out the top of it.
+
+          The rotation is **negative**, and that is not arbitrary: at +90 degrees the leaf
+          sweeps *down* through the table before coming up the other side. Sign it the other way
+          and the book opens by passing its cover through the floor.
+        -->
+        <!-- ======================== THE STATE MACHINE ========================= -->
+        <!--
+          **This exists so a human can watch the whole thing once**, and for no other reason.
+
+          The app never runs it. `_FlamePainter` is a `BasicArtboardPainter`, which stores the
+          artboard and calls `artboard.advance` and nothing else — it instantiates no state
+          machine — and the two timelines are driven by hand: `Ignite` is *seeked* by `progress`
+          because the celebration's clock lives in Dart, and `Idle` is advanced and mixed at
+          `liveness`. None of that changes with a machine present, which is what makes adding one
+          safe rather than a second source of truth. (`StateMachinePainter`, in the same file,
+          *would* have run it. Do not switch to it.)
+
+          What it buys is the review loop. Without a `defaultStateMachineId` the editor and the
+          CLI previewer fall back to the artboard's *first animation*, so the sequence could only
+          ever be watched in halves — `Ignite`, then separately `Idle` — and a reader asked for
+          the obvious thing, which is to press play once and see the flame catch and then settle.
+          This file's own history is the argument: the timelines themselves exist because an
+          earlier version had none, so nothing played it and every review went through a contact
+          sheet.
+
+          `exitTimeIsPercetange` **is misspelled in the format itself** and the correct spelling
+          is rejected. Write the typo. With `exitTime="100"` it means "leave only once `Ignite`
+          has played all the way through", which is how timelines chain into a sequence;
+          `duration="0"` because the two poses already meet — `Ignite`'s last frame returns every
+          transform to its authored value, which is the same rest pose `Idle` oscillates around,
+          so there is nothing to blend.
+
+          `AnyState` and `ExitState` are unused and **mandatory anyway**: a layer missing any of
+          the three built-in states does not import. Every state carries an `x`/`y` for the same
+          kind of reason — left unset they all default to (0, 0), stack on one point in the
+          editor's graph, and `inspect` reports `states-overlap`.
+
+          **`_preview.py` strips `defaultStateMachineId` from its copies.** The preview scripts
+          depend on the first-animation fallback this removes: `motion.py`, `apex.py` and
+          `flicker.py` all reach `Idle` by reordering the timelines so it comes first, which a
+          running machine would simply ignore — it would play `Ignite` and then `Idle`, and a
+          request for "Idle frame 20" would silently render something else. So the shipped file
+          has a machine and the render copies do not.
+        -->
+        <StateMachine name="Play" id="0:1264">
+            <StateMachineLayer name="Layer 1" id="0:1265">
+                <AnyState x="520" y="-120" id="0:1266"/>
+                <ExitState x="680" y="-120" id="0:1267"/>
+                <EntryState x="0" y="0" id="0:1268">
+                    <StateTransition stateToId="0:1270" id="0:1269"/>
+                </EntryState>
+                <AnimationState x="160" y="0" animationId="0:60" id="0:1270">
+                    <StateTransition stateToId="0:1272" duration="0" enableExitTime="true"
+                                     exitTimeIsPercetange="true" exitTime="100" id="0:1271"/>
+                </AnimationState>
+                <AnimationState x="340" y="0" animationId="0:61" id="0:1272"/>
+            </StateMachineLayer>
+        </StateMachine>
+
+        <LinearAnimation fps="60" duration="78" loopValue="oneShot" name="Ignite" id="0:60">
+
+            <!-- The cover, up and over. `backOut` so it lands with a knock rather than easing
+                 to a halt, and a `hold` in front of it so there is a book to watch open.
+
+                 The four keys after 30 are the **flex under the burst**: the pair flattens a
+                 little just before the fireball arrives and deepens under it, then returns.
+                 Both halves move the same way in the V even though their numbers move in
+                 opposite directions, because the leaf is flipped -- -3.115 rad is 1.5 degrees
+                 off flat and -3.075 is 3.8, so *more* negative is *shallower* on this one and
+                 deeper on `base`. Get that backwards and the book scissors. -->
+            <KeyedObject objectId="0:42" id="0:734">
+                <KeyedProperty propertyKey="15" id="0:735">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="hold" id="0:736"/>
+                    <KeyFrameDouble frame="6" value="0" interpolationType="cubic" interpolatorId="0:202" id="0:737"/>
+                    <KeyFrameDouble frame="30" value="-3.0892" interpolationType="hold" id="0:738"/>
+                    <KeyFrameDouble frame="48" value="-3.0892" interpolationType="cubic" interpolatorId="0:201" id="0:900"/>
+                    <KeyFrameDouble frame="54" value="-3.115" interpolationType="cubic" interpolatorId="0:203" id="0:901"/>
+                    <KeyFrameDouble frame="60" value="-3.075" interpolationType="cubic" interpolatorId="0:200" id="0:902"/>
+                    <KeyFrameDouble frame="70" value="-3.0892" id="0:903"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:43" id="0:739">
+                <KeyedProperty propertyKey="15" id="0:740">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="hold" id="0:741"/>
+                    <KeyFrameDouble frame="6" value="0" interpolationType="cubic" interpolatorId="0:202" id="0:742"/>
+                    <KeyFrameDouble frame="30" value="-0.0524" interpolationType="hold" id="0:743"/>
+                    <KeyFrameDouble frame="48" value="-0.0524" interpolationType="cubic" interpolatorId="0:201" id="0:904"/>
+                    <KeyFrameDouble frame="54" value="-0.026" interpolationType="cubic" interpolatorId="0:203" id="0:905"/>
+                    <KeyFrameDouble frame="60" value="-0.058" interpolationType="cubic" interpolatorId="0:200" id="0:906"/>
+                    <KeyFrameDouble frame="70" value="-0.0524" id="0:907"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:41" id="0:744">
+                <KeyedProperty propertyKey="17" id="0:745">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="hold" id="0:746"/>
+                    <KeyFrameDouble frame="6" value="1" interpolationType="cubic" interpolatorId="0:202" id="0:747"/>
+                    <KeyFrameDouble frame="30" value="0.5" id="0:748"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <!-- The book re-centres on its spine, because a shut book is one board wide and
+                 sits to one side of the hinge. Without this the shut pose is hard against the
+                 right of the frame. -->
+            <KeyedObject objectId="0:40" id="0:749">
+                <KeyedProperty propertyKey="13" id="0:750">
+                    <KeyFrameDouble frame="0" value="128" interpolationType="hold" id="0:751"/>
+                    <KeyFrameDouble frame="6" value="128" interpolationType="cubic" interpolatorId="0:202" id="0:752"/>
+                    <KeyFrameDouble frame="30" value="180" id="0:753"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:44" id="0:754">
+                <KeyedProperty propertyKey="13" id="0:755">
+                    <KeyFrameDouble frame="0" value="48" interpolationType="hold" id="0:756"/>
+                    <KeyFrameDouble frame="6" value="48" interpolationType="cubic" interpolatorId="0:202" id="0:757"/>
+                    <KeyFrameDouble frame="30" value="0" id="0:758"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:759">
+                    <KeyFrameDouble frame="0" value="0.45" interpolationType="hold" id="0:760"/>
+                    <KeyFrameDouble frame="6" value="0.45" interpolationType="cubic" interpolatorId="0:202" id="0:761"/>
+                    <KeyFrameDouble frame="30" value="1" id="0:762"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!--
+              The fire. Three phases on one node, and the numbers are the choreography:
+
+                22 .. 30   a spark becomes a small flame          0.25x0.18 -> 0.44x0.46
+                34 .. 54   strain, twice, gaining ground          -> 0.44x0.60, -> 0.45x0.74
+                54 .. 60   burst                                  -> 1.24x1.48
+                60 .. 78   settle                                 -> 1.00x1.00
+
+              scaleX and scaleY are **counter-phased through the strains**: each push up
+              narrows the flame and each collapse widens it, which is what makes the two
+              attempts read as effort rather than as a stepped fade-in. They are *not*
+              counter-phased on the burst -- both grow, because a burst is a burst.
+
+              Each failure is dragged back to slightly more than it left (0.50 then 0.60, off
+              a 0.46 start) so the trend under the sawtooth is upward. Pull those back level
+              and the flame reads as stuck rather than as straining.
+
+              `fire.x` is the tremor: +-1.4px on `linear` keys through the strain only, which
+              is deliberately cheap -- a tremor is a vibration, and an eased vibration is a
+              wobble. It is the visual half of the haptic; the keys are two frames apart, i.e.
+              30Hz, fast enough to blur on a real screen.
+
+              `fire.y` ends at 228, the authored value, and not at the 230 it strains from.
+              **The artboard's authored pose is the resting pose** -- see the artboard's own
+              note -- so every property this timeline touches has to land back on it or
+              scrubbing the file in the editor shows a flame parked somewhere the app never
+              puts it.
+            -->
+            <KeyedObject objectId="0:20" id="0:763">
+                <KeyedProperty propertyKey="14" id="0:764">
+                    <KeyFrameDouble frame="22" value="280" interpolationType="cubic" interpolatorId="0:200" id="0:765"/>
+                    <KeyFrameDouble frame="34" value="272" interpolationType="cubic" interpolatorId="0:201" id="0:766"/>
+                    <KeyFrameDouble frame="58" value="270" id="0:910"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:911">
+                    <KeyFrameDouble frame="34" value="180" interpolationType="linear" id="0:912"/>
+                    <KeyFrameDouble frame="36" value="181.4" interpolationType="linear" id="0:913"/>
+                    <KeyFrameDouble frame="38" value="178.6" interpolationType="linear" id="0:914"/>
+                    <KeyFrameDouble frame="40" value="181" interpolationType="linear" id="0:915"/>
+                    <KeyFrameDouble frame="42" value="179.2" interpolationType="linear" id="0:916"/>
+                    <KeyFrameDouble frame="44" value="180.9" interpolationType="linear" id="0:917"/>
+                    <KeyFrameDouble frame="46" value="179.4" interpolationType="linear" id="0:918"/>
+                    <KeyFrameDouble frame="48" value="180.8" interpolationType="linear" id="0:919"/>
+                    <KeyFrameDouble frame="50" value="179.6" interpolationType="linear" id="0:920"/>
+                    <KeyFrameDouble frame="52" value="180.3" interpolationType="linear" id="0:921"/>
+                    <KeyFrameDouble frame="54" value="180" id="0:922"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="16" id="0:767">
+                    <KeyFrameDouble frame="22" value="0.25" interpolationType="cubic" interpolatorId="0:200" id="0:768"/>
+                    <KeyFrameDouble frame="30" value="0.44" interpolationType="cubic" interpolatorId="0:201" id="0:769"/>
+                    <KeyFrameDouble frame="34" value="0.48" interpolationType="cubic" interpolatorId="0:203" id="0:770"/>
+                    <KeyFrameDouble frame="38" value="0.44" interpolationType="cubic" interpolatorId="0:200" id="0:923"/>
+                    <KeyFrameDouble frame="42" value="0.5" interpolationType="cubic" interpolatorId="0:203" id="0:924"/>
+                    <KeyFrameDouble frame="46" value="0.45" interpolationType="cubic" interpolatorId="0:200" id="0:925"/>
+                    <KeyFrameDouble frame="50" value="0.54" interpolationType="cubic" interpolatorId="0:201" id="0:926"/>
+                    <KeyFrameDouble frame="54" value="0.5" interpolationType="cubic" interpolatorId="0:204" id="0:927"/>
+                    <KeyFrameDouble frame="60" value="1.28" interpolationType="cubic" interpolatorId="0:201" id="0:928"/>
+                    <KeyFrameDouble frame="70" value="0.94" interpolationType="cubic" interpolatorId="0:200" id="0:929"/>
+                    <KeyFrameDouble frame="78" value="1" id="0:931"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:771">
+                    <KeyFrameDouble frame="22" value="0.18" interpolationType="cubic" interpolatorId="0:200" id="0:772"/>
+                    <KeyFrameDouble frame="30" value="0.46" interpolationType="cubic" interpolatorId="0:201" id="0:773"/>
+                    <KeyFrameDouble frame="34" value="0.44" interpolationType="cubic" interpolatorId="0:203" id="0:774"/>
+                    <KeyFrameDouble frame="38" value="0.6" interpolationType="cubic" interpolatorId="0:200" id="0:932"/>
+                    <KeyFrameDouble frame="42" value="0.5" interpolationType="cubic" interpolatorId="0:203" id="0:933"/>
+                    <KeyFrameDouble frame="46" value="0.74" interpolationType="cubic" interpolatorId="0:200" id="0:934"/>
+                    <KeyFrameDouble frame="50" value="0.6" interpolationType="cubic" interpolatorId="0:201" id="0:935"/>
+                    <KeyFrameDouble frame="54" value="0.66" interpolationType="cubic" interpolatorId="0:204" id="0:936"/>
+                    <KeyFrameDouble frame="60" value="1.17" interpolationType="cubic" interpolatorId="0:201" id="0:937"/>
+                    <KeyFrameDouble frame="70" value="0.93" interpolationType="cubic" interpolatorId="0:200" id="0:938"/>
+                    <KeyFrameDouble frame="78" value="1" id="0:940"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:775">
+                    <KeyFrameDouble frame="20" value="0" interpolationType="cubic" interpolatorId="0:200" id="0:776"/>
+                    <KeyFrameDouble frame="30" value="1" id="0:777"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!-- Squash and stretch, the thing a font glyph could not do and the reason this
+                 artboard exists. It runs **only around the burst**, from 54: during the strain
+                 the node above is already counter-phasing hard, and a second counter-phase on
+                 top of it multiplied into a spike (see the header). The body balloons wide at
+                 the peak to round the product off, then over-narrows on the rebound. -->
+            <KeyedObject objectId="0:25" id="0:778">
+                <KeyedProperty propertyKey="16" id="0:779">
+                    <KeyFrameDouble frame="54" value="1" interpolationType="cubic" interpolatorId="0:204" id="0:780"/>
+                    <KeyFrameDouble frame="60" value="1.14" interpolationType="cubic" interpolatorId="0:201" id="0:781"/>
+                    <KeyFrameDouble frame="68" value="0.95" interpolationType="cubic" interpolatorId="0:200" id="0:782"/>
+                    <KeyFrameDouble frame="78" value="1" id="0:784"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:785">
+                    <KeyFrameDouble frame="54" value="1" interpolationType="cubic" interpolatorId="0:204" id="0:786"/>
+                    <KeyFrameDouble frame="60" value="0.94" interpolationType="cubic" interpolatorId="0:201" id="0:787"/>
+                    <KeyFrameDouble frame="68" value="1.05" interpolationType="cubic" interpolatorId="0:200" id="0:788"/>
+                    <KeyFrameDouble frame="78" value="1" id="0:790"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!-- The core licks all the way through -- it is the one thing that is *doing*
+                 something during the strain rather than being scaled -- and snaps upright
+                 through the burst, because a fireball that leans reads as wind. Its stretch
+                 peaks at 56, **two frames ahead of the body and smaller than it**: leading in
+                 time is what makes a core read as the source, and leading in size just pushes
+                 it out through the top of the flame it lives in. -->
+            <KeyedObject objectId="0:24" id="0:791">
+                <KeyedProperty propertyKey="15" id="0:792">
+                    <KeyFrameDouble frame="34" value="0" interpolationType="cubic" interpolatorId="0:201" id="0:793"/>
+                    <KeyFrameDouble frame="40" value="-0.06" interpolationType="cubic" interpolatorId="0:201" id="0:794"/>
+                    <KeyFrameDouble frame="46" value="0.055" interpolationType="cubic" interpolatorId="0:201" id="0:795"/>
+                    <KeyFrameDouble frame="52" value="-0.075" interpolationType="cubic" interpolatorId="0:203" id="0:796"/>
+                    <KeyFrameDouble frame="60" value="0.015" interpolationType="cubic" interpolatorId="0:201" id="0:941"/>
+                    <KeyFrameDouble frame="68" value="-0.045" interpolationType="cubic" interpolatorId="0:200" id="0:942"/>
+                    <KeyFrameDouble frame="78" value="0" id="0:797"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:943">
+                    <KeyFrameDouble frame="50" value="1" interpolationType="cubic" interpolatorId="0:204" id="0:944"/>
+                    <KeyFrameDouble frame="58" value="1.14" interpolationType="cubic" interpolatorId="0:201" id="0:945"/>
+                    <KeyFrameDouble frame="68" value="0.96" interpolationType="cubic" interpolatorId="0:200" id="0:946"/>
+                    <KeyFrameDouble frame="78" value="1" id="0:948"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!-- The burst, out and gone. It now belongs to **the burst and not to the whole
+                 ignition**: it used to start at 28 and expand across 26 frames, which during
+                 the strain was a slow ring leaving a flame that was visibly failing to grow.
+                 Two frames after the coil, fast, and fading on `easeOut` so it thins as it
+                 goes rather than lingering at full alpha and then vanishing.
+
+                 **Its reach is 1.9 and not 2.6, which is the second time this has been wrong
+                 in the same direction.** Scaled up to match a flame three times as tall, the
+                 ring threw its dots roughly 230 units clear of a flame 160 wide -- far enough
+                 that they stopped reading as sparks coming off it and became pale circles
+                 floating in the frame, which at that size look like soap bubbles. Spray has to
+                 stay in contact with the thing it sprayed from. -->
+            <!-- The burst's spray. **Scale runs 0.85 to 1.35, not 0.2 to 1.14**, and that change
+                 is inseparable from moving the node behind the flame. The old range threw the dots
+                 outward from a near-point, which is the right gesture for a spray drawn in front
+                 and the wrong one for a spray drawn behind: at 0.2 every dot is buried, and
+                 opacity peaked while the scale was still 0.41, so the brightest frame was also
+                 the most buried one. Starting near 1 puts each dot at the edge of the silhouette
+                 as it lights, and the remaining travel carries it clear.
+
+                 Opacity peaks on frame 62 rather than 61 for the same reason: 62 is where the
+                 scale crosses 1.0, so the dots are at exactly the positions they were authored
+                 at. It is also `linear` now rather than eased into -- a spark lights, it does not
+                 swell, which is the same argument as the embers' opacity. -->
+            <KeyedObject objectId="0:2001" id="0:2049">
+                <KeyedProperty propertyKey="13" id="0:2050">
+                    <KeyFrameDouble frame="59" value="-39.5653" interpolationType="cubic" interpolatorId="0:204" id="0:2051"/>
+                    <KeyFrameDouble frame="73" value="-47.0731" id="0:2052"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2053">
+                    <KeyFrameDouble frame="59" value="-197.6188" interpolationType="cubic" interpolatorId="0:204" id="0:2054"/>
+                    <KeyFrameDouble frame="73" value="-225.7546" id="0:2055"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2056">
+                    <KeyFrameDouble frame="59" value="3.4534" interpolationType="cubic" interpolatorId="0:204" id="0:2057"/>
+                    <KeyFrameDouble frame="73" value="3.8310" id="0:2058"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2059">
+                    <KeyFrameDouble frame="59" value="0.0000" interpolationType="linear" id="0:2060"/>
+                    <KeyFrameDouble frame="62" value="0.9750" interpolationType="linear" id="0:2061"/>
+                    <KeyFrameDouble frame="73" value="0.0000" id="0:2062"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2002" id="0:2063">
+                <KeyedProperty propertyKey="20" id="0:2064">
+                    <KeyFrameDouble frame="59" value="8.5196" interpolationType="cubic" interpolatorId="0:204" id="0:2065"/>
+                    <KeyFrameDouble frame="73" value="3.9641" id="0:2066"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2067">
+                    <KeyFrameDouble frame="59" value="5.6154" interpolationType="cubic" interpolatorId="0:204" id="0:2068"/>
+                    <KeyFrameDouble frame="73" value="6.2618" id="0:2069"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2070">
+                    <KeyFrameDouble frame="59" value="2.4900" interpolationType="cubic" interpolatorId="0:204" id="0:2071"/>
+                    <KeyFrameDouble frame="73" value="1.4362" id="0:2072"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2005" id="0:2073">
+                <KeyedProperty propertyKey="13" id="0:2074">
+                    <KeyFrameDouble frame="63" value="110.2826" interpolationType="cubic" interpolatorId="0:204" id="0:2075"/>
+                    <KeyFrameDouble frame="77" value="117.0101" id="0:2076"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2077">
+                    <KeyFrameDouble frame="63" value="-88.2140" interpolationType="cubic" interpolatorId="0:204" id="0:2078"/>
+                    <KeyFrameDouble frame="77" value="-133.2164" id="0:2079"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2080">
+                    <KeyFrameDouble frame="63" value="5.7874" interpolationType="cubic" interpolatorId="0:204" id="0:2081"/>
+                    <KeyFrameDouble frame="77" value="7.0869" id="0:2082"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2083">
+                    <KeyFrameDouble frame="63" value="0.0000" interpolationType="linear" id="0:2084"/>
+                    <KeyFrameDouble frame="66" value="0.9642" interpolationType="linear" id="0:2085"/>
+                    <KeyFrameDouble frame="77" value="0.0000" id="0:2086"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2006" id="0:2087">
+                <KeyedProperty propertyKey="20" id="0:2088">
+                    <KeyFrameDouble frame="63" value="4.2295" interpolationType="cubic" interpolatorId="0:204" id="0:2089"/>
+                    <KeyFrameDouble frame="77" value="4.8632" id="0:2090"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2091">
+                    <KeyFrameDouble frame="63" value="5.8202" interpolationType="cubic" interpolatorId="0:204" id="0:2092"/>
+                    <KeyFrameDouble frame="77" value="1.7443" id="0:2093"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2094">
+                    <KeyFrameDouble frame="63" value="2.0122" interpolationType="cubic" interpolatorId="0:204" id="0:2095"/>
+                    <KeyFrameDouble frame="77" value="0.7225" id="0:2096"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2009" id="0:2097">
+                <KeyedProperty propertyKey="13" id="0:2098">
+                    <KeyFrameDouble frame="56" value="-29.2001" interpolationType="cubic" interpolatorId="0:204" id="0:2099"/>
+                    <KeyFrameDouble frame="72" value="-36.2726" id="0:2100"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2101">
+                    <KeyFrameDouble frame="56" value="-188.9331" interpolationType="cubic" interpolatorId="0:204" id="0:2102"/>
+                    <KeyFrameDouble frame="72" value="-223.2808" id="0:2103"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2104">
+                    <KeyFrameDouble frame="56" value="3.6710" interpolationType="cubic" interpolatorId="0:204" id="0:2105"/>
+                    <KeyFrameDouble frame="72" value="4.6689" id="0:2106"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2107">
+                    <KeyFrameDouble frame="56" value="0.0000" interpolationType="linear" id="0:2108"/>
+                    <KeyFrameDouble frame="60" value="0.9428" interpolationType="linear" id="0:2109"/>
+                    <KeyFrameDouble frame="72" value="0.0000" id="0:2110"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2010" id="0:2111">
+                <KeyedProperty propertyKey="20" id="0:2112">
+                    <KeyFrameDouble frame="56" value="3.7605" interpolationType="cubic" interpolatorId="0:204" id="0:2113"/>
+                    <KeyFrameDouble frame="72" value="8.3774" id="0:2114"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2115">
+                    <KeyFrameDouble frame="56" value="7.9744" interpolationType="cubic" interpolatorId="0:204" id="0:2116"/>
+                    <KeyFrameDouble frame="72" value="2.7906" id="0:2117"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2118">
+                    <KeyFrameDouble frame="56" value="1.3921" interpolationType="cubic" interpolatorId="0:204" id="0:2119"/>
+                    <KeyFrameDouble frame="72" value="1.0479" id="0:2120"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2013" id="0:2121">
+                <KeyedProperty propertyKey="13" id="0:2122">
+                    <KeyFrameDouble frame="57" value="143.4160" interpolationType="cubic" interpolatorId="0:204" id="0:2123"/>
+                    <KeyFrameDouble frame="76" value="148.0869" id="0:2124"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2125">
+                    <KeyFrameDouble frame="57" value="-23.3794" interpolationType="cubic" interpolatorId="0:204" id="0:2126"/>
+                    <KeyFrameDouble frame="76" value="-49.3613" id="0:2127"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2128">
+                    <KeyFrameDouble frame="57" value="3.0380" interpolationType="cubic" interpolatorId="0:204" id="0:2129"/>
+                    <KeyFrameDouble frame="76" value="1.6943" id="0:2130"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2131">
+                    <KeyFrameDouble frame="57" value="0.0000" interpolationType="linear" id="0:2132"/>
+                    <KeyFrameDouble frame="61" value="0.8320" interpolationType="linear" id="0:2133"/>
+                    <KeyFrameDouble frame="76" value="0.0000" id="0:2134"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2014" id="0:2135">
+                <KeyedProperty propertyKey="20" id="0:2136">
+                    <KeyFrameDouble frame="57" value="8.2729" interpolationType="cubic" interpolatorId="0:204" id="0:2137"/>
+                    <KeyFrameDouble frame="76" value="10.5422" id="0:2138"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2139">
+                    <KeyFrameDouble frame="57" value="10.3232" interpolationType="cubic" interpolatorId="0:204" id="0:2140"/>
+                    <KeyFrameDouble frame="76" value="4.0078" id="0:2141"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2142">
+                    <KeyFrameDouble frame="57" value="3.2794" interpolationType="cubic" interpolatorId="0:204" id="0:2143"/>
+                    <KeyFrameDouble frame="76" value="1.5696" id="0:2144"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2017" id="0:2145">
+                <KeyedProperty propertyKey="13" id="0:2146">
+                    <KeyFrameDouble frame="62" value="-126.9771" interpolationType="cubic" interpolatorId="0:204" id="0:2147"/>
+                    <KeyFrameDouble frame="76" value="-134.0313" id="0:2148"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2149">
+                    <KeyFrameDouble frame="62" value="-12.5370" interpolationType="cubic" interpolatorId="0:204" id="0:2150"/>
+                    <KeyFrameDouble frame="76" value="-66.4892" id="0:2151"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2152">
+                    <KeyFrameDouble frame="62" value="3.7684" interpolationType="cubic" interpolatorId="0:204" id="0:2153"/>
+                    <KeyFrameDouble frame="76" value="3.1849" id="0:2154"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2155">
+                    <KeyFrameDouble frame="62" value="0.0000" interpolationType="linear" id="0:2156"/>
+                    <KeyFrameDouble frame="65" value="0.8555" interpolationType="linear" id="0:2157"/>
+                    <KeyFrameDouble frame="76" value="0.0000" id="0:2158"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2018" id="0:2159">
+                <KeyedProperty propertyKey="20" id="0:2160">
+                    <KeyFrameDouble frame="62" value="4.9583" interpolationType="cubic" interpolatorId="0:204" id="0:2161"/>
+                    <KeyFrameDouble frame="76" value="8.8231" id="0:2162"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2163">
+                    <KeyFrameDouble frame="62" value="9.3082" interpolationType="cubic" interpolatorId="0:204" id="0:2164"/>
+                    <KeyFrameDouble frame="76" value="3.8117" id="0:2165"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2166">
+                    <KeyFrameDouble frame="62" value="1.7946" interpolationType="cubic" interpolatorId="0:204" id="0:2167"/>
+                    <KeyFrameDouble frame="76" value="0.8504" id="0:2168"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2021" id="0:2169">
+                <KeyedProperty propertyKey="13" id="0:2170">
+                    <KeyFrameDouble frame="61" value="97.6487" interpolationType="cubic" interpolatorId="0:204" id="0:2171"/>
+                    <KeyFrameDouble frame="77" value="106.0876" id="0:2172"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2173">
+                    <KeyFrameDouble frame="61" value="-113.0803" interpolationType="cubic" interpolatorId="0:204" id="0:2174"/>
+                    <KeyFrameDouble frame="77" value="-154.1412" id="0:2175"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2176">
+                    <KeyFrameDouble frame="61" value="5.9101" interpolationType="cubic" interpolatorId="0:204" id="0:2177"/>
+                    <KeyFrameDouble frame="77" value="6.5138" id="0:2178"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2179">
+                    <KeyFrameDouble frame="61" value="0.0000" interpolationType="linear" id="0:2180"/>
+                    <KeyFrameDouble frame="65" value="0.8976" interpolationType="linear" id="0:2181"/>
+                    <KeyFrameDouble frame="77" value="0.0000" id="0:2182"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2022" id="0:2183">
+                <KeyedProperty propertyKey="20" id="0:2184">
+                    <KeyFrameDouble frame="61" value="2.9974" interpolationType="cubic" interpolatorId="0:204" id="0:2185"/>
+                    <KeyFrameDouble frame="77" value="6.3485" id="0:2186"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2187">
+                    <KeyFrameDouble frame="61" value="7.3010" interpolationType="cubic" interpolatorId="0:204" id="0:2188"/>
+                    <KeyFrameDouble frame="77" value="2.2419" id="0:2189"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2190">
+                    <KeyFrameDouble frame="61" value="1.2345" interpolationType="cubic" interpolatorId="0:204" id="0:2191"/>
+                    <KeyFrameDouble frame="77" value="0.8655" id="0:2192"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2025" id="0:2193">
+                <KeyedProperty propertyKey="13" id="0:2194">
+                    <KeyFrameDouble frame="59" value="-127.0802" interpolationType="cubic" interpolatorId="0:204" id="0:2195"/>
+                    <KeyFrameDouble frame="78" value="-135.4020" id="0:2196"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2197">
+                    <KeyFrameDouble frame="59" value="-24.0524" interpolationType="cubic" interpolatorId="0:204" id="0:2198"/>
+                    <KeyFrameDouble frame="78" value="-47.9750" id="0:2199"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2200">
+                    <KeyFrameDouble frame="59" value="4.2681" interpolationType="cubic" interpolatorId="0:204" id="0:2201"/>
+                    <KeyFrameDouble frame="78" value="2.9302" id="0:2202"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2203">
+                    <KeyFrameDouble frame="59" value="0.0000" interpolationType="linear" id="0:2204"/>
+                    <KeyFrameDouble frame="63" value="0.9473" interpolationType="linear" id="0:2205"/>
+                    <KeyFrameDouble frame="78" value="0.0000" id="0:2206"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2026" id="0:2207">
+                <KeyedProperty propertyKey="20" id="0:2208">
+                    <KeyFrameDouble frame="59" value="5.3389" interpolationType="cubic" interpolatorId="0:204" id="0:2209"/>
+                    <KeyFrameDouble frame="78" value="6.0556" id="0:2210"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2211">
+                    <KeyFrameDouble frame="59" value="7.1945" interpolationType="cubic" interpolatorId="0:204" id="0:2212"/>
+                    <KeyFrameDouble frame="78" value="2.9397" id="0:2213"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2214">
+                    <KeyFrameDouble frame="59" value="2.2715" interpolationType="cubic" interpolatorId="0:204" id="0:2215"/>
+                    <KeyFrameDouble frame="78" value="0.9991" id="0:2216"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2029" id="0:2217">
+                <KeyedProperty propertyKey="13" id="0:2218">
+                    <KeyFrameDouble frame="58" value="47.2092" interpolationType="cubic" interpolatorId="0:204" id="0:2219"/>
+                    <KeyFrameDouble frame="73" value="56.7902" id="0:2220"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2221">
+                    <KeyFrameDouble frame="58" value="-213.0459" interpolationType="cubic" interpolatorId="0:204" id="0:2222"/>
+                    <KeyFrameDouble frame="73" value="-262.0489" id="0:2223"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2224">
+                    <KeyFrameDouble frame="58" value="0.6589" interpolationType="cubic" interpolatorId="0:204" id="0:2225"/>
+                    <KeyFrameDouble frame="73" value="0.1270" id="0:2226"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2227">
+                    <KeyFrameDouble frame="58" value="0.0000" interpolationType="linear" id="0:2228"/>
+                    <KeyFrameDouble frame="61" value="0.9948" interpolationType="linear" id="0:2229"/>
+                    <KeyFrameDouble frame="73" value="0.0000" id="0:2230"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2030" id="0:2231">
+                <KeyedProperty propertyKey="20" id="0:2232">
+                    <KeyFrameDouble frame="58" value="3.8691" interpolationType="cubic" interpolatorId="0:204" id="0:2233"/>
+                    <KeyFrameDouble frame="73" value="5.7018" id="0:2234"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2235">
+                    <KeyFrameDouble frame="58" value="6.7556" interpolationType="cubic" interpolatorId="0:204" id="0:2236"/>
+                    <KeyFrameDouble frame="73" value="2.1109" id="0:2237"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2238">
+                    <KeyFrameDouble frame="58" value="1.3651" interpolationType="cubic" interpolatorId="0:204" id="0:2239"/>
+                    <KeyFrameDouble frame="73" value="0.9208" id="0:2240"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2033" id="0:2241">
+                <KeyedProperty propertyKey="13" id="0:2242">
+                    <KeyFrameDouble frame="63" value="-54.6208" interpolationType="cubic" interpolatorId="0:204" id="0:2243"/>
+                    <KeyFrameDouble frame="78" value="-63.3701" id="0:2244"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2245">
+                    <KeyFrameDouble frame="63" value="-194.2061" interpolationType="cubic" interpolatorId="0:204" id="0:2246"/>
+                    <KeyFrameDouble frame="78" value="-223.3888" id="0:2247"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2248">
+                    <KeyFrameDouble frame="63" value="0.5023" interpolationType="cubic" interpolatorId="0:204" id="0:2249"/>
+                    <KeyFrameDouble frame="78" value="-0.1400" id="0:2250"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2251">
+                    <KeyFrameDouble frame="63" value="0.0000" interpolationType="linear" id="0:2252"/>
+                    <KeyFrameDouble frame="66" value="0.8592" interpolationType="linear" id="0:2253"/>
+                    <KeyFrameDouble frame="78" value="0.0000" id="0:2254"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2034" id="0:2255">
+                <KeyedProperty propertyKey="20" id="0:2256">
+                    <KeyFrameDouble frame="63" value="3.6174" interpolationType="cubic" interpolatorId="0:204" id="0:2257"/>
+                    <KeyFrameDouble frame="78" value="4.8009" id="0:2258"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2259">
+                    <KeyFrameDouble frame="63" value="6.4370" interpolationType="cubic" interpolatorId="0:204" id="0:2260"/>
+                    <KeyFrameDouble frame="78" value="1.9128" id="0:2261"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2262">
+                    <KeyFrameDouble frame="63" value="1.6711" interpolationType="cubic" interpolatorId="0:204" id="0:2263"/>
+                    <KeyFrameDouble frame="78" value="0.9339" id="0:2264"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2037" id="0:2265">
+                <KeyedProperty propertyKey="13" id="0:2266">
+                    <KeyFrameDouble frame="62" value="70.4916" interpolationType="cubic" interpolatorId="0:204" id="0:2267"/>
+                    <KeyFrameDouble frame="73" value="80.5542" id="0:2268"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2269">
+                    <KeyFrameDouble frame="62" value="-79.6766" interpolationType="cubic" interpolatorId="0:204" id="0:2270"/>
+                    <KeyFrameDouble frame="73" value="-112.7257" id="0:2271"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2272">
+                    <KeyFrameDouble frame="62" value="4.9880" interpolationType="cubic" interpolatorId="0:204" id="0:2273"/>
+                    <KeyFrameDouble frame="73" value="4.4011" id="0:2274"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2275">
+                    <KeyFrameDouble frame="62" value="0.0000" interpolationType="linear" id="0:2276"/>
+                    <KeyFrameDouble frame="64" value="0.8823" interpolationType="linear" id="0:2277"/>
+                    <KeyFrameDouble frame="73" value="0.0000" id="0:2278"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2038" id="0:2279">
+                <KeyedProperty propertyKey="20" id="0:2280">
+                    <KeyFrameDouble frame="62" value="6.1297" interpolationType="cubic" interpolatorId="0:204" id="0:2281"/>
+                    <KeyFrameDouble frame="73" value="8.2584" id="0:2282"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2283">
+                    <KeyFrameDouble frame="62" value="9.6810" interpolationType="cubic" interpolatorId="0:204" id="0:2284"/>
+                    <KeyFrameDouble frame="73" value="4.4819" id="0:2285"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2286">
+                    <KeyFrameDouble frame="62" value="1.9979" interpolationType="cubic" interpolatorId="0:204" id="0:2287"/>
+                    <KeyFrameDouble frame="73" value="1.2889" id="0:2288"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2041" id="0:2289">
+                <KeyedProperty propertyKey="13" id="0:2290">
+                    <KeyFrameDouble frame="57" value="-97.9618" interpolationType="cubic" interpolatorId="0:204" id="0:2291"/>
+                    <KeyFrameDouble frame="70" value="-100.2850" id="0:2292"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2293">
+                    <KeyFrameDouble frame="57" value="-33.1032" interpolationType="cubic" interpolatorId="0:204" id="0:2294"/>
+                    <KeyFrameDouble frame="70" value="-69.7167" id="0:2295"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2296">
+                    <KeyFrameDouble frame="57" value="6.0530" interpolationType="cubic" interpolatorId="0:204" id="0:2297"/>
+                    <KeyFrameDouble frame="70" value="7.0554" id="0:2298"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2299">
+                    <KeyFrameDouble frame="57" value="0.0000" interpolationType="linear" id="0:2300"/>
+                    <KeyFrameDouble frame="60" value="0.9801" interpolationType="linear" id="0:2301"/>
+                    <KeyFrameDouble frame="70" value="0.0000" id="0:2302"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2042" id="0:2303">
+                <KeyedProperty propertyKey="20" id="0:2304">
+                    <KeyFrameDouble frame="57" value="6.0302" interpolationType="cubic" interpolatorId="0:204" id="0:2305"/>
+                    <KeyFrameDouble frame="70" value="7.3312" id="0:2306"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2307">
+                    <KeyFrameDouble frame="57" value="7.8868" interpolationType="cubic" interpolatorId="0:204" id="0:2308"/>
+                    <KeyFrameDouble frame="70" value="3.7601" id="0:2309"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2310">
+                    <KeyFrameDouble frame="57" value="2.7177" interpolationType="cubic" interpolatorId="0:204" id="0:2311"/>
+                    <KeyFrameDouble frame="70" value="1.5958" id="0:2312"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2045" id="0:2313">
+                <KeyedProperty propertyKey="13" id="0:2314">
+                    <KeyFrameDouble frame="65" value="106.8576" interpolationType="cubic" interpolatorId="0:204" id="0:2315"/>
+                    <KeyFrameDouble frame="75" value="108.9891" id="0:2316"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="14" id="0:2317">
+                    <KeyFrameDouble frame="65" value="-14.8537" interpolationType="cubic" interpolatorId="0:204" id="0:2318"/>
+                    <KeyFrameDouble frame="75" value="-60.7033" id="0:2319"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="15" id="0:2320">
+                    <KeyFrameDouble frame="65" value="4.1651" interpolationType="cubic" interpolatorId="0:204" id="0:2321"/>
+                    <KeyFrameDouble frame="75" value="3.0831" id="0:2322"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:2323">
+                    <KeyFrameDouble frame="65" value="0.0000" interpolationType="linear" id="0:2324"/>
+                    <KeyFrameDouble frame="67" value="0.8945" interpolationType="linear" id="0:2325"/>
+                    <KeyFrameDouble frame="75" value="0.0000" id="0:2326"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:2046" id="0:2327">
+                <KeyedProperty propertyKey="20" id="0:2328">
+                    <KeyFrameDouble frame="65" value="9.5148" interpolationType="cubic" interpolatorId="0:204" id="0:2329"/>
+                    <KeyFrameDouble frame="75" value="6.2793" id="0:2330"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="21" id="0:2331">
+                    <KeyFrameDouble frame="65" value="5.7210" interpolationType="cubic" interpolatorId="0:204" id="0:2332"/>
+                    <KeyFrameDouble frame="75" value="5.4420" id="0:2333"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="31" id="0:2334">
+                    <KeyFrameDouble frame="65" value="1.9129" interpolationType="cubic" interpolatorId="0:204" id="0:2335"/>
+                    <KeyFrameDouble frame="75" value="1.5780" id="0:2336"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!-- The gleam, across and away, after the burst rather than before it. -->
+            <KeyedObject objectId="0:23" id="0:809">
+                <KeyedProperty propertyKey="13" id="0:810">
+                    <KeyFrameDouble frame="64" value="-90" interpolationType="cubic" interpolatorId="0:201" id="0:811"/>
+                    <KeyFrameDouble frame="78" value="90" id="0:812"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:813">
+                    <KeyFrameDouble frame="64" value="0" interpolationType="linear" id="0:814"/>
+                    <KeyFrameDouble frame="70" value="1" interpolationType="linear" id="0:815"/>
+                    <KeyFrameDouble frame="78" value="0" id="0:816"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!-- The light, arriving with the flame rather than before it. It reaches 0.75 and
+                 then **dims back to 0.6 through the strain**, which is the one beat here that
+                 is easy to get backwards: a flame that is failing to grow should not be
+                 throwing more light, and a glow that rises monotonically underneath a
+                 sawtoothing flame flattens the whole strain into a crescendo. It flares to
+                 1.05 on the burst and settles at 1.0 / 0.58 -- the authored values, which
+                 `Idle` then breathes around without touching the opacity.
+
+                 **The burst flare is in opacity, not in scale, and it used to be 1.45.** Now
+                 that the light is a flat pool sitting on the table rather than a halo floating
+                 behind the flame, growing it pushes it off the bottom of the artboard: at 1.25
+                 the last row of the frame still carried a 240px band of warmth, which on a
+                 white ground is a soft horizontal cut under the widget for the 100ms the burst
+                 lasts. Measured, not guessed. A pool that *brightens* reads as a flash of light
+                 anyway, which is what the beat is; a pool that spreads reads as spilt liquid. -->
+            <KeyedObject objectId="0:50" id="0:817">
+                <KeyedProperty propertyKey="16" id="0:818">
+                    <KeyFrameDouble frame="20" value="0.25" interpolationType="cubic" interpolatorId="0:200" id="0:819"/>
+                    <KeyFrameDouble frame="34" value="0.55" interpolationType="cubic" interpolatorId="0:201" id="0:820"/>
+                    <KeyFrameDouble frame="50" value="0.5" interpolationType="cubic" interpolatorId="0:204" id="0:821"/>
+                    <KeyFrameDouble frame="60" value="1.05" interpolationType="cubic" interpolatorId="0:201" id="0:949"/>
+                    <KeyFrameDouble frame="70" value="0.97" interpolationType="cubic" interpolatorId="0:200" id="0:950"/>
+                    <KeyFrameDouble frame="78" value="1" id="0:951"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:822">
+                    <KeyFrameDouble frame="20" value="0.25" interpolationType="cubic" interpolatorId="0:200" id="0:823"/>
+                    <KeyFrameDouble frame="34" value="0.55" interpolationType="cubic" interpolatorId="0:201" id="0:824"/>
+                    <KeyFrameDouble frame="50" value="0.5" interpolationType="cubic" interpolatorId="0:204" id="0:825"/>
+                    <KeyFrameDouble frame="60" value="1.05" interpolationType="cubic" interpolatorId="0:201" id="0:952"/>
+                    <KeyFrameDouble frame="70" value="0.97" interpolationType="cubic" interpolatorId="0:200" id="0:953"/>
+                    <KeyFrameDouble frame="78" value="1" id="0:954"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:826">
+                    <KeyFrameDouble frame="20" value="0" interpolationType="cubic" interpolatorId="0:200" id="0:827"/>
+                    <KeyFrameDouble frame="34" value="0.75" interpolationType="cubic" interpolatorId="0:201" id="0:828"/>
+                    <KeyFrameDouble frame="50" value="0.6" interpolationType="cubic" interpolatorId="0:204" id="0:955"/>
+                    <KeyFrameDouble frame="60" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:956"/>
+                    <KeyFrameDouble frame="78" value="0.58" id="0:829"/>
+                </KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+
+        <!--
+          ============================= IDLE =============================
+          72 frames at 60fps = 1.2s, looping.
+
+          **Every property starts and ends on the same value, or is invisible at both ends.**
+          Otherwise the loop has a visible seam once a second for as long as the screen is up.
+          The embers take the second route: Rive holds a keyed property at its first
+          keyframe's value for every frame before it, so an ember sits at its birthplace until
+          its window opens and at its death place afterwards, and the jump back happens at zero
+          opacity.
+
+          **It may only key properties `Ignite` leaves at their authored values.** Flutter
+          applies the ignition and then mixes this in on top, so anything keyed here *replaces*
+          what the ignition left. The flame's and core's scales and the glow's scale all end the
+          ignition at 1 and are safe. The glow's *opacity* is not -- `Ignite` settles it at 0.58
+          -- so this timeline does not touch it, and must not start to.
+
+          **Two breaths per loop, not one, and unequal.** A single 1.2s swell at three percent
+          was below the threshold of being seen at all: the first render of this loop was
+          indistinguishable from a still. Fire moves faster and less regularly than a
+          breathing chest, so the amplitudes and the spacing are deliberately uneven -- an
+          even two-cycle sine is a pulsing logo.
+        -->
+        <LinearAnimation fps="60" duration="72" loopValue="loop" name="Idle" id="0:61">
+
+            <!-- **The body barely changes shape at all now, in either direction.** Two
+                 corrections landed here, a round apart, and the second undid most of what the
+                 first left standing.
+
+                 It began as `scaleX` 0.955..1.07 against `scaleY` 0.945..1.06 in antiphase --
+                 volume-preserving squash and stretch, which is how you animate a bouncing ball
+                 and the wrong physics for fire. Measured, the apex rose and fell 25px while the
+                 belly swelled 15px: 1.67 to 1, so the flame was breathing sideways almost as
+                 much as it was rising. `scaleX` went nearly flat for that, and `scaleY` came
+                 *down* rather than up -- the counter-intuitive half, since raising it is the
+                 obvious way to buy vertical travel and it lifts the belly along with the tip.
+
+                 Then a reader named the remaining problem exactly: Duolingo's flame flickers,
+                 ours bounced. A whole silhouette swelling and shrinking on a slow even period
+                 *is* a bounce, at any amplitude -- so both axes came down again, to about a
+                 percent. What is left is not meant to be seen as motion; it is there because a
+                 rigid body under a flickering tip reads as a mask with something moving behind
+                 it. All the visible movement is now in the tip vertices at the bottom of this
+                 timeline, where it can be irregular. -->
+            <KeyedObject objectId="0:25" id="0:515">
+                <KeyedProperty propertyKey="16" id="0:516">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:517"/>
+                    <KeyFrameDouble frame="10" value="1.008" interpolationType="cubic" interpolatorId="0:201" id="0:518"/>
+                    <KeyFrameDouble frame="22" value="0.994" interpolationType="cubic" interpolatorId="0:201" id="0:519"/>
+                    <KeyFrameDouble frame="38" value="1.006" interpolationType="cubic" interpolatorId="0:201" id="0:520"/>
+                    <KeyFrameDouble frame="54" value="0.996" interpolationType="cubic" interpolatorId="0:201" id="0:521"/>
+                    <KeyFrameDouble frame="64" value="1.003" interpolationType="cubic" interpolatorId="0:201" id="0:522"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:523"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:524">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:525"/>
+                    <KeyFrameDouble frame="10" value="0.988" interpolationType="cubic" interpolatorId="0:201" id="0:526"/>
+                    <KeyFrameDouble frame="22" value="1.014" interpolationType="cubic" interpolatorId="0:201" id="0:527"/>
+                    <KeyFrameDouble frame="38" value="0.991" interpolationType="cubic" interpolatorId="0:201" id="0:528"/>
+                    <KeyFrameDouble frame="54" value="1.011" interpolationType="cubic" interpolatorId="0:201" id="0:529"/>
+                    <KeyFrameDouble frame="64" value="0.995" interpolationType="cubic" interpolatorId="0:201" id="0:530"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:531"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!-- The core, out of step with the body so the two do not pulse together.
+
+                 **Its sideways motion is cut to a third of what it was.** Rotation here is
+                 radians, so the old ±0.07 was ±4 degrees of lean on the brightest shape in the
+                 drawing, and the old `x` slid it ±1.8 units on top of that. Between them the
+                 core's tip was the most horizontally restless thing on screen -- and it sits
+                 *inside* the silhouette, so all that motion read as the flame wobbling rather
+                 than as anything licking. A trace is kept rather than none, because the
+                 asymmetry is what stops the two shapes looking welded.
+
+                 **`scaleY` came down too, and an earlier version of this comment was wrong to
+                 say it was "already the right kind of motion".** It was the right *axis* and
+                 the wrong rhythm: 0.93..1.08 on four even eased beats pumped the core like a
+                 lung, and a reader reading the whole thing as bouncing rather than flickering
+                 was reading this as much as the body. It is now ±4%, and the core's tip does
+                 the moving -- see `CORE_LICK` at the bottom of this timeline.
+
+                 The reader's note was explicitly about the inner flame as well as the outer
+                 one, which is why the core got its own keyed tip rather than being left to
+                 inherit the body's. -->
+            <KeyedObject objectId="0:24" id="0:532">
+                <KeyedProperty propertyKey="15" id="0:533">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="cubic" interpolatorId="0:201" id="0:534"/>
+                    <KeyFrameDouble frame="14" value="0.02" interpolationType="cubic" interpolatorId="0:201" id="0:535"/>
+                    <KeyFrameDouble frame="30" value="-0.017" interpolationType="cubic" interpolatorId="0:201" id="0:536"/>
+                    <KeyFrameDouble frame="46" value="0.023" interpolationType="cubic" interpolatorId="0:201" id="0:537"/>
+                    <KeyFrameDouble frame="60" value="-0.012" interpolationType="cubic" interpolatorId="0:201" id="0:538"/>
+                    <KeyFrameDouble frame="72" value="0" id="0:539"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:540">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:541"/>
+                    <KeyFrameDouble frame="8" value="1.04" interpolationType="cubic" interpolatorId="0:201" id="0:542"/>
+                    <KeyFrameDouble frame="26" value="0.963" interpolationType="cubic" interpolatorId="0:201" id="0:543"/>
+                    <KeyFrameDouble frame="42" value="1.03" interpolationType="cubic" interpolatorId="0:201" id="0:544"/>
+                    <KeyFrameDouble frame="58" value="0.978" interpolationType="cubic" interpolatorId="0:201" id="0:545"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:546"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:547">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="cubic" interpolatorId="0:201" id="0:548"/>
+                    <KeyFrameDouble frame="18" value="0.6" interpolationType="cubic" interpolatorId="0:201" id="0:549"/>
+                    <KeyFrameDouble frame="44" value="-0.5" interpolationType="cubic" interpolatorId="0:201" id="0:550"/>
+                    <KeyFrameDouble frame="72" value="0" id="0:551"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!-- The light breathes with it, a third as much. Scale only: see the note above
+                 about the glow's opacity belonging to `Ignite`. -->
+            <KeyedObject objectId="0:50" id="0:552">
+                <KeyedProperty propertyKey="16" id="0:553">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:554"/>
+                    <KeyFrameDouble frame="16" value="1.04" interpolationType="cubic" interpolatorId="0:201" id="0:555"/>
+                    <KeyFrameDouble frame="46" value="0.975" interpolationType="cubic" interpolatorId="0:201" id="0:556"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:557"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="17" id="0:558">
+                    <KeyFrameDouble frame="0" value="1" interpolationType="cubic" interpolatorId="0:201" id="0:559"/>
+                    <KeyFrameDouble frame="16" value="1.04" interpolationType="cubic" interpolatorId="0:201" id="0:560"/>
+                    <KeyFrameDouble frame="46" value="0.975" interpolationType="cubic" interpolatorId="0:201" id="0:561"/>
+                    <KeyFrameDouble frame="72" value="1" id="0:562"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!--
+              The spray: five embers, each with its own window inside the loop, drifting
+              outward as it rises so the group opens into a plume rather than a column.
+
+                e1  0..26   e5  10..64 (the slow one, which travels furthest)
+                e2 14..40   e3  28..54   e4  42..68
+
+              Overlapping in pairs, so there is never a frame with nothing in flight and never
+              one that looks like a volley. Every window ends at or before 72, which is what
+              makes the seam free -- see the note on `embers` in the artboard.
+
+              Opacity is `linear` throughout: an ember is a point of light with no weight, and
+              an eased fade on something four pixels across reads as a flicker rather than as
+              a curve. Height is eased out, because a spark leaves fast and slows as it cools.
+            -->
+            <KeyedObject objectId="0:31" id="0:563">
+                <KeyedProperty propertyKey="14" id="0:564">
+                    <KeyFrameDouble frame="0" value="-116.16" interpolationType="cubic" interpolatorId="0:204" id="0:565"/>
+                    <KeyFrameDouble frame="26" value="-221.76" id="0:566"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:567">
+                    <KeyFrameDouble frame="0" value="-25.2" interpolationType="cubic" interpolatorId="0:204" id="0:568"/>
+                    <KeyFrameDouble frame="26" value="-64.8" id="0:569"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:570">
+                    <KeyFrameDouble frame="0" value="0" interpolationType="linear" id="0:571"/>
+                    <KeyFrameDouble frame="6" value="0.95" interpolationType="linear" id="0:572"/>
+                    <KeyFrameDouble frame="26" value="0" id="0:573"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:32" id="0:574">
+                <KeyedProperty propertyKey="14" id="0:575">
+                    <KeyFrameDouble frame="14" value="-105.6" interpolationType="cubic" interpolatorId="0:204" id="0:576"/>
+                    <KeyFrameDouble frame="40" value="-208.56" id="0:577"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:578">
+                    <KeyFrameDouble frame="14" value="25.2" interpolationType="cubic" interpolatorId="0:204" id="0:579"/>
+                    <KeyFrameDouble frame="40" value="61.2" id="0:580"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:581">
+                    <KeyFrameDouble frame="14" value="0" interpolationType="linear" id="0:582"/>
+                    <KeyFrameDouble frame="20" value="0.9" interpolationType="linear" id="0:583"/>
+                    <KeyFrameDouble frame="40" value="0" id="0:584"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:33" id="0:585">
+                <KeyedProperty propertyKey="14" id="0:586">
+                    <KeyFrameDouble frame="28" value="-155.76" interpolationType="cubic" interpolatorId="0:204" id="0:587"/>
+                    <KeyFrameDouble frame="54" value="-258.72" id="0:588"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:589">
+                    <KeyFrameDouble frame="28" value="3.6" interpolationType="cubic" interpolatorId="0:204" id="0:590"/>
+                    <KeyFrameDouble frame="54" value="14.4" id="0:591"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:592">
+                    <KeyFrameDouble frame="28" value="0" interpolationType="linear" id="0:593"/>
+                    <KeyFrameDouble frame="34" value="0.85" interpolationType="linear" id="0:594"/>
+                    <KeyFrameDouble frame="54" value="0" id="0:595"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:34" id="0:596">
+                <KeyedProperty propertyKey="14" id="0:597">
+                    <KeyFrameDouble frame="42" value="-81.84" interpolationType="cubic" interpolatorId="0:204" id="0:598"/>
+                    <KeyFrameDouble frame="68" value="-171.6" id="0:599"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:600">
+                    <KeyFrameDouble frame="42" value="36" interpolationType="cubic" interpolatorId="0:204" id="0:601"/>
+                    <KeyFrameDouble frame="68" value="79.2" id="0:602"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:603">
+                    <KeyFrameDouble frame="42" value="0" interpolationType="linear" id="0:604"/>
+                    <KeyFrameDouble frame="48" value="0.8" interpolationType="linear" id="0:605"/>
+                    <KeyFrameDouble frame="68" value="0" id="0:606"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:35" id="0:607">
+                <KeyedProperty propertyKey="14" id="0:608">
+                    <KeyFrameDouble frame="10" value="-92.4" interpolationType="cubic" interpolatorId="0:204" id="0:609"/>
+                    <KeyFrameDouble frame="64" value="-227.04" id="0:610"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="13" id="0:611">
+                    <KeyFrameDouble frame="10" value="-32.4" interpolationType="cubic" interpolatorId="0:204" id="0:612"/>
+                    <KeyFrameDouble frame="64" value="-86.4" id="0:613"/>
+                </KeyedProperty>
+                <KeyedProperty propertyKey="18" id="0:614">
+                    <KeyFrameDouble frame="10" value="0" interpolationType="linear" id="0:615"/>
+                    <KeyFrameDouble frame="20" value="0.75" interpolationType="linear" id="0:616"/>
+                    <KeyFrameDouble frame="64" value="0" id="0:617"/>
+                </KeyedProperty>
+            </KeyedObject>
+
+            <!--
+              The tips flicker. **These key path vertices directly, which nothing else here
+              does**, and it is the only way to move the top of a flame without moving the rest
+              of it: a transform on `flame_outer` scales the belly by the same factor as the
+              apex, so every attempt at "more vertical motion" through `scaleY` also inflates
+              the shape. `Vertex::y` is animatable (`rive schema StraightVertex`, key 25), so a
+              tip can rise and fall against a body that holds still.
+
+              **Both flames have a keyed tip, not just the outer one.** The reader's note was
+              about the inner flame too, and a core that only scales is a shape breathing inside
+              a shape that flickers.
+
+              **The beats are irregular, fast and `linear`, and that is the whole difference
+              between flickering and bouncing.** The first version of this gave each tip four
+              evenly-spaced beats on the same eased curve as everything else, and the verdict
+              was that Duolingo's flame flickers while ours bounced. Amplitude was never the
+              problem: four smooth symmetric beats over 1.2s is a 1.7Hz sine, and a sine is a
+              bounce however tall it is, because the eye can predict where the tip goes next.
+              What changed is rhythm -- about three times as many beats, at uneven gaps, with
+              amplitudes that vary beat to beat and straddle zero, and no easing, so every beat
+              arrives with a corner in it. Same reasoning as the embers' opacity a few blocks
+              up, which is linear because an eased fade on something four pixels across reads as
+              a curve where a flicker is wanted.
+
+              **The numbers come out of `smooth.py`, not out of here** --
+              `../../.venv/bin/python rive/streak_flame/smooth.py`, under `Idle: the tips'
+              lick`. They are the scaled form of small `(frame, dy)` tables in raw silhouette
+              units, so a change to `SCALE_Y` -- or, for the core, to `CORE_SHRINK` -- moves the
+              loop with the shape. Hand-written, -253.4 would be correct at 1.8x and a mystery
+              at any other scale, which is the trap `IGNITE_FRAMES` and the 304x304 preview
+              ground both fell into. Do not edit these by hand; edit the tables and re-run.
+
+              On the outer flame, index 9 is deliberately *not* keyed: it is the bottom of the
+              crease, and moving it with 8 would slide the notch bodily instead of letting the
+              lick rise out of it.
+
+              **The tangent blocks are not a separate idea, they are the other half of this
+              one.** A Catmull-Rom tangent at vertex `i` is computed from `i-1` and `i+1`, so
+              moving a tip invalidates the fit of the point beneath it. Left alone, the apex
+              climbed past stationary neighbours and the curve into it narrowed into a spike --
+              the tip *sharpened on every cycle*, quietly undoing the rounded tip a reader had
+              just picked over the pointed one.
+
+              An earlier draft of this comment called that imprecision unavoidable, on the
+              grounds that fixing it meant hand-keying four handle properties per vertex and
+              `smooth.py` exists precisely so nobody hand-tunes cubic handles. The first half
+              was true and the conclusion was wrong: `smooth.py` does not tune handles, it
+              *fits* them, and a fitter can be run at every keyframe as easily as once. So it
+              is, and the frame-0 values it emits match the authored ones to four decimals,
+              which is the check that there is no step at the seam.
+
+              Which vertices get handle blocks falls out rather than being chosen: the outer
+              flame's other tip neighbours are index 0 and index 9, both `StraightVertex` with
+              no handles, so only 1 and 7 appear; the core is a plain ring with no corners, so
+              both of its apex's neighbours do.
+            -->
+            <!-- the body's tips -->
+            <KeyedObject objectId="0:286" id="0:957">
+                <KeyedProperty propertyKey="25" id="0:958">
+                    <KeyFrameDouble frame="0" value="-237.2" interpolationType="linear" id="0:959"/>
+                    <KeyFrameDouble frame="4" value="-249.8" interpolationType="linear" id="0:960"/>
+                    <KeyFrameDouble frame="8" value="-231.8" interpolationType="linear" id="0:961"/>
+                    <KeyFrameDouble frame="12" value="-253.4" interpolationType="linear" id="0:962"/>
+                    <KeyFrameDouble frame="17" value="-239" interpolationType="linear" id="0:963"/>
+                    <KeyFrameDouble frame="21" value="-257" interpolationType="linear" id="0:964"/>
+                    <KeyFrameDouble frame="25" value="-242.6" interpolationType="linear" id="0:965"/>
+                    <KeyFrameDouble frame="30" value="-253.4" interpolationType="linear" id="0:966"/>
+                    <KeyFrameDouble frame="34" value="-230" interpolationType="linear" id="0:967"/>
+                    <KeyFrameDouble frame="38" value="-246.2" interpolationType="linear" id="0:968"/>
+                    <KeyFrameDouble frame="43" value="-257" interpolationType="linear" id="0:969"/>
+                    <KeyFrameDouble frame="47" value="-244.4" interpolationType="linear" id="0:970"/>
+                    <KeyFrameDouble frame="52" value="-253.4" interpolationType="linear" id="0:971"/>
+                    <KeyFrameDouble frame="56" value="-233.6" interpolationType="linear" id="0:972"/>
+                    <KeyFrameDouble frame="61" value="-248" interpolationType="linear" id="0:973"/>
+                    <KeyFrameDouble frame="65" value="-257" interpolationType="linear" id="0:974"/>
+                    <KeyFrameDouble frame="69" value="-242.6" interpolationType="linear" id="0:975"/>
+                    <KeyFrameDouble frame="72" value="-237.2" id="0:976"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:299" id="0:977">
+                <KeyedProperty propertyKey="25" id="0:978">
+                    <KeyFrameDouble frame="0" value="-204.8" interpolationType="linear" id="0:979"/>
+                    <KeyFrameDouble frame="5" value="-213.8" interpolationType="linear" id="0:980"/>
+                    <KeyFrameDouble frame="11" value="-199.4" interpolationType="linear" id="0:981"/>
+                    <KeyFrameDouble frame="18" value="-215.6" interpolationType="linear" id="0:982"/>
+                    <KeyFrameDouble frame="24" value="-203" interpolationType="linear" id="0:983"/>
+                    <KeyFrameDouble frame="31" value="-215.6" interpolationType="linear" id="0:984"/>
+                    <KeyFrameDouble frame="37" value="-201.2" interpolationType="linear" id="0:985"/>
+                    <KeyFrameDouble frame="44" value="-217.4" interpolationType="linear" id="0:986"/>
+                    <KeyFrameDouble frame="50" value="-206.6" interpolationType="linear" id="0:987"/>
+                    <KeyFrameDouble frame="57" value="-219.2" interpolationType="linear" id="0:988"/>
+                    <KeyFrameDouble frame="63" value="-199.4" interpolationType="linear" id="0:989"/>
+                    <KeyFrameDouble frame="69" value="-210.2" interpolationType="linear" id="0:990"/>
+                    <KeyFrameDouble frame="72" value="-204.8" id="0:991"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:287" id="0:992">
+                <!-- inRotation -->
+                <KeyedProperty propertyKey="84" id="0:993">
+                    <KeyFrameDouble frame="0" value="4.29619" interpolationType="linear" id="0:994"/>
+                    <KeyFrameDouble frame="4" value="4.3216" interpolationType="linear" id="0:995"/>
+                    <KeyFrameDouble frame="8" value="4.28433" interpolationType="linear" id="0:996"/>
+                    <KeyFrameDouble frame="12" value="4.32833" interpolationType="linear" id="0:997"/>
+                    <KeyFrameDouble frame="17" value="4.30001" interpolationType="linear" id="0:998"/>
+                    <KeyFrameDouble frame="21" value="4.33484" interpolationType="linear" id="0:999"/>
+                    <KeyFrameDouble frame="25" value="4.30745" interpolationType="linear" id="0:1000"/>
+                    <KeyFrameDouble frame="30" value="4.32833" interpolationType="linear" id="0:1001"/>
+                    <KeyFrameDouble frame="34" value="4.28023" interpolationType="linear" id="0:1002"/>
+                    <KeyFrameDouble frame="38" value="4.31465" interpolationType="linear" id="0:1003"/>
+                    <KeyFrameDouble frame="43" value="4.33484" interpolationType="linear" id="0:1004"/>
+                    <KeyFrameDouble frame="47" value="4.31108" interpolationType="linear" id="0:1005"/>
+                    <KeyFrameDouble frame="52" value="4.32833" interpolationType="linear" id="0:1006"/>
+                    <KeyFrameDouble frame="56" value="4.28835" interpolationType="linear" id="0:1007"/>
+                    <KeyFrameDouble frame="61" value="4.31815" interpolationType="linear" id="0:1008"/>
+                    <KeyFrameDouble frame="65" value="4.33484" interpolationType="linear" id="0:1009"/>
+                    <KeyFrameDouble frame="69" value="4.30745" interpolationType="linear" id="0:1010"/>
+                    <KeyFrameDouble frame="72" value="4.29619" id="0:1011"/>
+                </KeyedProperty>
+                <!-- inDistance -->
+                <KeyedProperty propertyKey="85" id="0:1012">
+                    <KeyFrameDouble frame="0" value="31.488" interpolationType="linear" id="0:1013"/>
+                    <KeyFrameDouble frame="4" value="33.4195" interpolationType="linear" id="0:1014"/>
+                    <KeyFrameDouble frame="8" value="30.667" interpolationType="linear" id="0:1015"/>
+                    <KeyFrameDouble frame="12" value="33.9751" interpolationType="linear" id="0:1016"/>
+                    <KeyFrameDouble frame="17" value="31.7627" interpolationType="linear" id="0:1017"/>
+                    <KeyFrameDouble frame="21" value="34.5321" interpolationType="linear" id="0:1018"/>
+                    <KeyFrameDouble frame="25" value="32.3133" interpolationType="linear" id="0:1019"/>
+                    <KeyFrameDouble frame="30" value="33.9751" interpolationType="linear" id="0:1020"/>
+                    <KeyFrameDouble frame="34" value="30.3943" interpolationType="linear" id="0:1021"/>
+                    <KeyFrameDouble frame="38" value="32.8656" interpolationType="linear" id="0:1022"/>
+                    <KeyFrameDouble frame="43" value="34.5321" interpolationType="linear" id="0:1023"/>
+                    <KeyFrameDouble frame="47" value="32.5892" interpolationType="linear" id="0:1024"/>
+                    <KeyFrameDouble frame="52" value="33.9751" interpolationType="linear" id="0:1025"/>
+                    <KeyFrameDouble frame="56" value="30.9402" interpolationType="linear" id="0:1026"/>
+                    <KeyFrameDouble frame="61" value="33.1424" interpolationType="linear" id="0:1027"/>
+                    <KeyFrameDouble frame="65" value="34.5321" interpolationType="linear" id="0:1028"/>
+                    <KeyFrameDouble frame="69" value="32.3133" interpolationType="linear" id="0:1029"/>
+                    <KeyFrameDouble frame="72" value="31.488" id="0:1030"/>
+                </KeyedProperty>
+                <!-- outRotation -->
+                <KeyedProperty propertyKey="86" id="0:1031">
+                    <KeyFrameDouble frame="0" value="1.1546" interpolationType="linear" id="0:1032"/>
+                    <KeyFrameDouble frame="4" value="1.18001" interpolationType="linear" id="0:1033"/>
+                    <KeyFrameDouble frame="8" value="1.14273" interpolationType="linear" id="0:1034"/>
+                    <KeyFrameDouble frame="12" value="1.18673" interpolationType="linear" id="0:1035"/>
+                    <KeyFrameDouble frame="17" value="1.15842" interpolationType="linear" id="0:1036"/>
+                    <KeyFrameDouble frame="21" value="1.19324" interpolationType="linear" id="0:1037"/>
+                    <KeyFrameDouble frame="25" value="1.16586" interpolationType="linear" id="0:1038"/>
+                    <KeyFrameDouble frame="30" value="1.18673" interpolationType="linear" id="0:1039"/>
+                    <KeyFrameDouble frame="34" value="1.13864" interpolationType="linear" id="0:1040"/>
+                    <KeyFrameDouble frame="38" value="1.17305" interpolationType="linear" id="0:1041"/>
+                    <KeyFrameDouble frame="43" value="1.19324" interpolationType="linear" id="0:1042"/>
+                    <KeyFrameDouble frame="47" value="1.16949" interpolationType="linear" id="0:1043"/>
+                    <KeyFrameDouble frame="52" value="1.18673" interpolationType="linear" id="0:1044"/>
+                    <KeyFrameDouble frame="56" value="1.14676" interpolationType="linear" id="0:1045"/>
+                    <KeyFrameDouble frame="61" value="1.17656" interpolationType="linear" id="0:1046"/>
+                    <KeyFrameDouble frame="65" value="1.19324" interpolationType="linear" id="0:1047"/>
+                    <KeyFrameDouble frame="69" value="1.16586" interpolationType="linear" id="0:1048"/>
+                    <KeyFrameDouble frame="72" value="1.1546" id="0:1049"/>
+                </KeyedProperty>
+                <!-- outDistance -->
+                <KeyedProperty propertyKey="87" id="0:1050">
+                    <KeyFrameDouble frame="0" value="31.488" interpolationType="linear" id="0:1051"/>
+                    <KeyFrameDouble frame="4" value="33.4195" interpolationType="linear" id="0:1052"/>
+                    <KeyFrameDouble frame="8" value="30.667" interpolationType="linear" id="0:1053"/>
+                    <KeyFrameDouble frame="12" value="33.9751" interpolationType="linear" id="0:1054"/>
+                    <KeyFrameDouble frame="17" value="31.7627" interpolationType="linear" id="0:1055"/>
+                    <KeyFrameDouble frame="21" value="34.5321" interpolationType="linear" id="0:1056"/>
+                    <KeyFrameDouble frame="25" value="32.3133" interpolationType="linear" id="0:1057"/>
+                    <KeyFrameDouble frame="30" value="33.9751" interpolationType="linear" id="0:1058"/>
+                    <KeyFrameDouble frame="34" value="30.3943" interpolationType="linear" id="0:1059"/>
+                    <KeyFrameDouble frame="38" value="32.8656" interpolationType="linear" id="0:1060"/>
+                    <KeyFrameDouble frame="43" value="34.5321" interpolationType="linear" id="0:1061"/>
+                    <KeyFrameDouble frame="47" value="32.5892" interpolationType="linear" id="0:1062"/>
+                    <KeyFrameDouble frame="52" value="33.9751" interpolationType="linear" id="0:1063"/>
+                    <KeyFrameDouble frame="56" value="30.9402" interpolationType="linear" id="0:1064"/>
+                    <KeyFrameDouble frame="61" value="33.1424" interpolationType="linear" id="0:1065"/>
+                    <KeyFrameDouble frame="65" value="34.5321" interpolationType="linear" id="0:1066"/>
+                    <KeyFrameDouble frame="69" value="32.3133" interpolationType="linear" id="0:1067"/>
+                    <KeyFrameDouble frame="72" value="31.488" id="0:1068"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:293" id="0:1069">
+                <!-- inRotation -->
+                <KeyedProperty propertyKey="84" id="0:1070">
+                    <KeyFrameDouble frame="0" value="1.83338" interpolationType="linear" id="0:1071"/>
+                    <KeyFrameDouble frame="5" value="1.81745" interpolationType="linear" id="0:1072"/>
+                    <KeyFrameDouble frame="11" value="1.84395" interpolationType="linear" id="0:1073"/>
+                    <KeyFrameDouble frame="18" value="1.81449" interpolationType="linear" id="0:1074"/>
+                    <KeyFrameDouble frame="24" value="1.83682" interpolationType="linear" id="0:1075"/>
+                    <KeyFrameDouble frame="31" value="1.81449" interpolationType="linear" id="0:1076"/>
+                    <KeyFrameDouble frame="37" value="1.84034" interpolationType="linear" id="0:1077"/>
+                    <KeyFrameDouble frame="44" value="1.8116" interpolationType="linear" id="0:1078"/>
+                    <KeyFrameDouble frame="50" value="1.83004" interpolationType="linear" id="0:1079"/>
+                    <KeyFrameDouble frame="57" value="1.80877" interpolationType="linear" id="0:1080"/>
+                    <KeyFrameDouble frame="63" value="1.84395" interpolationType="linear" id="0:1081"/>
+                    <KeyFrameDouble frame="69" value="1.82359" interpolationType="linear" id="0:1082"/>
+                    <KeyFrameDouble frame="72" value="1.83338" id="0:1083"/>
+                </KeyedProperty>
+                <!-- inDistance -->
+                <KeyedProperty propertyKey="85" id="0:1084">
+                    <KeyFrameDouble frame="0" value="22.988" interpolationType="linear" id="0:1085"/>
+                    <KeyFrameDouble frame="5" value="24.4397" interpolationType="linear" id="0:1086"/>
+                    <KeyFrameDouble frame="11" value="22.1201" interpolationType="linear" id="0:1087"/>
+                    <KeyFrameDouble frame="18" value="24.7307" interpolationType="linear" id="0:1088"/>
+                    <KeyFrameDouble frame="24" value="22.6984" interpolationType="linear" id="0:1089"/>
+                    <KeyFrameDouble frame="31" value="24.7307" interpolationType="linear" id="0:1090"/>
+                    <KeyFrameDouble frame="37" value="22.4091" interpolationType="linear" id="0:1091"/>
+                    <KeyFrameDouble frame="44" value="25.022" interpolationType="linear" id="0:1092"/>
+                    <KeyFrameDouble frame="50" value="23.2778" interpolationType="linear" id="0:1093"/>
+                    <KeyFrameDouble frame="57" value="25.3134" interpolationType="linear" id="0:1094"/>
+                    <KeyFrameDouble frame="63" value="22.1201" interpolationType="linear" id="0:1095"/>
+                    <KeyFrameDouble frame="69" value="23.8583" interpolationType="linear" id="0:1096"/>
+                    <KeyFrameDouble frame="72" value="22.988" id="0:1097"/>
+                </KeyedProperty>
+                <!-- outRotation -->
+                <KeyedProperty propertyKey="86" id="0:1098">
+                    <KeyFrameDouble frame="0" value="4.97498" interpolationType="linear" id="0:1099"/>
+                    <KeyFrameDouble frame="5" value="4.95904" interpolationType="linear" id="0:1100"/>
+                    <KeyFrameDouble frame="11" value="4.98554" interpolationType="linear" id="0:1101"/>
+                    <KeyFrameDouble frame="18" value="4.95608" interpolationType="linear" id="0:1102"/>
+                    <KeyFrameDouble frame="24" value="4.97841" interpolationType="linear" id="0:1103"/>
+                    <KeyFrameDouble frame="31" value="4.95608" interpolationType="linear" id="0:1104"/>
+                    <KeyFrameDouble frame="37" value="4.98193" interpolationType="linear" id="0:1105"/>
+                    <KeyFrameDouble frame="44" value="4.95319" interpolationType="linear" id="0:1106"/>
+                    <KeyFrameDouble frame="50" value="4.97163" interpolationType="linear" id="0:1107"/>
+                    <KeyFrameDouble frame="57" value="4.95036" interpolationType="linear" id="0:1108"/>
+                    <KeyFrameDouble frame="63" value="4.98554" interpolationType="linear" id="0:1109"/>
+                    <KeyFrameDouble frame="69" value="4.96519" interpolationType="linear" id="0:1110"/>
+                    <KeyFrameDouble frame="72" value="4.97498" id="0:1111"/>
+                </KeyedProperty>
+                <!-- outDistance -->
+                <KeyedProperty propertyKey="87" id="0:1112">
+                    <KeyFrameDouble frame="0" value="22.988" interpolationType="linear" id="0:1113"/>
+                    <KeyFrameDouble frame="5" value="24.4397" interpolationType="linear" id="0:1114"/>
+                    <KeyFrameDouble frame="11" value="22.1201" interpolationType="linear" id="0:1115"/>
+                    <KeyFrameDouble frame="18" value="24.7307" interpolationType="linear" id="0:1116"/>
+                    <KeyFrameDouble frame="24" value="22.6984" interpolationType="linear" id="0:1117"/>
+                    <KeyFrameDouble frame="31" value="24.7307" interpolationType="linear" id="0:1118"/>
+                    <KeyFrameDouble frame="37" value="22.4091" interpolationType="linear" id="0:1119"/>
+                    <KeyFrameDouble frame="44" value="25.022" interpolationType="linear" id="0:1120"/>
+                    <KeyFrameDouble frame="50" value="23.2778" interpolationType="linear" id="0:1121"/>
+                    <KeyFrameDouble frame="57" value="25.3134" interpolationType="linear" id="0:1122"/>
+                    <KeyFrameDouble frame="63" value="22.1201" interpolationType="linear" id="0:1123"/>
+                    <KeyFrameDouble frame="69" value="23.8583" interpolationType="linear" id="0:1124"/>
+                    <KeyFrameDouble frame="72" value="22.988" id="0:1125"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <!-- the core's tip -->
+            <KeyedObject objectId="0:272" id="0:1126">
+                <KeyedProperty propertyKey="25" id="0:1127">
+                    <KeyFrameDouble frame="0" value="-110.75" interpolationType="linear" id="0:1128"/>
+                    <KeyFrameDouble frame="3" value="-116.6" interpolationType="linear" id="0:1129"/>
+                    <KeyFrameDouble frame="9" value="-107.24" interpolationType="linear" id="0:1130"/>
+                    <KeyFrameDouble frame="14" value="-118.94" interpolationType="linear" id="0:1131"/>
+                    <KeyFrameDouble frame="20" value="-108.41" interpolationType="linear" id="0:1132"/>
+                    <KeyFrameDouble frame="26" value="-115.43" interpolationType="linear" id="0:1133"/>
+                    <KeyFrameDouble frame="32" value="-122.45" interpolationType="linear" id="0:1134"/>
+                    <KeyFrameDouble frame="39" value="-109.58" interpolationType="linear" id="0:1135"/>
+                    <KeyFrameDouble frame="45" value="-117.77" interpolationType="linear" id="0:1136"/>
+                    <KeyFrameDouble frame="51" value="-107.24" interpolationType="linear" id="0:1137"/>
+                    <KeyFrameDouble frame="58" value="-115.43" interpolationType="linear" id="0:1138"/>
+                    <KeyFrameDouble frame="64" value="-122.45" interpolationType="linear" id="0:1139"/>
+                    <KeyFrameDouble frame="70" value="-113.09" interpolationType="linear" id="0:1140"/>
+                    <KeyFrameDouble frame="72" value="-110.75" id="0:1141"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:279" id="0:1142">
+                <!-- inRotation -->
+                <KeyedProperty propertyKey="84" id="0:1143">
+                    <KeyFrameDouble frame="0" value="2.01551" interpolationType="linear" id="0:1144"/>
+                    <KeyFrameDouble frame="3" value="1.98699" interpolationType="linear" id="0:1145"/>
+                    <KeyFrameDouble frame="9" value="2.03443" interpolationType="linear" id="0:1146"/>
+                    <KeyFrameDouble frame="14" value="1.97653" interpolationType="linear" id="0:1147"/>
+                    <KeyFrameDouble frame="20" value="2.02796" interpolationType="linear" id="0:1148"/>
+                    <KeyFrameDouble frame="26" value="1.99242" interpolationType="linear" id="0:1149"/>
+                    <KeyFrameDouble frame="32" value="1.96173" interpolationType="linear" id="0:1150"/>
+                    <KeyFrameDouble frame="39" value="2.02166" interpolationType="linear" id="0:1151"/>
+                    <KeyFrameDouble frame="45" value="1.9817" interpolationType="linear" id="0:1152"/>
+                    <KeyFrameDouble frame="51" value="2.03443" interpolationType="linear" id="0:1153"/>
+                    <KeyFrameDouble frame="58" value="1.99242" interpolationType="linear" id="0:1154"/>
+                    <KeyFrameDouble frame="64" value="1.96173" interpolationType="linear" id="0:1155"/>
+                    <KeyFrameDouble frame="70" value="2.00368" interpolationType="linear" id="0:1156"/>
+                    <KeyFrameDouble frame="72" value="2.01551" id="0:1157"/>
+                </KeyedProperty>
+                <!-- inDistance -->
+                <KeyedProperty propertyKey="85" id="0:1158">
+                    <KeyFrameDouble frame="0" value="13.8247" interpolationType="linear" id="0:1159"/>
+                    <KeyFrameDouble frame="3" value="14.7108" interpolationType="linear" id="0:1160"/>
+                    <KeyFrameDouble frame="9" value="13.299" interpolationType="linear" id="0:1161"/>
+                    <KeyFrameDouble frame="14" value="15.0683" interpolationType="linear" id="0:1162"/>
+                    <KeyFrameDouble frame="20" value="13.4736" interpolationType="linear" id="0:1163"/>
+                    <KeyFrameDouble frame="26" value="14.5327" interpolationType="linear" id="0:1164"/>
+                    <KeyFrameDouble frame="32" value="15.6076" interpolationType="linear" id="0:1165"/>
+                    <KeyFrameDouble frame="39" value="13.6489" interpolationType="linear" id="0:1166"/>
+                    <KeyFrameDouble frame="45" value="14.8894" interpolationType="linear" id="0:1167"/>
+                    <KeyFrameDouble frame="51" value="13.299" interpolationType="linear" id="0:1168"/>
+                    <KeyFrameDouble frame="58" value="14.5327" interpolationType="linear" id="0:1169"/>
+                    <KeyFrameDouble frame="64" value="15.6076" interpolationType="linear" id="0:1170"/>
+                    <KeyFrameDouble frame="70" value="14.1777" interpolationType="linear" id="0:1171"/>
+                    <KeyFrameDouble frame="72" value="13.8247" id="0:1172"/>
+                </KeyedProperty>
+                <!-- outRotation -->
+                <KeyedProperty propertyKey="86" id="0:1173">
+                    <KeyFrameDouble frame="0" value="5.1571" interpolationType="linear" id="0:1174"/>
+                    <KeyFrameDouble frame="3" value="5.12859" interpolationType="linear" id="0:1175"/>
+                    <KeyFrameDouble frame="9" value="5.17603" interpolationType="linear" id="0:1176"/>
+                    <KeyFrameDouble frame="14" value="5.11812" interpolationType="linear" id="0:1177"/>
+                    <KeyFrameDouble frame="20" value="5.16955" interpolationType="linear" id="0:1178"/>
+                    <KeyFrameDouble frame="26" value="5.13401" interpolationType="linear" id="0:1179"/>
+                    <KeyFrameDouble frame="32" value="5.10333" interpolationType="linear" id="0:1180"/>
+                    <KeyFrameDouble frame="39" value="5.16325" interpolationType="linear" id="0:1181"/>
+                    <KeyFrameDouble frame="45" value="5.12329" interpolationType="linear" id="0:1182"/>
+                    <KeyFrameDouble frame="51" value="5.17603" interpolationType="linear" id="0:1183"/>
+                    <KeyFrameDouble frame="58" value="5.13401" interpolationType="linear" id="0:1184"/>
+                    <KeyFrameDouble frame="64" value="5.10333" interpolationType="linear" id="0:1185"/>
+                    <KeyFrameDouble frame="70" value="5.14527" interpolationType="linear" id="0:1186"/>
+                    <KeyFrameDouble frame="72" value="5.1571" id="0:1187"/>
+                </KeyedProperty>
+                <!-- outDistance -->
+                <KeyedProperty propertyKey="87" id="0:1188">
+                    <KeyFrameDouble frame="0" value="13.8247" interpolationType="linear" id="0:1189"/>
+                    <KeyFrameDouble frame="3" value="14.7108" interpolationType="linear" id="0:1190"/>
+                    <KeyFrameDouble frame="9" value="13.299" interpolationType="linear" id="0:1191"/>
+                    <KeyFrameDouble frame="14" value="15.0683" interpolationType="linear" id="0:1192"/>
+                    <KeyFrameDouble frame="20" value="13.4736" interpolationType="linear" id="0:1193"/>
+                    <KeyFrameDouble frame="26" value="14.5327" interpolationType="linear" id="0:1194"/>
+                    <KeyFrameDouble frame="32" value="15.6076" interpolationType="linear" id="0:1195"/>
+                    <KeyFrameDouble frame="39" value="13.6489" interpolationType="linear" id="0:1196"/>
+                    <KeyFrameDouble frame="45" value="14.8894" interpolationType="linear" id="0:1197"/>
+                    <KeyFrameDouble frame="51" value="13.299" interpolationType="linear" id="0:1198"/>
+                    <KeyFrameDouble frame="58" value="14.5327" interpolationType="linear" id="0:1199"/>
+                    <KeyFrameDouble frame="64" value="15.6076" interpolationType="linear" id="0:1200"/>
+                    <KeyFrameDouble frame="70" value="14.1777" interpolationType="linear" id="0:1201"/>
+                    <KeyFrameDouble frame="72" value="13.8247" id="0:1202"/>
+                </KeyedProperty>
+            </KeyedObject>
+            <KeyedObject objectId="0:273" id="0:1203">
+                <!-- inRotation -->
+                <KeyedProperty propertyKey="84" id="0:1204">
+                    <KeyFrameDouble frame="0" value="4.26768" interpolationType="linear" id="0:1205"/>
+                    <KeyFrameDouble frame="3" value="4.29619" interpolationType="linear" id="0:1206"/>
+                    <KeyFrameDouble frame="9" value="4.24875" interpolationType="linear" id="0:1207"/>
+                    <KeyFrameDouble frame="14" value="4.30666" interpolationType="linear" id="0:1208"/>
+                    <KeyFrameDouble frame="20" value="4.25522" interpolationType="linear" id="0:1209"/>
+                    <KeyFrameDouble frame="26" value="4.29077" interpolationType="linear" id="0:1210"/>
+                    <KeyFrameDouble frame="32" value="4.32145" interpolationType="linear" id="0:1211"/>
+                    <KeyFrameDouble frame="39" value="4.26153" interpolationType="linear" id="0:1212"/>
+                    <KeyFrameDouble frame="45" value="4.30149" interpolationType="linear" id="0:1213"/>
+                    <KeyFrameDouble frame="51" value="4.24875" interpolationType="linear" id="0:1214"/>
+                    <KeyFrameDouble frame="58" value="4.29077" interpolationType="linear" id="0:1215"/>
+                    <KeyFrameDouble frame="64" value="4.32145" interpolationType="linear" id="0:1216"/>
+                    <KeyFrameDouble frame="70" value="4.27951" interpolationType="linear" id="0:1217"/>
+                    <KeyFrameDouble frame="72" value="4.26768" id="0:1218"/>
+                </KeyedProperty>
+                <!-- inDistance -->
+                <KeyedProperty propertyKey="85" id="0:1219">
+                    <KeyFrameDouble frame="0" value="13.8247" interpolationType="linear" id="0:1220"/>
+                    <KeyFrameDouble frame="3" value="14.7108" interpolationType="linear" id="0:1221"/>
+                    <KeyFrameDouble frame="9" value="13.299" interpolationType="linear" id="0:1222"/>
+                    <KeyFrameDouble frame="14" value="15.0683" interpolationType="linear" id="0:1223"/>
+                    <KeyFrameDouble frame="20" value="13.4736" interpolationType="linear" id="0:1224"/>
+                    <KeyFrameDouble frame="26" value="14.5327" interpolationType="linear" id="0:1225"/>
+                    <KeyFrameDouble frame="32" value="15.6076" interpolationType="linear" id="0:1226"/>
+                    <KeyFrameDouble frame="39" value="13.6489" interpolationType="linear" id="0:1227"/>
+                    <KeyFrameDouble frame="45" value="14.8894" interpolationType="linear" id="0:1228"/>
+                    <KeyFrameDouble frame="51" value="13.299" interpolationType="linear" id="0:1229"/>
+                    <KeyFrameDouble frame="58" value="14.5327" interpolationType="linear" id="0:1230"/>
+                    <KeyFrameDouble frame="64" value="15.6076" interpolationType="linear" id="0:1231"/>
+                    <KeyFrameDouble frame="70" value="14.1777" interpolationType="linear" id="0:1232"/>
+                    <KeyFrameDouble frame="72" value="13.8247" id="0:1233"/>
+                </KeyedProperty>
+                <!-- outRotation -->
+                <KeyedProperty propertyKey="86" id="0:1234">
+                    <KeyFrameDouble frame="0" value="1.12608" interpolationType="linear" id="0:1235"/>
+                    <KeyFrameDouble frame="3" value="1.1546" interpolationType="linear" id="0:1236"/>
+                    <KeyFrameDouble frame="9" value="1.10716" interpolationType="linear" id="0:1237"/>
+                    <KeyFrameDouble frame="14" value="1.16506" interpolationType="linear" id="0:1238"/>
+                    <KeyFrameDouble frame="20" value="1.11363" interpolationType="linear" id="0:1239"/>
+                    <KeyFrameDouble frame="26" value="1.14917" interpolationType="linear" id="0:1240"/>
+                    <KeyFrameDouble frame="32" value="1.17986" interpolationType="linear" id="0:1241"/>
+                    <KeyFrameDouble frame="39" value="1.11994" interpolationType="linear" id="0:1242"/>
+                    <KeyFrameDouble frame="45" value="1.15989" interpolationType="linear" id="0:1243"/>
+                    <KeyFrameDouble frame="51" value="1.10716" interpolationType="linear" id="0:1244"/>
+                    <KeyFrameDouble frame="58" value="1.14917" interpolationType="linear" id="0:1245"/>
+                    <KeyFrameDouble frame="64" value="1.17986" interpolationType="linear" id="0:1246"/>
+                    <KeyFrameDouble frame="70" value="1.13792" interpolationType="linear" id="0:1247"/>
+                    <KeyFrameDouble frame="72" value="1.12608" id="0:1248"/>
+                </KeyedProperty>
+                <!-- outDistance -->
+                <KeyedProperty propertyKey="87" id="0:1249">
+                    <KeyFrameDouble frame="0" value="13.8247" interpolationType="linear" id="0:1250"/>
+                    <KeyFrameDouble frame="3" value="14.7108" interpolationType="linear" id="0:1251"/>
+                    <KeyFrameDouble frame="9" value="13.299" interpolationType="linear" id="0:1252"/>
+                    <KeyFrameDouble frame="14" value="15.0683" interpolationType="linear" id="0:1253"/>
+                    <KeyFrameDouble frame="20" value="13.4736" interpolationType="linear" id="0:1254"/>
+                    <KeyFrameDouble frame="26" value="14.5327" interpolationType="linear" id="0:1255"/>
+                    <KeyFrameDouble frame="32" value="15.6076" interpolationType="linear" id="0:1256"/>
+                    <KeyFrameDouble frame="39" value="13.6489" interpolationType="linear" id="0:1257"/>
+                    <KeyFrameDouble frame="45" value="14.8894" interpolationType="linear" id="0:1258"/>
+                    <KeyFrameDouble frame="51" value="13.299" interpolationType="linear" id="0:1259"/>
+                    <KeyFrameDouble frame="58" value="14.5327" interpolationType="linear" id="0:1260"/>
+                    <KeyFrameDouble frame="64" value="15.6076" interpolationType="linear" id="0:1261"/>
+                    <KeyFrameDouble frame="70" value="14.1777" interpolationType="linear" id="0:1262"/>
+                    <KeyFrameDouble frame="72" value="13.8247" id="0:1263"/>
+                </KeyedProperty>
+            </KeyedObject>
+        </LinearAnimation>
+    </Artboard>
+</Rive>

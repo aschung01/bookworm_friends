@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  The same group Runner claims. Both targets or neither: the snapshot is written by the app
+	  and read here, and a group named on only one side yields a container the other cannot see
+	  while both keep working silently.
+
+	  On the simulator this is not validated against a provisioning profile, which is why the
+	  widget can be built and tested locally before the App Group is registered on the developer
+	  portal. Device and TestFlight builds do validate it, and will fail to sign until the App ID
+	  carries the APP_GROUPS capability -- run `scripts/asc_key_probe.py` to see whether it does.
+	-->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.unicorn.bookwormFriends</string>
+	</array>
+</dict>
+</plist>

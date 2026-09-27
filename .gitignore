@@ -125,3 +125,9 @@ __pycache__/
 # without a second clone. Each is its own working tree with its own HEAD; the
 # outer repo must not try to track their contents.
 .worktrees/
+
+# Golden-test failure output. `flutter test` writes the master, the test render and
+# two diffs here whenever an image comparison fails, so the directory is a symptom
+# of the last red run rather than anything to keep. Read it, fix the test or
+# re-record the golden with `--update-goldens`, and let it be overwritten.
+test/failures/

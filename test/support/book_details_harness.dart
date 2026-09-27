@@ -318,6 +318,15 @@ Future<void> pumpBookDetails(
   /// `CNSegmentedControl` and there is no `Row` to overflow, so it is not this
   /// suite's to fix.
   Size logicalSize = const Size(390, 844),
+
+  /// Overrides this harness has no opinion about, appended after its own.
+  ///
+  /// **Appended, so a case can replace one of the defaults above.** Riverpod takes the
+  /// last override for a provider, which is what lets `book_details_streak_test.dart`
+  /// serve a fake `readingDaysProvider` — a provider this harness deliberately leaves
+  /// alone, because until the band's wheel started writing a reading day, nothing on this
+  /// page touched it.
+  List<Override> extraOverrides = const [],
 }) async {
   tester.view.physicalSize = logicalSize * 3;
   tester.view.devicePixelRatio = 3;
@@ -384,6 +393,7 @@ Future<void> pumpBookDetails(
         }),
         if (libraryActions != null)
           libraryActionsProvider.overrideWithValue(libraryActions),
+        ...extraOverrides,
       ],
       child: MaterialApp(
         theme: AppTheme.light,

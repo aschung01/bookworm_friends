@@ -8,6 +8,7 @@ import 'package:bookworm_friends/ui/pages/invite_consent_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_dead_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_done_page.dart';
 import 'package:bookworm_friends/ui/pages/manage_friend_page.dart';
+import 'package:bookworm_friends/ui/pages/reading_streak_page.dart';
 import 'package:bookworm_friends/ui/pages/scan_book_page.dart';
 import 'package:bookworm_friends/ui/pages/settings_page.dart';
 import 'package:bookworm_friends/ui/pages/share_card_page.dart';
@@ -72,6 +73,21 @@ class AppRoutes {
   ///
   /// **Presented upward, and therefore not in [routes].** See [onGenerateRoute].
   static const String shareCard = '/share_card';
+
+  /// The reading streak: the run, the month, and the one control that records a night.
+  ///
+  /// **Reached from the library bar's streak chip, which used to have nowhere to go.** The
+  /// chip pointed at the Library Card as a stopgap, because the figure had no destination
+  /// of its own; this is that destination, and it is what gives the month grid a home.
+  ///
+  /// A cover for the same reason [shareCard] and [scanBook] are: it is a focused,
+  /// dismissible context that is the one thing on screen rather than a panel over a
+  /// shrunken app, and `fullscreenDialog` is what keeps the shell underneath perfectly
+  /// still. It also clears the floating tab bar for free, since `topPageRouteProvider`
+  /// tracks page routes and needs no name matching.
+  ///
+  /// **Presented upward, and therefore not in [routes].** See [onGenerateRoute].
+  static const String readingStreak = '/reading_streak';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashPage(),
@@ -163,6 +179,11 @@ class AppRoutes {
         settings: settings,
         fullscreenDialog: true,
         builder: (_) => const ScanBookPage(),
+      ),
+      readingStreak => CupertinoPageRoute<void>(
+        settings: settings,
+        fullscreenDialog: true,
+        builder: (_) => const ReadingStreakPage(),
       ),
       _ => null,
     };

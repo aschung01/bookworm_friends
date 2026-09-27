@@ -26,6 +26,7 @@ import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
 import 'package:bookworm_friends/ui/widgets/book/book_magnifier.dart';
 import 'package:bookworm_friends/models/book_compliment.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/reactions_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_celebration_route.dart';
 import 'package:bookworm_friends/ui/widgets/reaction_capsule.dart';
 import 'package:bookworm_friends/ui/widgets/headers/collapsing_book_title.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
@@ -134,6 +135,26 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
         body: Center(child: Text(l10n.bookInfoUnavailable)),
       );
     }
+
+    // **Watched for its side effect, which is unusual enough to justify.** Nothing on this
+    // page *draws* the streak. What this buys is that the set is resolved by the time either
+    // of the band's two doors is tapped, because both of them ask `readTodayProvider`
+    // whether today was already recorded — and that getter is derived from an async set, so
+    // it answers `false` while the fetch is in flight rather than "not known yet".
+    //
+    // Unwatched, two things went wrong. The status sheet opened with "I read today" unticked
+    // on a day that *was* recorded, and saving it called `setRead(read: false)` and took the
+    // night away. And every first nudge of a bookmark looked like the first of the day, so
+    // the celebration fired on a run it had already celebrated. Both survived on device
+    // because the library bar's streak chip watches the same provider and the route below
+    // this one stays in the tree — so the set was nearly always already cached, and the
+    // failure only showed with nothing else alive to have asked for it.
+    //
+    // **A watch and not an `await` before opening the sheet.** Awaiting is the airtight
+    // version and it puts a network read in front of the form: a fetch that stalls would
+    // mean the reader cannot edit their dates at all, which is worse than a wrong tick.
+    // This starts the fetch at build and is resolved long before a human can tap.
+    ref.watch(readingDaysProvider);
 
     final currentUserId = ref.watch(currentUserIdProvider);
     final isSelf = routeBook.userId == currentUserId;
@@ -1217,6 +1238,13 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
   }
 
   void _onEditStatusPressed(Book book) {
+    // `readTodayProvider` and not `await ref.read(readingDaysProvider.future)`, and that is
+    // a reversal worth recording. Awaiting the set before opening the sheet is the obvious
+    // way to guarantee the tick is right — and it makes the *sheet* wait on a network
+    // read, so a fetch that stalls means the reader cannot edit their dates at all. That
+    // trades a wrong checkbox for an unreachable form, which is the worse of the two. The
+    // set is watched in `build` instead; see the note there.
+    final wasRead = ref.read(readTodayProvider);
     showBookStatusBottomSheet(
       context,
       currentStatus: book.status,
@@ -1228,7 +1256,7 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
       // to print a page. Null for about two reading books in three, which is why the
       // sheet stores a fraction and opens on percent.
       pageCount: book.pageCount,
-      readToday: ref.read(readTodayProvider),
+      readToday: wasRead,
       onSave: (edit) async {
         await ref
             .read(libraryActionsProvider)
@@ -1253,8 +1281,41 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
               read: edit.readToday,
               bookId: book.id,
             );
+        // The tick is the reader's own answer here, so "tonight is new" needs both halves:
+        // the day was open, and they said they read it. Unticking a recorded day is the
+        // third case and celebrates nothing.
+        await _celebrateIfTonightIsNew(
+          wasRead: wasRead,
+          isReadNow: edit.readToday,
+        );
       },
     );
+  }
+
+  /// Raises the streak celebration when a write is what made today count.
+  ///
+  /// **The transition, never the state.** `readToday` being true after a write is not news
+  /// — it is true for the rest of the day, and every subsequent bookmark nudge would raise
+  /// the screen again. What earns a celebration is `false` becoming `true`, which happens
+  /// at most once a day by construction, because `reading_days` is keyed on `(user_id,
+  /// day)` and a second write is idempotent.
+  ///
+  /// **Why this lives here at all.** The celebration used to be reachable only from
+  /// `ReadingStreakPage`, which meant a reader who kept their streak the way most readers
+  /// actually do — by moving a bookmark on the book they are reading — got the number
+  /// updated silently and never saw the screen built for the moment. Two doors to one
+  /// event; see `showStreakCelebration`, which is the one presenter both use.
+  /// **Both halves are passed in rather than read back.** The obvious shape — write, then
+  /// ask `readTodayProvider` whether today counts now — reads a provider derived from an
+  /// async set, which is the trap [_onEditStatusPressed] records. The callers already know
+  /// both facts without asking: the set was resolved before the write, and what the write
+  /// asserted is in their hands.
+  Future<void> _celebrateIfTonightIsNew({
+    required bool wasRead,
+    required bool isReadNow,
+  }) async {
+    if (wasRead || !isReadNow || !mounted) return;
+    await showStreakCelebration(context, ref);
   }
 
   /// The band's second door: straight to the percent wheel.
@@ -1271,6 +1332,7 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
       initialPage: book.progressPage,
       pageCount: book.pageCount,
       onProgressSelected: (answer) async {
+        final wasRead = ref.read(readTodayProvider);
         // The status and both dates are passed back unchanged. This call is the
         // only writer of the column, and it must not become a way to edit anything
         // else by accident.
@@ -1284,6 +1346,30 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
               progress: answer.progress,
               progressPage: answer.page,
             );
+        // **Moving the bookmark stamps the night, and this door did not used to.** It is
+        // the shortest path in the app to "I read some of this", and it was the only one
+        // that left the streak untouched — so the reader most likely to have a run going
+        // was the one whose run silently did not grow.
+        //
+        // **Still two writes rather than one, and the note above the status sheet's pair
+        // stands.** That note says keeping the calls apart is what makes it impossible for
+        // a change of status to stamp a day *by accident*, and it is worth being precise
+        // about what has changed: nothing about accident. `onProgressSelected` is gated on
+        // the sheet's own `_touched`, so it fires only when the reader moved the wheel off
+        // the value it opened at — confirming a pre-filled position writes neither the
+        // column nor the day. What is asserted here is a reading of intent, not a
+        // side-effect of a form: someone who just told the app where they are in a book
+        // read it today.
+        //
+        // The cost, stated: correcting a percentage the reader got wrong last week also
+        // stamps *today*. There is no way to tell that apart from reading, because the
+        // wheel records a position and not a date. The narrower rule — stamp only when the
+        // position moved *forward* — is available and is one comparison, but it would
+        // quietly refuse the night to a reader re-reading a chapter.
+        await ref
+            .read(readingDaysProvider.notifier)
+            .setRead(readingDate(DateTime.now()), read: true, bookId: book.id);
+        await _celebrateIfTonightIsNew(wasRead: wasRead, isReadNow: true);
       },
     );
   }

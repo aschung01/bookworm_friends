@@ -22,5 +22,32 @@
 	<array>
 		<string>applinks:libstack.app</string>
 	</array>
+	<!--
+	  The container the home-screen widget reads its snapshot out of.
+
+	  The widget extension cannot reach Supabase: `reading_days` is owner-only RLS and an
+	  extension has no auth session, and a timeline provider doing network I/O is the standard
+	  way a widget goes blank. So the app writes a snapshot here -- the run, the last recorded
+	  day, the book in progress, and the two hour constants -- and the extension only reads it.
+	  The same group must be named in ios/StreakWidget/StreakWidget.entitlements and in
+	  AppDelegate's `bookworm/widget` channel, or the write lands somewhere the widget cannot
+	  see while appearing to succeed.
+
+	  **This breaks device and TestFlight builds until the App ID carries the APP_GROUPS
+	  capability**, which cloud managed signing cannot add for itself -- it can reissue a profile
+	  for capabilities an App ID already has, and App Groups are not in the App Store Connect
+	  API's surface at all. Register `group.com.unicorn.bookwormFriends` under Identifiers >
+	  App Groups, tick App Groups on the App ID, and then `./release_ios.sh` works again.
+	  `.venv/bin/python scripts/asc_key_probe.py` reports whether that has been done.
+
+	  The simulator does not validate entitlements against a provisioning profile, which is why
+	  the widget is fully testable locally before any of that.
+
+	  See docs/superpowers/specs/2026-09-22-streak-widget-design.md.
+	-->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.unicorn.bookwormFriends</string>
+	</array>
 </dict>
 </plist>

@@ -6,8 +6,10 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/models/library_card_stats.dart';
+import 'package:bookworm_friends/ui/widgets/library_card/card_lighting.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/card_cover_row.dart';
 import 'package:bookworm_friends/ui/widgets/library_card/stat_tile.dart';
+import 'package:bookworm_friends/ui/widgets/streak/streak_flame_mark.dart';
 
 /// The Library Card's contents: a hero tile and whatever tiles have something true
 /// to say.
@@ -85,6 +87,27 @@ class LibraryCardBody extends StatelessWidget {
   /// The longest run on record, which a missed night does not erase.
   final int longestStreak;
 
+  /// Whether *today* is one of the reader's reading days.
+  ///
+  /// **Keyed on today, never on [streak], and that distinction is the whole feature.**
+  /// The count is intact all day and only the day's own status changes at the 4am
+  /// rollover, so a tile that took its temperature from the number would be warm at 9am
+  /// on a day nothing had been read — the opposite of a nudge. `ReadingStreakChip`
+  /// records the same rule at length; this is the second reader of it.
+  ///
+  /// A `bool` handed in rather than `readTodayProvider` watched here, because this class
+  /// is given everything it draws — see [stats].
+  final bool readToday;
+
+  /// Opens the streak page. Null leaves the streak tile inert.
+  ///
+  /// A callback rather than a `Navigator.pushNamed` in here, because this class is
+  /// handed everything it draws and knows nothing about where it is drawn — the same
+  /// reason it takes `stats` rather than reading a provider. It is also what lets the
+  /// sheet withhold the tap during an edit without this widget learning what an edit
+  /// is.
+  final VoidCallback? onStreakTap;
+
   /// How the reader has chosen to see the books they have finished.
   const LibraryCardBody({
     super.key,
@@ -94,6 +117,8 @@ class LibraryCardBody extends StatelessWidget {
     this.reading = const [],
     this.streak = 0,
     this.longestStreak = 0,
+    this.readToday = false,
+    this.onStreakTap,
   });
 
   @override
@@ -163,6 +188,32 @@ class LibraryCardBody extends StatelessWidget {
         StatTile(
           label: l10n.libraryCardStreak,
           figure: l10n.libraryCardStreakValue(streak),
+          // **A filled tile in two temperatures, and the one tile on this card that is
+          // not the hero and still takes a fill of its own.** It earns that by being a
+          // *state* rather than a stat: Pace and most-read author are true all week, and
+          // this one changes tonight. Warm once today is recorded, cooled before — the
+          // same shape either way, so a reader who opens the card twice in a day sees
+          // one object change temperature rather than two different tiles.
+          //
+          // See [StatTileVariant.cool] for why cold is filled at all rather than
+          // receding to the ordinary tile the way the bar's chip does.
+          variant: readToday ? StatTileVariant.warm : StatTileVariant.cool,
+          // **White with the fill's own base as its core.** [StreakFlameMark] derives a
+          // core by lifting HSL lightness, and white has none left to lift — so a plain
+          // white flame is one solid shape and reads as a droplet. Handing it the ground
+          // it sits on puts the fill back through the middle of the flame, which is also
+          // the only reason the mark reads as fire on the cool tile at all.
+          mark: StreakFlameMark(
+            size: AppTextStyles.figure.fontSize! * 0.92,
+            color: Colors.white,
+            coreColor: readToday ? kCandleFlame : kStatTileCool,
+          ),
+          // **The one tile on this card that goes somewhere.** Everything else here
+          // is terminal — there is no `pace` screen and no `most-read author`
+          // screen — which is why the tap is a parameter on this one tile rather
+          // than a behaviour of [StatTile]. Null while the library is being edited;
+          // the sheet decides that, the same way it decides for the year rail.
+          onTap: onStreakTap,
           // Carries the record as well as the run. With freezes deferred a single
           // missed night severs a run outright, so this is the only figure on the card
           // that survives the night that reset everything else — without it a reader

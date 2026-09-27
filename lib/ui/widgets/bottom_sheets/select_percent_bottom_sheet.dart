@@ -106,6 +106,21 @@ Future<void> showSelectPercentBottomSheet(
   /// Enables Page mode and the rider's derived page. Never written.
   int? pageCount,
   required ValueChanged<ProgressAnswer> onProgressSelected,
+
+  /// Called when the reader presses Confirm, whatever they did to the wheel.
+  ///
+  /// **A different fact from [onProgressSelected], and the streak page is why it exists.**
+  /// That callback is gated on `_touched`, because agreeing with a pre-filled value must
+  /// not rewrite the column (it used to, and it walked bookmarks back a page). But a
+  /// caller for whom this sheet is a *required step* has to know the step was completed:
+  /// from outside, "confirmed without moving the wheel" and "swiped the sheet away" both
+  /// look like silence, and treating the first as a dismissal would refuse to record a
+  /// night the reader just confirmed.
+  ///
+  /// Fires before [onProgressSelected] and before the pop, so a caller can set a flag in
+  /// it and read the answer after the await. Optional, and null for every caller that
+  /// only wants the value.
+  VoidCallback? onConfirmed,
   String? title,
 }) {
   return AppSheet.show(
@@ -126,6 +141,7 @@ Future<void> showSelectPercentBottomSheet(
       initialPage: initialPage,
       pageCount: pageCount,
       onProgressSelected: onProgressSelected,
+      onConfirmed: onConfirmed,
       title: title,
     ),
   );
@@ -137,6 +153,7 @@ class _ProgressSheet extends StatefulWidget {
     required this.initialPage,
     required this.pageCount,
     required this.onProgressSelected,
+    required this.onConfirmed,
     required this.title,
   });
 
@@ -144,6 +161,7 @@ class _ProgressSheet extends StatefulWidget {
   final int? initialPage;
   final int? pageCount;
   final ValueChanged<ProgressAnswer> onProgressSelected;
+  final VoidCallback? onConfirmed;
   final String? title;
 
   @override
@@ -382,6 +400,7 @@ class _ProgressSheetState extends State<_ProgressSheet> {
                       buttonText: l10n.confirm,
                       onPressed: () {
                         final answer = _answer;
+                        widget.onConfirmed?.call();
                         if (_touched && answer != null) {
                           widget.onProgressSelected(answer);
                         }

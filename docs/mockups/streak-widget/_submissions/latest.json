@@ -1,0 +1,128 @@
+{
+  "submittedAt": "2026-09-26T19:36:52.211Z",
+  "picks": [],
+  "posePicks": [
+    {
+      "label": "D-dawn",
+      "voice": "duoLike",
+      "state": "dawn",
+      "pose": "m01-flex",
+      "reposed": false,
+      "text": "Keep it going!"
+    },
+    {
+      "label": "D-morning",
+      "voice": "duoLike",
+      "state": "morning",
+      "pose": "m03-reading",
+      "reposed": false,
+      "text": "Your book's waiting!"
+    },
+    {
+      "label": "D-none",
+      "voice": "duoLike",
+      "state": "none",
+      "pose": "m06-snooze",
+      "reposed": false,
+      "text": "Start a streak!"
+    },
+    {
+      "label": "D-done",
+      "voice": "duoLike",
+      "state": "done",
+      "pose": "m13-blush",
+      "reposed": false,
+      "text": ""
+    },
+    {
+      "label": "G-evening",
+      "voice": "guilt",
+      "state": "evening",
+      "pose": "m06-snooze",
+      "reposed": false,
+      "text": "You said you'd read."
+    },
+    {
+      "label": "G-final",
+      "voice": "guilt",
+      "state": "final",
+      "pose": "m12-panic",
+      "reposed": false,
+      "text": "Don't leave it like this."
+    },
+    {
+      "label": "P-morning",
+      "voice": "desperate",
+      "state": "morning",
+      "pose": "m05-puddle",
+      "reposed": true,
+      "text": "Anything yet?"
+    },
+    {
+      "label": "U-late",
+      "voice": "unhinged",
+      "state": "late",
+      "pose": "m07-drowsy",
+      "reposed": true,
+      "text": "Midnight approaches. So do I."
+    }
+  ],
+  "poses": {
+    "duoLike": {
+      "dawn": "m01-flex",
+      "morning": "m03-reading",
+      "afternoon": "m15-smug",
+      "evening": "m13-blush",
+      "late": "m07-drowsy",
+      "final": "m12-panic",
+      "none": "m06-snooze",
+      "done": "m13-blush"
+    },
+    "guilt": {
+      "dawn": "m13-blush",
+      "morning": "m03-reading",
+      "afternoon": "m07-drowsy",
+      "evening": "m06-snooze",
+      "late": "m15-smug",
+      "final": "m12-panic",
+      "none": "m06-snooze",
+      "done": "m13-blush"
+    },
+    "desperate": {
+      "dawn": "m06-snooze",
+      "morning": "m05-puddle",
+      "afternoon": "m03-reading",
+      "evening": "m01-flex",
+      "late": "m07-drowsy",
+      "final": "m12-panic",
+      "none": "m13-blush",
+      "done": "m13-blush"
+    },
+    "unhinged": {
+      "dawn": "m07-drowsy",
+      "morning": "m01-flex",
+      "afternoon": "m03-reading",
+      "evening": "m13-blush",
+      "late": "m07-drowsy",
+      "final": "m15-smug",
+      "none": "m15-smug",
+      "done": "m13-blush"
+    }
+  },
+  "poseChanges": [
+    {
+      "voice": "desperate",
+      "state": "morning",
+      "from": "m13-blush",
+      "to": "m05-puddle"
+    },
+    {
+      "voice": "unhinged",
+      "state": "late",
+      "from": "m12-panic",
+      "to": "m07-drowsy"
+    }
+  ],
+  "notes": "P-morning for afternoon (with m05-puddle)\n",
+  "receivedAt": "2026-09-26T12:36:52"
+}

@@ -1,0 +1,3397 @@
+<!doctype html>
+<!--
+  Design mockup shell. Self-contained: no build, no server, no network.
+  Open it straight from disk.
+
+  Replace the marked sections in the script below:
+    SECTION 1  TOKENS    - real colours/metrics copied from the codebase
+    SECTION 2  FRAME     - how one screen of THIS product is drawn
+    SECTION 3  DATA      - the screens, flows and elements themselves
+    SECTION 4  VERSIONS  - named variants, git-branch style (optional)
+  Leave SECTION 5 (ENGINE) alone unless you're changing behaviour.
+-->
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>The week row and the stamp</title>
+        <style>
+            :root {
+                /* ---- SECTION 1a: product tokens ----
+                   Copied, not approximated. Sources:
+                     lib/constants/app_theme.dart            AppColors.light
+                     lib/ui/widgets/library_card/card_lighting.dart  kCandle*
+                     lib/ui/widgets/streak/read_week_row.dart  cell 34, gap 6,
+                                                               radius 4, edge 1.5
+                */
+                /* **The ground is white now, and the cream is kept only as a note.**
+                   kCandleGlow was the celebration's ground when this page was written; the
+                   screen moved to white, which is what `kStreakCelebrationGround` in
+                   `streak_celebration.dart` now says. */
+                --ground: #ffffff;
+                --cream: #ffe8c4; /* kCandleGlow — what it used to stand on */
+                --stock: #26190a; /* kCandleStockTop — the warm near-black ink */
+                --amber: #f2a93f; /* kCandleFlame — the shipped stamp edge */
+                /* **The accent is the flame's own body colour, and that is a reversal.**
+                   It was AppColors.light.flame #B54708, which `app_theme.dart` describes as
+                   deliberately darkened from a true fire orange far enough to pass AA. On
+                   instruction it is now kCandleFlame — the colour the fire is actually drawn
+                   in — so the counter and the tokens match the flame above them. Measured on
+                   white, as text: #B54708 is 5.43:1, #F2A93F is **2.00:1**, which is under
+                   AA's 4.5 and under the 3:1 allowed for large text. There is no version of
+                   this that is both the flame's colour and compliant: darkening this hue to
+                   even 3:1 reaches #BF8632, an ochre that stops reading as fire, because what
+                   runs out is saturation rather than lightness. Duolingo makes the same trade.
+                   What goes *inside* a filled token is a separate decision with its own
+                   numbers — see the note on `CHECK`. */
+                --fire: #f2a93f; /* kCandleFlame — the flame's body */
+                --ink2: #26190a; /* kCandleStockTop, for copy on this white ground */
+                --page: #f8f9fa;
+                --surface: #ffffff;
+                --variant: #e9ecef;
+                --text: #212529;
+                --text2: #626a72;
+                --divider: #e9ecef;
+                --brand: #09bc8a;
+                --brandText: #067657;
+
+                /* ---- page chrome (safe to leave) ---- */
+                --ink: #1c1c1e;
+                --muted: #8a8a8f;
+                --line: #e6e4e0;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                color: var(--ink);
+                background: #fff;
+                -webkit-font-smoothing: antialiased;
+                line-height: 1.5;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.86em;
+                background: #f2f1ee;
+                padding: 0.1em 0.35em;
+                border-radius: 4px;
+            }
+            mark.hl {
+                background: rgba(79, 125, 243, 0.28);
+                color: inherit;
+                border-radius: 3px;
+                padding: 0 1px;
+            }
+            .gone {
+                display: none;
+            }
+
+            /* ---------- top chrome ---------- */
+            .top {
+                position: sticky;
+                top: 0;
+                z-index: 300;
+                background: rgba(255, 255, 255, 0.94);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--line);
+            }
+            .top-in {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 11px 22px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+            }
+            .brand span {
+                color: var(--brandText);
+            }
+            .vtabs {
+                display: flex;
+                gap: 2px;
+            }
+            .vtabs button {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--muted);
+                background: none;
+                border: 0;
+                padding: 6px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+            }
+            .vtabs button:hover {
+                color: var(--ink);
+            }
+            .vtabs button.on {
+                color: var(--ink);
+                font-weight: 800;
+                background: #fff;
+                border: 0.5px solid var(--line);
+                box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.1);
+            }
+            .vtabs button::after,
+            .hk::after {
+                content: attr(data-key);
+                position: absolute;
+                top: calc(100% + 7px);
+                left: 50%;
+                transform: translateX(-50%) translateY(3px);
+                background: #26262b;
+                color: #fff;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 2.5px 6px;
+                border-radius: 5px;
+                box-shadow: 0 3px 9px rgba(0, 0, 0, 0.28);
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition:
+                    opacity 0.12s,
+                    transform 0.12s;
+                z-index: 50;
+            }
+            .vtabs button:hover::after,
+            .hk:hover::after {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+                transition-delay: 0.3s;
+            }
+            .sep {
+                width: 1px;
+                height: 20px;
+                background: var(--line);
+            }
+            .count {
+                margin-left: auto;
+                font-size: 12px;
+                color: var(--text2);
+                text-align: right;
+                line-height: 1.4;
+                white-space: nowrap;
+            }
+            .kbd {
+                display: inline-block;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--muted);
+                background: #f4f2ef;
+                border: 1px solid var(--line);
+                border-bottom-width: 2px;
+                border-radius: 4px;
+                padding: 0 4px;
+                line-height: 15px;
+                min-width: 15px;
+                text-align: center;
+            }
+
+            /* ---------- comboboxes (version + filter share the panel styling) ---------- */
+            .cbox {
+                position: relative;
+            }
+            .cbox.hide {
+                display: none;
+            }
+            .cbtn {
+                position: relative;
+                font: inherit;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--ink);
+                background: #f4f2ef;
+                border: 0.5px solid var(--line);
+                padding: 6px 13px;
+                border-radius: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .cbtn:hover {
+                background: #eeece7;
+            }
+            .cbtn .chev {
+                font-size: 9px;
+                color: var(--muted);
+                transition: transform 0.15s;
+            }
+            .cbox.open .cbtn .chev {
+                transform: rotate(180deg);
+            }
+            .cbtn .badge {
+                font-size: 11px;
+                font-weight: 800;
+                color: #fff;
+                background: var(--brandText);
+                border-radius: 20px;
+                padding: 0 6px;
+                line-height: 16px;
+            }
+            .cbtn .branch {
+                font-size: 12px;
+                opacity: 0.5;
+            }
+            .cbtn.vbtn {
+                background: #eef2fd;
+                border-color: #cddafb;
+                color: #22407f;
+            }
+            .cbtn.vbtn:hover {
+                background: #e3ebfc;
+            }
+            .cpanel {
+                position: absolute;
+                top: calc(100% + 8px);
+                left: 0;
+                width: 340px;
+                max-height: min(70vh, 520px);
+                display: none;
+                flex-direction: column;
+                background: rgba(38, 38, 41, 0.97);
+                backdrop-filter: blur(20px);
+                border-radius: 15px;
+                box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+                overflow: hidden;
+                z-index: 400;
+            }
+            .cbox.open .cpanel {
+                display: flex;
+            }
+            .csearch {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                padding: 13px 15px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .csearch svg {
+                flex: 0 0 auto;
+                opacity: 0.5;
+            }
+            .csearch input {
+                flex: 1;
+                font: inherit;
+                font-size: 14.5px;
+                color: #fff;
+                background: none;
+                border: 0;
+                outline: none;
+            }
+            .csearch input::placeholder {
+                color: rgba(255, 255, 255, 0.42);
+            }
+            .clist {
+                overflow-y: auto;
+                padding: 7px 7px 9px;
+                flex: 1 1 auto;
+            }
+            .clist::-webkit-scrollbar {
+                width: 9px;
+            }
+            .clist::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.22);
+                border-radius: 9px;
+                border: 2px solid transparent;
+                background-clip: padding-box;
+            }
+            .cgrp {
+                font-size: 12px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.45);
+                padding: 9px 11px 4px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .cgrp:hover {
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .copt {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                padding: 8px 11px;
+                border-radius: 9px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .copt:hover,
+            .copt.kb {
+                background: rgba(255, 255, 255, 0.11);
+            }
+            .copt .box {
+                width: 17px;
+                height: 17px;
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.16);
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: #fff;
+            }
+            .copt.sel .box {
+                background: var(--brand);
+                color: #fff;
+                font-weight: 900;
+            }
+            .copt.radio .box {
+                border-radius: 50%;
+            }
+            .copt .lb {
+                font-size: 14.5px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .copt .lb mark.hl {
+                background: rgba(79, 125, 243, 0.5);
+                color: #fff;
+            }
+            .copt .sub {
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.42);
+                margin-top: 2px;
+                line-height: 1.45;
+            }
+            .copt .col {
+                flex: 1;
+                min-width: 0;
+            }
+            .copt .tagn {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1px 6px;
+                border-radius: 20px;
+                background: rgba(255, 255, 255, 0.14);
+                color: rgba(255, 255, 255, 0.75);
+                white-space: nowrap;
+            }
+            .cfoot {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 14px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex: 0 0 auto;
+            }
+            .cfoot .n {
+                flex: 1;
+                font-size: 11.5px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+            .cfoot button {
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                color: #fff;
+                background: rgba(255, 255, 255, 0.13);
+                border: 0;
+                border-radius: 7px;
+                padding: 4px 10px;
+                cursor: pointer;
+            }
+            .cfoot button:hover {
+                background: rgba(255, 255, 255, 0.22);
+            }
+            .cempty {
+                color: rgba(255, 255, 255, 0.45);
+                font-size: 13px;
+                padding: 16px 11px;
+            }
+
+            /* ---------- version bar ---------- */
+            .vinfo {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                color: var(--muted);
+                padding: 2px 0 0;
+            }
+            .vinfo .lbl {
+                font-weight: 800;
+                color: var(--brandText);
+                white-space: nowrap;
+            }
+            .vinfo .note {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .vinfo .diffs {
+                white-space: nowrap;
+                font-weight: 700;
+            }
+            .vinfo button {
+                font: inherit;
+                font-size: 11.5px;
+                font-weight: 700;
+                color: var(--brandText);
+                background: #eef2fd;
+                border: 0.5px solid #cddafb;
+                border-radius: 7px;
+                padding: 2px 9px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .vinfo button:hover {
+                background: #e3ebfc;
+            }
+            .vinfo button.off {
+                color: var(--muted);
+                background: #f4f2ef;
+                border-color: var(--line);
+            }
+
+            /* ---------- layout ---------- */
+            .wrap {
+                max-width: 1500px;
+                margin: 0 auto;
+                padding: 22px 22px 90px;
+            }
+            .view {
+                display: none;
+            }
+            .view.on {
+                display: block;
+            }
+            h1 {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.4px;
+                margin: 6px 0 4px;
+            }
+            .lead {
+                color: var(--muted);
+                font-size: 14px;
+                max-width: 800px;
+                margin: 0 0 22px;
+            }
+            h2.grp {
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #a09c95;
+                margin: 30px 0 12px;
+                padding-bottom: 7px;
+                border-bottom: 1px solid var(--line);
+                scroll-margin-top: 80px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 20px 16px;
+            }
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+            .item .cap {
+                margin-top: 9px;
+            }
+            .item .nm {
+                font-size: 12.5px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .item .ds {
+                font-size: 11px;
+                color: var(--muted);
+                line-height: 1.5;
+                margin-top: 2px;
+            }
+            .shot {
+                background: #e6e3dd;
+                border-radius: 10px;
+                padding: 14px 0;
+                display: flex;
+                justify-content: center;
+            }
+            .pair {
+                display: flex;
+                gap: 8px;
+            }
+            .pair > div {
+                flex: 1;
+                min-width: 0;
+            }
+            .pair .vl {
+                font-size: 9.5px;
+                font-weight: 800;
+                color: var(--muted);
+                text-align: center;
+                margin-bottom: 5px;
+                letter-spacing: 0.03em;
+            }
+            .pair .vl.b {
+                color: var(--brandText);
+            }
+            .noneleft {
+                color: var(--muted);
+                font-size: 13.5px;
+                padding: 26px 0;
+            }
+            .pend {
+                background: #fdf3f0;
+                border-left: 3px solid #c05746;
+                padding: 9px 13px;
+                border-radius: 0 6px 6px 0;
+                font-size: 12px;
+                line-height: 1.55;
+                margin: 0 0 13px;
+                max-width: 840px;
+            }
+            /* A callout inside a card rather than above a flow: the flow version is a
+               840px block with 13px of bottom margin, which inside a 400px grid cell
+               would leave a gap under the last line of the note. */
+            .item .pend,
+            .el .pend {
+                margin: 9px 0 0;
+                max-width: none;
+                font-size: 11.5px;
+            }
+            .el .pend {
+                margin: 9px 14px 14px;
+            }
+            .tag {
+                font-size: 9.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 1.5px 7px;
+                border-radius: 20px;
+                white-space: nowrap;
+            }
+            .tag.changed {
+                background: #fff4e0;
+                color: #8a5a10;
+            }
+            .tag.onlyHere {
+                background: #e6f4ee;
+                color: #0b6b4f;
+            }
+            .tag.onlyThere {
+                background: #fdecea;
+                color: #a3302a;
+            }
+            .tag.ver {
+                background: #eef2fd;
+                color: #2f55b8;
+            }
+
+            /* ---------- flows ---------- */
+            /* ghosts: present in the compared version, absent here */
+            .item.ghost .shot,
+            .el.ghost .demo {
+                opacity: 0.5;
+                outline: 1px dashed #c7a9a4;
+                outline-offset: -1px;
+            }
+            .item.ghost .nm,
+            .el.ghost .nm,
+            .flow.ghost .fh {
+                text-decoration: line-through;
+                text-decoration-color: #c7a9a4;
+            }
+            .flowlayout {
+                display: grid;
+                grid-template-columns: 216px 1fr;
+                gap: 26px;
+                align-items: start;
+            }
+            .side {
+                position: sticky;
+                top: 80px;
+            }
+            .sbox {
+                position: relative;
+                margin-bottom: 14px;
+            }
+            .search {
+                width: 100%;
+                font: inherit;
+                font-size: 13px;
+                padding: 9px 40px 9px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #faf9f7;
+                outline: none;
+            }
+            .search:focus {
+                border-color: var(--brandText);
+                background: #fff;
+            }
+            .sbox .hint {
+                position: absolute;
+                display: none;
+                right: 9px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
+            .sbox .hint-slash {
+                display: block;
+            }
+            .sbox.focused .hint-slash,
+            .sbox.dirty .hint-slash {
+                display: none;
+            }
+            .sbox.dirty .hint-esc {
+                display: block;
+            }
+            .side a {
+                display: block;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--muted);
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border-left: 2px solid transparent;
+            }
+            .side a:hover {
+                background: #f5f4f1;
+                color: var(--ink);
+            }
+            .side a.cur {
+                color: var(--brandText);
+                background: #eef2fd;
+                font-weight: 800;
+                border-left-color: var(--brandText);
+            }
+            .side .sh {
+                font-size: 10.5px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                color: #b9b6b0;
+                margin: 16px 0 5px;
+                padding-left: 10px;
+            }
+            .flow {
+                margin-bottom: 38px;
+                scroll-margin-top: 88px;
+            }
+            .flow .fh {
+                font-size: 15.5px;
+                font-weight: 800;
+                margin: 0 0 3px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                flex-wrap: wrap;
+            }
+            .flow .fd {
+                font-size: 12.5px;
+                color: var(--muted);
+                margin: 0 0 13px;
+                max-width: 780px;
+            }
+            .flow .vrow {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--muted);
+                margin: 0 0 5px;
+                letter-spacing: 0.03em;
+            }
+            .flow .vrow.b {
+                color: var(--brandText);
+            }
+            .steps {
+                display: flex;
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+            .step {
+                flex: 0 0 auto;
+                width: 170px;
+            }
+            .step .shot {
+                border-radius: 9px;
+                padding: 11px 0;
+            }
+            .step .sn {
+                font-size: 10px;
+                font-weight: 800;
+                color: var(--brandText);
+                margin-bottom: 5px;
+            }
+            .step .sc {
+                font-size: 10.5px;
+                color: var(--muted);
+                line-height: 1.45;
+                margin-top: 7px;
+                padding-right: 8px;
+            }
+            .arrow {
+                flex: 0 0 auto;
+                width: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #c9c5be;
+                font-size: 17px;
+                padding-bottom: 40px;
+            }
+
+            /* ---------- elements ---------- */
+            .egrid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+                gap: 16px;
+            }
+            .el {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .el .demo {
+                background: #f2f0ec;
+                padding: 20px 18px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 96px;
+            }
+            .el .body {
+                padding: 12px 15px 14px;
+            }
+            .el .nm {
+                font-size: 13px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .el .ds {
+                font-size: 11.5px;
+                color: var(--muted);
+                line-height: 1.55;
+                margin-top: 3px;
+            }
+            .el .ds b {
+                color: #c05746;
+            }
+
+            /* ================================================================
+   SECTION 1b: DEVICE / FRAME STYLES — replace for your product.
+   Default is a phone. For web, widen .fr and swap the tab bar for a
+   browser chrome bar.
+   ================================================================ */
+            /* The "device" here is not a phone: the subject is a 34pt cell in a
+               353pt column, and at phone-mockup scale that becomes six pixels and
+               nothing can be judged. So `.fr` is the celebration's own content
+               column at 1:1 — 393pt wide less its 20pt page padding — and every
+               dimension below is the real one. `.fr.screen` is the same column with
+               the flame and the counter above it, for the two in-context cards. */
+            .fr {
+                width: 353px;
+                background: var(--ground);
+                border-radius: 18px;
+                padding: 16px;
+                position: relative;
+                overflow: hidden;
+                flex: 0 0 auto;
+            }
+            .fr.screen {
+                width: 393px;
+                padding: 18px 20px 16px;
+            }
+
+            /* ---------- the candidate row: label above, token below ---------- */
+            .wk {
+                display: flex;
+                gap: 6px;
+            }
+            .wk .cell {
+                flex: 1;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+            }
+            .wk .lab {
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1.5;
+                letter-spacing: 0.2px;
+                color: rgba(38, 25, 10, 0.55);
+            }
+            /* Today is marked on the *label*, which is Duolingo's move: the token
+               says what happened, the label says which day you are looking at. */
+            .wk .lab.now {
+                color: var(--fire);
+            }
+            .wk .tok {
+                position: relative;
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                background: rgba(38, 25, 10, 0.12);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .wk .tok.sq {
+                border-radius: 10px;
+            }
+            .wk .tok.on {
+                background: var(--fire);
+            }
+            .wk .tok.dash {
+                background: none;
+                border: 2px dashed var(--fire);
+            }
+            .wk .tok svg {
+                width: 34px;
+                height: 34px;
+            }
+            /* The chain. Absolutely positioned and declared *before* the token, so
+               the token paints over it — `.tok` carries `position: relative` for
+               exactly that. `width: calc(100% + 6px)` from `left: 50%` lands on the
+               next cell's centre, because the gap is 6. */
+            .wk .ln {
+                position: absolute;
+                top: 36px;
+                left: 50%;
+                width: calc(100% + 6px);
+                height: 7px;
+                background: var(--fire);
+            }
+
+            /* ---------- the shipped row: letters inside boxes ----------
+               These are ReadWeekPalette.candle, value for value:
+                 stampFill  kCandleFlame @ .28   stampEdge  kCandleFlame
+                 stampInk   kCandleStockTop      todayEdge  kCandleFlame @ .6
+                 todayInk   stock @ .7           missInk    stock @ .4
+                 rule       stock @ .15          freshFill  kCandleFlame       */
+            .sw {
+                display: flex;
+                gap: 6px;
+            }
+            .sw s {
+                text-decoration: none;
+                flex: 1;
+                height: 34px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 700;
+                color: rgba(38, 25, 10, 0.4);
+                border-bottom: 1px solid rgba(38, 25, 10, 0.15);
+            }
+            .sw s.on {
+                border: 1.5px solid var(--amber);
+                border-radius: 4px;
+                background: rgba(242, 169, 63, 0.28);
+                color: var(--stock);
+            }
+            .sw s.today {
+                border: 1.5px dashed rgba(242, 169, 63, 0.6);
+                border-radius: 4px;
+                color: rgba(38, 25, 10, 0.7);
+            }
+            .sw s.fresh {
+                border: 1.5px solid var(--amber);
+                border-radius: 4px;
+                background: var(--amber);
+                color: var(--stock);
+                box-shadow: 0 2px 6px rgba(242, 169, 63, 0.4);
+            }
+            .sw s.blank {
+                border-bottom: 0;
+            }
+
+            /* ---------- the card ---------- */
+            /* **No fill, because the ground is white.** This was `rgba(255,255,255,.45)`
+               — a shade of the cream it sat on, so the card read as the same sheet of paper.
+               On white that is nothing at all: the card disappeared and only the row inside
+               it was left. The shipped widget took the same change. */
+            .card {
+                border-radius: 14px;
+            }
+            .card.edge {
+                border: 1px solid rgba(38, 25, 10, 0.12);
+            }
+            .card .pad {
+                padding: 14px;
+            }
+            .card .rule {
+                height: 1px;
+                background: rgba(38, 25, 10, 0.1);
+            }
+            .card .cap {
+                padding: 12px 14px;
+                text-align: center;
+                font-size: 15px;
+                line-height: 1.35;
+                color: rgba(38, 25, 10, 0.65);
+            }
+            .capout {
+                margin-top: 10px;
+                text-align: center;
+                font-size: 15px;
+                line-height: 1.35;
+                color: rgba(38, 25, 10, 0.65);
+            }
+
+            /* ---------- the rest of the celebration column ----------
+               AppTextStyles.displayStreak (64/w800/-1.28) and titleUser
+               (22/w600/-0.4), both in AppColors.light.flame. */
+            .fig {
+                text-align: center;
+                font-size: 64px;
+                font-weight: 800;
+                letter-spacing: -1.28px;
+                line-height: 1.05;
+                color: var(--fire);
+            }
+            .dayst {
+                text-align: center;
+                font-size: 22px;
+                font-weight: 600;
+                letter-spacing: -0.4px;
+                color: var(--fire);
+            }
+            .cta {
+                height: 50px;
+                border-radius: 12px;
+                background: var(--brandText);
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 15px;
+                font-weight: 700;
+            }
+            .fl {
+                display: block;
+                width: 252px;
+                height: 252px;
+                margin: 0 auto;
+            }
+            /* ---- the shell's grid assumes a 170px phone ----
+               Every rule here is a consequence of drawing at real size, and all of
+               them were found by looking: the first render of this page clipped the
+               leftmost card in every row off the edge of the screen, because a 353pt
+               card does not fit a 210px column. */
+            .grid,
+            .grid.cmp {
+                grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            }
+            /* Compare mode stacks rather than sitting side by side. Two 393pt cards
+               in one cell is 794pt, which would force a scale factor — and a scaled
+               card is no longer the 1:1 this page exists to provide. Stacked, both
+               stay true and the version labels still say which is which. (The
+               shell's `sm` flag means "draw this smaller for a pair"; `frame()`
+               ignores it for the same reason.) */
+            .pair {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .egrid {
+                grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            }
+            .step {
+                width: 393px;
+            }
+            /* (b) F — one track instead of four badges. Deliberately the week row's chain
+               at a longer scale: a run drawn as one continuous thing, with the rungs sitting
+               on it rather than floating in a row of their own. The segments are **even**,
+               not proportional — 7/30/100/365 spaced to scale would put the first three rungs
+               in the leftmost 27% and leave two thirds of the track empty for a year. */
+            .track {
+                position: relative;
+                height: 34px;
+            }
+            .track .rail {
+                position: absolute;
+                left: 6px;
+                right: 6px;
+                top: 6px;
+                height: 7px;
+                border-radius: 4px;
+                background: rgba(38, 25, 10, 0.1);
+            }
+            .track .fill {
+                position: absolute;
+                left: 6px;
+                top: 6px;
+                height: 7px;
+                border-radius: 4px;
+                background: var(--fire);
+            }
+            .track .rung {
+                position: absolute;
+                top: 6px;
+                width: 2px;
+                margin-left: -1px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            /* **A hairline through the rail, not a shape sitting on it — after two cuts that
+               both failed in their own way.** 19px circles made the whole object read as a
+               *slider*: a filled bar with a round handle on it promises something draggable,
+               which is worse than the rings' problem because it promises an interaction.
+               Squaring them off fixed that and exposed the next one: an earned rung is solid
+               amber on an amber fill, so it vanished into the bar as a bulge, and a white halo
+               round it only turned the bulge into a bead.
+
+               A graduation cannot have either defect. It is white, so it reads against the
+               fill and against the rail; it has no handle shape, so there is nothing to drag;
+               and it is the page-edge hairline the Library Card already draws, which is more
+               of this app's own language than a badge or a knob. Earned-ness is then carried
+               by the two things that were always carrying it anyway — the fill having passed
+               the mark, and the label under it. */
+            .track .rung i {
+                width: 2px;
+                height: 7px;
+                background: #fff;
+            }
+            .track .rung.won b {
+                color: var(--ink2);
+            }
+            .track .rung b {
+                margin-top: 7px;
+                font-size: 10.5px;
+                font-weight: 700;
+                white-space: nowrap;
+                color: rgba(38, 25, 10, 0.4);
+            }
+
+            .spanline {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                font-size: 15px;
+                color: rgba(38, 25, 10, 0.65);
+            }
+            .spanline b {
+                font-weight: 700;
+                color: var(--ink2);
+            }
+
+            /* (b) the span marks — superseded, kept for the record */
+            .spans {
+                display: flex;
+                gap: 6px;
+            }
+            .spans .sp {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+            }
+            .spans .ring {
+                width: 46px;
+                height: 46px;
+                border-radius: 50%;
+                border: 3px solid rgba(38, 25, 10, 0.14);
+                color: rgba(38, 25, 10, 0.38);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 15px;
+                font-weight: 800;
+                letter-spacing: -0.3px;
+            }
+            .spans .sp.won .ring {
+                border-color: var(--fire);
+                color: var(--fire);
+            }
+            .spans .lb {
+                font-size: 11px;
+                font-weight: 700;
+                color: rgba(38, 25, 10, 0.45);
+            }
+            .spans .sp.won .lb {
+                color: rgba(38, 25, 10, 0.75);
+            }
+            .note {
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.3px;
+                text-transform: uppercase;
+                color: rgba(38, 25, 10, 0.45);
+                margin-bottom: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="top-in">
+                <div class="cbox" id="vbox">
+                    <button class="cbtn vbtn hk" id="vbtn" data-key="v">
+                        <span class="branch">&#9095;</span
+                        ><span id="vbtn-label">main</span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="vsearch"
+                                placeholder="Search versions&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="vlist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="vfoot-n"></span
+                            ><button id="vcmp-clear">Stop comparing</button>
+                        </div>
+                    </div>
+                </div>
+                <span class="sep"></span>
+                <span class="brand"
+                    >LIBSTACK &mdash;
+                    <span>the week row &amp; the stamp</span></span
+                >
+                <div class="vtabs">
+                    <button data-v="screens" data-key="1" class="on">
+                        Screens
+                    </button>
+                    <button data-v="elements" data-key="2">UI Elements</button>
+                    <button data-v="flows" data-key="3">Flows</button>
+                </div>
+                <span class="sep"></span>
+                <div class="cbox" id="cbox">
+                    <button class="cbtn hk" id="cbtn" data-key="/">
+                        <span id="cbtn-label">Screens</span
+                        ><span class="badge" id="cbtn-badge" hidden></span
+                        ><span class="chev">&#9660;</span>
+                    </button>
+                    <div class="cpanel">
+                        <div class="csearch">
+                            <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="#fff"
+                                stroke-width="1.8"
+                            >
+                                <circle cx="6.8" cy="6.8" r="4.6" />
+                                <path d="M10.4 10.4 14 14" />
+                            </svg>
+                            <input
+                                id="csearch"
+                                placeholder="Search screens&hellip;"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="clist" id="clist"></div>
+                        <div class="cfoot">
+                            <span class="n" id="cfoot-n"></span
+                            ><button id="cclear">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="count" id="cnt"></div>
+                <div class="vinfo">
+                    <span class="lbl" id="vinfo-lbl"></span>
+                    <span class="note" id="vinfo-note"></span>
+                    <span class="diffs" id="vinfo-diffs"></span>
+                    <button id="difftoggle" class="off">
+                        Only differences
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="view on" id="v-screens">
+                <h1>Screens</h1>
+                <p class="lead">
+                    Five candidate week rows against the shipped one, after
+                    &ldquo;compare with Duolingo&rdquo;. <b>E is the pick, and E
+                    is now built</b> &mdash; A's structure with a rounded-square
+                    token that can still carry the rake, which a circle cannot.
+                    What shipped and how it differs from what is drawn here is
+                    <code>el-built</code>. Grouped by
+                    <b>state</b> rather than by option, so the same night is
+                    drawn every way and can be compared without scrolling.
+                    <b>Every value here is the real one:</b> the ground is
+                    <b>white</b> (<code>kStreakCelebrationGround</code>, which
+                    replaced <code>kCandleGlow</code> cream) and the ink
+                    <code>kCandleStockTop</code> #26190A
+                    (<code>card_lighting.dart</code>); the filled token and the
+                    counter are <code>kCandleFlame</code> #F2A93F, the flame's
+                    own body colour, which <b>measures 2.00:1 as text</b> and is
+                    a deliberate trade &mdash; see <code>el-read</code>; the
+                    shipped row is <code>ReadWeekPalette.candle</code> stop for
+                    stop, at its real 34pt cell, 6pt gap, 4pt radius and 1.5px
+                    edge (<code>read_week_row.dart</code>). The cards are drawn
+                    at <b>1:1</b>, not at phone-mockup scale, because a 34pt
+                    cell shrunk into a 170px phone is six pixels and cannot be
+                    judged. Switch the window with <span class="kbd">v</span>,
+                    filter with <span class="kbd">/</span>, change view with
+                    <span class="kbd">1</span> <span class="kbd">2</span>
+                    <span class="kbd">3</span>.
+                </p>
+                <div id="screens"></div>
+                <div class="noneleft gone" id="screens-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-elements">
+                <h1>UI elements</h1>
+                <p class="lead">
+                    Each piece with the decision it encodes, and the measured
+                    reason where there is one. The contrast figures are against
+                    the celebration's cream ground, computed rather than
+                    eyeballed &mdash; which is how Duolingo's own mid-orange got
+                    ruled out.
+                </p>
+                <div id="elements"></div>
+                <div class="noneleft gone" id="elements-none">
+                    Nothing matches that filter.
+                </div>
+            </div>
+
+            <div class="view" id="v-flows">
+                <h1>UX flows</h1>
+                <p class="lead">
+                    The stamping half of the question, which a still cannot
+                    show. Both flows are drawn in the recommendation
+                    (B&nbsp;+&nbsp;C) so the steps are comparable; red callouts
+                    mark what is still open.
+                </p>
+                <div class="flowlayout">
+                    <div class="side">
+                        <div class="sbox" id="sbox">
+                            <input
+                                class="search"
+                                id="fsearch"
+                                placeholder="Search flows&hellip;"
+                                autocomplete="off"
+                            />
+                            <span class="hint hint-slash"
+                                ><span class="kbd">/</span></span
+                            >
+                            <span class="hint hint-esc"
+                                ><span class="kbd">Esc</span></span
+                            >
+                        </div>
+                        <div id="sidenav"></div>
+                    </div>
+                    <div>
+                        <div id="flows"></div>
+                        <div class="noneleft gone" id="flows-none">
+                            No flows match that search.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            /* ==================================================================
+   SECTION 2: FRAME RENDERER — replace with your product's chrome.
+
+   Screens are declared as DATA and drawn by this one function. When a
+   shared decision changes (a button leaves the header, a tab is
+   renamed) you edit it here once instead of in every mockup, which is
+   how hand-drawn sets go stale.
+   ================================================================== */
+            /* The flame and book, at the artboard's real proportions so the
+               in-context cards do not flatter the design: the artboard is 300x300,
+               the settled flame is 138x231 (46% x 77%), the book is 208 wide (69%),
+               and flame/book is 0.663 — a reader's own instruction, not a tuning
+               artefact. See rive/streak_flame/AGENTS.md. This is a stand-in for
+               `assets/rive/streak_flame.riv`, drawn only to give the week card its
+               context; the real one is two keyed timelines. */
+            const FLAME = `<svg class="fl" viewBox="0 0 300 300" aria-hidden="true">
+  <ellipse cx="150" cy="256" rx="104" ry="15" fill="#F2A93F" opacity=".20"/>
+  <path d="M150 20 C180 70 219 118 219 170 C219 215 188 251 150 251 C112 251 81 215 81 170 C81 118 120 70 150 20 Z" fill="#F2A93F"/>
+  <path d="M150 145 C163 168 177 186 177 205 C177 231 165 251 150 251 C135 251 123 231 123 205 C123 186 137 168 150 145 Z" fill="#FFD479"/>
+  <path d="M52 242 H248 L242 258 H58 Z" fill="#F3E3C6"/>
+  <path d="M58 247 H242 M59 252 H241" stroke="#D9A96B" stroke-width="1.4"/>
+  <path d="M46 258 H254 L246 269 H54 Z" fill="#35230E"/>
+</svg>`;
+
+            /* The tick, drawn rather than a glyph. Coordinates and weight are the
+               ones the Dart spike used: (0.27,0.52) (0.43,0.68) (0.74,0.35) of the
+               box at 0.11 of its width, round caps and joins. Heavier and rounder
+               than Material's `check_rounded`, which is what makes it read as a
+               mark rather than as an icon.
+
+               **White, on instruction, and this reverses the note that was here.** It read:
+               a white tick works on Duolingo's orange because their disc is darker than
+               kCandleFlame, so on #F2A93F it vanishes. Half of that is wrong — measured,
+               white on Duolingo's own #FF9600 is **2.18:1** and white on #F2A93F is
+               **2.00:1**, which is the same trade rather than a worse one. So a white tick
+               here is exactly the reference, not a degradation of it. Dark #26190A on the
+               same disc would be 8.58:1, and that is the cost being accepted.
+
+               **What the cost actually is, because it is not the tick's legibility.** Read
+               and unread are told apart by two things: the fill's hue, and the presence of a
+               mark. Those two fills are #F2A93F against #E5E3E2, which is **1.56:1** — a
+               large hue shift carried by almost no luminance. Normal vision reads that
+               instantly; without colour, luminance is all there is, and then the tick is the
+               *only* remaining signal. A dark tick keeps that signal at 8.58:1. A white one
+               puts it at 2.00:1, so both signals are weak at once.
+
+               If that matters later, the fix that keeps this look is to darken the empty disc
+               rather than to darken the tick — widening 1.56:1 costs nothing visible on the
+               earned side. */
+            const CHECK = `<svg viewBox="0 0 34 34" fill="none" stroke="#FFFFFF" stroke-width="3.74" stroke-linecap="round" stroke-linejoin="round"><path d="M9.18 17.68 L14.62 23.12 L25.16 11.90"/></svg>`;
+
+            /* The rake, by the month grid's own rule — derived from the position so
+               it is stable across renders, never random. `read_calendar_month.dart`
+               derives it from the date for the same reason. */
+            function rake(i) {
+                return ((i * 7) % 9) - 4;
+            }
+
+            function block(b) {
+                switch (b.t) {
+                    /* The shipped row: one letter inside a box, four states, three of
+                       which are not a box. `blank` is a day that has not happened. */
+                    case "shipped":
+                        return `<div class="sw">${b.days
+                            .map((d, i) => {
+                                const cls =
+                                    d === "read"
+                                        ? "on"
+                                        : d === "fresh"
+                                          ? "fresh"
+                                          : d === "today"
+                                            ? "today"
+                                            : d === "blank"
+                                              ? "blank"
+                                              : "";
+                                const r =
+                                    b.rake && (d === "read" || d === "fresh")
+                                        ? rake(i)
+                                        : 0;
+                                return `<s class="${cls}"${
+                                    r
+                                        ? ` style="transform:rotate(${r}deg)"`
+                                        : ""
+                                }>${b.labels[i]}</s>`;
+                            })
+                            .join("")}</div>`;
+
+                    /* Every candidate row, off one renderer. The flags are the axes
+                       the options actually differ on, so no option is a copy of
+                       another that can drift from it:
+                         token   'circle' | 'square'   — square is the rakeable one
+                         dashed  today gets a dashed ring instead of a flat disc
+                         chain   consecutive read days join
+                         rake    read tokens tilt (a no-op on a circle, by design) */
+                    case "week":
+                        return `<div class="wk">${b.days
+                            .map((d, i) => {
+                                const on = d === "read" || d === "fresh";
+                                const link =
+                                    b.chain &&
+                                    on &&
+                                    (b.days[i + 1] === "read" ||
+                                        b.days[i + 1] === "fresh");
+                                const r = b.rake && on ? rake(i) : 0;
+                                const cls = [
+                                    "tok",
+                                    b.token === "square" ? "sq" : "",
+                                    on ? "on" : "",
+                                    d === "today" && b.dashed ? "dash" : "",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" ");
+                                return `<div class="cell">${
+                                    link ? `<div class="ln"></div>` : ""
+                                }<div class="lab${
+                                    d === "today" ? " now" : ""
+                                }">${b.labels[i]}</div><div class="${cls}"${
+                                    r
+                                        ? ` style="transform:rotate(${r}deg)"`
+                                        : ""
+                                }>${on ? CHECK : ""}</div></div>`;
+                            })
+                            .join("")}</div>`;
+
+                    case "card":
+                        return `<div class="card${
+                            b.edge ? " edge" : ""
+                        }"><div class="pad">${blocks(b.body)}</div>${
+                            b.caption
+                                ? `<div class="rule"></div><div class="cap">${b.caption}</div>`
+                                : ""
+                        }</div>`;
+
+                    /* (b) The spans made real. A **ring with the number in it**, which is
+                       deliberately a different object from a day: a day is a filled disc
+                       carrying a check, a span is an open ring carrying a count. Reusing the
+                       disc here would make a milestone look like a Tuesday.
+
+                       Earned state is *derived*, never stored:
+                       `longestReadingRun(days) >= span`. No migration, no new field, and it
+                       cannot desync from the data it describes. The only thing derivation
+                       gives up is the date it was earned, which nothing needs. */
+                    case "spans":
+                        return `<div class="spans">${[
+                            [7, "Week"],
+                            [30, "Month"],
+                            [100, "100 days"],
+                            [365, "Year"],
+                        ]
+                            .map(
+                                ([days, label]) =>
+                                    `<div class="sp${
+                                        b.best >= days ? " won" : ""
+                                    }"><span class="ring">${days}</span><span class="lb">${label}</span></div>`,
+                            )
+                            .join("")}</div>`;
+
+                    /* (b) F. Even segments, `best` placed inside the one it has reached. */
+                    case "track": {
+                        const rungs = [
+                            [7, "1 week"],
+                            [30, "1 month"],
+                            [100, "100 days"],
+                            [365, "1 year"],
+                        ];
+                        const seg = 100 / rungs.length;
+                        let pct = 0;
+                        for (let i = 0; i < rungs.length; i++) {
+                            const lo = i === 0 ? 0 : rungs[i - 1][0];
+                            const hi = rungs[i][0];
+                            if (b.best >= hi) {
+                                pct = (i + 1) * seg;
+                            } else if (b.best > lo) {
+                                pct =
+                                    i * seg +
+                                    (seg * (b.best - lo)) / (hi - lo);
+                                break;
+                            } else {
+                                break;
+                            }
+                        }
+                        return `<div class="track"><div class="rail"></div><div class="fill" style="width:calc((100% - 12px) * ${pct / 100})"></div>${rungs
+                            .map(
+                                ([days, label], i) =>
+                                    `<div class="rung${
+                                        b.best >= days ? " won" : ""
+                                    }" style="left:calc(6px + (100% - 12px) * ${
+                                        ((i + 1) * seg) / 100
+                                    })"><i></i><b>${label}</b></div>`,
+                            )
+                            .join("")}</div>`;
+                    }
+
+                    /* (b) G. No chrome at all — the record as a sentence. */
+                    case "spanline":
+                        return `<div class="spanline"><span>Longest run <b>${b.best} days</b></span><span>${b.next}</span></div>`;
+
+                    case "capout":
+                        return `<div class="capout">${b.v}</div>`;
+                    case "note":
+                        return `<div class="note">${b.v}</div>`;
+                    case "flame":
+                        return FLAME;
+                    case "counter":
+                        return `<div class="fig">${b.n}</div><div class="dayst">day streak</div>`;
+                    case "cta":
+                        return `<div class="cta">${b.v}</div>`;
+                    case "gap":
+                        return `<div style="height:${b.h}px"></div>`;
+                    default:
+                        return "";
+                }
+            }
+            function blocks(list) {
+                return (list || []).map(block).join("");
+            }
+
+            /** Draw one card from its spec. */
+            function frame(s) {
+                return `<div class="fr${s.screen ? " screen" : ""}">${blocks(
+                    s.body,
+                )}</div>`;
+            }
+
+            /* ==================================================================
+   SECTION 3: DATA — the base version. Replace all of it.
+
+   SCREENS  [group, [ [id, name, note, spec], ... ] ]
+   FLOWS    [group, [ [id, name, note, [ [stepName, stepNote, spec], ... ] ] ] ]
+   ELEMENTS [group, [ [id, name, note, demoHTML], ... ] ]
+
+   ids must be unique per view; they drive filtering and versioning.
+   Notes are searchable, so put real reasoning in them.
+   ================================================================== */
+            /* ---- the two label rows ----
+               `MaterialLocalizations.narrowWeekdays` is what ships, and under `en` it
+               gives S M T W T F S — two S's and two T's on one row. Duolingo's header
+               is two letters and has no collision. Korean narrow weekdays are already
+               unambiguous single characters, so this is an English-only fix and needs
+               a per-locale rule rather than a blanket substring. */
+            const NARROW = ["S", "M", "T", "W", "T", "F", "S"];
+            const TWO = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+            const TWO_FWD = ["Fr", "Sa", "Su", "Mo", "Tu", "We", "Th"];
+
+            /* ---- the three states worth drawing ----
+               A week runs oldest-first and ends on today, which is what
+               `ReadWeekRow.endingOn` means. */
+            const S_READ = [
+                "missed",
+                "missed",
+                "missed",
+                "missed",
+                "missed",
+                "read",
+                "fresh",
+            ];
+            const S_WAIT = [
+                "missed",
+                "read",
+                "read",
+                "read",
+                "missed",
+                "read",
+                "today",
+            ];
+            const S_GAP = [
+                "read",
+                "read",
+                "read",
+                "missed",
+                "read",
+                "read",
+                "today",
+            ];
+            const S_FWD = [
+                "read",
+                "fresh",
+                "blank",
+                "blank",
+                "blank",
+                "blank",
+                "blank",
+            ];
+
+            /* ---- the captions, all three of which were wrong ----
+
+               "5 more days to the 7-day seal." is the shipped
+               `streakCelebrationMilestone`, and it reads as "so what?" for a reason
+               that is not wording: **there is no seal.** `kStreakMilestones` is
+               `[7, 30, 100, 365]`, and those numbers feed a progress bar and this
+               sentence and nothing else -- there is no award, unlock or earn path
+               anywhere in `lib/`. Worse, the noun is already taken: `_Seal` in
+               `shareable_library_card.dart` is the app's own logo mark, blind
+               embossed, and it takes only a palette -- every card has one, streak or
+               no streak. So the line promises an object that is never granted, and
+               names it after one the reader already has.
+
+               `longestStreakProvider` (`reading_days_provider.dart:194`) already
+               ships and already feeds the Library Card's `in a row, best N`, so a
+               reader's own record is free, real data and the only stake that exists
+               today. That is what this now points at.
+
+               "Read tonight to keep the run alive." was mine and it is wrong --
+               people read on the bus at 8am. But the habit is the app's: shipped
+               strings say `Record a night and it starts here.` and `no nights`. It
+               probably came from `streakTodayOpen` -- "A page is enough. Today
+               counts until 4am." -- where the 4am cutoff is real. That rule is about
+               readers who are *late*, not about reading being nocturnal, and the
+               sentence itself is the right one, so the caption is now simply it.
+
+               "But your streak resets if you skip tomorrow. Watch out!" was copied
+               from Duolingo verbatim, and its premise is a **streak freeze**: the
+               blue-checked Friday in that screenshot was *saved* by a freeze rather
+               than practised, so the warning means "your freeze is spent". We have
+               no freeze, so borrowing it is a warning with no cause. What that costs
+               the forward window is in the note on `forward`. */
+            const CAP_NEXT = "Seven more days to beat your best.";
+            /* Shipped as of this turn: `streakCelebrationRecord`. `longestReadingRun`
+               counts the run in progress, so `streak == best` is the record being set. */
+            const CAP_RECORD = "Your longest run yet.";
+            /* (b) Proposed, not built: the line for the four nights a span is reached. */
+            const CAP_SPAN = "A full week.";
+            const CAP_WAIT = "A page is enough. Today counts until 4am.";
+
+            /* Shorthands so a variant is one line and cannot drift from its siblings. */
+            const ship = (days, caption) => ({
+                body: [
+                    {
+                        t: "card",
+                        body: [{ t: "shipped", labels: NARROW, days }],
+                    },
+                    { t: "capout", v: caption },
+                ],
+            });
+            const cand = (days, caption, opts = {}) => ({
+                body: [
+                    {
+                        t: "card",
+                        edge: true,
+                        caption,
+                        body: [
+                            Object.assign(
+                                { t: "week", labels: TWO, days },
+                                opts,
+                            ),
+                        ],
+                    },
+                ],
+            });
+
+            const SCREENS = [
+                [
+                    "Today, just read",
+                    [
+                        [
+                            "shipped-read",
+                            "Shipped",
+                            "What ships today, in the state your screenshot caught: two read days at the right, five hairlines at the left, the caption floating outside the card. The row sits at three visual weights at once — a 1.5px box, a bare hairline, nothing — and that unevenness is most of why it reads as a form rather than as a record.",
+                            ship(S_READ, CAP_NEXT),
+                        ],
+                        [
+                            "a-read",
+                            "A &mdash; the Duolingo structure",
+                            "Label above, drawn check inside, one flat disc for every day that is not read. The card gains a 1px edge and takes the caption inside behind a divider. <b>B is identical to A in this state</b> — the two differ only in how an unread <i>today</i> is drawn, so it is not repeated here.",
+                            cand(S_READ, CAP_NEXT),
+                        ],
+                        [
+                            "c-read",
+                            "C &mdash; A, with the run drawn as a chain",
+                            "A 7px bar joins consecutive read days behind the tokens, so a run is one object. With a 2-day streak it is a small gain; its value shows in <b>A gap in the week</b> below.",
+                            cand(S_READ, CAP_NEXT, { chain: true }),
+                        ],
+                        [
+                            "e-read",
+                            "E &mdash; <b>chosen</b>. Rounded square, keeps the rake",
+                            "Everything structural from A, but the token is a 10px-radius square rotated a few degrees on read days. This exists because <b>you cannot rake a circle</b> — a rotated disc is a no-op, so A through D silently drop the hand-stamped gesture the month grid speaks. At 34px the tilt is faint, which is the honest argument against bothering.",
+                            cand(S_READ, CAP_NEXT, {
+                                token: "square",
+                                rake: true,
+                            }),
+                        ],
+                    ],
+                ],
+                [
+                    "Today, not read yet",
+                    [
+                        [
+                            "shipped-wait",
+                            "Shipped",
+                            "The state the streak page sits in for most of the day. Today is a dashed rounded square at the far right; missed days are a hairline with no box. The dashed cell is the tap target that records the night, and against four filled neighbours it is the quietest thing in the row.",
+                            ship(S_WAIT, CAP_WAIT),
+                        ],
+                        [
+                            "a-wait",
+                            "A &mdash; today is a disc like any other",
+                            "Faithful to Duolingo, and this is the cost: their today is <i>already practised</i>, so they never have to draw an unread today as an invitation. Only the label turns orange. <b>The affordance is gone</b> — nothing in the row says this one is waiting for a tap.",
+                            cand(S_WAIT, CAP_WAIT),
+                        ],
+                        [
+                            "b-wait",
+                            "B &mdash; A, keeping our dashed today",
+                            "A dashed 2px ring in the same deep orange. It reads <i>better</i> than the shipped dashed square, because it is the only unfilled outline in a row of solid discs rather than one box among six boxes.",
+                            cand(S_WAIT, CAP_WAIT, { dashed: true }),
+                        ],
+                        [
+                            "c-wait",
+                            "C &mdash; A, with the chain",
+                            "Mo&ndash;Tu&ndash;We joined, Th breaking it, Fr left stranded. This is the only variant where a gap costs something you can see.",
+                            cand(S_WAIT, CAP_WAIT, { chain: true }),
+                        ],
+                        [
+                            "e-wait",
+                            "E &mdash; <b>chosen</b>. Square, raked, dashed today",
+                            "Everything structural from A with nothing given up from ours. Compare the tilt against <code>e-read</code>: it is the same few degrees and just as easy to miss.",
+                            cand(S_WAIT, CAP_WAIT, {
+                                token: "square",
+                                rake: true,
+                                dashed: true,
+                            }),
+                        ],
+                    ],
+                ],
+                [
+                    "A gap in the week",
+                    [
+                        [
+                            "shipped-gap",
+                            "Shipped",
+                            "Three read, one missed, two read. The gap is a hairline between two boxes — legible if you look for it, invisible if you are scanning.",
+                            ship(S_GAP, CAP_WAIT),
+                        ],
+                        [
+                            "a-gap",
+                            "A",
+                            "The gap is a flat disc among filled ones. Clearer than the hairline, but the two runs either side of it look like one interrupted set of ticks rather than <i>a three and a two</i>.",
+                            cand(S_GAP, CAP_WAIT),
+                        ],
+                        [
+                            "c-gap",
+                            "C &mdash; the case the chain is for",
+                            "The break is now the loudest thing in the row: a bar stops, restarts, and you can count the two runs without reading a single letter. <b>This is the strongest argument in the set</b>, and it is an argument about information rather than about cuteness.",
+                            cand(S_GAP, CAP_WAIT, { chain: true }),
+                        ],
+                    ],
+                ],
+                [
+                    "(b) the spans made real",
+                    [
+                        [
+                            "span-row",
+                            "Four rings &mdash; <b>superseded</b>",
+                            "<b>Rejected on sight, and the reasons are specific rather than a matter of taste.</b> (1) <b>The number and the label say the same thing twice</b>, and <code>100 / 100 days</code> says it twice in the same words. (2) <b>The set does not cohere:</b> three named periods and one raw count &mdash; Week, Month, <i>100 days</i>, Year. (3) <b>Four uniform thin grey rings read as disabled form controls</b>, not as something earned, and the one amber ring looks like the selected radio button. (4) There is <b>a border inside a border</b>, since the row sits in a card of its own inside the page's card. (5) Nothing about it belongs to this app &mdash; it could be any fitness tracker, where every other mark here is candlelight, stock, emboss or a stamp. Kept so the replacements below are not re-derived from scratch.",
+                            {
+                                body: [
+                                    { t: "note", v: "On the streak page" },
+                                    {
+                                        t: "card",
+                                        edge: true,
+                                        body: [{ t: "spans", best: 9 }],
+                                    },
+                                ],
+                            },
+                        ],
+                        [
+                            "span-night",
+                            "The night a span is reached",
+                            "The one night the celebration has bigger news than the record. Day 7 of a first run is <i>both</i> a record and a span, so the span wins on that night and the record line takes every other. Four nights in a reader's life, which is what keeps it worth saying.",
+                            {
+                                screen: true,
+                                body: [
+                                    { t: "counter", n: 7 },
+                                    { t: "gap", h: 24 },
+                                    {
+                                        t: "card",
+                                        edge: true,
+                                        caption: CAP_SPAN,
+                                        body: [
+                                            {
+                                                t: "week",
+                                                labels: TWO,
+                                                days: [
+                                                    "read",
+                                                    "read",
+                                                    "read",
+                                                    "read",
+                                                    "read",
+                                                    "read",
+                                                    "fresh",
+                                                ],
+                                                chain: true,
+                                            },
+                                        ],
+                                    },
+                                    { t: "gap", h: 16 },
+                                    { t: "track", best: 7 },
+                                    { t: "gap", h: 20 },
+                                    { t: "cta", v: "Keep it going" },
+                                ],
+                            },
+                        ],
+                        [
+                            "span-none",
+                            "Four rings, none earned &mdash; <b>superseded</b>",
+                            "Four pale rings on a page whose reader has a 3-day run. <b>This is the risk in (b)</b>: unearned rewards drawn permanently are a standing reminder of what you have not done, which is the opposite of what the empty-state work in this repo settled on. Drawing only the <i>next</i> one is the obvious mitigation, and it costs the sense of a ladder.",
+                            {
+                                body: [
+                                    { t: "note", v: "On the streak page" },
+                                    {
+                                        t: "card",
+                                        edge: true,
+                                        body: [{ t: "spans", best: 3 }],
+                                    },
+                                ],
+                            },
+                        ],
+                        [
+                            "span-track",
+                            "F &mdash; one track instead of four badges",
+                            "The week row's chain at a longer scale: a run drawn as <b>one continuous thing</b> with the rungs sitting on it, rather than four objects in a row of their own. It answers every count against the rings &mdash; one label per rung instead of a number and a label, a coherent set (<code>1 week / 1 month / 100 days / 1 year</code>), a filled bar that reads as progress rather than as a control, and no nested border. <b>The segments are even, not proportional:</b> spaced to scale, 7/30/100 all land inside the leftmost 27% and two thirds of the track stays empty until a year. Earned is still derived — <code>longestReadingRun(days) &gt;= rung</code>.",
+                            {
+                                body: [
+                                    { t: "note", v: "On the streak page" },
+                                    { t: "track", best: 9 },
+                                ],
+                            },
+                        ],
+                        [
+                            "span-track-far",
+                            "F, further along",
+                            "A 40-day run: two rungs behind it, the fill inside the third. The same object carries every state, which is the other thing four badges could not do &mdash; they had no way to show <i>where in the gap</i> a reader was.",
+                            {
+                                body: [
+                                    { t: "note", v: "On the streak page" },
+                                    { t: "track", best: 40 },
+                                ],
+                            },
+                        ],
+                        [
+                            "span-plain",
+                            "G &mdash; no chrome at all",
+                            "The record as a sentence, with the next span named in it. <b>The most professional option and the least rewarding one</b>, which is the whole trade in (b): the reward becomes entirely the celebration's one-off line on four nights, and the page carries no standing reminder of what has not been reached. If the rings looked like a fitness tracker, this is the opposite failure &mdash; it looks like a settings row.",
+                            {
+                                body: [
+                                    { t: "note", v: "On the streak page" },
+                                    {
+                                        t: "card",
+                                        edge: true,
+                                        body: [
+                                            {
+                                                t: "spanline",
+                                                best: 9,
+                                                next: "A full month at 30.",
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    ],
+                ],
+                [
+                    "In the celebration",
+                    [
+                        [
+                            "ctx-shipped",
+                            "Shipped column",
+                            "The whole column at 1:1, so the week card is judged against the things it sits between rather than on its own. The counter is already the new one: <code>displayStreak</code> 64/w800/&minus;1.28 over <code>titleUser</code> 22/w600, both in <code>AppColors.light.flame</code> #B54708. The flame is a stand-in for the Rive artboard at its real proportions.",
+                            {
+                                screen: true,
+                                body: [
+                                    { t: "flame" },
+                                    { t: "gap", h: 12 },
+                                    { t: "counter", n: 2 },
+                                    { t: "gap", h: 28 },
+                                    {
+                                        t: "card",
+                                        body: [
+                                            {
+                                                t: "shipped",
+                                                labels: NARROW,
+                                                days: S_READ,
+                                            },
+                                        ],
+                                    },
+                                    { t: "capout", v: CAP_NEXT },
+                                    { t: "gap", h: 28 },
+                                    { t: "cta", v: "Keep it going" },
+                                ],
+                            },
+                        ],
+                        [
+                            "ctx-record",
+                            "The record night &mdash; shipped",
+                            "<b>(a), as built this turn.</b> <code>streakCelebrationRecord</code> replaces the countdown, and <b>the bar is gone rather than pinned full</b>: a progress bar toward a target already passed is furniture. The distance in the other case is <code>best + 1 - streak</code>, whose floor is 2 &mdash; beating a record takes one more day than matching it, which is why the string has no <code>=1</code> case.",
+                            {
+                                screen: true,
+                                body: [
+                                    { t: "counter", n: 9 },
+                                    { t: "gap", h: 28 },
+                                    {
+                                        t: "card",
+                                        edge: true,
+                                        caption: CAP_RECORD,
+                                        body: [
+                                            {
+                                                t: "week",
+                                                labels: TWO,
+                                                days: S_READ,
+                                                chain: true,
+                                            },
+                                        ],
+                                    },
+                                    { t: "gap", h: 28 },
+                                    { t: "cta", v: "Keep it going" },
+                                ],
+                            },
+                        ],
+                        [
+                            "ctx-rec",
+                            "B + C column &mdash; the recommendation",
+                            "The same column with A's structure, the dashed ring kept, and the chain. Note what the card gains by taking the caption inside: the column now has <b>three</b> objects between the counter and the button instead of four, and the 1px edge is what lets the caption belong to the week rather than to the page.",
+                            {
+                                screen: true,
+                                body: [
+                                    { t: "flame" },
+                                    { t: "gap", h: 12 },
+                                    { t: "counter", n: 2 },
+                                    { t: "gap", h: 28 },
+                                    {
+                                        t: "card",
+                                        edge: true,
+                                        caption: CAP_NEXT,
+                                        body: [
+                                            {
+                                                t: "week",
+                                                labels: TWO,
+                                                days: S_READ,
+                                                chain: true,
+                                                dashed: true,
+                                            },
+                                        ],
+                                    },
+                                    { t: "gap", h: 28 },
+                                    { t: "cta", v: "Keep it going" },
+                                ],
+                            },
+                        ],
+                    ],
+                ],
+            ];
+
+            const FLOWS = [
+                [
+                    "The celebration",
+                    [
+                        [
+                            "flow-stamp",
+                            "The stamp landing",
+                            "The closing beat of the celebration, which is the half of &ldquo;weekdays and stamping&rdquo; that a still cannot show. The week card rises with today still blank, then today inks in last &mdash; so the eye ends on the thing that changed rather than on the total. Drawn in the recommendation (B + C), because the chain is what makes the final step arrive as <i>an extension of a run</i> rather than as one more tick.",
+                            [
+                                [
+                                    "Card rises",
+                                    "Today is a flat disc; yesterday is already read. Nothing is joined yet.",
+                                    cand(
+                                        [
+                                            "missed",
+                                            "missed",
+                                            "missed",
+                                            "missed",
+                                            "missed",
+                                            "read",
+                                            "blank",
+                                        ],
+                                        CAP_NEXT,
+                                        { chain: true },
+                                    ),
+                                ],
+                                [
+                                    "Today inks in",
+                                    "The disc fills and the check draws. The chain appears in the same beat, which is the only moment in the screen where a run visibly becomes longer.",
+                                    cand(S_READ, CAP_NEXT, { chain: true }),
+                                ],
+                                [
+                                    "Settled",
+                                    "The flame keeps moving on its Idle loop; the row does not. Exactly one thing on this screen is still animating once the sequence lands.",
+                                    {
+                                        screen: true,
+                                        body: [
+                                            { t: "counter", n: 2 },
+                                            { t: "gap", h: 24 },
+                                            {
+                                                t: "card",
+                                                edge: true,
+                                                caption: CAP_NEXT,
+                                                body: [
+                                                    {
+                                                        t: "week",
+                                                        labels: TWO,
+                                                        days: S_READ,
+                                                        chain: true,
+                                                    },
+                                                ],
+                                            },
+                                            { t: "gap", h: 20 },
+                                            { t: "cta", v: "Keep it going" },
+                                        ],
+                                    },
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                [
+                    "The streak page",
+                    [
+                        [
+                            "flow-record",
+                            "Recording today from the row",
+                            "Tapping today's cell is what records the day, so the row is a control and not only a read-out. This is the flow option A breaks: with every unread day drawn as the same flat disc, there is nothing to tap at and nothing that looks tappable.",
+                            [
+                                [
+                                    "Waiting",
+                                    "The dashed ring is the only unfilled outline in the row, and the only cell whose label is orange.",
+                                    cand(S_WAIT, CAP_WAIT, {
+                                        dashed: true,
+                                        chain: true,
+                                    }),
+                                ],
+                                [
+                                    "Tapped",
+                                    "The ring fills and the check draws, and a new link appears joining Fr to Sa. It does <i>not</i> merge with the Mo&ndash;We run, because Thursday is still a gap &mdash; two runs of three and two, not one of five. That distinction is the whole reason the chain is worth drawing.",
+                                    cand(
+                                        [
+                                            "missed",
+                                            "read",
+                                            "read",
+                                            "read",
+                                            "missed",
+                                            "read",
+                                            "fresh",
+                                        ],
+                                        "Recorded. Seven more days to beat your best.",
+                                        { chain: true },
+                                    ),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+
+            const ELEMENTS = [
+                [
+                    "The candidate token",
+                    [
+                        [
+                            "el-read",
+                            "Read &mdash; disc plus check",
+                            "Solid #B54708 with a drawn white tick. <b>Not Duolingo's mid-orange, and the reason is measured, not aesthetic:</b> on this cream ground <code>kCandleFlame</code> #F2A93F as a disc is <b>1.67:1</b> and a white check on it is <b>2.00:1</b> &mdash; the token would barely exist. #B54708 gives <b>4.55:1</b> for the disc and <b>5.43:1</b> for the check. It is also the colour the counter above now uses, so the two tie together.",
+                            `<div class="fr" style="width:auto;padding:14px">${block({ t: "week", labels: ["Sa"], days: ["read"] })}</div>`,
+                        ],
+                        [
+                            "el-empty",
+                            "Unread &mdash; one flat disc",
+                            "<code>kCandleStockTop</code> at 12% over the cream, which measures <b>1.27:1</b> &mdash; Duolingo's #E5E5E5 on white sits at 1.24, so this is a faithful match rather than a guess. One treatment for missed, future and (in A) today, against the shipped row's three.",
+                            `<div class="fr" style="width:auto;padding:14px">${block({ t: "week", labels: ["Su", "Mo"], days: ["missed", "blank"] })}</div>`,
+                        ],
+                        [
+                            "el-dash",
+                            "Today, unread &mdash; dashed ring",
+                            "The tap affordance, carried over from the shipped row and the month grid's own grammar: today is not an achievement yet and must not be drawn as one. A 2px dash in #B54708. Present in B and E, absent in A.",
+                            `<div class="fr" style="width:auto;padding:14px">${block({ t: "week", labels: ["Sa"], days: ["today"], dashed: true })}</div>`,
+                        ],
+                        [
+                            "el-chain",
+                            "The chain",
+                            "A 7px bar from one read token's centre to the next, drawn <i>behind</i> them. Spans only consecutive read days, so a gap breaks it. This is the one candidate element with no counterpart in Duolingo &mdash; it adds information rather than charm.",
+                            `<div class="fr" style="width:220px;padding:14px">${block({ t: "week", labels: ["Mo", "Tu", "We", "Th"], days: ["read", "read", "missed", "read"], chain: true })}</div>`,
+                        ],
+                        [
+                            "el-label",
+                            "The header above the token",
+                            "Above the token, not inside it &mdash; which is what lets the token carry a mark instead of a letter. <b>Drawn here with two letters; shipped with one</b>, and that is a decision rather than a shortfall. Three reasons, in order of weight. The window is a <i>rolling</i> seven days that always ends on today, so the sequence itself says which day each cell is and the letter only confirms it &mdash; Duolingo's is a fixed Mon&ndash;Sun calendar week, where the letter carries more. <code>ReadCalendarMonth</code>'s header sits a few hundred pixels below this on the same page and is <code>narrowWeekdays</code>, so two letters here would put two weekday alphabets on one screen. And the collision is <code>en</code>-only: Korean narrow weekdays are already unambiguous single characters (&#51068; &#50900; &#54868; &#49688; &#47785; &#44552; &#53664;), so a blanket <code>substring(0, 2)</code> would be wrong and a per-locale rule is more machinery than the collision costs. <b>Cheap to reverse:</b> one line, plus <code>AppLocalizations.localizationsDelegates</code> in every harness that pumps the row, or <code>DateFormat</code> throws <code>UninitializedLocaleData</code>.",
+                            `<div class="fr" style="width:260px;padding:14px">${block({ t: "week", labels: ["Th", "Fr", "Sa"], days: ["missed", "read", "today"], dashed: true })}</div>`,
+                        ],
+                    ],
+                ],
+                [
+                    "What actually shipped",
+                    [
+                        [
+                            "el-built",
+                            "E, as built &mdash; and the four places it diverges",
+                            "<code>read_week_row.dart</code>, rebuilt. <b>The palette went nine roles to six</b>: <code>stampFill</code>, <code>stampMark</code>, <code>emptyFill</code> (new), <code>todayEdge</code>, <code>label</code>, <code>labelToday</code>. Gone: <code>stampEdge</code> (a filled token needs no edge), <code>rule</code> (no hairlines left), <code>stampInk</code>/<code>missInk</code>/<code>todayInk</code> (collapsed into one label colour &mdash; the token says what happened) and <code>freshFill</code>/<code>freshInk</code>. <b>(1) One letter, not two</b> &mdash; see <code>el-label</code>. <b>(2) <code>freshLast</code> lifts rather than inverts.</b> The drawing here makes a fresh token identical to a read one, which is right, and it retires the shipped inversion by accident: inverting meant <i>solid fill over a 10% wash</i>, and every read day is now solid already. The flag survives as a drop shadow, with the scale overshoot and tilt still coming from <code>decorateLast</code>. <b>(3) The candle label is stock at 0.75, not the 0.55 drawn here.</b> 0.55 composites to #888078 on white and measures <b>3.87:1</b>, under AA at 11pt; 0.75 measures <b>7.41:1</b> and is still clearly quieter than the near-black the old <code>stampInk</code> used. This page is a sketch in a browser and was never a contrast decision. <b>(4) <code>stampMark</code> is <code>Colors.white</code>, not <code>colors.surface</code>, which fixes a latent dark-mode bug</b>: <code>surface</code> is #1E1E1E in dark, so the reversed-out mark sat on a dark fill at about 1.4:1 and a stamped day was a blank token. Whatever the fill is, it is an accent chosen to carry white, so the mark on it cannot be theme-dependent. <b>(5) The page's token went green to orange</b>, after all of the above: <code>stampFill</code> is <code>colors.flame</code> #B54708, not <code>brandFill</code> #067657. Same reversal <code>ReadCalendarMonth</code>'s today-rule already made and for the same reason &mdash; <i>the run is what the page is about, and the flame above it is the run</i> &mdash; and with green the page drew three accents at once, a rust flame over a green week over an orange month rule, with the week the odd one out. Measured: white on <code>flame</code> is <b>5.4:1</b> in light mode against <code>brandFill</code>'s 5.6:1, but dark mode's <code>flame</code> is the brighter #FF922B where white is <b>2.24:1</b> &mdash; the same trade the celebration makes at 2.00:1, on a 3px tick rather than type. Note the page keeps <code>flame</code> and the celebration keeps <code>kCandleFlame</code> #F2A93F: one is theme-aware app chrome, the other is candlelight on white with no dark variant, which is what the palette's two factories have always been for.",
+                            `<div class="fr" style="width:340px;padding:14px">${block({ t: "week", labels: ["F", "S", "S", "M", "T", "W", "T"], days: ["read", "read", "missed", "read", "read", "read", "today"], token: "square", rake: true, dashed: true })}</div>`,
+                        ],
+                        [
+                            "el-found",
+                            "Three defects only a rendering could find",
+                            "All three were green in the suite and clean in the analyzer, and all three were caught by putting the built screen on screen and looking &mdash; the same method that produced this page. <b>The celebration's progress bar had no track.</b> Its <code>SizedBox</code> carried a height and no width; the parent <code>Column</code> centres its children, so the width arrived loose, a <code>ColoredBox</code> sized itself to its child, and that child was a <code>FractionallySizedBox</code> &mdash; a fraction <i>of the space it is given</i>. The stack collapsed onto the fill, so the track was exactly as long as the filled part and the bar drew as a short amber dash floating mid-screen. It read as a decorative rule, not a measurement. Now <code>width: double.infinity</code>, pinned by a case that measures the fill against the track rather than against a number. <b>F's last label was half off the page.</b> The end rung sits <i>at</i> the rail's right edge by construction, so a 60pt box centred on it drew <code>1 year</code> from <code>width&minus;30</code> to <code>width+30</code> and the outer half was clipped by the screen. A widget test cannot see a clip by the screen. The end label now hugs the edge and is right-aligned, the way an axis label is; the middle rungs stay centred on their marks. <b>And the celebration was within 6pt of overflowing an iPhone SE before any of this.</b> It is a column of fixed-height pieces between two <code>Spacer</code>s with no scroll view; moving the ladder in put it at about 624pt and took out 31 cases at once &mdash; not on a phone, but on <code>flutter_test</code>'s default <b>800&times;600</b> surface, which is shorter than any device the app supports. Every one reported a <code>RenderFlex</code> overflow naming a widget it was not testing. Both harnesses now set a real phone size in their <code>_pump</code>, and the 375&times;667 case is the one to measure anything new against.",
+                            `<div class="fr" style="width:340px;padding:14px">${block({ t: "track", best: 40 })}</div>`,
+                        ],
+                    ],
+                ],
+                [
+                    "The shipped cell, for comparison",
+                    [
+                        [
+                            "el-ship-on",
+                            "Stamped",
+                            "The letter on a <code>kCandleFlame</code> @ 28% wash inside a 1.5px solid edge. The letter <i>is</i> the content, which is why there is nowhere to put a check without losing the day's name.",
+                            `<div class="fr" style="width:120px;padding:14px">${block({ t: "shipped", labels: ["F", "S"], days: ["read", "fresh"] })}</div>`,
+                        ],
+                        [
+                            "el-ship-today",
+                            "Today, dashed",
+                            "The affordance in the shipped row. One dashed box among six boxes &mdash; the same idea as <code>el-dash</code>, in a context that hides it.",
+                            `<div class="fr" style="width:120px;padding:14px">${block({ t: "shipped", labels: ["F", "S"], days: ["read", "today"] })}</div>`,
+                        ],
+                        [
+                            "el-ship-miss",
+                            "Missed &mdash; a hairline, no box",
+                            "Deliberate in the original design: a missed day gets no box at all, only a rule under a pale letter. It is also what puts the row at three visual weights, and what makes the seven cells read as a mixed set of form fields.",
+                            `<div class="fr" style="width:180px;padding:14px">${block({ t: "shipped", labels: ["T", "W", "T"], days: ["read", "missed", "missed"] })}</div>`,
+                        ],
+                    ],
+                ],
+                [
+                    "(b) the span mark",
+                    [
+                        [
+                            "el-span",
+                            "Earned, and not yet",
+                            "An <b>open ring with a count</b>, against a day's filled disc with a check &mdash; different object, same palette, no new noun. <b>&ldquo;Seal&rdquo; is not available and nothing replaces it:</b> the word is the Library Card's logo emboss, and <code>ribbon</code> is already the bookmark on a cover (<code>card_cover_row.dart</code>). So the copy names the span in plain words &mdash; <i>a full week</i>, <i>a full month</i> &mdash; which is self-evidently worth something where &ldquo;the 30-day seal&rdquo; was not, and translates without inventing a Korean noun either.",
+                            `<div class="fr" style="width:320px;padding:14px">${block({ t: "spans", best: 30 })}</div>`,
+                        ],
+                    ],
+                ],
+                [
+                    "The card",
+                    [
+                        [
+                            "el-card",
+                            "Edge, divider, caption inside",
+                            "Three changes in one object, all Duolingo's. The 1px edge at <code>stock</code> @ 12% gives the card a boundary on a ground it otherwise dissolves into; the divider at 10% separates the row from its sentence; and bringing the caption <i>inside</i> makes the sentence belong to the week instead of floating between the card and the button. Shipped today: no edge, no divider, caption outside.",
+                            `<div class="fr" style="width:320px;padding:14px">${block({ t: "card", edge: true, caption: CAP_NEXT, body: [{ t: "week", labels: TWO, days: S_READ, chain: true }] })}</div>`,
+                        ],
+                    ],
+                ],
+            ];
+
+            /* Mark an id as an unresolved decision; renders inline as a red callout. */
+            const OPEN = {
+                "span-row":
+                    "<b>Superseded — see F and G below.</b> The remaining decisions (b) needs. <b>The home.</b> The design record's aside in <code>streak_celebration.dart</code> said the Library Card &ldquo;will eventually carry several&rdquo; &mdash; written before <code>docs/mockups/card-seal/index.html</code> costed that corner, which found the <i>single</i> existing emboss already fighting the shelf for it at &minus;3 to &minus;4 books. Four more marks there would reopen that whole measurement, so <b>the streak page is the home</b> and the Card's aside is superseded. <b>The treatment.</b> Every span drawn always, or only the next one &mdash; see <code>span-none</code>.",
+                "span-none":
+                    "<b>Settled, and it is F <i>and</i> G rather than one of them.</b> Built as <code>StreakSpanTrack</code> (<code>streak_span_track.dart</code>), and it lives <b>only in the celebration</b> &mdash; F's object shown at G's moment. It shipped on the streak page first, between the week row and the month card, and was moved on instruction; that is the reading that resolves the fork, because G's whole objection was to a <i>standing</i> reminder of what the reader has not done and F's whole value was an object that can say where in a gap you are. Shown once, on the night the reader has just added to it, it is neither a permanent list nor nothing. Rings were out either way. <b>It replaced the celebration's <code>_MilestoneBar</code>, which is deleted:</b> two amber rails 10pt apart is one duplication, and the worse one is that the sentence under it &mdash; &ldquo;8 more days to beat your best.&rdquo; &mdash; <i>was</i> that bar in words, where the ladder says something the sentence cannot. The defects the build had are in <code>el-found</code>.",
+                "ctx-shipped":
+                    "Open, and a product decision rather than a wording one: <b>the caption under the card</b>. The shipped line is <code>streakCelebrationMilestone</code> &mdash; &ldquo;5 more days to the 7-day seal&rdquo; &mdash; and it reads as <i>so what?</i> because <b>there is no seal</b>. <code>kStreakMilestones</code> feeds a progress bar and that sentence and nothing else; there is no award path in <code>lib/</code>, and the noun is already spent on <code>_Seal</code>, the app's logo mark, which every Library Card carries regardless of any streak. The cards here point at <code>longestStreakProvider</code> instead, which ships and is the only stake that exists today &mdash; but <b>the celebration is not wired to it</b>, so this is one new parameter, not just new copy. The alternative is to make a seal real, which is a feature.",
+                "flow-record":
+                    "Open: does the row stay a control? Option <b>A</b> removes the only thing that says &ldquo;tap me&rdquo;, so picking A means accepting that today is recorded somewhere else. <b>B</b> and <b>E</b> keep it.",
+                "e-wait":
+                    "<b>Settled, and built.</b> Choosing E keeps the rake, which was the open question here &mdash; it is the gesture the week shares with the month grid, and only a square can carry it. Both sub-decisions are now taken: labels stay <b>one character</b> (<code>el-label</code>), and <code>freshLast</code> <b>lifts rather than inverts</b>, because a stamped day is already solid and there is nothing left to invert to. What shipped, and the four places it diverges from what is drawn here, is <code>el-built</code>.",
+                "el-label":
+                    "Open: two-letter weekday labels are an <code>en</code>-only improvement. <code>ko</code> should stay on narrow single characters, so this needs a per-locale rule.",
+            };
+
+            /* ==================================================================
+   SECTION 4: VERSIONS — named variants, git-branch style.
+
+     [id, label, note, parentId, patch]
+
+   The first entry is the root and must have parentId null; its data is
+   SECTION 3 above. Every other version stores ONLY a patch over its
+   parent, so unchanged screens stay defined once. That is what keeps
+   versions from drifting, and it lets the page compute what changed.
+
+   patch = {
+     screens:  { id: {spec, name?, note?, group?} | null },
+     flows:    { id: {steps, name?, note?, group?} | null },
+     elements: { id: {demo, name?, note?, group?} | null },
+     open:     { id: 'callout text' | null }
+   }
+
+   null removes. An id not present in the parent is an addition (give it
+   a `group`, or it lands in "Added in <label>").
+
+   To retire versioning entirely, leave just the root entry — the
+   selector hides itself when there is only one version.
+   ================================================================== */
+            /* The window is the one genuinely parallel alternative here, so it is a
+               version rather than a sixth option: it changes what the screen *says*,
+               not how the row looks. Ours ends on today and is a record of days gone.
+               Duolingo's starts yesterday and runs five days forward, which is why
+               their caption can be a warning ("your streak resets if you skip
+               tomorrow") — the grey discs to the right are the days at risk.
+
+               Every row screen changes, because the window is the data they draw.
+               The `A gap in the week` group is *removed*: a window that begins
+               yesterday cannot contain a gap, which is itself an argument — the
+               forward framing gives up the ability to show a broken run at all. */
+            const S_FWD_WAIT = [
+                "read",
+                "today",
+                "blank",
+                "blank",
+                "blank",
+                "blank",
+                "blank",
+            ];
+            const fship = (days, caption) => ({
+                body: [
+                    {
+                        t: "card",
+                        body: [{ t: "shipped", labels: TWO_FWD, days }],
+                    },
+                    { t: "capout", v: caption },
+                ],
+            });
+            const fcand = (days, caption, opts = {}) => ({
+                body: [
+                    {
+                        t: "card",
+                        edge: true,
+                        caption,
+                        body: [
+                            Object.assign(
+                                { t: "week", labels: TWO_FWD, days },
+                                opts,
+                            ),
+                        ],
+                    },
+                ],
+            });
+
+            const VERSIONS = [
+                [
+                    "main",
+                    "main",
+                    "Ours: the seven days ending on today. A record of what happened.",
+                    null,
+                    {},
+                ],
+
+                [
+                    "forward",
+                    "forward",
+                    "Duolingo's window: yesterday, today, then five days ahead. It can no longer show a gap, the shipped row's narrow letters lose their meaning once two of seven days are in the future, and -- the part that decides it -- the caption it existed for cannot be written. Their warning is premised on a spent streak freeze; with no freeze, the only thing a forward window can say is that missing a day ends the run, which is true every day and therefore not news. So its caption collapses into the same sentence as the backward window's, and the forward framing keeps all of its costs and loses its one advantage.",
+                    "main",
+                    {
+                        screens: {
+                            "shipped-read": {
+                                name: "Shipped row, forward window",
+                                note: "The shipped cell vocabulary on Duolingo's window. Future days have no state in <code>ReadWeekRow</code> at all &mdash; the closest thing is a missed day, and drawing next Tuesday as <i>missed</i> is wrong. Here they are blank, which leaves five cells that look like nothing at all.",
+                                spec: fship(S_FWD, CAP_NEXT),
+                            },
+                            "a-read": {
+                                name: "A &mdash; forward window",
+                                note: "This is Duolingo's card, as closely as our ground allows. The five discs to the right are days at risk rather than days missed, and that is what lets the caption be a warning instead of a score.",
+                                spec: fcand(S_FWD, CAP_NEXT),
+                            },
+                            "c-read": {
+                                name: "C &mdash; forward window",
+                                note: "The chain now has almost nothing to join: with only yesterday and today behind you, a run is two tokens. <b>The chain and the forward window argue against each other</b> &mdash; one is about the length of what you have built, the other about what you are about to lose.",
+                                spec: fcand(S_FWD, CAP_NEXT, { chain: true }),
+                            },
+                            "e-read": {
+                                name: "E &mdash; forward window",
+                                note: "The rake on a forward window raises a second question: should a day that has not happened yet be raked at all? It cannot be, since nothing has stamped it &mdash; so five of seven tokens are permanently untilted and the gesture reads as an accident.",
+                                spec: fcand(S_FWD, CAP_NEXT, {
+                                    token: "square",
+                                    rake: true,
+                                }),
+                            },
+                            "shipped-wait": {
+                                name: "Shipped row, forward window, unread",
+                                note: "Today is the second cell rather than the last, so the dashed box sits in the middle of the row with four blank cells to its right.",
+                                spec: fship(S_FWD_WAIT, CAP_WAIT),
+                            },
+                            "a-wait": {
+                                name: "A &mdash; forward, unread",
+                                note: "Today is second and flat, marked only by its orange label. In the forward framing this is arguably enough, because the caption is doing the work the token was doing.",
+                                spec: fcand(S_FWD_WAIT, CAP_WAIT),
+                            },
+                            "b-wait": {
+                                name: "B &mdash; forward, unread",
+                                note: "The dashed ring in the middle of the row. It reads well, and it is the clearest version of &ldquo;this is the one that is up to you&rdquo; in the whole set.",
+                                spec: fcand(S_FWD_WAIT, CAP_WAIT, {
+                                    dashed: true,
+                                }),
+                            },
+                            "c-wait": {
+                                name: "C &mdash; forward, unread",
+                                note: "One token behind, one waiting, five ahead. Nothing to chain.",
+                                spec: fcand(S_FWD_WAIT, CAP_WAIT, {
+                                    chain: true,
+                                }),
+                            },
+                            "e-wait": {
+                                name: "E &mdash; forward, unread",
+                                note: "Square, dashed today, and only one token with a rake on it.",
+                                spec: fcand(S_FWD_WAIT, CAP_WAIT, {
+                                    token: "square",
+                                    rake: true,
+                                    dashed: true,
+                                }),
+                            },
+                            "ctx-record": {
+                                name: "The record night, forward window",
+                                note: "(a) as shipped, on the other window. The caption and the missing bar are window-agnostic; only the row beneath changes.",
+                                spec: {
+                                    screen: true,
+                                    body: [
+                                        { t: "counter", n: 9 },
+                                        { t: "gap", h: 28 },
+                                        {
+                                            t: "card",
+                                            edge: true,
+                                            caption: CAP_RECORD,
+                                            body: [
+                                                {
+                                                    t: "week",
+                                                    labels: TWO_FWD,
+                                                    days: S_FWD,
+                                                },
+                                            ],
+                                        },
+                                        { t: "gap", h: 28 },
+                                        { t: "cta", v: "Keep it going" },
+                                    ],
+                                },
+                            },
+                            "span-night": {
+                                name: "A span reached, forward window",
+                                note: "<b>A third argument against this window, and it only appears once (b) is drawn.</b> The card is announcing a full unbroken week, and the row beneath it can show at most <i>yesterday and today</i> &mdash; so the evidence for the claim is off screen. The backward window shows all seven days chained, which is the claim itself.",
+                                spec: {
+                                    screen: true,
+                                    body: [
+                                        { t: "counter", n: 7 },
+                                        { t: "gap", h: 24 },
+                                        {
+                                            t: "card",
+                                            edge: true,
+                                            caption: CAP_SPAN,
+                                            body: [
+                                                {
+                                                    t: "week",
+                                                    labels: TWO_FWD,
+                                                    days: S_FWD,
+                                                },
+                                            ],
+                                        },
+                                        { t: "gap", h: 16 },
+                                        { t: "track", best: 7 },
+                                        { t: "gap", h: 20 },
+                                        { t: "cta", v: "Keep it going" },
+                                    ],
+                                },
+                            },
+                            "shipped-gap": null,
+                            "a-gap": null,
+                            "c-gap": null,
+                            "ctx-rec": {
+                                name: "B column, forward window",
+                                note: "C is dropped from the recommendation here, because the chain has nothing to do in this window. What is left is A plus the dashed ring.",
+                                spec: {
+                                    screen: true,
+                                    body: [
+                                        { t: "flame" },
+                                        { t: "gap", h: 12 },
+                                        { t: "counter", n: 2 },
+                                        { t: "gap", h: 28 },
+                                        {
+                                            t: "card",
+                                            edge: true,
+                                            caption: CAP_NEXT,
+                                            body: [
+                                                {
+                                                    t: "week",
+                                                    labels: TWO_FWD,
+                                                    days: S_FWD,
+                                                    dashed: true,
+                                                },
+                                            ],
+                                        },
+                                        { t: "gap", h: 28 },
+                                        { t: "cta", v: "I'm committed" },
+                                    ],
+                                },
+                            },
+                        },
+                        flows: {
+                            "flow-record": {
+                                note: "Unchanged as an interaction, but the cell being tapped is now the second in the row rather than the last, and the chain is gone from both steps because there is nothing to join.",
+                                steps: [
+                                    [
+                                        "Waiting",
+                                        "Today is second. The dashed ring sits mid-row, with the days ahead to its right.",
+                                        fcand(S_FWD_WAIT, CAP_WAIT, {
+                                            dashed: true,
+                                        }),
+                                    ],
+                                    [
+                                        "Tapped",
+                                        "It fills. Nothing else in the row moves, and the five days ahead stay exactly as they were &mdash; which is the forward window's weakness: recording a night changes one disc and no relationships.",
+                                        fcand(S_FWD, "Recorded. " + CAP_NEXT),
+                                    ],
+                                ],
+                            },
+                        },
+                        open: {
+                            "a-read":
+                                "Open, but no longer even: <b>which window</b>. Compare <code>main</code> against <code>forward</code> side by side &mdash; the token styling is identical, so the diff is purely about what the screen is <i>for</i>. Theirs is a warning and ours is a receipt, and <b>a warning is the one thing we cannot write</b>: Duolingo's rests on a spent streak freeze, which we do not have. Both cards now carry the same caption, which is the argument. <b>Adopting the forward window would mean building streak freezes first.</b>",
+                        },
+                    },
+                ],
+            ];
+
+            /* ==================================================================
+   SECTION 5: ENGINE — behaviour is load-bearing.
+   See reference/pitfalls.md in this skill before changing it.
+   ================================================================== */
+            function stripTags(s) {
+                return String(s)
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/&[a-z]+;/g, " ");
+            }
+            /* Every query term must appear somewhere (order-independent AND), so
+   "cover book" finds "Book cover". Haystack must be pre-lowercased. */
+            function matchWords(haystack, query) {
+                return query
+                    .trim()
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .every((t) => haystack.includes(t));
+            }
+            function escapeReg(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+            function highlightText(text, query) {
+                const terms = query
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(escapeReg);
+                if (!terms.length) return text;
+                return text.replace(
+                    new RegExp(`(${terms.join("|")})`, "gi"),
+                    '<mark class="hl">$1</mark>',
+                );
+            }
+            function flowSearchText(g, nm, ds, steps) {
+                return stripTags(
+                    [
+                        nm,
+                        g,
+                        ds,
+                        steps.map(([sn, sc]) => `${sn} ${sc}`).join(" "),
+                    ].join(" "),
+                )
+                    .toLowerCase()
+                    .replace(/["&<>]/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            /* ---- version resolution ---------------------------------------- */
+            const VMAP = new Map(VERSIONS.map((v) => [v[0], v]));
+            const VROOT = VERSIONS[0][0];
+
+            function chainOf(vid) {
+                const out = [];
+                let cur = vid;
+                const seen = new Set();
+                while (cur && VMAP.has(cur) && !seen.has(cur)) {
+                    seen.add(cur);
+                    out.unshift(cur);
+                    cur = VMAP.get(cur)[3];
+                }
+                return out;
+            }
+            /* payload key per view: what a patch entry carries */
+            const PAYLOAD = {
+                screens: "spec",
+                flows: "steps",
+                elements: "demo",
+            };
+
+            /** Resolve one view for a version into [group, [[id,nm,ds,payload],...]]. */
+            function resolveView(vid, kind) {
+                const base =
+                    kind === "screens"
+                        ? SCREENS
+                        : kind === "flows"
+                          ? FLOWS
+                          : ELEMENTS;
+                // flat map of id -> {group,nm,ds,payload}, preserving group order
+                const groups = base.map(([g]) => g);
+                const items = new Map();
+                base.forEach(([g, list]) =>
+                    list.forEach(([id, nm, ds, payload]) =>
+                        items.set(id, { group: g, nm, ds, payload }),
+                    ),
+                );
+
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {})[kind] || {};
+                    for (const [id, val] of Object.entries(patch)) {
+                        if (val === null) {
+                            items.delete(id);
+                            continue;
+                        }
+                        const prev = items.get(id);
+                        const group =
+                            val.group ||
+                            prev?.group ||
+                            `Added in ${VMAP.get(step)[1]}`;
+                        if (!groups.includes(group)) groups.push(group);
+                        items.set(id, {
+                            group,
+                            nm: val.name ?? prev?.nm ?? id,
+                            ds: val.note ?? prev?.ds ?? "",
+                            payload: val[PAYLOAD[kind]] ?? prev?.payload,
+                        });
+                    }
+                }
+                return groups
+                    .map((g) => [
+                        g,
+                        [...items.entries()]
+                            .filter(([, v]) => v.group === g)
+                            .map(([id, v]) => [id, v.nm, v.ds, v.payload]),
+                    ])
+                    .filter(([, l]) => l.length);
+            }
+            function resolveOpen(vid) {
+                let out = { ...OPEN };
+                for (const step of chainOf(vid).slice(1)) {
+                    const patch = (VMAP.get(step)[4] || {}).open || {};
+                    for (const [id, val] of Object.entries(patch))
+                        val === null ? delete out[id] : (out[id] = val);
+                }
+                return out;
+            }
+            /** id -> 'changed' | 'onlyHere' | 'onlyThere', reading a against b. */
+            function diffMap(a, b, kind) {
+                const A = new Map(),
+                    B = new Map();
+                resolveView(a, kind).forEach(([, l]) =>
+                    l.forEach((it) => A.set(it[0], it)),
+                );
+                resolveView(b, kind).forEach(([, l]) =>
+                    l.forEach((it) => B.set(it[0], it)),
+                );
+                const out = new Map();
+                for (const [id, it] of A) {
+                    if (!B.has(id)) out.set(id, "onlyHere");
+                    else if (
+                        JSON.stringify(it[3]) !== JSON.stringify(B.get(id)[3])
+                    )
+                        out.set(id, "changed");
+                }
+                for (const id of B.keys())
+                    if (!A.has(id)) out.set(id, "onlyThere");
+                return out;
+            }
+
+            let activeV = VROOT,
+                compareV = null,
+                onlyDiff = false;
+            let view = "screens",
+                cbOpen = false,
+                kbIndex = -1,
+                kbId = null,
+                vbOpen = false,
+                vkbIndex = -1,
+                vkbId = null;
+            const sel = { screens: new Set(), elements: new Set() };
+
+            /**
+             * One list per group of entries to draw, for the active version.
+             *
+             * In compare mode this also emits "ghost" entries for items the
+             * compared version has and the active one doesn't. Without them a
+             * removal is invisible: render only walks the active version, so a
+             * deleted screen just silently isn't there.
+             */
+            function viewModel(kind) {
+                const A = resolveView(activeV, kind);
+                const cmp = compareV && compareV !== activeV;
+                const d = cmp ? diffMap(activeV, compareV, kind) : new Map();
+                const B = cmp ? resolveView(compareV, kind) : [];
+                const bItem = new Map(),
+                    bGroup = new Map();
+                B.forEach(([g, l]) =>
+                    l.forEach((it) => {
+                        bItem.set(it[0], it);
+                        bGroup.set(it[0], g);
+                    }),
+                );
+                const groups = A.map(([g]) => g);
+                if (cmp)
+                    for (const [g] of B)
+                        if (!groups.includes(g)) groups.push(g);
+
+                return groups
+                    .map((g) => {
+                        const own = (A.find(([n]) => n === g)?.[1] || []).map(
+                            ([id, nm, ds, payload]) => ({
+                                id,
+                                nm,
+                                ds,
+                                payload,
+                                diff: d.get(id) || null,
+                                ghost: false,
+                                other: bItem.get(id)?.[3] ?? null,
+                            }),
+                        );
+                        const ghosts = cmp
+                            ? [...d.entries()]
+                                  .filter(
+                                      ([id, k]) =>
+                                          k === "onlyThere" &&
+                                          bGroup.get(id) === g,
+                                  )
+                                  .map(([id]) => {
+                                      const it = bItem.get(id);
+                                      return {
+                                          id,
+                                          nm: it[1],
+                                          ds: it[2],
+                                          payload: it[3],
+                                          diff: "onlyThere",
+                                          ghost: true,
+                                          other: null,
+                                      };
+                                  })
+                            : [];
+                        return [g, own.concat(ghosts)];
+                    })
+                    .filter(([, l]) => l.length);
+            }
+
+            /* ---- render (re-runnable; version changes call this) ------------ */
+            let CB = {},
+                nScreens = 0,
+                nFlows = 0,
+                nEls = 0;
+
+            function render() {
+                const SM = viewModel("screens");
+                const EM = viewModel("elements");
+                const FM = viewModel("flows");
+                const openMap = resolveOpen(activeV);
+                const cmp = compareV && compareV !== activeV;
+                const bLabel = cmp ? VMAP.get(compareV)[1] : "";
+                const aLabel = VMAP.get(activeV)[1];
+
+                // Labels read from the point of view of the version on screen.
+                const TAGTEXT = {
+                    changed: "changed",
+                    onlyHere: "only here",
+                    onlyThere: `only in ${bLabel}`,
+                };
+                const tagFor = (d) =>
+                    d ? `<span class="tag ${d}">${TAGTEXT[d]}</span>` : "";
+                const keep = (e) => !(onlyDiff && cmp && !e.diff);
+
+                const count = (m) =>
+                    m.reduce((a, [, l]) => a + l.filter(keep).length, 0);
+                nScreens = count(SM);
+                nEls = count(EM);
+                nFlows = count(FM);
+
+                document.getElementById("screens").innerHTML = SM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map((e) => {
+                                let shot;
+                                if (cmp && e.diff === "changed")
+                                    shot = `<div class="pair"><div><div class="vl">${aLabel}</div><div class="shot">${frame({ ...e.payload, sm: true })}</div></div><div><div class="vl b">${bLabel}</div><div class="shot">${frame({ ...(e.other || e.payload), sm: true })}</div></div></div>`;
+                                else
+                                    shot = `<div class="shot">${frame(e.payload)}</div>`;
+                                return `<div class="item${e.ghost ? " ghost" : ""}" data-id="${e.id}">${shot}<div class="cap"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }</div></div>`;
+                            })
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="grid${cmp ? " cmp" : ""}">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                document.getElementById("elements").innerHTML = EM.map(
+                    ([g, entries]) => {
+                        const cells = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<div class="el${e.ghost ? " ghost" : ""}" data-id="${e.id}"><div class="demo">${e.payload}</div><div class="body"><div class="nm">${e.nm}${tagFor(e.diff)}</div><div class="ds">${e.ds}</div>${
+                                        openMap[e.id]
+                                            ? `<p class="pend">${openMap[e.id]}</p>`
+                                            : ""
+                                    }</div></div>`,
+                            )
+                            .join("");
+                        return cells
+                            ? `<div class="gsec" data-group="${g}"><h2 class="grp">${g}</h2><div class="egrid">${cells}</div></div>`
+                            : "";
+                    },
+                ).join("");
+
+                const stepRow = (steps) =>
+                    `<div class="steps">${steps
+                        .map(
+                            ([sn, sc, spec], i) =>
+                                (i ? '<div class="arrow">&rarr;</div>' : "") +
+                                `<div class="step"><div class="sn">${String(i + 1).padStart(2, "0")} &middot; ${sn}</div><div class="shot">${frame(spec)}</div><div class="sc">${sc}</div></div>`,
+                        )
+                        .join("")}</div>`;
+
+                document.getElementById("flows").innerHTML = FM.map(
+                    ([g, entries]) =>
+                        entries
+                            .filter(keep)
+                            .map((e) => {
+                                const rows =
+                                    cmp && e.diff === "changed"
+                                        ? `<div class="vrow">${aLabel}</div>${stepRow(e.payload)}<div class="vrow b">${bLabel}</div>${stepRow(e.other || e.payload)}`
+                                        : stepRow(e.payload);
+                                return `<div class="flow${e.ghost ? " ghost" : ""}" id="f-${e.id}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}"><p class="fh">${e.nm}${tagFor(e.diff)}</p><p class="fd">${e.ds}</p>${
+                                    openMap[e.id]
+                                        ? `<p class="pend">${openMap[e.id]}</p>`
+                                        : ""
+                                }${rows}</div>`;
+                            })
+                            .join(""),
+                ).join("");
+
+                document.getElementById("sidenav").innerHTML = FM.map(
+                    ([g, entries]) => {
+                        const links = entries
+                            .filter(keep)
+                            .map(
+                                (e) =>
+                                    `<a href="#f-${e.id}" data-id="${e.id}" data-nm="${stripTags(e.nm)}" data-f="${flowSearchText(g, e.nm, e.ds, e.payload)}">${stripTags(e.nm)}</a>`,
+                            )
+                            .join("");
+                        return links
+                            ? `<div class="sh">${g}</div>${links}`
+                            : "";
+                    },
+                ).join("");
+
+                const cbGroups = (m) =>
+                    m
+                        .map(([g, entries]) => [
+                            g,
+                            entries.filter(keep).map((e) => [e.id, e.nm, e.ds]),
+                        ])
+                        .filter(([, l]) => l.length);
+
+                CB = {
+                    screens: {
+                        label: "Screens",
+                        placeholder: "Search screens…",
+                        container: "screens",
+                        itemSel: ".item",
+                        none: "screens-none",
+                        groups: cbGroups(SM),
+                    },
+                    elements: {
+                        label: "UI Elements",
+                        placeholder: "Search elements…",
+                        container: "elements",
+                        itemSel: ".el",
+                        none: "elements-none",
+                        groups: cbGroups(EM),
+                    },
+                };
+                // drop filter selections for ids this version doesn't have
+                for (const k of ["screens", "elements"]) {
+                    const live = new Set(
+                        CB[k].groups.flatMap(([, l]) => l.map(([id]) => id)),
+                    );
+                    [...sel[k]].forEach((id) => {
+                        if (!live.has(id)) sel[k].delete(id);
+                    });
+                }
+
+                const total = cmp
+                    ? ["screens", "elements", "flows"].reduce(
+                          (a, k) => a + diffMap(activeV, compareV, k).size,
+                          0,
+                      )
+                    : 0;
+                document.getElementById("vinfo-lbl").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document.getElementById("vinfo-note").innerHTML = cmp
+                    ? `${VMAP.get(activeV)[2]}`
+                    : VMAP.get(activeV)[2];
+                document.getElementById("vinfo-diffs").textContent = cmp
+                    ? total
+                        ? `${total} difference${total === 1 ? "" : "s"}`
+                        : "identical"
+                    : "";
+                document
+                    .getElementById("difftoggle")
+                    .classList.toggle("gone", !cmp);
+                document.getElementById("vbtn-label").textContent = cmp
+                    ? `${aLabel} ↔ ${bLabel}`
+                    : aLabel;
+                document
+                    .getElementById("vcmp-clear")
+                    .classList.toggle("gone", !cmp);
+                if (view !== "flows") applyFilter();
+                else updateCount(0);
+                if (view === "flows" && fsearch.value)
+                    fsearch.dispatchEvent(
+                        new Event("input", { bubbles: true }),
+                    );
+                spy();
+            }
+
+            /* ---- filter combobox ---- */
+            const cbox = document.getElementById("cbox"),
+                cbtn = document.getElementById("cbtn"),
+                cbtnLabel = document.getElementById("cbtn-label"),
+                cbtnBadge = document.getElementById("cbtn-badge"),
+                csearch = document.getElementById("csearch"),
+                clist = document.getElementById("clist"),
+                cfootN = document.getElementById("cfoot-n"),
+                cclear = document.getElementById("cclear");
+
+            function visibleOpts() {
+                const q = csearch.value.trim().toLowerCase();
+                if (!q) return CB[view].groups;
+                return CB[view].groups
+                    .map(([g, items]) => [
+                        g,
+                        // A group's own name pulls in its whole contents (browse by category);
+                        // otherwise an item needs every query word in its name or note.
+                        matchWords(g.toLowerCase(), q)
+                            ? items
+                            : items.filter(([, nm, ds]) =>
+                                  matchWords(
+                                      stripTags(
+                                          `${nm} ${ds || ""}`,
+                                      ).toLowerCase(),
+                                      q,
+                                  ),
+                              ),
+                    ])
+                    .filter(([, items]) => items.length);
+            }
+            function renderList() {
+                const groups = visibleOpts(),
+                    q = csearch.value.trim();
+                if (!groups.length) {
+                    kbIndex = -1;
+                    kbId = null;
+                    clist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                clist.innerHTML = groups
+                    .map(
+                        ([g, items]) =>
+                            `<div class="cgrp" data-group="${g}">${g}</div>` +
+                            items
+                                .map(
+                                    ([id, nm]) =>
+                                        `<div class="copt${sel[view].has(id) ? " sel" : ""}" data-id="${id}"><span class="box">${
+                                            sel[view].has(id) ? "&#10003;" : ""
+                                        }</span><span class="lb">${highlightText(stripTags(nm), q)}</span></div>`,
+                                )
+                                .join(""),
+                    )
+                    .join("");
+                // Keep keyboard focus on the same option across a re-render, so toggling
+                // with Enter doesn't fling focus back to the top.
+                const opts = [...clist.querySelectorAll(".copt")];
+                let idx = kbId
+                    ? opts.findIndex((o) => o.dataset.id === kbId)
+                    : -1;
+                if (idx < 0) idx = 0;
+                if (opts.length) {
+                    kbIndex = idx;
+                    kbId = opts[idx].dataset.id;
+                    opts[idx].classList.add("kb");
+                } else {
+                    kbIndex = -1;
+                    kbId = null;
+                }
+            }
+            function applyFilter() {
+                const cfg = CB[view],
+                    s = sel[view],
+                    root = document.getElementById(cfg.container);
+                let shown = 0;
+                root.querySelectorAll(cfg.itemSel).forEach((el) => {
+                    const on = s.size === 0 || s.has(el.dataset.id);
+                    el.classList.toggle("gone", !on);
+                    if (on) shown++;
+                });
+                root.querySelectorAll(".gsec").forEach((g) =>
+                    g.classList.toggle(
+                        "gone",
+                        !g.querySelector(cfg.itemSel + ":not(.gone)"),
+                    ),
+                );
+                document
+                    .getElementById(cfg.none)
+                    .classList.toggle("gone", shown > 0);
+                const total = view === "screens" ? nScreens : nEls;
+                cbtnBadge.hidden = s.size === 0;
+                cbtnBadge.textContent = s.size;
+                cfootN.textContent =
+                    s.size === 0
+                        ? `Showing all ${total}`
+                        : `Showing ${shown} of ${total}`;
+                updateCount(shown);
+            }
+            function updateCount(shown) {
+                const s = sel[view] ? sel[view].size : 0;
+                document.getElementById("cnt").textContent = [
+                    `${view === "screens" && s ? shown + " of " : ""}${nScreens} screens`,
+                    `${nFlows} flows`,
+                    `${view === "elements" && s ? shown + " of " : ""}${nEls} elements`,
+                ].join(" · ");
+            }
+            function openCB(focus) {
+                if (view === "flows") return;
+                closeVB(); // only one dropdown at a time
+                cbOpen = true;
+                cbox.classList.add("open");
+                kbId = null;
+                renderList();
+                if (focus) csearch.focus();
+            }
+            function closeCB() {
+                cbOpen = false;
+                cbox.classList.remove("open");
+                csearch.blur();
+            }
+
+            cbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                cbOpen ? closeCB() : openCB(true);
+            });
+            csearch.addEventListener("input", () => {
+                clist.scrollTop = 0;
+                renderList();
+            });
+            clist.addEventListener("click", (e) => {
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    // stopPropagation is required: renderList() replaces clist.innerHTML,
+                    // detaching this node before the click finishes bubbling, which would
+                    // make the document listener below see a detached target and close.
+                    e.stopPropagation();
+                    const id = opt.dataset.id;
+                    sel[view].has(id)
+                        ? sel[view].delete(id)
+                        : sel[view].add(id);
+                    renderList();
+                    applyFilter();
+                    return;
+                }
+                const grp = e.target.closest(".cgrp");
+                if (grp) {
+                    e.stopPropagation();
+                    const ids = CB[view].groups
+                        .find(([n]) => n === grp.dataset.group)[1]
+                        .map(([id]) => id);
+                    const allOn = ids.every((id) => sel[view].has(id));
+                    ids.forEach((id) =>
+                        allOn ? sel[view].delete(id) : sel[view].add(id),
+                    );
+                    renderList();
+                    applyFilter();
+                }
+            });
+            cclear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                sel[view].clear();
+                csearch.value = "";
+                renderList();
+                applyFilter();
+            });
+            document.addEventListener("click", (e) => {
+                if (cbOpen && !cbox.contains(e.target)) closeCB();
+                if (vbOpen && !vbox.contains(e.target)) closeVB();
+            });
+
+            /* ---- version combobox (single-select, plus compare) ---- */
+            const vbox = document.getElementById("vbox"),
+                vbtn = document.getElementById("vbtn"),
+                vsearch = document.getElementById("vsearch"),
+                vlist = document.getElementById("vlist"),
+                vfootN = document.getElementById("vfoot-n"),
+                vcmpClear = document.getElementById("vcmp-clear"),
+                diffToggle = document.getElementById("difftoggle");
+
+            function renderVList() {
+                const q = vsearch.value.trim(),
+                    ql = q.toLowerCase();
+                const rows = VERSIONS.filter(
+                    ([id, label, note]) =>
+                        !ql ||
+                        matchWords(
+                            stripTags(`${label} ${note} ${id}`).toLowerCase(),
+                            ql,
+                        ),
+                );
+                if (!rows.length) {
+                    vkbIndex = -1;
+                    vkbId = null;
+                    vlist.innerHTML = '<div class="cempty">No matches.</div>';
+                    return;
+                }
+                vlist.innerHTML =
+                    `<div class="cgrp" style="cursor:default">Show version</div>` +
+                    rows
+                        .map(
+                            ([id, label, note, parent]) =>
+                                `<div class="copt radio${id === activeV ? " sel" : ""}" data-v="${id}">
+        <span class="box">${id === activeV ? "&#10003;" : ""}</span>
+        <span class="col"><span class="lb">${highlightText(label, q)}</span>${
+            note
+                ? `<div class="sub">${parent ? `from ${VMAP.get(parent)[1]} &middot; ` : ""}${note}</div>`
+                : ""
+        }</span>
+        ${id !== activeV ? `<span class="tagn" data-cmp="${id}">${compareV === id ? "comparing" : "compare"}</span>` : ""}
+      </div>`,
+                        )
+                        .join("");
+                // Keep keyboard focus on the same version across a re-render
+                // (toggling compare re-renders this list), falling back to the
+                // first row only when the focused version is filtered out.
+                const vopts = [...vlist.querySelectorAll(".copt")];
+                let vi = vkbId
+                    ? vopts.findIndex((o) => o.dataset.v === vkbId)
+                    : -1;
+                if (vi < 0) vi = 0;
+                if (vopts.length) {
+                    vkbIndex = vi;
+                    vkbId = vopts[vi].dataset.v;
+                    vopts[vi].classList.add("kb");
+                } else {
+                    vkbIndex = -1;
+                    vkbId = null;
+                }
+
+                const legend = "&#8629; show &middot; &#8679;&#8629; compare";
+                vfootN.innerHTML = compareV
+                    ? `Comparing with ${VMAP.get(compareV)[1]} &middot; ${legend}`
+                    : `${VERSIONS.length} version${VERSIONS.length === 1 ? "" : "s"} &middot; ${legend}`;
+            }
+            function openVB(focus) {
+                closeCB(); // only one dropdown at a time, or they fight over the arrow keys
+                vbOpen = true;
+                vbox.classList.add("open");
+                vkbId = activeV; // open focused on where you already are
+                renderVList();
+                if (focus) vsearch.focus();
+            }
+            function closeVB() {
+                vbOpen = false;
+                vbox.classList.remove("open");
+                vsearch.blur();
+            }
+
+            vbtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                vbOpen ? closeVB() : openVB(true);
+            });
+            vsearch.addEventListener("input", () => {
+                vlist.scrollTop = 0;
+                renderVList();
+            });
+            vlist.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const cmpBtn = e.target.closest("[data-cmp]");
+                if (cmpBtn) {
+                    const id = cmpBtn.dataset.cmp;
+                    compareV = compareV === id ? null : id;
+                    renderVList();
+                    render();
+                    return;
+                }
+                const opt = e.target.closest(".copt");
+                if (opt) {
+                    activeV = opt.dataset.v;
+                    if (compareV === activeV) compareV = null;
+                    renderVList();
+                    render();
+                    closeVB();
+                }
+            });
+            vcmpClear.addEventListener("click", (e) => {
+                e.stopPropagation();
+                compareV = null;
+                onlyDiff = false;
+                diffToggle.classList.add("off");
+                renderVList();
+                render();
+            });
+            diffToggle.addEventListener("click", () => {
+                onlyDiff = !onlyDiff;
+                diffToggle.classList.toggle("off", !onlyDiff);
+                render();
+            });
+
+            /* ---- view switching ---- */
+            function switchView(v) {
+                const btn = document.querySelector(
+                    `.vtabs button[data-v="${v}"]`,
+                );
+                if (!btn || view === v) return;
+                view = v;
+                document
+                    .querySelectorAll(".vtabs button")
+                    .forEach((x) => x.classList.toggle("on", x === btn));
+                document
+                    .querySelectorAll(".view")
+                    .forEach((el) =>
+                        el.classList.toggle("on", el.id === "v-" + view),
+                    );
+                closeCB();
+                const isFlows = view === "flows";
+                cbox.classList.toggle("hide", isFlows);
+                if (!isFlows) {
+                    cbtnLabel.textContent = CB[view].label;
+                    csearch.placeholder = CB[view].placeholder;
+                    csearch.value = "";
+                    applyFilter();
+                } else updateCount(0);
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }
+            document
+                .querySelectorAll(".vtabs button")
+                .forEach((b) =>
+                    b.addEventListener("click", () => switchView(b.dataset.v)),
+                );
+
+            /* ---- flow search + scroll-spy ---- */
+            const fsearch = document.getElementById("fsearch"),
+                sbox = document.getElementById("sbox");
+            fsearch.addEventListener("focus", () =>
+                sbox.classList.add("focused"),
+            );
+            fsearch.addEventListener("blur", () =>
+                sbox.classList.remove("focused"),
+            );
+            fsearch.addEventListener("input", () => {
+                sbox.classList.toggle("dirty", fsearch.value.length > 0);
+                const q = fsearch.value.trim().toLowerCase();
+                let any = false;
+                document.querySelectorAll(".flow").forEach((f) => {
+                    const show = !q || matchWords(f.dataset.f, q);
+                    f.classList.toggle("gone", !show);
+                    if (show) any = true;
+                });
+                document.querySelectorAll("#sidenav a").forEach((a) => {
+                    a.classList.toggle(
+                        "gone",
+                        !(!q || matchWords(a.dataset.f, q)),
+                    );
+                    a.innerHTML = highlightText(
+                        a.dataset.nm,
+                        fsearch.value.trim(),
+                    );
+                });
+                document.querySelectorAll("#sidenav .sh").forEach((h) => {
+                    let n = h.nextElementSibling,
+                        on = false;
+                    while (n && n.tagName === "A") {
+                        if (!n.classList.contains("gone")) on = true;
+                        n = n.nextElementSibling;
+                    }
+                    h.classList.toggle("gone", !on);
+                });
+                document
+                    .getElementById("flows-none")
+                    .classList.toggle("gone", any);
+                spy();
+            });
+
+            /* Highlights whichever flow is under the header as you scroll, not only on
+   click. Filter-aware, and clamps to the last section at the page bottom. */
+            let spyRAF = null;
+            function spy() {
+                if (spyRAF) return;
+                spyRAF = requestAnimationFrame(() => {
+                    spyRAF = null;
+                    if (view !== "flows") return;
+                    const flows = [
+                        ...document.querySelectorAll(".flow:not(.gone)"),
+                    ];
+                    if (!flows.length) return;
+                    let cur = flows[0];
+                    for (const f of flows)
+                        if (f.getBoundingClientRect().top <= 100) cur = f;
+                    if (
+                        window.innerHeight + window.scrollY >=
+                        document.body.scrollHeight - 4
+                    )
+                        cur = flows[flows.length - 1];
+                    const id = cur.id.replace(/^f-/, "");
+                    document
+                        .querySelectorAll("#sidenav a")
+                        .forEach((a) =>
+                            a.classList.toggle("cur", a.dataset.id === id),
+                        );
+                });
+            }
+            window.addEventListener("scroll", spy, { passive: true });
+            window.addEventListener("resize", spy);
+
+            /* ---- hotkeys: 1/2/3 views, v versions, / search, Esc clear-then-close ---- */
+            function isTyping(el) {
+                return (
+                    el &&
+                    (el.tagName === "INPUT" ||
+                        el.tagName === "TEXTAREA" ||
+                        el.isContentEditable)
+                );
+            }
+            document.addEventListener("keydown", (e) => {
+                const free =
+                    !isTyping(document.activeElement) &&
+                    !e.metaKey &&
+                    !e.ctrlKey;
+                if (["1", "2", "3"].includes(e.key) && free) {
+                    e.preventDefault();
+                    switchView(
+                        { 1: "screens", 2: "elements", 3: "flows" }[e.key],
+                    );
+                    return;
+                }
+                if ((e.key === "v" || e.key === "V") && free) {
+                    e.preventDefault();
+                    vbOpen ? closeVB() : openVB(true);
+                    return;
+                }
+                if (e.key === "/" && free) {
+                    e.preventDefault();
+                    if (view === "flows") {
+                        fsearch.focus();
+                        fsearch.select();
+                    } else openCB(true);
+                    return;
+                }
+                if (e.key === "Escape") {
+                    if (vbOpen) {
+                        if (vsearch.value) {
+                            vsearch.value = "";
+                            renderVList();
+                        } else closeVB();
+                        return;
+                    }
+                    if (cbOpen) {
+                        if (csearch.value) {
+                            csearch.value = "";
+                            renderList();
+                        } else closeCB();
+                        return;
+                    }
+                    if (isTyping(document.activeElement)) {
+                        const el = document.activeElement;
+                        el.value = "";
+                        el.dispatchEvent(new Event("input", { bubbles: true }));
+                        el.blur();
+                    }
+                    return;
+                }
+                if (
+                    vbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const vopts = [...vlist.querySelectorAll(".copt")];
+                    if (!vopts.length) return;
+                    if (e.key === "Enter") {
+                        if (vkbIndex < 0) return;
+                        e.preventDefault();
+                        const id = vopts[vkbIndex].dataset.v;
+                        if (e.shiftKey) {
+                            // Shift+Enter compares instead of switching. A letter
+                            // key can't be used here: the search field has focus,
+                            // so it would just be typed.
+                            if (id !== activeV) {
+                                compareV = compareV === id ? null : id;
+                                renderVList();
+                                render();
+                            }
+                        } else {
+                            activeV = id;
+                            if (compareV === activeV) compareV = null;
+                            renderVList();
+                            render();
+                            closeVB();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    vkbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(vkbIndex + 1, vopts.length - 1)
+                            : Math.max(vkbIndex - 1, 0);
+                    vkbId = vopts[vkbIndex].dataset.v;
+                    vopts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === vkbIndex),
+                    );
+                    vopts[vkbIndex].scrollIntoView({ block: "nearest" });
+                    return;
+                }
+                if (
+                    cbOpen &&
+                    (e.key === "ArrowDown" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "Enter")
+                ) {
+                    const opts = [...clist.querySelectorAll(".copt")];
+                    if (!opts.length) return;
+                    if (e.key === "Enter") {
+                        if (kbIndex >= 0) {
+                            e.preventDefault();
+                            opts[kbIndex].click();
+                        }
+                        return;
+                    }
+                    e.preventDefault();
+                    kbIndex =
+                        e.key === "ArrowDown"
+                            ? Math.min(kbIndex + 1, opts.length - 1)
+                            : Math.max(kbIndex - 1, 0);
+                    kbId = opts[kbIndex].dataset.id;
+                    opts.forEach((o, i) =>
+                        o.classList.toggle("kb", i === kbIndex),
+                    );
+                    opts[kbIndex].scrollIntoView({ block: "nearest" });
+                }
+            });
+
+            /* one version means versioning is unused: hide the selector entirely */
+            if (VERSIONS.length < 2) {
+                vbox.classList.add("hide");
+                document.querySelector(".vinfo").classList.add("gone");
+            }
+            renderVList();
+            render();
+        </script>
+    </body>
+</html>

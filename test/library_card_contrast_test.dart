@@ -103,6 +103,60 @@ void main() {
         },
       );
 
+      test('Given the cool streak tile, When white text sits on either stop, '
+          'Then both clear AA', () {
+        // **The cool fill is theme-independent, so this case is the same numbers
+        // twice — and that is the assertion.** It shipped as `AppColors.secondaryText`,
+        // which is #626A72 in light and #949599 in dark, and white on the dark version
+        // is 2.99:1. Freezing the light value is what makes a cold streak tile behave
+        // like the hero: 5.49:1 against the hero's 5.62:1, rising to 7.81:1 across the
+        // gradient. If this ever fails in exactly one theme, the fill has been given a
+        // token again.
+        for (final stop in statTileCoolFill()) {
+          expect(
+            _contrast(const Color(0xFFFFFFFF), stop),
+            greaterThanOrEqualTo(_aaNormal),
+          );
+        }
+        expect(
+          _contrast(
+            _over(statTileHeroMutedText(), statTileCoolFill().first),
+            statTileCoolFill().first,
+          ),
+          greaterThanOrEqualTo(_aaNormal),
+          reason:
+              'the label and sub-line are the least forgiving text on a tile',
+        );
+      });
+
+      test('Given the warm streak tile, Then its white text is knowingly under AA', () {
+        // **Not a guard — a record.** This is the one fill on the card that does not
+        // clear AA, and it was chosen with the numbers on the table: white is 2.00:1 on
+        // `kCandleFlame` and 3.23:1 on the darker stop, and at
+        // `statTileHeroMutedText`'s 88% those are 1.84:1 and 2.85:1. A readable
+        // alternative was built and shown beside it — the same tile on
+        // `AppColors.flame` #B54708, where white is 5.43:1 rising to 7.83:1, within a
+        // hair of the hero's own 5.62:1 — and the amber was preferred.
+        //
+        // Asserted as an *upper* bound so the record cannot rot: if someone darkens the
+        // warm fill into compliance, this fails and points them at the decision rather
+        // than letting a documented exemption sit here describing a tile that no longer
+        // needs one. The same shape as `color_contrast_test.dart`'s note on
+        // `AppColors.flame`, which is now a record of a value nothing reads.
+        final near = statTileWarmFill().first;
+        expect(_contrast(const Color(0xFFFFFFFF), near), lessThan(_aaNormal));
+        expect(
+          _contrast(const Color(0xFFFFFFFF), near),
+          closeTo(2.0, 0.05),
+          reason:
+              'the accepted figure, so a drift in kCandleFlame is visible here',
+        );
+        expect(
+          _contrast(_over(statTileHeroMutedText(), near), near),
+          closeTo(1.84, 0.05),
+        );
+      });
+
       test(
         'Given a non-hero tile, When its label sits on either stop, Then it clears AA',
         () {

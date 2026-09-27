@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "m15-smug.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "m15-smug@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "m15-smug@3x.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

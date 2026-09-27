@@ -69,19 +69,29 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// The one warm hue in an otherwise all-green, all-neutral palette.
   ///
-  /// **Exists for exactly one thing: [ReadingStreakChip]'s flame**, so that a fire
-  /// glyph does not render in the brand green and read as miscoloured. It shipped
-  /// once tinted with [brandText] on the reasoning that the chip is a brand surface
-  /// like any other; a flame is not — its colour is part of what makes it legible as
-  /// *a flame* rather than an arbitrary glyph, and green fire reads as a bug
+  /// **Nothing in `lib/` reads this any more, and it is kept deliberately.** It was
+  /// authored for exactly one thing — [ReadingStreakChip]'s flame, so that a fire glyph
+  /// would not render in the brand green and read as miscoloured — and every streak
+  /// surface has since been moved to `kCandleFlame` #F2A93F on instruction, so that the
+  /// chip, the page's hero mark, the week row, the month grid and the celebration all
+  /// draw the run in the artboard's own amber. This token is the *readable* orange and
+  /// that one is the *flame's*; the swap trades 5.43:1 on white for 2.00:1, which is a
+  /// preference and not a measurement, so the value it gave up is recorded here rather
+  /// than deleted. Restoring theme-aware contrast to any of those surfaces starts by
+  /// reading this again, which is the whole reason it survives.
+  ///
+  /// It shipped once tinted with [brandText] on the reasoning that the chip is a brand
+  /// surface like any other; a flame is not — its colour is part of what makes it
+  /// legible as *a flame* rather than an arbitrary glyph, and green fire reads as a bug
   /// screenshot rather than a streak.
   ///
   /// Not [brand] itself, for [brand]'s own reason: light mode's vivid value clears
   /// only ~3:1 on a light surface, so this is darkened the same way [brandText] is
   /// darkened from [brand] — a burnt orange rather than a bright one. Dark mode can
   /// afford to stay closer to a true flame orange, the same asymmetry [brandText]
-  /// already has between its two themes. Cleared to AA (4.5:1) on every surface this
-  /// token's only user reads text against; see `test/color_contrast_test.dart`.
+  /// already has between its two themes. Still held to AA (4.5:1) on all four light
+  /// surfaces by `test/color_contrast_test.dart`, which is now a record of what the
+  /// compliant orange was rather than a guard on a shipped one.
   final Color flame;
 
   /// Background for modal bottom sheets.

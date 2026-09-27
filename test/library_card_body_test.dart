@@ -71,6 +71,8 @@ Future<void> _pump(
   Locale locale = const Locale('en'),
   int streak = 0,
   int longestStreak = 0,
+  bool readToday = false,
+  VoidCallback? onStreakTap,
 }) async {
   tester.view.physicalSize = _surface * tester.view.devicePixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
@@ -91,6 +93,8 @@ Future<void> _pump(
                 year: year,
                 streak: streak,
                 longestStreak: longestStreak,
+                readToday: readToday,
+                onStreakTap: onStreakTap,
               ),
             ),
           ),
@@ -488,6 +492,154 @@ void main() {
           .map((element) => element.widget as StatTile)
           .firstWhere((tile) => tile.label == 'Streak');
       expect(streakTile.variant, isNot(StatTileVariant.hero));
+    });
+
+    testWidgets('Given today is recorded, Then the tile is warm; before that, cool', (
+      tester,
+    ) async {
+      // **Keyed on today, never on the count.** The count is intact all day and only
+      // the day's own status changes at the 4am rollover, so a tile that took its
+      // temperature from the number would be warm at 9am on a day nothing had been
+      // read — the opposite of a nudge. `ReadingStreakChip` was written against the
+      // same rule; this is the second reader of it, which is why the fixture here
+      // holds the streak at 12 in both halves and moves only `readToday`.
+      for (final (read, expected) in [
+        (true, StatTileVariant.warm),
+        (false, StatTileVariant.cool),
+      ]) {
+        await _pump(
+          tester,
+          [_spanned('a', 6, DateTime(2024, 3, 1))],
+          streak: 12,
+          longestStreak: 30,
+          readToday: read,
+        );
+
+        final tile = _tiles(tester)
+            .map((element) => element.widget as StatTile)
+            .singleWhere((tile) => tile.label == 'Streak');
+        expect(tile.variant, expected);
+        // Both states are *filled*, which is the choice that separates this from the
+        // bar's chip: the chip recedes to nothing painted when cold, and this keeps
+        // its shape and only changes temperature. If cold ever becomes
+        // `StatTileVariant.tile`, that decision has been reversed.
+        expect(tile.variant, isNot(StatTileVariant.tile));
+        expect(tile.mark, isNotNull);
+        expect(find.text('12d'), findsOneWidget);
+      }
+    });
+
+    testWidgets('Given a run, Then only the streak tile is filled', (
+      tester,
+    ) async {
+      // The rule the warm and cool variants are an exception to: everything below the
+      // hero takes the card's grey so three tiles do not read as three heroes. The
+      // streak earns its fill by being a state rather than a stat — and this is what
+      // stops the next tile from helping itself to one.
+      await _pump(
+        tester,
+        [
+          _spanned('a', 6, DateTime(2024, 3, 1)),
+          _spanned('b', 4, DateTime(2024, 5, 1), authors: ['Le Guin']),
+        ],
+        streak: 12,
+        longestStreak: 30,
+        readToday: true,
+      );
+
+      final tiles = _tiles(
+        tester,
+      ).map((element) => element.widget as StatTile).toList();
+      for (final tile in tiles.where((tile) => tile.label != 'Streak')) {
+        expect(
+          tile.variant,
+          anyOf(StatTileVariant.tile, StatTileVariant.hero),
+          reason: '${tile.label} is a stat, not a state',
+        );
+        expect(tile.mark, isNull);
+      }
+    });
+
+    testWidgets('it is the one tile that opens something', (tester) async {
+      // **The asymmetry is the assertion.** Every other figure on this card is
+      // terminal — there is no pace screen and no most-read-author screen — which is
+      // why the tap is a parameter on this one tile rather than a behaviour of
+      // `StatTile`. Checking that the others have *no* tap is what stops a later
+      // change from making the whole card a grid of buttons that mostly go nowhere.
+      var taps = 0;
+      await _pump(
+        tester,
+        [
+          _spanned('a', 6, DateTime(2024, 3, 1)),
+          _spanned('b', 4, DateTime(2024, 5, 1), authors: ['Le Guin']),
+        ],
+        streak: 12,
+        longestStreak: 30,
+        onStreakTap: () => taps++,
+      );
+
+      final tiles = _tiles(
+        tester,
+      ).map((element) => element.widget as StatTile).toList();
+      expect(
+        tiles.singleWhere((tile) => tile.label == 'Streak').onTap,
+        isNotNull,
+      );
+      for (final other in tiles.where((tile) => tile.label != 'Streak')) {
+        expect(
+          other.onTap,
+          isNull,
+          reason: '${other.label} has no screen of its own to open',
+        );
+      }
+
+      // And the tap is the whole tile, not the glyphs on it: a stat tile is mostly
+      // empty fill by design, so hitting the label is not a fair test of a button a
+      // reader will aim at anywhere.
+      await tester.tap(find.text('Streak'.toUpperCase()));
+      await tester.pump();
+      expect(taps, 1);
+
+      await tester.tapAt(
+        tester.getBottomRight(
+              find.ancestor(
+                of: find.text('12d'),
+                matching: find.byType(StatTile),
+              ),
+            ) -
+            const Offset(6, 6),
+      );
+      await tester.pump();
+      expect(taps, 2, reason: 'the empty corner of the tile is the button too');
+    });
+
+    testWidgets('Given no tap is offered, Then the tile is inert', (
+      tester,
+    ) async {
+      // What an edit in progress looks like from in here. The sheet withholds the
+      // callback; this widget must not invent an affordance or a hit target for one
+      // it was not given.
+      await _pump(
+        tester,
+        [_spanned('a', 6, DateTime(2024, 3, 1))],
+        streak: 12,
+        longestStreak: 30,
+      );
+
+      expect(
+        _tiles(tester)
+            .map((element) => element.widget as StatTile)
+            .singleWhere((tile) => tile.label == 'Streak')
+            .onTap,
+        isNull,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(StatTile),
+          matching: find.byType(GestureDetector),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('carries the record, which a missed night does not erase', (

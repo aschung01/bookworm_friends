@@ -1,0 +1,7 @@
+name: streak_flame
+logs:
+  file: build/rive.log
+  problems: build/problems.log
+push:
+  projectId: 1996083
+  fileId: 2597430
