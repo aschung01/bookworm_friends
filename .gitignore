@@ -120,3 +120,9 @@ docs/mockups/typography/_build/.cache/
 # Bytecode from the Python asset tooling (assets/branding/build_master.py and the
 # scripts/ pipeline).
 __pycache__/
+
+# Golden-test failure output. `flutter test` writes the master, the test render and
+# two diffs here whenever an image comparison fails, so the directory is a symptom
+# of the last red run rather than anything to keep. Read it, fix the test or
+# re-record the golden with `--update-goldens`, and let it be overwritten.
+test/failures/
