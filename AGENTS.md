@@ -73,6 +73,40 @@ grep -nE "ProcessException|PhaseScriptExecution failed|error: .*\.(dart|swift|m)
 ./release_ios.sh
 ```
 
+### The App Group is a portal click, and the capability is not the same thing
+
+Since the streak widget landed, Runner and StreakWidget both claim
+`group.com.unicorn.bookwormFriends`, and signing needs **two separate things** that
+are easy to conflate:
+
+1. the `APP_GROUPS` **capability** on each App ID, and
+2. the App Group **container** itself, created and then associated with both App IDs.
+
+The App Store Connect API does (1) fine — `POST /v1/bundleIdCapabilities` with
+`capabilityType: APP_GROUPS` returns 201, and `scripts/asc_key_probe.py` will show
+it on record afterwards. It cannot do (2) at all: there is no app-groups resource,
+and `GET /v1/appGroups` is a flat 404. So an App ID can carry the capability while
+no group exists to attach, which is the state that produces this, with the capability
+already enabled:
+
+```
+error: Provisioning profile "iOS Team Provisioning Profile: com.unicorn.bookwormFriends"
+       doesn't support the group.com.unicorn.bookwormFriends App Group
+error: No profiles for 'com.unicorn.bookwormFriends.StreakWidget' were found
+error: Authentication failed: Make sure a bearer token was provided ...
+```
+
+**The authentication line is a red herring.** xcodebuild prints it for any rejected
+provisioning operation, including one rejected because the group does not exist.
+Run `.venv/bin/python scripts/asc_key_probe.py` before believing it — if that reads
+`/v1/profiles` the key is fine and the problem is the App ID or the group.
+
+The fix is in the Developer Portal, and only there: create the group under
+Identifiers > App Groups, then tick App Groups on both
+`com.unicorn.bookwormFriends` and `com.unicorn.bookwormFriends.StreakWidget` and
+select it. Cloud managed signing reissues both profiles on the next
+`./release_ios.sh` once that exists.
+
 `ios/Runner/Info.plist` takes its version from `$(FLUTTER_BUILD_NAME)` /
 `$(FLUTTER_BUILD_NUMBER)`, so **`pubspec.yaml` is the single source of truth**.
 The `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` still sitting in
