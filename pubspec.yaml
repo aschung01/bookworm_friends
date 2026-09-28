@@ -173,6 +173,23 @@ flutter:
     # `StreakFlame` falls back to a hand-built ignition while the folder is empty, so this
     # is not load-bearing until the file arrives. Build sheet: `docs/streak-flame-rive.md`.
     - assets/rive/
+    # The mascot, on the sign-in hero. **Resolution variants, unlike every other raster
+    # here** -- `2.0x/` and `3.0x/` sit beside it and Flutter resolves by device ratio,
+    # so only the 1x path is declared.
+    #
+    # Three files rather than one because this is the only place a pose is drawn large:
+    # the widget's own cut-outs top out at 260x333 (`m03-reading@3x` in
+    # `ios/StreakWidget/Assets.xcassets`), a third of what a 265pt hero needs. Cut from
+    # the SAME master the widget shipped -- `m03-reading-widget-v3`, confirmed
+    # byte-identical to `docs/mockups/streak-widget/cats/m03-reading.png` when cut at
+    # `--width 720` -- so sign-in and the home screen draw one character rather than two
+    # samples of one prompt. Regenerate per `docs/auth-hero.md`.
+    #
+    # **Not quantised, deliberately.** 64 colours takes the 3x from 167KB to 18KB and
+    # puts dark fringing on every antialiased edge plus mottling across the ears, because
+    # `Image.quantize` treats alpha as a fourth dimension (max alpha shift 54/255). Proof
+    # sheet: `scripts/_quant_check.py`. 300KB is 3% of what `assets/` already weighs.
+    - assets/mascot/m03-reading.png
     - assets/icons/appleLogo.svg
     - assets/icons/googleIcon.svg
     - assets/icons/bookmarkIcon.svg
