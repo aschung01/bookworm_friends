@@ -239,14 +239,23 @@ release would have made that claim false for the one control the objection was a
 means the reading day is stamped by Save too, alongside the position — one batch, not two
 writes racing.
 
-**The consequence is a real change to the sub-sheets, and it is the trap in this decision.**
-`showSelectPercentBottomSheet` **writes today**: reached from the band,
-`book_details_tab_view.dart`'s `onProgressSelected` persists the position and calls
-`setRead(…, read: true)` on Confirm. Opened from _inside_ this sheet it must instead
-**return its value to the parent sheet**, which holds it as pending state and marks itself
-dirty. So the wheel needs both behaviours — writing for any caller that still opens it
-directly, returning for this one — and the safest shape is for the wheel to always return and
-for the writing to live in its callers.
+**The plumbing this needs already exists, and an earlier draft of this spec had it
+backwards.** It claimed `showSelectPercentBottomSheet` writes, and that making it return
+would be the trap in this decision. The wheel does **not** write: it takes `onConfirmed` and
+`onProgressSelected` and hands the value out, and its callers decide what to do with it. Two
+of the three already do the right thing —
+
+- `book_status_bottom_sheet.dart`'s `ProgressFieldRow` holds the answer in `setState` and
+  lets Save write it. **That is exactly the behaviour this decision asks for**, already
+  shipped, in the sheet being rebuilt.
+- `reading_streak_page.dart:313` captures `confirmed` and `answer`, reads them after the
+  await, and writes through `recordReadingPosition` — the narrow two-column writer at
+  `library_provider.dart:752`.
+
+— and the third, `book_details_tab_view.dart:1328`'s `_onEditProgressPressed`, writes inside
+its callback. That one is the band's second door, **which this design deletes anyway**. So
+"Save commits" costs no new mechanism: it is the behaviour that survives once the immediate
+writer is removed.
 
 ### Save appears only when the sheet is dirty
 
@@ -393,9 +402,10 @@ checkout has pending migrations from parallel work. Then reconcile
 **bump the book to the head of the Reading shelf** — 30 times a book, silently reordering a
 row the reader arranged. Two consequences:
 
-- The narrow writer (`.update({'progress', 'progress_page'})`) stays the writer for a
-  position-only change.
-- In `updateBookStatus`, the re-head must be gated on the status actually changing.
+- `recordReadingPosition` (`library_provider.dart:752`) stays the writer for a position-only
+  change. It exists and the streak page already uses it.
+- In `updateBookStatus` (`library_provider.dart:895`), the re-head must be gated on the status
+  actually changing.
 
 `showSelectPercentBottomSheet`'s `_touched` gate must survive: agreeing with a pre-filled
 wheel must not rewrite the column. Its own record notes the regression — _"merely opening
@@ -405,30 +415,37 @@ the sheet and agreeing with it moves the bookmark back a page."_
 
 `BookStatusSelector` from the status sheet · `ReadTodayFieldRow` · `BandProgressRow` ·
 the band's second door · the nested wheel-over-sheet · the "how much did you read?"
-question · the derived-set-aside inference · the −/+ steppers that were drawn for it · the
-`Finished` / `All` segment that was drawn for the read sheet · and the wheel's own write,
-which moves out to its callers.
+question · the derived-set-aside inference · the −/+ steppers that were drawn for it · and the
+`Finished` / `All` segment that was drawn for the read sheet.
 
 ## Open questions
 
-Four of the six are now decided and have moved into _Decisions_: Save commits the drag, the
-filter is the title plus a glass popover, a friend's library shows it, and a drag to the
-origin writes `null`. Two remain.
+Five of the six are decided and have moved into _Decisions_: Save commits the drag, the
+filter is the title plus a glass popover, a friend's library shows it, a drag to the origin
+writes `null`, and un-recording a reading day is **accepted as lost**. One remains.
 
-1. **Un-recording a reading day has nowhere to live.** Deleting `ReadTodayFieldRow` removes
-   the only shipped caller of `setRead(read: false)` that a reader can reach — the other is
-   `kDebugMode`-gated. So a `reading_days` row, once written, cannot be deleted from the app.
-   This matters more than it looks: correcting a percentage the reader got wrong last week
-   stamps **today**, which `AGENTS.md` already documents as an accepted cost, and after this
-   change that stamp is permanent.
+1. **This inverts `ss-finished`**, which removed the position row at status 2 because _"a
+   finished book is at the end by definition, so asking is worse than not asking."_ The
+   defence is that the track asks it as part of the gesture that also _reports_ it. This is a
+   judgement on the drawing rather than a fork in the build, so it does not block
+   implementation.
 
-   **Recommendation: accept it, and do not un-gate the footer.** `AGENTS.md` gives a reason
-   for the gate that this design does not overturn — _"a reader offered an Undo is being
-   invited to treat their own record as provisional"_ — and the month grid on the streak page
-   already shows what happened. The cost is honest and small: one extra day on a streak,
-   against a control that tells every reader their record is editable. If it ever needs
-   reversing, `streakUndoToday` and the footer both already exist, so un-gating is a one-line
-   change.
+### Accepted: a reading day cannot be un-recorded
+
+Deleting `ReadTodayFieldRow` removes the only caller of `setRead(read: false)` a reader can
+reach — the other is `kDebugMode`-gated. So a `reading_days` row, once written, cannot be
+deleted from the app. **Accepted on instruction, and the footer stays gated.**
+
+What it costs, stated so nobody has to rediscover it from a bug report: correcting a
+percentage the reader got wrong last week stamps **today**, which `AGENTS.md` already records
+as an accepted cost of the wheel asserting intent — and after this change that stamp is
+permanent. The reasoning for accepting is `AGENTS.md`'s own, unchanged by this design:
+_"a reader offered an Undo is being invited to treat their own record as provisional"_, and
+the streak page's month grid already shows what happened.
+
+If it ever needs reversing, `streakUndoToday` and the footer both exist and
+`streakUndoVisible` is one line.
+change.
 
 2. **This inverts `ss-finished`**, which removed the position row at status 2 because _"a
    finished book is at the end by definition, so asking is worse than not asking."_ The
@@ -441,9 +458,7 @@ ship alone.
 
 1. **The sheet.** The track, the read-out, the three sub-sheets, Save-as-the-only-writer,
    Save-when-dirty, the vocabulary sweep. No schema change, no new status. Set aside is not
-   offered yet. **The sub-sheet write inversion belongs here** — making
-   `showSelectPercentBottomSheet` return rather than write touches its existing caller, so it
-   is in phase 1 whether or not the rest is.
+   offered yet.
 2. **Set aside.** `bookStatusSetAside`, `BookStatusBadge`'s fourth arm, the plank filters, the
    secondary action, the read sheet's title-popover filter, the friend-library provider and the
    dog-ear.

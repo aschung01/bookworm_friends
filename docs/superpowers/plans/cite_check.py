@@ -23,13 +23,18 @@ DOCS = [
     "docs/superpowers/plans/2026-09-08-shelf-density-plan.md",
     "docs/superpowers/specs/2026-09-12-reading-streaks-design.md",
     "docs/superpowers/plans/2026-09-16-reading-streaks-plan.md",
+    "docs/superpowers/specs/2026-09-28-status-progress-merge-design.md",
+    "docs/superpowers/plans/2026-09-28-status-progress-merge-plan.md",
 ]
 
 CITE = re.compile(
     r"([A-Za-z0-9_./-]+\.(?:dart|sql|ts|arb|yaml|yml|json|plist|xml|gradle)):(\d+)(?:[-,]\s*(\d+))?"
 )
 
-SKIP = {".git", "build", ".dart_tool", "node_modules", "Pods", ".symlinks"}
+# `.worktrees` holds full copies of this repo (see `AGENTS.md`), so without it every
+# citation resolves to three files and reports `ambiguous`. That broke the checker for
+# every doc listed here, not just new ones.
+SKIP = {".git", "build", ".dart_tool", "node_modules", "Pods", ".symlinks", ".worktrees"}
 index = {}
 for dirpath, dirnames, filenames in os.walk(ROOT):
     dirnames[:] = [d for d in dirnames if d not in SKIP and not d.startswith(".tmp")]
