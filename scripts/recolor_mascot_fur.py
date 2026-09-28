@@ -261,22 +261,35 @@ CANDIDATES: dict[str, tuple[str, FurRamp]] = {
         FurRamp("#3E2148", "#8E5C9E", "#EEDCF2"),
     ),
     # ===========================================================================
-    # ROUND 3 -- THE CHOSEN DIRECTION.
+    # ROUND 3 -- THE DIRECTION THAT LOST.
     #
-    # The reference sheet settled this. Duo is green in all fourteen tiles; Duolingo
-    # never varies the mascot's colour. What makes him pop is HUE OPPOSITION against
-    # a ladder that stays on the purple -> magenta -> red side of the wheel, plus a
-    # radial glow behind him. So the ramp and the fur are one decision, and the
-    # `stages` ramp was rebuilt to that arc -- blue and yellow dropped -- at which
-    # point green becomes the right answer rather than a brand-loyalty argument.
+    # Labelled "THE CHOSEN DIRECTION" until 2026-09-27. It was not chosen: the fur
+    # shipped NEUTRAL GREY. Kept as the record of the argument, which was coherent
+    # and wrong in one step.
     #
-    # Measured against the new arc, these hold 90-99 degrees of hue separation at
-    # worst and 140-173 at the pink and red end. The shipped grey holds 12 degrees at
-    # worst -- it is the same hue as the crimson tile -- and has 0.06 chroma, so hue
-    # separation cannot help it at all. That is the whole reason it looked dead.
+    # The argument: Duo is green in all fourteen tiles; Duolingo never varies the
+    # mascot's colour. What makes him pop is HUE OPPOSITION against a ladder that
+    # stays on the purple -> magenta -> red side of the wheel, plus a radial glow
+    # behind him. So the ramp and the fur are one decision, the `stages` ramp was
+    # rebuilt to that arc -- blue and yellow dropped -- and green becomes the right
+    # answer rather than a brand-loyalty argument.
     #
-    # All three keep the wide spread round 2 proved matters: a dark green ear and
-    # tail, the body, and a near-white belly.
+    # Measured against that arc these held 90-99 degrees of hue separation at worst
+    # and 140-173 at the pink and red end, where the grey holds 12 degrees -- the same
+    # hue as the crimson tile -- at 0.06 chroma.
+    #
+    # **Where it went wrong: "the ramp and the fur are one decision" was right, and it
+    # was resolved in the other direction.** Rather than pick a fur to oppose the arc,
+    # the arc was darkened at every hour so a GREY cat reads against it -- the four
+    # greys went from 2.0-3.9:1 to 5.9-8.3:1. A neutral cat separates on lightness,
+    # having no hue to oppose with, and the hue figures above simply do not apply to
+    # it. See `docs/mockups/mascot/CHARACTER.md`, "The fur is a neutral grey", and the
+    # voided wheel assertion in `docs/mockups/streak-widget/verify.py`.
+    #
+    # What survives and is still unbanked: the wide spread round 2 proved matters. The
+    # shipped palette manages 2.07:1 from ear to belly against the ~4:1 that was
+    # recommended, so these three remain useful as a demonstration of the spread even
+    # though their hue lost.
     "brandpoint": (
         "Brand green, wide spread \u2014 the record's own #09BC8A",
         FurRamp("#046B4E", "#09BC8A", "#EAF9F2"),

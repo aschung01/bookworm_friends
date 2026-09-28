@@ -150,53 +150,83 @@ Sampled off the render, not eyeballed. Note that generated output drifts a few
 percent off these between renders, so treat the table as authoritative and the
 PNG as indicative.
 
-### The fur colour is STILL UNDECIDED
+### The fur is a neutral grey, it is decided, and it shipped
 
-The grey above is provisional and has been since it was written — it is here so form
-could be judged without brand colour interfering. Do not read it as a decision, and do
-not read `#09BC8A` as one either: an earlier pass of this file recorded brand green as
-chosen, which was wrong. It had been bundled into a question about the widget's colour
-ramp and a one-word answer was taken as sign-off on the mascot. Reverted.
+**This section read "The fur colour is STILL UNDECIDED" until 2026-09-27, and that was
+wrong in both halves — the decision and the reasoning behind it.** The grey in the table
+above is not provisional: it ships in the eight widget cut-outs under
+`ios/StreakWidget/Assets.xcassets`, and `2026-09-22-streak-widget-design.md` records the
+cat art as final (Open question 7).
 
-What _is_ settled is everything needed to make the choice well. Measured on a sheet of
-27 candidates recoloured from the shipped renders (`scripts/recolor_mascot_fur.py`,
-which varies fur while holding the drawing byte-identical):
+What settled it was not grey winning a comparison. It is that **the ground was rebuilt
+around the grey rather than the reverse** — see _"The fur is a neutral grey"_ in that
+spec. Against the first ramp the four grey candidates scored 2.0–3.9:1; every hour of
+the ladder was darkened, the same four then scored 5.9–8.3:1, and the cat became the
+light thing in a lit room at every hour. A chromatic fur was the premise the ramp had
+been drawn for, and it was the ramp that gave way.
 
-1. **Spread beats hue.** The first fifteen candidates were narrow-spread — the gap
-   between ears, body and belly left roughly where the render put it — and every one
-   read as mud regardless of hue. Widening that gap is point colouring, and the
-   character already has darker ears and a darker tail, so the structure existed and
-   was simply unused. A wide-spread grey against the current grey is the proof: same
-   hue, different animal. **Whatever hue wins, it needs roughly a 4:1 internal step
-   from ears to belly**, where the current palette manages 2.0:1.
-2. **Hue opposition, not luminance, is what makes a mascot pop.** Duo is green in all
-   fourteen tiles of Duolingo's widget sheet; the colour never varies. What varies is a
-   ground that stays on the opposite side of the wheel. The current grey holds **12
-   degrees** of hue separation at worst from the widget's ramp — it is the same hue as
-   the crimson tile — with 0.06 chroma, so opposition can never rescue it. That is why
-   it looks dead, and lighting does not fix it (tested).
-3. **Luminance contrast is the wrong instrument here, and it misled once already.**
-   An early pass ranked candidates by WCAG contrast against the widget grounds and
-   recommended a muted taupe. That was the mud. WCAG measures what survives small size
-   and colour-vision deficiency and is blind to hue opposition, so it has to be read
-   alongside a hue-separation figure, never instead of one.
+`#09BC8A` is still not the decision, and the note explaining why is kept: an earlier
+pass of this file recorded brand green as chosen on the strength of a one-word answer to
+a question about the widget's ramp. That reading was wrong then and the reversal stands.
+Green lost to grey, not to nothing.
 
-**The constraint the widget now imposes.** The `stages` ramp was rebuilt to a narrow
-purple → magenta → red arc (that part _was_ agreed), which leaves a wide complement
-region the fur must be chosen from. `verify.py` in `docs/mockups/streak-widget/`
-asserts the ramp stays on one side of the wheel and leaves at least 60 degrees of
-usable complement — as a property of the ramp, deliberately not naming a fur. Any hue
-in that region works by opposition; so does any near-neutral dark, which cannot clash
-because it has almost no hue. Green is _in_ that region. It is not the only thing in it.
+**Points 2 and 3 of the old analysis are reversed, and they are kept because a later
+reader was misled by them.** They argued that hue opposition is what makes a mascot pop,
+that luminance is "the wrong instrument here", and that WCAG contrast "misled once
+already" by recommending a muted taupe. That is right for a _chromatic_ cat and wrong
+for this one. `verify.py` in `docs/mockups/streak-widget/` voided the wheel constraint
+explicitly rather than deleting it, and states the replacement in one line: **a neutral
+cat has no hue to oppose with, so its only weapon is lightness.** The widget spec puts
+the same finding the other way round — _"being colourful was never the problem; being
+colourful at the cat's own lightness was"_. So luminance separation from the ground is
+now the primary instrument, not the discredited one, and the ≥60°-complement assertion
+that used to be cited here no longer exists.
 
-**Two things the recolour pipeline exposed, both still open regardless of the choice.**
-The eye whites share a palette entry with the belly, so a naive lightness remap tints
-them — a coloured cat came back with tinted eye whites, which reads as illness.
-`recolor_mascot_fur.py` flood-fills the light mask and protects every region except the
-largest, isolating the eyes without a hand-painted mask; but any future _native_ render
-needs the eye whites specified separately from the belly, or the same bug returns at
-generation time. And the book in `m03-reading` is drawn in the same neutral greys as
-the fur, so it recolours along with the animal — the prop needs its own palette entry.
+The losing argument is worth keeping because its observation about Duo is still true —
+Duo is green in all fourteen tiles and the _ground_ is what varies. It just does not
+generalise to a neutral character, which separates on value or not at all.
+
+**Point 1 survives and is still unbanked.** Spread beats hue: widening the ears-to-belly
+step is point colouring, and the structure is already there in the darker ears and tail.
+The recommendation was roughly a **4:1 internal step**; the shipped palette measures
+**2.07:1** (`#A4A4A6` against `#ECE8E5`), so it was never taken. The dark ground solved
+figure-against-ground, which is what made the grey viable, but it says nothing about
+internal modelling — so "the cat reads flat up close" is still a live complaint with a
+known fix, and `scripts/recolor_mascot_fur.py` is still the tool for it.
+
+**The grey survives a light ground, and the arithmetic that says otherwise is measuring
+the wrong thing.** Every shipped tile is dark, so the cut-outs had never been drawn on
+`pageBackground` until the auth-hero round. Against light `#F8F9FA` the body `#D6D2D1`
+is **1.42:1** and the belly `#ECE8E5` is **1.14:1**, and an earlier pass of this section
+concluded from exactly those two figures that "the cat is a ghost" and that the auth hero
+would need a dark plate. **Rendered, that is false** — see `scripts/_auth_cat_proof.py`
+and `build/auth_cat/`, where the cat reads cleanly on the bare page at 265pt in all four
+poses tried.
+
+The error is instructive because it is the same one point 3 above records, one level
+further in. A drawing's legibility is not its largest fill's contrast: the silhouette is
+bounded by the ears and tail at `#A4A4A6` (**2.36:1**), the eyes and mouth carry
+`#54575B` (**~8.7:1**), the nose and inner ears are apricot, and the eye completes an
+edge the body's own fill never draws. The belly is the genuinely weak region and it reads
+as a soft pale mass rather than as a hole. In `m03-reading` it is hidden behind the book
+entirely.
+
+So a filled plate is an aesthetic option here, not a requirement — and the two that were
+tried both lost on looking: a `brandFill` band halves the screen and sets a second,
+darker green against `BrandMark`'s mint plate, and a glow behind the character (in either
+`kCandleFlame` or `brandFill`) is imperceptible at this size. **`brand` `#09BC8A` is
+still ruled out as a ground** at 1.63:1 on the body, which is the one place the naive
+figure does bite: a mid-lightness saturated ground is the widget's original defect.
+
+**Two things the recolour pipeline exposed, both still open.** The eye whites share a
+palette entry with the belly, so a naive lightness remap tints them — a coloured cat came
+back with tinted eye whites, which reads as illness. `recolor_mascot_fur.py` flood-fills
+the light mask and protects every region except the largest, isolating the eyes without a
+hand-painted mask; but any future _native_ render needs the eye whites specified
+separately from the belly, or the same bug returns at generation time. And the book in
+`m03-reading` is drawn in the same neutral greys as the fur, so it recolours along with
+the animal — the prop needs its own palette entry. Both still matter with the fur
+settled, because point 1 above would go through the same pipeline.
 
 ## Expression states
 

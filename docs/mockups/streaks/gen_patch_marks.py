@@ -235,8 +235,10 @@ def disc(seed):
 #
 # `cx, cy, rx, ry` in the source PNG's own pixels, so re-measuring is a
 # re-measure of the same file rather than a re-derivation of these numbers.
-# Caveat worth keeping next to them: that cat is the *provisional* grey, so
-# these proportions are borrowed from an undecided asset.
+# This used to carry a caveat that the cat was the *provisional* grey and these
+# proportions were therefore borrowed from an undecided asset. That caveat is
+# void as of 2026-09-27: the grey is the decision, it ships in the widget's eight
+# cut-outs, and the art is final. See CHARACTER.md, "The fur is a neutral grey".
 PAW_PAD = (80.6, 287.5, 20.0, 15.5)
 PAW_TOES = (
     (67.0, 257.0, 8.0, 9.5),

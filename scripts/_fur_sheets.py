@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
-"""Build the two sheets the fur decision needs, and measure the part that is
-measurable. Throwaway: delete once the colour is chosen.
+"""Build the two sheets the fur decision needed, and measure the part that is
+measurable.
+
+**The decision landed on 2026-09-27 and it was NEUTRAL GREY** -- see
+`docs/mockups/mascot/CHARACTER.md`, "The fur is a neutral grey". This said
+"Throwaway: delete once the colour is chosen"; it is kept anyway, because the
+sheets are the record of what the twenty-seven candidates looked like and because
+the one recommendation that did NOT ship -- widening the ears-to-belly step to
+about 4:1, against the shipped palette's 2.07:1 -- would be judged on Sheet A
+again. `recolor_mascot_fur.py` is the tool for that.
 
 Sheet A  each candidate large, on the app's own cream tile -- for judging colour.
 Sheet B  every candidate against every ground the widget can now draw -- for
-         judging survival. This is the sheet that matters, because the `stages`
+         judging survival. This is the sheet that mattered, because the `stages`
          ramp put saturated blue, yellow, pink and deep red under the character
-         alongside the existing cream and the dark lamp. A fur colour cannot be
-         chosen against one ground any more.
+         alongside the existing cream and the dark lamp. Note the ramp has since
+         been rebuilt dark at every hour precisely so the grey would survive it,
+         so Sheet B's grounds are no longer the ones that ship.
 """
 
 from __future__ import annotations

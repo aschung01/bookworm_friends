@@ -293,8 +293,10 @@ function renderPoses() {
   document.getElementById("poses").innerHTML = html + "</table>";
 }
 
-/* Sheet C. Held over from the previous round because the fur is still undecided and this
-   is the sweep that decision needs: every state against every drawing on the real ground. */
+/* Sheet C. Held over from the round that chose the poses, and kept after the fur was
+   settled (neutral grey, 2026-09-27) because the sweep it does -- every state against
+   every drawing on the real ground -- is what a pose or ramp change still needs. The
+   note here used to say the sheet existed BECAUSE the fur was undecided; it is not. */
 function render() {
   document.getElementById("gloss").textContent = VOICES[voice].gloss;
   document.querySelectorAll("#bar button").forEach((b) =>

@@ -136,12 +136,17 @@ def main() -> int:
     apart: the glow ground, and the ambient shading. v1 bundled them and the
     ambient's failure hid the glow's success.
 
-    The last two rows test the thing the reference sheet actually reveals: Duo can
-    be one colour forever because GREEN sits opposite the entire purple -> magenta ->
-    red arc Duolingo chose for its ladder. Hue opposition, not shading, is what makes
-    him pop. Our `stages` ramp walks the whole wheel including yellow, so a green cat
-    should separate beautifully on the pink and red tiles and clash on the yellow --
-    which is a fact about the RAMP, not about the fur.
+    The last two rows test what the reference sheet appears to reveal: Duo can be one
+    colour forever because GREEN sits opposite the entire purple -> magenta -> red arc
+    Duolingo chose for its ladder, so hue opposition rather than shading is what makes
+    him pop.
+
+    **That hypothesis lost, 2026-09-27, and this script is the record of it.** The fur
+    shipped NEUTRAL GREY and the ground was rebuilt around it -- every hour of the
+    ladder darkened -- so what separates our character from its ground is LIGHTNESS,
+    not hue. A neutral cat has no hue to oppose with. The Duo observation is still true
+    of Duo; it simply does not generalise to a near-achromatic mascot. See
+    `docs/mockups/mascot/CHARACTER.md`, "The fur is a neutral grey".
     """
     cats = Path("docs/mockups/streak-widget/cats")
     reading = Image.open(cats / "m03-reading.png").convert("RGBA")
