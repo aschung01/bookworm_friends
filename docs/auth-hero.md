@@ -75,20 +75,42 @@ win, and puts dark fringing on every antialiased edge plus mottling across the e
 is 54/255. `scripts/_quant_check.py` renders the comparison. At 300KB for three
 variants this is 3% of what `assets/` already weighs, against 6.9MB of fonts.
 
-## The size is computed, and the short phone is the binding case
+## The size, and where the clamp actually binds
 
-On-screen height is solved from the room left under the lockup, not fixed:
+`kAuthMascotHeight` is **132.5 — exactly half the 265 this first shipped at.** At 265
+the cat filled all 230pt an iPhone 15 leaves under the buttons and read as a second
+subject competing with the lockup; halved, it reads as a detail at the foot of the
+screen, which is the register a greeting wants.
 
-| phone | room under the buttons | mascot |
+On-screen height is still *solved* from the room left under the lockup rather than
+fixed, but **the clamp no longer binds on any phone the app supports**:
+
+| surface | room under the buttons | mascot |
 | --- | --- | --- |
-| iPhone 15 (393×852) | ~230pt | 265 — the full design size |
-| iPhone SE (375×667) | ~173pt | ~188 |
+| iPhone 15 (393×852) | ~230pt | 132.5 — the full size |
+| iPhone SE (375×667) | ~173pt | 132.5 — the full size |
+| 375×500 | 84pt | ~100, clamped |
+| 375×380 | 24pt | withheld, past the floor |
 
-A constant tall enough to be worth drawing on the large phone puts the cat's ears
-through `Continue with Google` on the small one. `_kLockupHeight` sums the `Column`'s
-own children so the lockup's bottom edge can be *computed*: measuring it with a
-`GlobalKey` would only be available on the next frame, so the mascot would visibly pop
-between two sizes after the screen appeared.
+So the clamp is now a guard for landscape, split view and any surface under ~555pt
+tall, not for the SE. That is why `auth_hero_test.dart` exercises shrinking and hiding
+at **explicit short sizes rather than on a phone** — sizing those cases by the SE would
+make them pass because the branch never runs, which is the class of test this repo keeps
+catching. On a surface with no view padding the room is `H / 2 - 166`, the lockup being
+300 and centred.
+
+At 265 the binding case was the SE, and the reason the height was computed at all was
+that a constant tall enough for the large phone put the cat's ears through `Continue
+with Google` on the small one. That is no longer live, and the arithmetic is kept
+because it is what makes the size safe to change again.
+
+`_kLockupHeight` sums the `Column`'s own children so the lockup's bottom edge can be
+*computed*: measuring it with a `GlobalKey` would only be available on the next frame,
+so the mascot would visibly pop between two sizes after the screen appeared.
+
+**The 3x asset is now oversized by 2x** — it carries pixels to 521pt, so roughly 210KB
+of the 300KB is headroom. Deliberate while the size is still being tuned; re-run the two
+commands above with a 132.5 design height to reclaim it.
 
 `kAuthMascotCrop` is 0.16, the widget's arrangement — "the mascot's feet are never
 drawn". A cat fully inside the frame reads as a sticker laid on the page; one the edge

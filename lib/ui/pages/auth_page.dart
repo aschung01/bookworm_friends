@@ -75,10 +75,21 @@ const double _kLockupHeight =
 
 /// Design height of the mascot, and the size it was reviewed at.
 ///
-/// A ceiling rather than a fixed size -- see [_MascotHero], which shrinks it on a short
-/// phone. 265 fills the 230pt an iPhone 15 leaves under the buttons; the 3x asset has
-/// pixels to 521pt should this ever grow.
-const double kAuthMascotHeight = 265;
+/// **132.5, which is exactly half the 265 this shipped at first.** At 265 the cat filled
+/// all 230pt an iPhone 15 leaves under the buttons and read as a second subject
+/// competing with the lockup; halved, it reads as a detail at the foot of the screen,
+/// which is the register a greeting wants.
+///
+/// Still a ceiling rather than a fixed size -- see [_MascotHero] -- but note the clamp no
+/// longer binds on any phone the app supports: an iPhone SE has room for ~206 at this
+/// crop. It now guards landscape, split view and any future surface shorter than ~555pt,
+/// which is why `auth_hero_test.dart` exercises it at an explicit size rather than on a
+/// phone.
+///
+/// The 3x asset carries pixels to 521pt, so it is oversized for this by 2x -- about
+/// 210KB of the bundle's 300KB is now headroom. Deliberate while the size is still being
+/// tuned; `docs/auth-hero.md` has the regen command if it settles here.
+const double kAuthMascotHeight = 132.5;
 
 /// Fraction of the drawing that falls below the screen's bottom edge.
 ///

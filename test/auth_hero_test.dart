@@ -4,10 +4,15 @@
 // **The defect these cases exist for cannot be seen in a default-sized harness.**
 // `flutter_test`'s surface is 800x600, which is shorter than any phone the app supports
 // and *wider* than all of them -- so the lockup sits higher than it ever does on device
-// and a mascot that would overlap `Continue with Google` on an iPhone SE has room to
-// spare here. Every case below sets a real phone size, and the SE case is the one that
-// fails if `_MascotHero`'s arithmetic regresses. This is the same trap
-// `streak_celebration_test.dart` records for the celebration.
+// and an overlap that would happen on a real phone has room to spare here. Every case
+// below sets an explicit size. Same trap `streak_celebration_test.dart` records.
+//
+// **Since the mascot halved to 132.5 the clamp no longer binds on any supported phone**
+// -- an iPhone SE has room for ~206 at this crop -- so the two cases that exercise
+// shrinking and hiding use deliberately short surfaces rather than a phone. That is
+// honest about what they cover: the clamp is now a guard for landscape, split view and
+// anything under ~555pt tall, not for the SE. Sizing it by the phone instead would be a
+// case that passes because the branch never runs.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -66,18 +71,21 @@ void main() {
   const tall = Size(393, 852);
   const short = Size(375, 667);
 
-  testWidgets('the mascot is drawn, at its design height on a tall phone', (
-    tester,
-  ) async {
-    await _pump(tester, tall);
+  // Both, because at 132.5 the SE has room too -- so this is also the assertion that
+  // catches the clamp starting to bite a phone it should not.
+  for (final (name, phone) in const <(String, Size)>[
+    ('a tall phone', tall),
+    ('a short phone', short),
+  ]) {
+    testWidgets('the mascot is drawn at its design height on $name', (
+      tester,
+    ) async {
+      await _pump(tester, phone);
 
-    expect(_mascot, findsOneWidget);
-    expect(
-      tester.widget<Image>(_mascot).height,
-      kAuthMascotHeight,
-      reason: 'a tall phone has room for the full design size',
-    );
-  });
+      expect(_mascot, findsOneWidget);
+      expect(tester.widget<Image>(_mascot).height, kAuthMascotHeight);
+    });
+  }
 
   testWidgets('its foot is cropped by the screen edge rather than sitting on it', (
     tester,
@@ -96,21 +104,28 @@ void main() {
     );
   });
 
-  testWidgets('it shrinks on a short phone rather than keeping its size', (
-    tester,
-  ) async {
-    await _pump(tester, short);
+  // 500pt: short enough that the room runs out. The lockup is 300 and centred, so the
+  // room under it is `H / 2 - 166` on a surface with no view padding -- 84 here, against
+  // the ~111 the full size needs once the crop is accounted for.
+  testWidgets('it shrinks itself when the room runs out', (tester) async {
+    await _pump(tester, const Size(375, 500));
 
     final height = tester.widget<Image>(_mascot).height!;
-    expect(
-      height,
-      lessThan(kAuthMascotHeight),
-      reason: 'an SE leaves ~173pt under the buttons, not the ~230 a 15 does',
-    );
-    // A floor as well as a ceiling: shrinking to a sliver would pass the overlap case
-    // below while drawing something not worth drawing, and `_MascotHero` would rather
-    // hide it than do that.
+    expect(height, lessThan(kAuthMascotHeight));
+    // A floor as well as a ceiling: shrinking to a sliver would satisfy the overlap
+    // cases below while drawing something not worth drawing.
     expect(height, greaterThan(kAuthMascotHeight / 3));
+  });
+
+  // 380pt: past the floor, where `_MascotHero` withholds the drawing rather than wedging
+  // a sliver of cat against the buttons. Asserted because it is a real branch and the
+  // only one with no visual consequence to notice if it breaks.
+  testWidgets('it is withheld entirely when there is no room at all', (
+    tester,
+  ) async {
+    await _pump(tester, const Size(375, 380));
+
+    expect(_mascot, findsNothing);
   });
 
   // The whole point. Both phones, because the tall one is where the constant is used
