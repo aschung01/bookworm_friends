@@ -911,7 +911,10 @@
                 overflow: hidden;
                 padding: calc(24 * var(--pt));
                 font-family:
-                    system-ui, -apple-system, "Segoe UI", sans-serif;
+                    system-ui,
+                    -apple-system,
+                    "Segoe UI",
+                    sans-serif;
                 color: var(--text);
             }
             .dev.band {
@@ -1212,8 +1215,7 @@
                 height: calc(38 * var(--pt));
                 margin-left: calc(-8.5 * var(--pt));
                 filter: drop-shadow(
-                    0 calc(4 * var(--pt)) calc(6 * var(--pt))
-                        rgba(0, 0, 0, 0.4)
+                    0 calc(4 * var(--pt)) calc(6 * var(--pt)) rgba(0, 0, 0, 0.4)
                 );
             }
 
@@ -1249,30 +1251,41 @@
                 font-weight: 700;
                 font-size: calc(17 * var(--pt));
             }
-            /* the read sheet's title row: title + count left, completion filter right */
-            .dev .shd .flt {
-                margin-left: auto;
-                display: flex;
-                gap: calc(2 * var(--pt));
-                background: var(--variant);
+            /* The read sheet's glass popover. Drawn as an app-drawn card over a
+               translucent, blurred ground, which is what showShelfPickerPopover
+               does: LiquidGlassContainer on iOS 26, BackdropFilter elsewhere.
+               Absolute, because it is a route over the sheet rather than a row
+               in it -- so it does not change the crop's height. */
+            .dev .pop {
+                position: absolute;
+                left: calc(24 * var(--pt));
+                top: calc(54 * var(--pt));
+                width: calc(216 * var(--pt));
+                z-index: 5;
+                background: rgba(255, 255, 255, 0.74);
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+                border: calc(0.5 * var(--pt)) solid rgba(255, 255, 255, 0.9);
                 border-radius: calc(14 * var(--pt));
-                padding: calc(2 * var(--pt));
+                box-shadow: 0 calc(6 * var(--pt)) calc(18 * var(--pt))
+                    rgba(0, 0, 0, 0.2);
+                padding: calc(4 * var(--pt)) 0;
             }
-            .dev .shd .flt s {
-                text-decoration: none;
-                font-size: calc(11.5 * var(--pt));
-                font-weight: 600;
-                color: var(--text2);
-                padding: calc(3.5 * var(--pt)) calc(9 * var(--pt));
-                border-radius: calc(12 * var(--pt));
-                line-height: 1.25;
+            .dev .pop .pi {
+                display: flex;
+                align-items: center;
+                gap: calc(9 * var(--pt));
+                padding: calc(8 * var(--pt)) calc(13 * var(--pt));
+                font-size: calc(14 * var(--pt));
             }
-            .dev .shd .flt s.on {
-                background: #fff;
-                color: var(--text);
+            .dev .pop .pi + .pi {
+                border-top: calc(0.5 * var(--pt)) solid rgba(0, 0, 0, 0.09);
+            }
+            .dev .pop .pi .ck {
+                width: calc(13 * var(--pt));
+                font-size: calc(12 * var(--pt));
                 font-weight: 800;
-                box-shadow: 0 calc(1 * var(--pt)) calc(2.5 * var(--pt))
-                    rgba(0, 0, 0, 0.14);
+                color: var(--brandText);
             }
 
             /* wheel -- the control being replaced */
@@ -1464,6 +1477,17 @@
                 color: var(--brandText);
                 font-variant-numeric: tabular-nums;
             }
+            /* The title IS the filter read-out, so the chevron hangs off the
+               count rather than sitting in a control of its own: title, count
+               and chevron are one tap target. */
+            .dev .shd .chv {
+                display: inline-block;
+                margin-left: calc(-4 * var(--pt));
+                align-self: center;
+                font-size: calc(13 * var(--pt));
+                color: var(--text2);
+                transform: rotate(90deg);
+            }
             .dev .ann {
                 font-size: calc(11 * var(--pt) + 2px);
                 color: #b03a2b;
@@ -1572,15 +1596,14 @@
                     from <code>app_theme.dart</code> L127&ndash;144 &mdash;
                     <code>sheetBackground&nbsp;#EFF5EF</code>,
                     <code>surfaceVariant&nbsp;#E9ECEF</code>,
-     </div>               <code>brandFill&nbsp;#067657</code>,
+                    <code>brandFill&nbsp;#067657</code>,
                     <code>flame&nbsp;#B54708</code>. The badge on each crop is
                     its height; only the wheel sheet&rsquo;s
-                    <b>368pt is exact</b> (summed by
-                    <code>_sheetHeight</code>), the rest are estimates from the
-                    row heights in the Dart. <b>Three numerals are three
-                    doors</b> &mdash; the percent, the current page and the
-                    total &mdash; and the bar is drag-only, so a tap on it
-                    changes nothing.
+                    <b>368pt is exact</b> (summed by <code>_sheetHeight</code>),
+                    the rest are estimates from the row heights in the Dart.
+                    <b>Three numerals are three doors</b> &mdash; the percent,
+                    the current page and the total &mdash; and the bar is
+                    drag-only, so a tap on it changes nothing.
                     <b>Nothing here is built.</b> Switch versions with
                     <span class="kbd">v</span>, filter with
                     <span class="kbd">/</span>, change view with
@@ -1596,8 +1619,8 @@
             <div class="view" id="v-elements">
                 <h1>UI elements</h1>
                 <p class="lead">
-                    Each control with the decision it encodes, and what it
-                    costs in points. Two of these exist only to be
+                    Each control with the decision it encodes, and what it costs
+                    in points. Two of these exist only to be
                     <b>deleted</b>.
                 </p>
                 <div id="elements"></div>
@@ -1613,8 +1636,7 @@
                     <b>~30 repetitions per book against 3 status changes</b> —
                     <code>band_progress_row.dart</code>&rsquo;s own number, and
                     the reason that row is the door rather than the app
-                    bar&rsquo;s pencil. Tap counts are annotated on every
-                    flow.
+                    bar&rsquo;s pencil. Tap counts are annotated on every flow.
                 </p>
                 <div class="flowlayout">
                     <div class="side">
@@ -1632,7 +1654,7 @@
                                 ><span class="kbd">Esc</span></span
                             >
                         </div>
-       </p>                 <div id="sidenav"></div>
+                        <div id="sidenav"></div>
                     </div>
                     <div>
                         <div id="flows"></div>
@@ -1735,15 +1757,15 @@
                             .join("")}</div>`;
                     case "shd":
                         return `<div class="shd"><span class="t">${b.t2}</span><span class="n">${b.n}</span>${
-                            b.filter
-                                ? `<span class="flt">${b.filter
-                                      .map(
-                                          (x) =>
-                                              `<s class="${x === b.on ? "on" : ""}">${x}</s>`,
-                                      )
-                                      .join("")}</span>`
-                                : ""
+                            b.chev ? '<span class="chv">&#8250;</span>' : ""
                         }</div>`;
+                    case "pop":
+                        return `<div class="pop">${b.items
+                            .map(
+                                (x) =>
+                                    `<div class="pi"><span class="ck">${x.on ? "&#10003;" : ""}</span><span class="pl">${x.v}</span></div>`,
+                            )
+                            .join("")}</div>`;
                     case "cvs":
                         return `<div class="cvs">${b.items
                             .map(
@@ -1767,11 +1789,7 @@
 
             /** Draw one sheet crop from its spec. */
             function frame(s) {
-                const cls = [
-                    "dev",
-                    s.band ? "band" : "",
-                    s.over ? "over" : "",
-                ]
+                const cls = ["dev", s.band ? "band" : "", s.over ? "over" : ""]
                     .filter(Boolean)
                     .join(" ");
                 return `<div class="${cls}">${
@@ -1868,7 +1886,7 @@
                         [
                             "today-status-read",
                             "Status sheet &middot; Read",
-                            "<b>CURRENT, and the assumption this page overturns.</b> The position row is gone: <code>book_status_bottom_sheet.dart:171</code> &mdash; \"a finished book's position is 100% by definition&hellip; the row would be a field with one legal answer.\" So there is no way to say <i>I closed this at 40%</i>.",
+                            '<b>CURRENT, and the assumption this page overturns.</b> The position row is gone: <code>book_status_bottom_sheet.dart:171</code> &mdash; "a finished book\'s position is 100% by definition&hellip; the row would be a field with one legal answer." So there is no way to say <i>I closed this at 40%</i>.',
                             {
                                 pt: 294,
                                 body: [
@@ -1902,7 +1920,11 @@
                             {
                                 pt: 368,
                                 body: [
-                                    { t: "head", v: "How far in?", btn: "Confirm" },
+                                    {
+                                        t: "head",
+                                        v: "How far in?",
+                                        btn: "Confirm",
+                                    },
                                     G16,
                                     {
                                         t: "seg",
@@ -2075,7 +2097,7 @@
                         [
                             "one-null",
                             "Not started &middot; an empty bar, thumb at the left",
-                            "<b>Corrected: the bar stays.</b> An earlier pass removed it entirely, which was a misreading &mdash; what has to go is the <i>dashed</i> treatment, the page numerals, and the thumb parked at the <i>right</i>. So it is the ordinary glassy track with no fill and the thumb at the origin, which is both where the drag starts and what &ldquo;not started&rdquo; looks like. <b>The <code>null</code> &ne; <code>0</code> rule still applies but does not reach here:</b> \"an empty track is a <i>claim</i>\" was written about the <i>band</i>, where a bar appears beside every book and would say &ldquo;began and got nowhere&rdquo; for all of them. Inside a control the reader deliberately opened for one book, an empty bar is the control. <b>The word is <i>Not started</i>, not <i>Interested</i>:</b> adding a book to a shelf already states the intent, so the status axis does not have to.",
+                            '<b>Corrected: the bar stays.</b> An earlier pass removed it entirely, which was a misreading &mdash; what has to go is the <i>dashed</i> treatment, the page numerals, and the thumb parked at the <i>right</i>. So it is the ordinary glassy track with no fill and the thumb at the origin, which is both where the drag starts and what &ldquo;not started&rdquo; looks like. <b>The <code>null</code> &ne; <code>0</code> rule still applies but does not reach here:</b> "an empty track is a <i>claim</i>" was written about the <i>band</i>, where a bar appears beside every book and would say &ldquo;began and got nowhere&rdquo; for all of them. Inside a control the reader deliberately opened for one book, an empty bar is the control. <b>The word is <i>Not started</i>, not <i>Interested</i>:</b> adding a book to a shelf already states the intent, so the status axis does not have to.',
                             {
                                 pt: 246,
                                 body: [
@@ -2146,7 +2168,7 @@
                         [
                             "one-band",
                             "Band &middot; one row, one door",
-                            "What the merge buys on the details page: the two rows become one card carrying status, dates <i>and</i> position, and the second door goes. Saves the 40pt the prompt state costs today. On a friend's book the chevron and the tap target drop, and the read-out stays &mdash; the existing rule that \"a door nobody can open must not draw a handle.\"",
+                            'What the merge buys on the details page: the two rows become one card carrying status, dates <i>and</i> position, and the second door goes. Saves the 40pt the prompt state costs today. On a friend\'s book the chevron and the tap target drop, and the read-out stays &mdash; the existing rule that "a door nobody can open must not draw a handle."',
                             {
                                 band: true,
                                 pt: 98,
@@ -2235,7 +2257,7 @@
                         [
                             "sub-total",
                             "Tap <code>462</code> &middot; the total, and this is new",
-                            "<b>Keypad first, wheel second</b> &mdash; a total is typed from the back of the book, not scrolled to, and its own record calls reaching an arbitrary page in a 912-page book \"tens of flicks either way\". <b>No Percent/Page segment</b>, because a total has one unit. It is the only one of the three that writes a column nothing currently writes after insert, so it needs a floor (a book cannot have 0 pages) and a ceiling, and it must not silently move <code>progress</code>: the fraction is the position, so changing the total re-derives the <i>page</i> and leaves the position alone.",
+                            '<b>Keypad first, wheel second</b> &mdash; a total is typed from the back of the book, not scrolled to, and its own record calls reaching an arbitrary page in a 912-page book "tens of flicks either way". <b>No Percent/Page segment</b>, because a total has one unit. It is the only one of the three that writes a column nothing currently writes after insert, so it needs a floor (a book cannot have 0 pages) and a ceiling, and it must not silently move <code>progress</code>: the fraction is the position, so changing the total re-derives the <i>page</i> and leaves the position alone.',
                             {
                                 pt: 280,
                                 body: [
@@ -2270,17 +2292,63 @@
                     [
                         [
                             "sheet-read",
-                            "Books read &middot; Finished only (the default)",
-                            "<b>Corrected header order.</b> The year rail sits <i>directly under the title row</i> &mdash; <code>expandedHeader</code> is <code>Column[title, ReadFilter(expanded: true)]</code> &mdash; so the new filter cannot live there. It goes top-right of the title row, which is the slot the <i>collapsed</i> header already puts <code>ReadFilter</code> in as a popover, so the idiom is not new. <b>Watch the width:</b> that row's own comment records overflowing at 2&times; text with a two-digit count when a filter shares it, which is why <code>library_clearance_test.dart</code> exists.",
+                            "Books finished &middot; the default",
+                            "<b>The title is the read-out, which is why there is no filter label.</b> Title, count and chevron are one tap target, and what it opens switches the set the sheet is showing &mdash; so the title says which set that is. An earlier version drew a <code>Finished</code>&nbsp;/&nbsp;<code>All</code> segment top-right of this row, and its flaw was that <code>All</code> sat two rows above the rail's <code>All&nbsp;time</code>: one word doing duty for two scopes. Naming the set in the title removes the collision instead of renaming around it. <b>The year rail still sits directly under the title row</b> &mdash; <code>expandedHeader</code> is <code>Column[title, ReadFilter(expanded: true)]</code>, which is the correction that killed the version before this one, and a chevron does not move it. <b>It also retires a documented disagreement:</b> the plan was that this sheet would read 29 while the Library Card read 23 a tab away, both correct, with the clash written up in <code>AGENTS.md</code> as deliberate. The default state reads <code>Books finished 23</code> and matches the Card exactly. Height is unchanged at an estimated <b>~300pt</b>: the old segment never made this row taller than its own 17pt title, only wider.",
                             {
                                 pt: 300,
                                 body: [
                                     {
                                         t: "shd",
-                                        t2: "Books read",
+                                        t2: "Books finished",
                                         n: "23",
-                                        filter: ["Finished", "All"],
-                                        on: "Finished",
+                                        chev: true,
+                                    },
+                                    G8,
+                                    {
+                                        t: "caps",
+                                        items: [
+                                            "All time",
+                                            "2026",
+                                            "2025",
+                                            "2024",
+                                        ],
+                                        on: "All time",
+                                    },
+                                    G16,
+                                    {
+                                        t: "ba",
+                                        v: "September 2026",
+                                    },
+                                    G8,
+                                    {
+                                        t: "cvs",
+                                        items: [{}, {}, {}, {}],
+                                    },
+                                ],
+                            },
+                        ],
+                        [
+                            "sheet-popover",
+                            "The menu open &middot; two checkable rows",
+                            "<b>The mechanism already exists, and the obvious one is the wrong one.</b> <code>read_filter.dart</code>'s collapsed popover is a <code>CNPopupMenuButton</code> with <code>CNButtonStyle.glass</code> and <code>CNPopupMenuItem(checked:)</code> &mdash; an exact fit by shape &mdash; but its <code>buttonLabel</code> is rendered by the <i>platform</i>, and that file's own record documents the label coming back at \"the system's 17pt in the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for 13pt\". This label is the largest text on the sheet and <code>LibrarySheetTitle</code> draws its count in <code>brandText</code>, so it cannot become a platform-styled button label. <b>The precedent is <code>shelf_picker_popover.dart</code></b>'s <code>showShelfPickerPopover</code>: an app-drawn card hung from the anchor's <code>RenderBox</code> rect, <code>LiquidGlassContainer</code> on iOS&nbsp;26 and <code>BackdropFilter</code> as the fallback, where \"Flutter draws every pixel of content, the platform supplies the material behind it\". The app-drawn path is also the only one a widget test ever takes, since <code>flutter test</code> reports Android &mdash; which is what makes this popover testable at all. <b>Scope, corrected:</b> an earlier note had the filter expanded-only, with \"the spine pile stays completed-only\". That cannot hold &mdash; a persisted view mode the <code>collapsedBody</code> ignored would make the count jump on collapse. So the filter applies to the sheet's data in <i>both</i> states; what is expanded-only is the <b>chevron</b>, because the collapsed header's row already has the year popover beside <code>Expanded(child: title)</code>, and <code>library_clearance_test.dart</code> exists because that row overflows at 2&times; text with a two-digit count. <b>New ARB keys</b>, and <code>noFinishedBooks</code>&nbsp;/&nbsp;<code>noFinishedBooksInYear</code> have to follow the mode too, or the empty state says \"No books read yet\" under a <code>Books finished</code> title. The card is a route over the sheet rather than a row in it, so the <b>~300pt</b> estimate is the sheet's and does not move. <b>Drawn to scale it also shows what the anchor costs:</b> while the card is up it covers the first three year capsules. That is what a menu hung under the title does, and it survives because the rail is one dismissal away &mdash; but it is a second reason not to put the control on the rail's own row, where it would collide in geometry as well as in wording.",
+                            {
+                                pt: 300,
+                                body: [
+                                    {
+                                        t: "shd",
+                                        t2: "Books finished",
+                                        n: "23",
+                                        chev: true,
+                                    },
+                                    {
+                                        t: "pop",
+                                        items: [
+                                            {
+                                                v: "Show finished only",
+                                                on: true,
+                                            },
+                                            { v: "Show all read" },
+                                        ],
                                     },
                                     G8,
                                     {
@@ -2308,8 +2376,8 @@
                         ],
                         [
                             "sheet-all",
-                            "Books read &middot; All, dog-eared",
-                            "Count tracks the visible list, title stays put &mdash; <b>chosen deliberately</b>, and it means this sheet reads 29 while the Library Card reads 23 a tab away, both correct. The dog-ear is what stops 29 being read as 29 completions. It must not reuse the bookmark ribbon: that mark means <i>actively reading</i> on three other surfaces. <b>The label pair is open</b> &mdash; <code>Finished</code>&nbsp;/&nbsp;<code>All</code> is drawn, but <code>All</code> sits two rows above <code>All time</code>, so the word does duty for two different scopes.",
+                            "Books read &middot; inclusive, dog-eared",
+                            "<b><code>Books finished</code>&nbsp;/&nbsp;<code>Books read</code> is this design's own vocabulary split</b>, where <code>Finished</code> is the <i>state</i> and \"read\" is the <i>act</i> &mdash; the reason the status word is being renamed <code>Read&nbsp;&rarr;&nbsp;Finished</code> in the first place (see <code>el-vocab</code>). A set-aside book was not <i>finished</i>, but it was partly <i>read</i>, so the inclusive title is accurate. <b>That reverses an objection recorded on this page</b> that <code>All&nbsp;Read</code> was the label to avoid; the objection was about modifying <code>read</code> as a <i>status</i>, and stands in that form. The count follows the visible list, so the only state that reads <b>29</b> is the one whose title says why. The dog-ear is what stops 29 being read as 29 completions, and it must not reuse the bookmark ribbon: that mark means <i>actively reading</i> on three other surfaces. <b>A friend's library gets the filter too</b> &mdash; <code>FinishedBooksSheet</code> also serves <code>userFinishedBooksProvider</code> &mdash; which was open and is now decided: hiding it there would leave a visitor's count disagreeing with the owner's with nothing on screen to explain the gap, and what a reader gave up on is no more private than what they finished.",
                             {
                                 pt: 300,
                                 body: [
@@ -2317,8 +2385,7 @@
                                         t: "shd",
                                         t2: "Books read",
                                         n: "29",
-                                        filter: ["Finished", "All"],
-                                        on: "All",
+                                        chev: true,
                                     },
                                     G8,
                                     {
@@ -2357,12 +2424,16 @@
                         [
                             "rej-plusminus",
                             "&minus;&nbsp;/&nbsp;+ steppers beside the bar",
-                            "<b>REJECTED on review.</b> They were drawn to cover what a drag cannot reach &mdash; a ~353pt track over 912 pages &mdash; and the objection is that they make the sheet a form again, which is the same complaint that killed the three-control stack in <code>streaks/index.html</code> (\"too many ways to say the same thing\"). The exact path is the <i>numerals</i> instead: each one is already on screen and already names what it edits, so precision costs a tap rather than 50pt of chrome.",
+                            '<b>REJECTED on review.</b> They were drawn to cover what a drag cannot reach &mdash; a ~353pt track over 912 pages &mdash; and the objection is that they make the sheet a form again, which is the same complaint that killed the three-control stack in <code>streaks/index.html</code> ("too many ways to say the same thing"). The exact path is the <i>numerals</i> instead: each one is already on screen and already names what it edits, so precision costs a tap rather than 50pt of chrome.',
                             {
                                 pt: 306,
                                 over: true,
                                 body: [
-                                    { t: "head", v: "&#49828;&#48197;!", btn: "Save" },
+                                    {
+                                        t: "head",
+                                        v: "&#49828;&#48197;!",
+                                        btn: "Save",
+                                    },
                                     G16,
                                     {
                                         t: "status",
@@ -2399,7 +2470,11 @@
                                 pt: 306,
                                 over: true,
                                 body: [
-                                    { t: "head", v: "&#49828;&#48197;!", btn: "Save" },
+                                    {
+                                        t: "head",
+                                        v: "&#49828;&#48197;!",
+                                        btn: "Save",
+                                    },
                                     G16,
                                     {
                                         t: "status",
@@ -2429,12 +2504,16 @@
                         [
                             "rej-bare",
                             "Bare draggable track",
-                            "<b>REJECTED, and it was proposed again in this very conversation before the record was checked.</b> <code>streaks/index.html</code>'s <code>band-scrubber</code> is the same control, killed because \"<b>a stray touch could silently rewrite your position</b>\" and \"rejected for being able to rewrite a position irrecoverably\". Arming plus Cancel is the house answer; a bare track is not. Kept so the rejection is on the record rather than asserted.",
+                            '<b>REJECTED, and it was proposed again in this very conversation before the record was checked.</b> <code>streaks/index.html</code>\'s <code>band-scrubber</code> is the same control, killed because "<b>a stray touch could silently rewrite your position</b>" and "rejected for being able to rewrite a position irrecoverably". Arming plus Cancel is the house answer; a bare track is not. Kept so the rejection is on the record rather than asserted.',
                             {
                                 pt: 250,
                                 over: true,
                                 body: [
-                                    { t: "head", v: "&#49828;&#48197;!", btn: "Save" },
+                                    {
+                                        t: "head",
+                                        v: "&#49828;&#48197;!",
+                                        btn: "Save",
+                                    },
                                     G16,
                                     {
                                         t: "status",
@@ -2459,7 +2538,7 @@
                         [
                             "rej-four",
                             "Fourth segment",
-                            "<b>REJECTED.</b> The control is already full at three labels; at four, \"Interested\" and \"Set aside\" in English have no room, and <code>CNSegmentedControl</code> is a native platform view with no auto-shrink and no Flutter hit target. Worse conceptually: it puts a <i>terminal outcome</i> on a progress axis. And <code>selectedIndex: status.clamp(0, labels.length - 1)</code> would silently show <b>Read</b> for a status-3 book.",
+                            '<b>REJECTED.</b> The control is already full at three labels; at four, "Interested" and "Set aside" in English have no room, and <code>CNSegmentedControl</code> is a native platform view with no auto-shrink and no Flutter hit target. Worse conceptually: it puts a <i>terminal outcome</i> on a progress axis. And <code>selectedIndex: status.clamp(0, labels.length - 1)</code> would silently show <b>Read</b> for a status-3 book.',
                             {
                                 pt: 294,
                                 over: true,
@@ -2555,7 +2634,16 @@
                             "el-track",
                             "Glassy reading track",
                             "Translucent ground with a lit top edge and the fill lit from above &mdash; drawn as the <i>material</i>, since <code>native_glass.dart</code> gates real Liquid Glass on iOS 26 and paints a fallback elsewhere. 48pt including its end labels, against 256pt for a wheel and its rider. The ends are <b>named, not numbered</b>, which is what lets the status be read off the control instead of picked beside it.",
-                            `<div class="dev" style="padding:14px 16px">${blocks([{ t: "track", mode: "rest", pct: 46 }, { t: "ends", left: "Not started", right: "Finished" }])}</div>`,
+                            `<div class="dev" style="padding:14px 16px">${blocks(
+                                [
+                                    { t: "track", mode: "rest", pct: 46 },
+                                    {
+                                        t: "ends",
+                                        left: "Not started",
+                                        right: "Finished",
+                                    },
+                                ],
+                            )}</div>`,
                         ],
                         [
                             "el-readout",
@@ -2567,19 +2655,74 @@
                             "el-pageline",
                             "The line's right-hand end &middot; and the 65% case",
                             "Two underlines when the book has a count; one green prompt when it does not, which is <b>~65% of the corpus</b>. That prompt is the new capability &mdash; <code>page_count</code> is written once by <code>addBook</code> and never again today, so filling it in is what turns Page mode on for a book that never had it.",
-                            `<div class="dev" style="padding:14px 16px">${blocks([{ t: "pg", page: "213", total: "462" }, { t: "gap", h: 10 }, { t: "pg", add: "Add total pages" }])}</div>`,
+                            `<div class="dev" style="padding:14px 16px">${blocks(
+                                [
+                                    { t: "pg", page: "213", total: "462" },
+                                    { t: "gap", h: 10 },
+                                    { t: "pg", add: "Add total pages" },
+                                ],
+                            )}</div>`,
                         ],
                         [
                             "el-status",
                             "Derived status read-out &middot; three tones",
                             "The control teaches the model: drag and the word changes. <code>brandText</code> reading, <code>flame</code> set aside, <code>secondaryText</code> not started. This is what replaces <code>BookStatusSelector</code> on this sheet &mdash; and the words are the open question: <b>Interested&nbsp;&rarr;&nbsp;Not started</b> and <b>Read&nbsp;&rarr;&nbsp;Finished</b> would make every status word agree with the track end it corresponds to.",
-                            `<div class="dev" style="padding:14px 16px">${blocks([{ t: "status", state: "Reading", pc: "46%", page: "213", total: "462" }, { t: "gap", h: 10 }, { t: "status", state: "Set aside", pc: "46%", tone: "fl", page: "213", total: "462" }, { t: "gap", h: 10 }, { t: "status", state: "Interested", tone: "off", pc: "Set a position", flat: true }])}</div>`,
+                            `<div class="dev" style="padding:14px 16px">${blocks(
+                                [
+                                    {
+                                        t: "status",
+                                        state: "Reading",
+                                        pc: "46%",
+                                        page: "213",
+                                        total: "462",
+                                    },
+                                    { t: "gap", h: 10 },
+                                    {
+                                        t: "status",
+                                        state: "Set aside",
+                                        pc: "46%",
+                                        tone: "fl",
+                                        page: "213",
+                                        total: "462",
+                                    },
+                                    { t: "gap", h: 10 },
+                                    {
+                                        t: "status",
+                                        state: "Interested",
+                                        tone: "off",
+                                        pc: "Set a position",
+                                        flat: true,
+                                    },
+                                ],
+                            )}</div>`,
                         ],
                         [
                             "el-vocab",
                             "The words &middot; decided",
-                            "<b>Top: today. Bottom: shipped by this design.</b> <code>Read&nbsp;&rarr;&nbsp;Finished</code> because \"read\" already carries the <i>act</i> across <code>readToday</code>, <code>reading_days</code>, <code>ReadPile</code>, <code>ReadMonthGrid</code>, <code>ReadWeekPalette</code> and the sheet title &mdash; as a <i>state</i> it is the most overloaded word in the app &mdash; and because the track's right end already says <i>Finished</i>. <code>Interested&nbsp;&rarr;&nbsp;Not&nbsp;started</code> because <b>adding a book to a shelf already states the intent</b>, so the status axis does not have to, and the left end already says it. Both are copy sweeps across en and ko, and the Korean has to be written rather than translated.",
-                            `<div class="dev" style="padding:14px 16px">${blocks([{ t: "seg", items: ["Interested", "Reading", "Read"], on: "Read" }, { t: "gap", h: 12 }, { t: "seg", items: ["Not started", "Reading", "Finished"], on: "Finished" }])}</div>`,
+                            '<b>Top: today. Bottom: shipped by this design.</b> <code>Read&nbsp;&rarr;&nbsp;Finished</code> because "read" already carries the <i>act</i> across <code>readToday</code>, <code>reading_days</code>, <code>ReadPile</code>, <code>ReadMonthGrid</code>, <code>ReadWeekPalette</code> and the sheet title &mdash; as a <i>state</i> it is the most overloaded word in the app &mdash; and because the track\'s right end already says <i>Finished</i>. <code>Interested&nbsp;&rarr;&nbsp;Not&nbsp;started</code> because <b>adding a book to a shelf already states the intent</b>, so the status axis does not have to, and the left end already says it. Both are copy sweeps across en and ko, and the Korean has to be written rather than translated.',
+                            `<div class="dev" style="padding:14px 16px">${blocks(
+                                [
+                                    {
+                                        t: "seg",
+                                        items: [
+                                            "Interested",
+                                            "Reading",
+                                            "Read",
+                                        ],
+                                        on: "Read",
+                                    },
+                                    { t: "gap", h: 12 },
+                                    {
+                                        t: "seg",
+                                        items: [
+                                            "Not started",
+                                            "Reading",
+                                            "Finished",
+                                        ],
+                                        on: "Finished",
+                                    },
+                                ],
+                            )}</div>`,
                         ],
                         [
                             "el-ear",
@@ -2607,8 +2750,18 @@
                         [
                             "el-wheel",
                             "The 101-stop wheel",
-                            "<b>256pt with its rider, and it goes from the default path</b> &mdash; but not from the app: tapping the read-out still opens it, which is how an exact page survives. Its own record notes reaching an arbitrary page in a 912-page book is \"tens of flicks either way\".",
-                            `<div class="dev" style="padding:10px 16px">${blocks([{ t: "wheel", stops: ["45", "46", "47"], ci: 1, unit: "%" }, { t: "rider", v: "~ p.213" }])}</div>`,
+                            '<b>256pt with its rider, and it goes from the default path</b> &mdash; but not from the app: tapping the read-out still opens it, which is how an exact page survives. Its own record notes reaching an arbitrary page in a 912-page book is "tens of flicks either way".',
+                            `<div class="dev" style="padding:10px 16px">${blocks(
+                                [
+                                    {
+                                        t: "wheel",
+                                        stops: ["45", "46", "47"],
+                                        ci: 1,
+                                        unit: "%",
+                                    },
+                                    { t: "rider", v: "~ p.213" },
+                                ],
+                            )}</div>`,
                         ],
                     ],
                 ],
@@ -2859,7 +3012,7 @@
                         [
                             "flow-setaside",
                             "Giving up on it",
-                            "The question that started all of this. <b>One tap</b>, and no interrogation: the handle already says 46%, so nothing asks <i>how much did you read?</i> Then it appears in the read sheet under <b>All</b>, dog-eared, and in no count that means \"finished\".",
+                            'The question that started all of this. <b>One tap</b>, and no interrogation: the handle already says 46%, so nothing asks <i>how much did you read?</i> Then it appears in the read sheet under <b>Books read</b>, dog-eared, and in no count that means "finished".',
                             [
                                 [
                                     "At 46%",
@@ -2943,7 +3096,7 @@
                                 ],
                                 [
                                     "In the read sheet",
-                                    "Under <b>All</b> only, dog-eared. Count reads 29 where the Library Card reads 23.",
+                                    "Under <b>Books read</b>, dog-eared. The title is the read-out, so the count reading 29 explains itself rather than disagreeing with the Library Card's 23.",
                                     {
                                         pt: 300,
                                         body: [
@@ -2951,8 +3104,7 @@
                                                 t: "shd",
                                                 t2: "Books read",
                                                 n: "29",
-                                                filter: ["Finished", "All"],
-                                                on: "All",
+                                                chev: true,
                                             },
                                             G8,
                                             {
@@ -2993,9 +3145,9 @@
                 "flow-nudge-new":
                     "<b>Open &middot; taking a night back now has nowhere to live.</b> Deleting the day-stamp row is right for the common path &mdash; the write already stamps tonight &mdash; but <code>setRead(read: false)</code> had exactly two callers and the other is <code>kDebugMode</code>-gated, so after this there is no shipped undo for a night recorded by mistake. Three ways out: accept it (an extra night is harmless, and the record does not scold), un-gate the streak page's footer, or let a long-press on the period row offer it. <b>Also unresolved:</b> whether Save commits the drag or the drag writes on release the way the band's wheel does today &mdash; the first keeps one write per sheet, the second keeps the nightly act at two taps.",
                 "flow-setaside":
-                    "<b>Open &middot; three.</b> (1) <code>FinishedBooksSheet</code> also serves a friend's library through <code>userFinishedBooksProvider</code>, so an <b>All</b> filter there exposes what you have given up on &mdash; hide the filter when visiting, or let it show? (2) Removing <i>Put back on the shelf</i> and <i>Start reading</i> is right for Finished and Set aside, which the thumb can leave, but <b>Reading &rarr; Interested becomes unreachable</b>: there is deliberately no way to clear a position, so nothing can send a started book back to never-started. (3) <b>The filter's labels.</b> <code>Finished</code>&nbsp;/&nbsp;<code>All</code> is drawn, and its flaw is that <code>All</code> sits two rows above <code>All&nbsp;time</code> &mdash; one word doing duty for two different scopes. <code>Finished</code>&nbsp;/&nbsp;<code>+&nbsp;Set&nbsp;aside</code> removes the collision by naming what including <i>adds</i> rather than implying a total; <code>All&nbsp;Read</code> is the one to avoid, since a set-aside book was not read and <i>Read</i> is already the word for status 2.",
+                    "<b>Open &middot; one.</b> Removing <i>Put back on the shelf</i> and <i>Start reading</i> is right for Finished and Set aside, which the thumb can leave, but <b>Reading &rarr; Interested becomes unreachable</b>: there is deliberately no way to clear a position, so nothing can send a started book back to never-started. <b>Two questions that used to sit here are now decided, in the captions rather than out here:</b> the filter's labels are the sheet's own title &mdash; <code>Books finished</code>&nbsp;/&nbsp;<code>Books read</code> rather than a segment beside it (<code>sheet-read</code>) &mdash; and a friend's library gets the filter as well as your own (<code>sheet-all</code>).",
                 "flow-finish":
-                    "<b>Open &middot; this inverts a drawn decision.</b> <code>ss-finished</code> removed the position row at status 2 on the grounds that \"a finished book is at the end by definition, so asking is worse than not asking\". A track whose right end is <i>Finished</i> asks the question that was decided not to ask &mdash; the defence being that it asks it as part of one gesture rather than as a field, and that it is the same gesture that <i>reports</i> the answer. <b>The vocabulary is settled:</b> <code>Read&nbsp;&rarr;&nbsp;Finished</code> and <code>Interested&nbsp;&rarr;&nbsp;Not&nbsp;started</code> &mdash; see the <code>el-vocab</code> element for why.",
+                    '<b>Open &middot; this inverts a drawn decision.</b> <code>ss-finished</code> removed the position row at status 2 on the grounds that "a finished book is at the end by definition, so asking is worse than not asking". A track whose right end is <i>Finished</i> asks the question that was decided not to ask &mdash; the defence being that it asks it as part of one gesture rather than as a field, and that it is the same gesture that <i>reports</i> the answer. <b>The vocabulary is settled:</b> <code>Read&nbsp;&rarr;&nbsp;Finished</code> and <code>Interested&nbsp;&rarr;&nbsp;Not&nbsp;started</code> &mdash; see the <code>el-vocab</code> element for why.',
             };
 
             /* ==================================================================
@@ -3066,7 +3218,7 @@
                         },
                         open: {
                             "flow-setaside":
-                                "<b>Superseded.</b> In this version the read sheet's <b>All</b> filter is nearly free &mdash; the books are already <code>status 2</code>, so they arrive in <code>finishedBooksProvider</code> with no second query &mdash; and that is exactly the problem: they arrive everywhere else too. The five surfaces that must then exclude them are the Library Card hero, pace, most-read author, the card cover row and a friend's read count.",
+                                "<b>Superseded.</b> In this version the read sheet's <b>Show all read</b> mode is nearly free &mdash; the books are already <code>status 2</code>, so they arrive in <code>finishedBooksProvider</code> with no second query &mdash; and that is exactly the problem: they arrive everywhere else too. The five surfaces that must then exclude them are the Library Card hero, pace, most-read author, the card cover row and a friend's read count.",
                         },
                     },
                 ],
@@ -3124,7 +3276,7 @@
                             "one-armed": null,
                             "one-finished": {
                                 name: "At 100% &middot; Read",
-                                note: "Reaching the end is a spin to 100 rather than a drag to the stop, so there is no \"landing on the far end\" moment to hang the finish-date defaulting on. It has to fire on the value crossing 1.0, which is less legible than arriving at a named end &mdash; the clearest thing the track buys and this loses.",
+                                note: 'Reaching the end is a spin to 100 rather than a drag to the stop, so there is no "landing on the far end" moment to hang the finish-date defaulting on. It has to fire on the value crossing 1.0, which is less legible than arriving at a named end &mdash; the clearest thing the track buys and this loses.',
                                 spec: {
                                     pt: 464,
                                     body: [
@@ -3261,10 +3413,7 @@
                                                 G8,
                                                 {
                                                     t: "seg",
-                                                    items: [
-                                                        "Percent",
-                                                        "Page",
-                                                    ],
+                                                    items: ["Percent", "Page"],
                                                     on: "Percent",
                                                 },
                                                 G8,
@@ -3295,9 +3444,9 @@
                         },
                         open: {
                             "flow-nudge-new":
-                                "<b>Open &middot; is the track worth 170pt?</b> This version matches today's tap count, reuses a control that already has typed entry and Page mode, needs no new accessibility work, and cannot be nudged by accident. What it gives up is the named ends &mdash; so \"Finished\" becomes a value crossing 1.0 rather than a place you arrive at, and the derived status is legible only in the read-out.",
+                                '<b>Open &middot; is the track worth 170pt?</b> This version matches today\'s tap count, reuses a control that already has typed entry and Page mode, needs no new accessibility work, and cannot be nudged by accident. What it gives up is the named ends &mdash; so "Finished" becomes a value crossing 1.0 rather than a place you arrive at, and the derived status is legible only in the read-out.',
                             "flow-finish":
-                                "<b>Open &middot; no named end to arrive at.</b> With a wheel there is no \"far end\" moment, so defaulting the finish date has to fire on the value crossing 1.0. Same rule, weaker signal.",
+                                '<b>Open &middot; no named end to arrive at.</b> With a wheel there is no "far end" moment, so defaulting the finish date has to fire on the value crossing 1.0. Same rule, weaker signal.',
                         },
                     },
                 ],

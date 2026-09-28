@@ -18,7 +18,7 @@ Two questions arrived separately and turned out to be one.
    `start_date = NULL` (`library_provider.dart`, the status UPDATE), destroying the only
    reading fact the row carried. There is no lossless representation of "I started this and
    stopped".
-2. **The nightly act goes through two doors and a nested sheet.** `BandProgressRow` opens
+2. **Recording a position goes through two doors and a nested sheet.** `BandProgressRow` opens
    the wheel; the period card opens the status sheet; the status sheet's position row opens
    the wheel _again_, stacked on top of itself.
 
@@ -62,8 +62,10 @@ This saves **30pt of row — 40pt in the prompt state**, and the two numbers are
 measurement: the row is a `SizedBox(height: 30)`, while `BandProgressRow`'s doc measures 40
 for the prompt state specifically (the tab strip moves 390.5 → 430.5 on a 390×844 device,
 row plus the gap above it). The mockup crops show the 30, since they crop the band rather
-than the page. It also retires the "two doors to one book's state" problem. What it must not lose is the reason
-that row was the door rather than the app bar's pencil: **the nightly act is worth ~30
+than the page. It also retires the "two doors to one book's state" problem.
+
+What it must not lose is the reason
+that row was the door rather than the app bar's pencil: **recording a position is worth ~30
 repetitions per book against 3 status changes**, and it was 333×30 in the thumb's arc
 against 48×48 in the top-right dead zone. The replacement card is larger and lower, so the
 frequency argument is satisfied.
@@ -193,11 +195,20 @@ transition the thumb already performs — drag off the origin — and the sheet'
 is that status is a read-out of position, so a button that sets a status is the old model
 smuggled back in.
 
-"Put back on the shelf" is the harder one and rejecting it leaves a real gap, which is worth
-stating precisely because it is easy to think the thumb covers this too: **dragging back to
-the origin writes `progress = 0`, which is _Reading at 0%_, not _Not started_ (`null`)** —
-the `null` ≠ `0` distinction the whole design rests on, read in the direction that hurts. So
-nothing in this sheet clears a position. See _Open questions_ #5.
+"Put back on the shelf" is not drawn either, and the thumb covers it after all: **a drag
+back to the origin writes `null`, not `0`.** So the origin _is_ Not started, and Reading →
+Not started is reachable by the same gesture as everything else on this sheet.
+
+**What that spends is the ability to say 0% with the track**, and it is a deliberate trade.
+`progress == 0` means "opened it and got nowhere" and `null` means "never asked" — two
+different states the model keeps apart on purpose — and the track's leftmost pixel can only
+mean one of them. It means `null`, because _that_ is the state a reader needs a gesture for;
+0% survives, reachable through the percent sheet's own `0` stop, which is one tap further on
+and is the right place for a distinction this fine.
+
+**The read-out is what keeps the two legible**, since the thumb sits at the origin for both:
+it says _Not started_ with no numerals in one case and _Reading 0%_ in the other. That is the
+read-out earning its keep rather than a collision to design around.
 
 ### The day-stamp row goes
 
@@ -213,7 +224,29 @@ read today; that is a deliberate reading of intent, already shipped, and unchang
 
 **The cost is real and is not fully resolved.** `setRead(read: false)` has exactly two
 callers — this row, and the `kDebugMode`-gated footer in `reading_streak_page.dart`. After
-this there is no shipped way to take a night back. See _Open questions_ #1.
+this there is **no shipped way to un-record a reading day** — to delete a `reading_days` row
+once it exists. See _Open questions_ #1.
+
+### Save commits, and nothing else writes
+
+**Save is the only writer on this sheet.** The drag does not persist on release, the three
+sub-sheets' Confirm buttons do not write, and dismissing discards everything. One sheet, one
+write.
+
+This makes the sheet coherent in a way the alternative could not be: "dismissing discards"
+was already the answer to the objection that killed `band-scrubber`, and a drag that wrote on
+release would have made that claim false for the one control the objection was about. It also
+means the reading day is stamped by Save too, alongside the position — one batch, not two
+writes racing.
+
+**The consequence is a real change to the sub-sheets, and it is the trap in this decision.**
+`showSelectPercentBottomSheet` **writes today**: reached from the band,
+`book_details_tab_view.dart`'s `onProgressSelected` persists the position and calls
+`setRead(…, read: true)` on Confirm. Opened from _inside_ this sheet it must instead
+**return its value to the parent sheet**, which holds it as pending state and marks itself
+dirty. So the wheel needs both behaviours — writing for any caller that still opens it
+directly, returning for this one — and the safest shape is for the wheel to always return and
+for the writing to live in its callers.
 
 ### Save appears only when the sheet is dirty
 
@@ -239,34 +272,80 @@ This is a copy sweep, not a code change, and it is smaller than it sounds: **bot
 already exist with the right names** — `statusFinished` currently holds the _value_ "Read" /
 "읽음" — so nothing is renamed and no call site moves. Only the four strings change, and the
 Korean has to be **written rather than translated**, per the widget copy's precedent.
-`finishedBooksTitle` / `noFinishedBooks` / `noFinishedBooksInYear` want revisiting
-in the same pass, or the sheet says "Books read" above a `Finished` filter.
+`finishedBooksTitle` / `noFinishedBooks` / `noFinishedBooksInYear` all change in the same
+pass — see _Where a set-aside book lives_, where the title becomes the filter's read-out and
+so needs two of it.
 
 The three-segment `BookStatusSelector` **stays in the add-book sheet**, where nothing has
 happened yet and there is no position to derive from.
 
-### Where a set-aside book lives: the read sheet, behind a filter
+### Where a set-aside book lives: the read sheet, and the title is the filter
 
-`FinishedBooksSheet` gains a two-state completion filter. Default is completed-only.
+`FinishedBooksSheet` gains a two-state completion filter, and **the sheet's own title is its
+read-out**. A chevron-down sits to the right of the title; title, count and chevron are one
+tap target; tapping opens a glass popover with two checkable rows.
 
-**Position: top-right of the title row** — the year rail sits _directly under_ it
-(`expandedHeader` is `Column[title, ReadFilter(expanded: true)]`), and the title row's right
-side is the slot the **collapsed** header already gives `ReadFilter` as a popover, so the
-idiom is not new. **Watch the width:** that row's own comment records overflowing at 2× text
-with a two-digit count when a filter shares it, which is what `library_clearance_test.dart`
-exists for.
+| mode      | title            | count | rows                                     |
+| --------- | ---------------- | ----- | ---------------------------------------- |
+| default   | `Books finished` | 23    | **Show finished only** ✓ / Show all read |
+| inclusive | `Books read`     | 29    | Show finished only / **Show all read** ✓ |
 
-**The count tracks the visible list and the title stays put.** So the sheet reads 29 while
-the Library Card reads 23 a tab away, both correct: the sheet's is a _view_ count (it has to
-be, or the month counts would not sum to it), the Card's is the _achievement_ count. **This
-disagreement is deliberate and must be recorded in `AGENTS.md`**, which currently implies
-all these figures reconcile.
+**This removes a label collision instead of renaming around it.** The drawn alternative was
+a `Finished` / `All` pair, and its flaw was that `All` would sit two rows above the year
+rail's `All time` — one word doing duty for two scopes. A title that says which set it is
+showing needs no second label at all.
 
-Set-aside books are fetched by their own provider and merged **inside the sheet** when the
-filter includes them, so nothing else in the app changes.
+**And the pair is the vocabulary split, not a coincidence.** `Finished` is the _state_ and
+"read" is the _act_ — which is the whole reason the status word is being renamed `Read →
+Finished`. A set-aside book was not finished; it was partly read. Note this **reverses** the
+earlier note that `All Read` was the label to avoid: that objection was about modifying
+`read` as a _status_, where it is still right.
 
-**Scope it to the expanded sheet only.** Collapsed, `ReadFilter` is already a popover in a
-row that overflows at accessibility sizes; the spine pile stays completed-only.
+**It also retires a documented disagreement.** The plan was that this sheet would read 29
+while the Library Card read 23 a tab away, both correct, with the clash written up in
+`AGENTS.md` as deliberate. With the title switching, the default state reads `Books finished
+23` and matches the Card exactly, and the only state that reads 29 is the one whose title
+says why. The `AGENTS.md` note shrinks to a sentence.
+
+**The mechanism exists twice and the obvious one is wrong.** `read_filter.dart`'s collapsed
+popover is `CNPopupMenuButton` with `CNButtonStyle.glass` and `CNPopupMenuItem(checked:)` — an
+apparently exact fit, including the check marks. But its `buttonLabel` is rendered **by the
+platform**, and that file's own record documents the label arriving at "the system's 17pt in
+the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for 13pt".
+The title is the largest text on the sheet and `LibrarySheetTitle` draws its count in the
+brand colour, so it cannot become a platform-styled button label.
+
+The right precedent is `shelf_picker_popover.dart`'s `showShelfPickerPopover` — an app-drawn
+card hung from an anchor's `RenderBox` rect, `LiquidGlassContainer` on iOS 26 and
+`BackdropFilter` as the fallback, where _"Flutter draws every pixel of content, the platform
+supplies the material behind it."_ Its doc also notes the app-drawn path _"is the only path a
+widget test ever takes, because `flutter test` reports Android"_, which is what makes this
+testable at all.
+
+**The year rail stays directly under the title row** — `expandedHeader` is `Column[title,
+ReadFilter(expanded: true)]` — and that is structure, not preference. It is also why the
+filter could not live on the rail's row: drawn to scale, a card hung under the title
+**occludes the rail**, so the two would have collided in geometry as well as in wording.
+
+**The filter applies in both sheet states; only the chevron is expanded-only.** An earlier
+draft scoped the whole thing to the expanded sheet and left "the spine pile completed-only",
+which is inconsistent once the filter is a persisted view mode — the count would jump on
+collapse. Collapsed, the header's row already has the year popover competing for it, and
+`library_clearance_test.dart` exists because that row overflows at 2× text with a two-digit
+count.
+
+**A friend's library shows it too.** `FinishedBooksSheet` also serves friends through
+`userFinishedBooksProvider`, which needs a set-aside sibling. The consequence, stated rather
+than buried: **a friend can see which books you gave up on.** The default is finished-only, so
+it is per-view and opt-in, and `inviteStatusRead`'s `"{count} read"` already counts the act
+rather than the achievement.
+
+Set-aside books are fetched by their own provider and merged **inside the sheet**, so nothing
+else in the app changes.
+
+New ARB keys for both titles and both menu rows, and **`noFinishedBooks` /
+`noFinishedBooksInYear` have to follow the mode**, or the empty state reads "No books read
+yet" under a `Books finished` title.
 
 ### The mark on a set-aside cover is a dog-ear
 
@@ -326,28 +405,32 @@ the sheet and agreeing with it moves the bookmark back a page."_
 
 `BookStatusSelector` from the status sheet · `ReadTodayFieldRow` · `BandProgressRow` ·
 the band's second door · the nested wheel-over-sheet · the "how much did you read?"
-question · the derived-set-aside inference · the −/+ steppers that were drawn for it.
+question · the derived-set-aside inference · the −/+ steppers that were drawn for it · the
+`Finished` / `All` segment that was drawn for the read sheet · and the wheel's own write,
+which moves out to its callers.
 
 ## Open questions
 
-1. **Taking a night back has nowhere to live.** Accept it (an extra night is harmless, and
-   the record does not scold), un-gate the streak page's footer, or offer it on a long-press
-   of the period row.
-2. **Does Save commit the drag, or does the drag write on release** the way the band's
-   wheel does today? The first keeps one write per sheet; the second keeps the nightly act
-   at two taps.
-3. **The filter's labels.** `Finished` / `All` is drawn, and its flaw is that `All` would sit
-   two rows above `All time` — one word doing duty for two scopes. `Finished` / `+ Set aside`
-   removes the collision by naming what including _adds_. `All Read` is the one to avoid: a
-   set-aside book was not read.
-4. **Does a friend's library show the filter?** `FinishedBooksSheet` also serves friends
-   through `userFinishedBooksProvider`, so `All` there exposes what you gave up on.
-5. **Reading → Not started is unreachable.** Removing "Put back on the shelf" is right for
-   Finished and Set aside, which the thumb can leave, but the thumb at the origin means
-   `progress = 0` (_began and got nowhere_) and Not started means `null` (_never asked_), and
-   no gesture writes `null`. Options: accept it, let a drag to the origin write `null` and
-   lose the ability to say 0%, or give the origin a long-press.
-6. **This inverts `ss-finished`**, which removed the position row at status 2 because _"a
+Four of the six are now decided and have moved into _Decisions_: Save commits the drag, the
+filter is the title plus a glass popover, a friend's library shows it, and a drag to the
+origin writes `null`. Two remain.
+
+1. **Un-recording a reading day has nowhere to live.** Deleting `ReadTodayFieldRow` removes
+   the only shipped caller of `setRead(read: false)` that a reader can reach — the other is
+   `kDebugMode`-gated. So a `reading_days` row, once written, cannot be deleted from the app.
+   This matters more than it looks: correcting a percentage the reader got wrong last week
+   stamps **today**, which `AGENTS.md` already documents as an accepted cost, and after this
+   change that stamp is permanent.
+
+   **Recommendation: accept it, and do not un-gate the footer.** `AGENTS.md` gives a reason
+   for the gate that this design does not overturn — _"a reader offered an Undo is being
+   invited to treat their own record as provisional"_ — and the month grid on the streak page
+   already shows what happened. The cost is honest and small: one extra day on a streak,
+   against a control that tells every reader their record is editable. If it ever needs
+   reversing, `streakUndoToday` and the footer both already exist, so un-gating is a one-line
+   change.
+
+2. **This inverts `ss-finished`**, which removed the position row at status 2 because _"a
    finished book is at the end by definition, so asking is worse than not asking."_ The
    defence is that the track asks it as part of the gesture that also _reports_ it.
 
@@ -356,10 +439,14 @@ question · the derived-set-aside inference · the −/+ steppers that were draw
 The work splits into three, in risk order, and only the first is self-contained enough to
 ship alone.
 
-1. **The sheet.** The track, the read-out, the three sub-sheets, Save-when-dirty, the
-   vocabulary sweep. No schema change, no new status. Set aside is not offered yet.
-2. **Set aside.** `bookStatusSetAside`, the plank filters, the secondary action, the read
-   sheet's filter and the dog-ear, and the `AGENTS.md` note about 29 vs 23.
+1. **The sheet.** The track, the read-out, the three sub-sheets, Save-as-the-only-writer,
+   Save-when-dirty, the vocabulary sweep. No schema change, no new status. Set aside is not
+   offered yet. **The sub-sheet write inversion belongs here** — making
+   `showSelectPercentBottomSheet` return rather than write touches its existing caller, so it
+   is in phase 1 whether or not the rest is.
+2. **Set aside.** `bookStatusSetAside`, `BookStatusBadge`'s fourth arm, the plank filters, the
+   secondary action, the read sheet's title-popover filter, the friend-library provider and the
+   dog-ear.
 3. **Editing the total page count.** Its own sheet and its own write path; independent of
    both above and the thing most likely to want its own review, since it is the only new
    column writer.
@@ -370,6 +457,17 @@ ship alone.
   **increment/decrement plus the typing path, or it is unusable under VoiceOver.** A
   drag-only scalar is not an accessible control.
 - Save is absent when clean, present after a drag, and present after a sub-sheet Confirm.
+- **Nothing writes before Save**: a drag then a dismiss leaves `progress`, `progress_page` and
+  `reading_days` all untouched, and so does a sub-sheet Confirm followed by a dismiss. This is
+  the assertion that makes "dismissing discards" true rather than claimed.
+- A drag to the origin writes `null`, not `0`, and the read-out says _Not started_ — while the
+  percent sheet's `0` stop still writes `0` and reads _Reading 0%_.
+- The read sheet's title is `Books finished` with the default filter and `Books read` with the
+  inclusive one, its count follows the visible list, and the month counts sum to it in both.
+- The filter is honoured collapsed as well as expanded, so the count does not jump on
+  collapse; the chevron is drawn only when expanded.
+- A friend's read sheet offers the filter and the set-aside provider returns that friend's
+  rows, not the viewer's.
 - A status-3 book is off its plank and out of `shelvedBookCount`, and in the read sheet only
   under the inclusive filter.
 - **A status-3 book's badge does not read "Other"**, and its chip is neither green nor
@@ -383,7 +481,8 @@ ship alone.
 - Editing the total re-derives the page and leaves `progress` byte-identical.
 - A position-only write does not touch `reading_shelf_index`.
 - The read sheet's title row does not overflow at 2× text with a two-digit count and the
-  filter present (`library_clearance_test.dart`).
+  filter present (`library_clearance_test.dart`). The chevron adds to that row, so this is a
+  tightening of an existing guard rather than a new case.
 - The sheet fits a 375×667 surface. `flutter_test`'s default 800×600 is shorter than any
   phone the app supports, so the harness must set a real size.
 
@@ -395,8 +494,21 @@ Exact, from the source: the wheel sheet's **368pt** (`_sheetHeight` sums 64 + 48
 
 Estimated, summed from row heights in the Dart and labelled as such on every mockup crop:
 270pt clean, 292pt dirty, 246pt not-started, 282pt terminal, ~342pt for today's status
-sheet.
+sheet, ~300pt for the read sheet's crop.
 
-**Not verified: how any of it looks.** The mockups are CSS standing in for Liquid Glass and
-for a Flutter layout. The glass treatment and the one-line read-out at
+**Verified by rendering the mockup:** the popover, hung under the title the way
+`showShelfPickerPopover` hangs its card, **occludes the year rail** — which is a second reason
+the filter could not have gone on the rail's row, this one geometric. Recorded rather than
+designed away; sliding the card below the rail is available if it is judged worse than the
+occlusion.
+
+**Still not verified: how the sheet itself looks.** The mockups are CSS standing in for Liquid
+Glass and for a Flutter layout. The glass treatment and the one-line read-out at
 `Set aside 46% p.213 of 462` — longer in Korean — need eyes before implementation.
+
+**One correction worth recording about the mockup itself**, because it is the cost of writing
+a page without opening it: the committed version carried a stray `</div>` in its lead
+paragraph and a stray `</p>` before the flows sidebar, which closed `#v-screens` early and
+left **view switching completely dead** — all three views on screen at once, the sidebar
+outside its column. `verify.js` was green throughout, because it checks the script against a
+DOM stub and never parses the document.

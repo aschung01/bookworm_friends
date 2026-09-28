@@ -1125,7 +1125,8 @@ this page` group pins that the page reads identically either side of the warning
 ### The undo footer is debug-only
 
 `streakUndoVisible` in `reading_streak_page.dart` gates the whole "Today is recorded. / Undo"
-footer on `kDebugMode`. Taking a night back is a developer's need while working on the feature;
+footer on `kDebugMode`. Un-recording a reading day — deleting a `reading_days` row via
+`setRead(read: false)` — is a developer's need while working on the feature;
 a reader offered an Undo is being invited to treat their own record as provisional, and the
 month grid in front of them already shows what happened.
 

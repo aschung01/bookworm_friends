@@ -166,8 +166,8 @@ const all = (v, k) =>
 
 console.log("-- inventory --");
 ok(
-  all("track", "screens").length === 21,
-  "21 screens (" + all("track", "screens").length + ")",
+  all("track", "screens").length === 22,
+  "22 screens (" + all("track", "screens").length + ")",
 );
 ok(all("track", "flows").length === 4, "4 flows");
 ok(
@@ -220,7 +220,7 @@ for (const id of ["sub-percent", "sub-page", "sub-total"])
 
 console.log("-- version patch: inherit / override / remove --");
 const dv = all("derived", "screens");
-ok(dv.length === 21, "derived overrides without adding or removing screens");
+ok(dv.length === 22, "derived overrides without adding or removing screens");
 const setAside = (v) =>
   A.resolveView(v, "screens")
     .flatMap(([, l]) => l)
@@ -318,24 +318,97 @@ ok(
   "and the only one left is Stop reading this",
 );
 
-console.log("-- the read sheet's year rail sits under the title row --");
-for (const id of ["sheet-read", "sheet-all"]) {
-  const spec = specOf(id);
-  const kinds = spec.body.filter((b) => b.t).map((b) => b.t);
+console.log("-- the read sheet: the title IS the filter read-out --");
+/* Mirrors the structural claim the drawing makes rather than re-deriving it:
+   `expandedHeader` is `Column[title, ReadFilter(expanded: true)]`, so the year
+   rail is the row DIRECTLY under the title row and nothing may come between
+   them. `gap` is spacing and `pop` is the popover layer -- absolutely
+   positioned in the page's own CSS, so it is not a row either. */
+const rowsOf = (spec) =>
+  spec.body
+    .filter((b) => b.t && b.t !== "gap" && b.t !== "pop")
+    .map((b) => b.t);
+const shdOf = (id) => specOf(id).body.find((b) => b.t === "shd");
+for (const id of ["sheet-read", "sheet-popover", "sheet-all"]) {
+  const r = rowsOf(specOf(id));
   ok(
-    kinds.indexOf("shd") >= 0 && kinds.indexOf("caps") > kinds.indexOf("shd"),
-    id + ": title row precedes the year capsules",
+    r[0] === "shd" && r[1] === "caps",
+    id + ": the year rail is the row under the title (" + r.join(">") + ")",
   );
-  const hdr = spec.body.find((b) => b.t === "shd");
   ok(
-    hdr && Array.isArray(hdr.filter) && hdr.filter.join() === "Finished,All",
-    id + ": the completion filter is in the title row",
-  );
-  ok(
-    spec.body.find((b) => b.t === "caps").items[0] === "All time",
+    specOf(id).body.find((b) => b.t === "caps").items[0] === "All time",
     id + ": the year rail is the real one",
   );
+  ok(shdOf(id).chev === true, id + ": the title row carries the chevron");
 }
+
+/* The superseded `Finished` / `All` segment. Checked as a block KEY across every
+   version, not as a substring of the page -- the word "filter" is all over the
+   prose, and a loose test there would pass on a drawing that still had it. */
+const blockKeys = new Set();
+for (const v of A.VERSIONS.map((x) => x[0])) {
+  for (const [, l] of A.resolveView(v, "screens"))
+    for (const it of l)
+      for (const b of it[3].body || [])
+        Object.keys(b).forEach((k) => blockKeys.add(k));
+  for (const [, l] of A.resolveView(v, "flows"))
+    for (const it of l)
+      for (const st of it[3])
+        for (const b of st[2].body || [])
+          Object.keys(b).forEach((k) => blockKeys.add(k));
+}
+ok(
+  !blockKeys.has("filter"),
+  "no screen or step still draws the Finished/All segment",
+);
+ok(!/b\.filter/.test(js), "and the renderer has no branch left for it");
+
+ok(
+  shdOf("sheet-read").t2 === "Books finished" &&
+    shdOf("sheet-all").t2 === "Books read",
+  "the title text is the mode (Books finished / Books read)",
+);
+ok(
+  shdOf("sheet-read").n === "23" && shdOf("sheet-all").n === "29",
+  "the count follows the visible list (23 / 29)",
+);
+ok(
+  shdOf("sheet-popover").t2 === shdOf("sheet-read").t2 &&
+    shdOf("sheet-popover").n === shdOf("sheet-read").n,
+  "the popover opens over the default state, not a third mode",
+);
+const pop = specOf("sheet-popover").body.find((b) => b.t === "pop");
+ok(
+  !!pop &&
+    pop.items.map((x) => x.v).join(" / ") ===
+      "Show finished only / Show all read",
+  "the popover offers exactly the two modes, in that order",
+);
+ok(
+  !!pop &&
+    pop.items.filter((x) => x.on).length === 1 &&
+    pop.items[0].on === true,
+  "exactly one row is checked, and it is the default",
+);
+ok(
+  A.frame(specOf("sheet-popover")).includes("&#10003;"),
+  "and the check is actually drawn",
+);
+
+/* The flow walks through the same drawing, which is the thing that goes stale. */
+const flowStep = A.resolveView("track", "flows")
+  .flatMap(([, l]) => l)
+  .find((f) => f[0] === "flow-setaside")[3]
+  .find((st) => (st[2].body || []).some((b) => b.t === "shd"));
+ok(!!flowStep, "flow-setaside still ends in the read sheet");
+ok(
+  flowStep && flowStep[2].body.find((b) => b.t === "shd").t2 === "Books read",
+  "and it draws the inclusive title, not a segment set to All",
+);
+ok(
+  flowStep && rowsOf(flowStep[2])[1] === "caps",
+  "with the year rail still directly under it",
+);
 
 console.log("-- diff: no false positives, and it mirrors --");
 const d1 = A.diffMap("track", "derived", "screens");
@@ -394,7 +467,7 @@ for (const v of A.VERSIONS.map((x) => x[0])) {
   for (const [, l] of A.resolveView(v, "flows"))
     for (const it of l) for (const st of it[3]) (A.frame(st[2]), n++);
 }
-ok(n === 90, `${n} specs rendered without throwing`);
+ok(n === 93, `${n} specs rendered without throwing`);
 
 console.log("-- pt badges --");
 let withPt = 0,
@@ -404,7 +477,7 @@ for (const [, l] of A.resolveView("track", "screens"))
     if (it[3].pt) withPt++;
     if (it[3].over) over++;
   }
-ok(withPt === 21, "every screen carries a measured height (" + withPt + ")");
+ok(withPt === 22, "every screen carries a measured height (" + withPt + ")");
 ok(over === 5, "5 screens flagged as rejected / overflowing (" + over + ")");
 
 console.log("-- search resolves words visible on the page --");
@@ -443,6 +516,11 @@ ok(shits("rejected").length >= 3, '"rejected" -> the kept counter-arguments');
 ok(shits("total pages").includes("sub-total"), '"total pages" -> sub-total');
 ok(shits("65%").includes("one-nopages"), '"65%" -> one-nopages');
 ok(shits("glassy").includes("one-rest"), '"glassy" -> one-rest');
+ok(shits("popover").includes("sheet-popover"), '"popover" -> sheet-popover');
+ok(
+  shits("chevron").includes("sheet-read"),
+  '"chevron" -> sheet-read, so the new control is searchable',
+);
 
 const ehits = (q) => {
   const o = [];
