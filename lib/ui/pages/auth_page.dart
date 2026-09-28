@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
@@ -9,6 +8,37 @@ import 'package:bookworm_friends/providers/invite_link_provider.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/ui/pages/invite_consent_page.dart';
 import 'package:bookworm_friends/ui/widgets/brand_mark.dart';
+import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
+
+/// The height of both sign-in buttons.
+///
+/// **44, which is Apple's recommended default** (their minimum is 30) and also iOS's
+/// minimum touch target. It was 48, and the reason for moving is that 44 makes every
+/// derived number an integer: Apple's own logo artwork is a 19-unit glyph inside a
+/// 44-unit button face, so at a 44pt button the glyph is exactly 19pt and the title
+/// -- 43% of the height -- is 19pt too. At 48 both came out at 20.64.
+const double kSignInButtonHeight = 44;
+
+/// How much of the button's height the title and the logo each take: **19/44**.
+///
+/// One constant for both, because Apple's two figures coincide. They publish 43% for
+/// the title of a custom button ("the button's height would be 233% of the title's
+/// font size"). They publish nothing for the logo -- the instruction is "match the
+/// height of the logo file to the height of the button" and the padding inside their
+/// artwork sets the proportion -- but measured out of that artwork it is 19 units of
+/// glyph in a 44-unit face, which is 43.18%.
+///
+/// The old button asked for `height: 20` on a 56-unit canvas whose glyph was 19
+/// units, which put the Apple logo at **6.8pt in a 48pt button: 14%, a third of the
+/// size it should have been** -- with the asset's white plate reading as the logo at
+/// 15.7pt. `assets/icons/appleLogo.svg` is cropped tight to the glyph, so this ratio
+/// is applied here rather than coming from padding in the file.
+///
+/// Google's mark uses the same value. Their own spec is an 18dp mark in a 40dp button
+/// (45%), near enough that one number serves both -- and Apple explicitly allow it:
+/// "If you need to horizontally align the Apple logo with other authentication logos,
+/// you can adjust the space between the logo and the button's leading edge."
+const double kSignInContentRatio = 19 / 44;
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -111,7 +141,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
             const SizedBox(height: 48),
             _SignInButton(
               label: l10n.continueWithApple,
-              icon: 'assets/icons/appleBlackIcon.svg',
+              icon: const AppleLogo(
+                height: kSignInButtonHeight * kSignInContentRatio,
+                // White, to match the title. Apple: "Within a button, both items
+                // must be either black or white".
+                color: Colors.white,
+              ),
               backgroundColor: Colors.black,
               textColor: Colors.white,
               onPressed: () =>
@@ -120,7 +155,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
             const SizedBox(height: 12),
             _SignInButton(
               label: l10n.continueWithGoogle,
-              icon: 'assets/icons/googleIcon.svg',
+              icon: const GoogleIcon(
+                height: kSignInButtonHeight * kSignInContentRatio,
+              ),
               backgroundColor: Colors.white,
               textColor: Colors.black,
               onPressed: () =>
@@ -135,7 +172,15 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
 class _SignInButton extends StatelessWidget {
   final String label;
-  final String icon;
+
+  /// The provider's mark, already sized and coloured.
+  ///
+  /// A widget rather than an asset path, because the two marks are not
+  /// interchangeable: Apple's is one tintable shape that must take the title's
+  /// colour, Google's is four fixed brand colours that must not be touched. The
+  /// old `String icon` field made them look like the same kind of thing, which is
+  /// how a black apple on a white plate ended up on a black button.
+  final Widget icon;
   final Color backgroundColor;
   final Color textColor;
   final VoidCallback onPressed;
@@ -154,7 +199,7 @@ class _SignInButton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: SizedBox(
         width: double.infinity,
-        height: 48,
+        height: kSignInButtonHeight,
         child: ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: backgroundColor,
@@ -162,8 +207,14 @@ class _SignInButton extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
+            // Spelled out rather than inherited. Apple tie the title's size to the
+            // button's height, and Material's default button text style does not
+            // know about this button's height -- which is how the title ended up at
+            // 29% of it. The size lives in the token, not here: see
+            // `text_style_test.dart`, which refuses a `fontSize` at a call site.
+            textStyle: AppTextStyles.signIn,
           ),
-          icon: SvgPicture.asset(icon, height: 20),
+          icon: icon,
           label: Text(label),
           onPressed: onPressed,
         ),

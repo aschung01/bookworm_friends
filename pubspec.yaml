@@ -173,8 +173,7 @@ flutter:
     # `StreakFlame` falls back to a hand-built ignition while the folder is empty, so this
     # is not load-bearing until the file arrives. Build sheet: `docs/streak-flame-rive.md`.
     - assets/rive/
-    - assets/icons/appleWhiteIcon.svg
-    - assets/icons/appleBlackIcon.svg
+    - assets/icons/appleLogo.svg
     - assets/icons/googleIcon.svg
     - assets/icons/bookmarkIcon.svg
     - assets/icons/stretchHorizontalIcon.svg

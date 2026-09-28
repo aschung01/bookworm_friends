@@ -453,6 +453,55 @@ abstract final class AppTextStyles {
     leadingDistribution: TextLeadingDistribution.even,
   );
 
+  /// The title inside a provider sign-in button, and nothing else.
+  ///
+  /// **19pt because Apple tie this size to the button's height rather than to our
+  /// scale.** For a custom Sign in with Apple button they specify the title at 43% of
+  /// the button height -- "the button's height would be 233% of the title's font
+  /// size" -- and `kSignInButtonHeight` is 44, Apple's own recommended default. 19 is
+  /// that 43%, and `sign_in_button_test.dart` pins the two together so neither can
+  /// drift.
+  ///
+  /// It is a token rather than a `copyWith(fontSize:)` at the call site because the
+  /// guard in `text_style_test.dart` forbids the latter, and was right to catch it:
+  /// this button used to inherit Material's 14pt, which is 29% of its height, so the
+  /// title read two thirds the size of Apple's own. That is precisely the case the
+  /// guard describes -- a call site wanting a size the scale does not have means the
+  /// scale is missing one, not that the call site deserves an exception.
+  ///
+  /// [label]'s family but **not its weight**: w400, where `label` is w600.
+  ///
+  /// The first version inherited `label`'s w600 and read too heavy, which is an
+  /// optical-size problem rather than a taste one. `label` is a **13pt** token, and
+  /// weight perception scales with size — the same w600 at 19pt is a noticeably
+  /// bolder object. Judged off a three-way render (400 / 500 / 600) it was the
+  /// heaviest of the three by a clear margin.
+  ///
+  /// **500 won that comparison and is deliberately not taken.** Apple permit it
+  /// ("Title font. You can also adjust the font's weight and size") and Google's
+  /// branding guidelines specify Google Sans *Medium* for their own button, so Medium
+  /// is what both references point at. But Pretendard ships here at 400/600/700/800 —
+  /// `scripts/build_fonts.py` subsets exactly those — so 500 means a sixth face and
+  /// about **1.2MB for one label**. That is the purchase this project already refused
+  /// for DesignHouse, which "shipped 750KB for one label" and is why it sits in
+  /// `assets/fonts/` unregistered. At 19pt the extra size does the work the extra
+  /// weight was doing.
+  ///
+  /// **Do not ask for w500 here without registering the face.** Pretendard has no
+  /// Medium in the bundle, so the engine would answer with a neighbouring cut — the
+  /// same trap [spine] records for asking Gowun Batang for an 800 it does not ship.
+  ///
+  /// No [_tabular] -- this is words, not a column of figures.
+  static const TextStyle signIn = TextStyle(
+    fontFamily: AppFonts.sans,
+    fontSize: 19,
+    fontWeight: FontWeight.w400,
+    height: 1.2,
+    letterSpacing: 0,
+    textBaseline: TextBaseline.alphabetic,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
   /// The uppercase, letterspaced stat label. Pass the string in natural case and
   /// call `toUpperCase()` at the call site — it is a no-op on Korean, which is
   /// the point of not baking the casing into the l10n string.
@@ -479,6 +528,7 @@ abstract final class AppTextStyles {
     'subtitle': subtitle,
     'body': body,
     'label': label,
+    'signIn': signIn,
     'spine': spine,
     'caption': caption,
   };

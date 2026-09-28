@@ -23,7 +23,7 @@ import 'package:bookworm_friends/ui/widgets/bottom_sheets/compliment_bottom_shee
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/libby_library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/dialogs/adaptive_dialog_action.dart';
-import 'package:bookworm_friends/ui/widgets/svg_icons.dart';
+import 'package:bookworm_friends/ui/widgets/sign_in_identity_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -634,16 +634,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               _SettingsLabelItem(labelText: l10n.accountSection),
               _SettingsMenuItem(
                 labelText: l10n.email,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (auth.user?.appMetadata['provider'] == 'apple')
-                      const AppleBlackIcon(width: 18, height: 18)
-                    else
-                      const GoogleIcon(width: 18, height: 18),
-                    const SizedBox(width: 10),
-                    Text(auth.user?.email ?? '', style: AppTextStyles.label),
-                  ],
+                trailing: SignInIdentityRow(
+                  appMetadata: auth.user?.appMetadata,
+                  email: auth.user?.email ?? '',
                 ),
               ),
               // The "Allow profile search" switch stood here and is gone.

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
-const String _appleWhiteIcon = 'assets/icons/appleWhiteIcon.svg';
-const String _appleBlackIcon = 'assets/icons/appleBlackIcon.svg';
+const String _appleLogo = 'assets/icons/appleLogo.svg';
 const String _googleIcon = 'assets/icons/googleIcon.svg';
 
 /// Public, alone among these, so that [ReadingBookmark] can warm it before an export:
@@ -37,60 +36,49 @@ const String kStretchHorizontalIconAsset =
 const String kStretchHorizontalIconNativeAsset =
     "assets/icons/stretchHorizontalIcon.png";
 
-class AppleWhiteIcon extends StatelessWidget {
-  final double? width;
-  final double? height;
-  final Color? color;
-  const AppleWhiteIcon({super.key, this.width, this.height, this.color});
+/// The Apple logo, sized and coloured by the caller.
+///
+/// **[color] is required, and [height] sizes the glyph itself.** Both replace a
+/// pair of widgets, `AppleWhiteIcon` and `AppleBlackIcon`, that wrapped Apple's
+/// *logo-only button* artwork -- files carrying an opaque 44x44 plate behind the
+/// glyph. Which of the two you picked therefore decided a background as well as an
+/// ink, and getting it wrong was invisible in one theme and glaring in the other:
+/// the black-plated file vanished on a black button, and the white-plated one drew a
+/// pale square on the dark theme's surface. One tintable glyph removes the choice.
+///
+/// Apple require the logo and the title to be the same colour and both either black
+/// or white inside a button. That cannot be enforced by a type, but it is why this
+/// takes a colour rather than defaulting to one.
+class AppleLogo extends StatelessWidget {
+  final double height;
+  final Color color;
+
+  const AppleLogo({super.key, required this.height, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return SvgPicture.asset(
-      _appleWhiteIcon,
-      width: width,
+      _appleLogo,
+      // Height only. The asset's box is cropped tight to the glyph and the glyph is
+      // taller than it is wide, so constraining the width would scale it down.
       height: height,
-      colorFilter: color != null
-          ? ColorFilter.mode(color!, BlendMode.srcIn)
-          : null,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
     );
   }
 }
 
-class AppleBlackIcon extends StatelessWidget {
-  final double? width;
-  final double? height;
-  final Color? color;
-  const AppleBlackIcon({super.key, this.width, this.height, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      _appleBlackIcon,
-      width: width,
-      height: height,
-      colorFilter: color != null
-          ? ColorFilter.mode(color!, BlendMode.srcIn)
-          : null,
-    );
-  }
-}
-
+/// Google's mark. **Never tinted** -- unlike [AppleLogo] it is four brand colours,
+/// and Google's own guidelines forbid recolouring it. There is deliberately no
+/// `color` parameter; one used to exist and applying it flattened the mark to a
+/// single-colour blob.
 class GoogleIcon extends StatelessWidget {
   final double? width;
   final double? height;
-  final Color? color;
-  const GoogleIcon({super.key, this.width, this.height, this.color});
+  const GoogleIcon({super.key, this.width, this.height});
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      _googleIcon,
-      width: width,
-      height: height,
-      colorFilter: color != null
-          ? ColorFilter.mode(color!, BlendMode.srcIn)
-          : null,
-    );
+    return SvgPicture.asset(_googleIcon, width: width, height: height);
   }
 }
 
