@@ -142,6 +142,73 @@
             </p>
 
             <h2>Open questions</h2>
+            <a class="row" href="status-progress-merge/index.html">
+                <div class="nm">
+                    <span class="t"
+                        >Status + progress as one sheet &mdash; and where a book you
+                        gave up on lives</span
+                    >
+                    <span class="badge open"
+                        >nothing built &middot; 3 versions &middot; 5 questions
+                        open &middot; needs a status value, a page-count write
+                        and a copy sweep</span
+                    >
+                    <span class="arrow">&rarr;</span>
+                </div>
+                <div class="ds">
+                    <b>Status is largely a function of position, and the model already
+                    encodes the hard part.</b>
+                    <code>progress == null</code> means &ldquo;never asked&rdquo; and
+                    <code>progress == 0</code> means &ldquo;opened it and got
+                    nowhere&rdquo; &mdash; two different states, per
+                    <code>band_progress_row.dart</code>. So <code>null</code> is
+                    Not started, <code>0&nbsp;&le;&nbsp;p&nbsp;&lt;&nbsp;1</code> is
+                    Reading and <code>p&nbsp;==&nbsp;1</code> is Finished, which makes
+                    <code>BookStatusSelector</code> and the position field two controls
+                    for one fact &mdash; and that is why every arrangement of them felt
+                    like a compromise.
+                    <b>Largely, not wholly, and that is the finding:</b> position cannot
+                    tell &ldquo;at 46% and still reading&rdquo; from &ldquo;closed at
+                    46%&rdquo;, so <b>set aside is its own status, value 3</b>. An
+                    earlier revision derived it from <code>status 2 + progress &lt; 1</code>
+                    and that is kept browsable as the <code>derived</code> version:
+                    <code>finishedBooksProvider</code> is <code>.eq('status', 2)</code>,
+                    so it would have quietly enrolled abandoned books in the Library Card
+                    hero, pace, most-read author, the card cover row and a friend&rsquo;s
+                    read count. Every objection to a fourth <i>status</i> turned out to be
+                    an objection to a fourth <i>segment</i> &mdash; width, a native view
+                    with no auto-shrink, <code>status.clamp(&hellip;)</code> silently
+                    showing &ldquo;Read&rdquo; &mdash; and this design has no segmented
+                    control at all.
+                    <b>The sheet is one glassy drag-only track and three tappable
+                    numerals</b> &mdash; percent, current page, total &mdash; each opening
+                    its own wheel+keypad sheet. No &minus;&nbsp;/&nbsp;+, and a tap on the
+                    bar does nothing, which is a different answer to the stray-touch
+                    rejection that killed <code>band-scrubber</code> than the arming this
+                    page first drew. Estimated <b>306pt against 342 and 368 today</b> (only
+                    the 368 is exact &mdash; <code>_sheetHeight</code>), because a 101-stop
+                    wheel spends 256pt on one scalar and a track spends 48 and carries the
+                    status too.
+                    <b>Two deletions and one new capability.</b>
+                    <code>ReadTodayFieldRow</code> goes, since the wheel path already calls
+                    <code>setRead(&hellip;, read: true)</code>; the band&rsquo;s second door
+                    goes. And the underlined total makes <code>page_count</code> editable
+                    &mdash; written once by <code>addBook</code> and never again today &mdash;
+                    which lights Page mode up for the <b>~65% of books that have no
+                    count</b>. <b>Open:</b> deleting the day-stamp row leaves no shipped
+                    undo for a night (<code>setRead(read: false)</code> had two callers and
+                    the other is <code>kDebugMode</code>-gated); Reading&nbsp;&rarr;&nbsp;Interested
+                    becomes unreachable once &ldquo;Put back on the shelf&rdquo; goes, since a
+                    position cannot be cleared; whether a friend&rsquo;s library shows the
+                    <code>All</code> filter; what that filter&rsquo;s two labels should say,
+                    given <code>All</code> would sit two rows above <code>All time</code>;
+                    whether <code>Read</code> becomes <code>Finished</code> and
+                    <code>Interested</code> becomes <code>Not started</code>; and it inverts
+                    <code>ss-finished</code>, which removed the position row at status 2
+                    because &ldquo;a finished book is at the end by definition&rdquo;.
+                    Checks: <code>node docs/mockups/status-progress-merge/verify.js</code>.
+                </div>
+            </a>
             <a class="row" href="mascot/index.html">
                 <div class="nm">
                     <span class="t"
