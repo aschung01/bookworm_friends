@@ -1378,10 +1378,21 @@ opening.** That is how this was caught, and it is the check to apply to the rest
 band: the `Wrap`s in there are for accessibility sizes and long locales, so one wrapping in
 English at 1.0 means the content is too much, not that the layout is working.
 
-### Rendering the band card, and the harness that lied about it
+### Rendering these screens, and the harness that lied about one
+
+`flutter test test/book_status_sheet_render_preview.dart` writes
+`build/status_sheet_preview/*.png` — the merged sheet in all four states, and the Reading
+state in both themes and both locales on the shortest phone. **The slider in those frames is
+`CupertinoSlider`**, since `useNativeGlass` is false under `flutter test`; the native glass
+track can only be judged on an iOS 26 device. Everything else in the sheet is settled there.
 
 `flutter test test/reading_period_row_render_preview.dart` writes
-`build/period_row_preview/{light,dark}.png` across six states. Its first frame came back
+`build/period_row_preview/{light,dark}.png` across six states.
+
+**Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
+does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
+why `AGENTS.md` always names them by path. Adding one does not move the 2011, and a preview
+that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
 inherits its colour fell back to `MaterialApp`'s `_errorTextStyle`, while the spans setting
