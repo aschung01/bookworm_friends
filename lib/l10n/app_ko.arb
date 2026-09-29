@@ -51,7 +51,6 @@
   "howFarIn": "\uc5b4\ub514\uae4c\uc9c0 \uc77d\uc5c8\ub098\uc694?",
   "progressPage": "{page}\ucabd",
   "progressOfPages": "/ {total}",
-  "progressApproxPage": "~ {page}\ucabd",
   "progressModePercent": "\ud31c\uc11c\ud2b8",
   "progressModePage": "\ucabd",
   "progressPageColumn": "\ucabd",

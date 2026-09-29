@@ -134,6 +134,7 @@
   },
   "progressPage": "p.{page}",
   "@progressPage": {
+    "description": "The only page label now, for a page the reader typed and for one the app derived alike. Its sibling progressApproxPage printed \u0060~ p.{page}\u0060 for the derived case and was deleted on instruction: the same number rendered two ways in two places reads as a glitch rather than as a distinction, and the mark was doing that in the merged sheet's read-out and under the percent wheel. The cost is real and small \u2014 in percent mode the wheel has 101 stops, so at 320 pages one stop is 3.2 pages, and a reader who aimed at p.148 is now shown a flat p.147 as though they had said it. The derived-versus-typed distinction survives in the data, where progress_page is null or set, which is what still makes a typed page round-trip exactly. If an approximate marker is ever wanted back: U+2248 is NOT available, because the app's faces are subset to Latin-1 plus Hangul and the maths glyph drew from a platform fallback in another typeface \u2014 which is why the removed mark was an ASCII tilde.",
     "placeholders": {
       "page": {
         "type": "int"
@@ -145,15 +146,6 @@
     "description": "The dimmed second half of the band's read-out, following progressPage. Split from it so the total can be drawn at 60% opacity: the page is the answer and the count is context.",
     "placeholders": {
       "total": {
-        "type": "int"
-      }
-    }
-  },
-  "progressApproxPage": "~ p.{page}",
-  "@progressApproxPage": {
-    "description": "The derived-page rider, under the percent wheel and inside the merged sheet's one-line read-out. Approximate on purpose: the wheel has 101 stops, so at 320 pages one stop is 3.2 pages and an exact page is not expressible. The tilde is where that cost is admitted to the reader. An ASCII tilde and not U+2248 \u2014 the app's fonts are subset to Latin-1 plus Hangul, so the maths glyph was absent from all three faces and drew from a platform fallback in a different typeface.",
-    "placeholders": {
-      "page": {
         "type": "int"
       }
     }

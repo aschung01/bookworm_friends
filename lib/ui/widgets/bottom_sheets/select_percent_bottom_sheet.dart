@@ -776,7 +776,7 @@ class _Rider extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final String? text;
     if (mode == _Mode.page) {
-      // Blank rather than the derived `~ p.N`: in page mode the percent is what the
+      // Blank rather than the derived `p.N`: in page mode the percent is what the
       // rider translates *to*, and with an empty field there is nothing to
       // translate. Falling through to the percent branch would print a page derived
       // from a stop the reader is not looking at.
@@ -787,7 +787,13 @@ class _Rider extends StatelessWidget {
           : '${(page! / pageCount! * 100).round()}%';
     } else {
       final derived = bookProgressPage(stop / 100, pageCount);
-      text = derived == null ? null : l10n.progressApproxPage(derived);
+      // **`progressPage`, not the deleted `progressApproxPage`.** The rider read `~ p.213`,
+      // and the tilde admitted that a 101-stop wheel cannot express every page — 3.2 of them
+      // per stop at 320 pages. It was removed on instruction from the merged sheet's read-out,
+      // and removing it here too is the point rather than collateral: a mark that means
+      // "derived" under the wheel and nothing in the read-out the wheel feeds is worse than no
+      // mark, because the same number then renders two ways for one book.
+      text = derived == null ? null : l10n.progressPage(derived);
     }
     return SizedBox(
       height: 36,

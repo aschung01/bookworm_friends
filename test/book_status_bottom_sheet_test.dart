@@ -485,7 +485,7 @@ void main() {
 
       expect(find.text('46%'), findsOneWidget);
       expect(find.text('p.200'), findsOneWidget);
-      expect(find.text('~ p.199'), findsNothing);
+      expect(find.text('p.199'), findsNothing);
       expect(_save, findsNothing);
     });
 
@@ -965,7 +965,7 @@ void main() {
         expect(find.text('46%'), findsOneWidget);
         // Approximate on purpose: the wheel has 101 stops, so at 432 pages one stop is 4.3
         // pages and an exact page is not expressible. The tilde is where that is admitted.
-        expect(find.text('~ p.199'), findsOneWidget);
+        expect(find.text('p.199'), findsOneWidget);
         expect(find.text('/ $_kPageCount'), findsOneWidget);
       },
     );
@@ -974,7 +974,7 @@ void main() {
       'Given the reader typed a page, Then the line prints that page and not the derived one',
       (tester) async {
         // The obvious "improvement" is to derive the page whenever the book has a count,
-        // which would put `~ p.199` where the reader said p.200.
+        // which would put `p.199` where the reader said p.200.
         await _openSheet(
           tester,
           currentStatus: bookStatusReading,
@@ -984,7 +984,7 @@ void main() {
         );
 
         expect(find.text('p.200'), findsOneWidget);
-        expect(find.text('~ p.199'), findsNothing);
+        expect(find.text('p.199'), findsNothing);
       },
     );
   });
@@ -1652,7 +1652,7 @@ void main() {
           pageCount: _kPageCount,
         );
 
-        await tester.tap(find.text('~ p.199'));
+        await tester.tap(find.text('p.199'));
         await tester.pumpAndSettle();
 
         expect(find.text('Current page'), findsOneWidget);
@@ -1756,7 +1756,7 @@ void main() {
         await _confirm(tester);
 
         // The read-out re-derives: 46% of 432 is p.199 where 46% of 500 was p.230.
-        expect(find.text('~ p.199'), findsOneWidget);
+        expect(find.text('p.199'), findsOneWidget);
 
         await tester.tap(_save);
         await tester.pumpAndSettle();

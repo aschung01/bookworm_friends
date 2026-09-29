@@ -147,6 +147,17 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   rather than deleted. The void on Not started went 165 → **214**, over half that sheet; the jump
   the frame prevents went 115 → 165 in the same move, so both sides of the trade got worse at
   once. Three ways out are written into the spec and none is taken.
+- **The tilde is gone from the derived page, and `progressApproxPage` with it**, on
+  instruction. The mark distinguished a page the app computed from one the reader typed, and
+  it was removed from **both** call sites rather than only the read-out that was pointed at:
+  the wheel's rider carried it too, and a mark meaning "derived" under the wheel and nothing
+  in the read-out the wheel feeds is a rendering glitch rather than a distinction. The cost is
+  that a percent-mode reader who aimed at p.148 on a 101-stop wheel now sees a flat p.147.
+  `reading_state_line.dart`'s doc used to say the mark was "the entire reason `progress_page`
+  is stored" — that was wrong independently of this change; the column earns its place by
+  making a typed page round-trip exactly, which is untouched. Two cases in
+  `reading_state_line_test.dart` had to be re-aimed from the *format* to the *value*, because
+  as written they would have passed on a widget that threw the stored page away.
 - **`ConstrainedBox(minHeight:)`, never `SizedBox`.** A fixed height trades a moving control
   for a clipped one at large accessibility text sizes. The `AnimatedSize` is kept for exactly
   that residual case and for nothing else.

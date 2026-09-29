@@ -1447,9 +1447,26 @@ restamp the closing with today. Same rule the sheet applies to `start`.
 
 ### Two small traps in the strings and one in the sheet's title
 
-**`U+2248` is not in the app's font subset.** The faces are Latin-1 plus Hangul, so `≈`
-came from a platform fallback in a different typeface. `progressApproxPage` uses an ASCII
-`~`. Pre-existing, and the merged read-out is what made it prominent.
+**There is no approximate marker on a page number any more, and `U+2248` is why there could
+not be a good one.** `progressApproxPage` printed `~ p.213` for a page the app derived from a
+fraction, against `p.213` for one the reader typed. It is **deleted** — key and both
+translations — on instruction.
+
+The mark existed because in percent mode the wheel has 101 stops, so at 320 pages one stop is
+3.2 pages: a reader aiming at p.148 lands on p.147, and the tilde admitted it. So the cost of
+losing it is that the read-out states the arithmetic's page as flatly as the reader's. It was
+affordable because the same mark appeared **under the wheel too**, and one mark meaning
+"derived" in two places and nothing in the read-out those two feed is read as a rendering
+glitch rather than as a distinction — which is why both call sites went, not just the one that
+was pointed at.
+
+**The derived-versus-typed distinction survives in the data**, where `progress_page` is null
+or set, and that is still what makes a typed page round-trip exactly.
+`reading_state_line.dart` used to credit the column's existence to the tilde; it does not.
+
+**If a marker is ever wanted back, it cannot be `≈`.** The faces are subset to Latin-1 plus
+Hangul, so `U+2248` drew from a platform fallback in a different typeface — which is why the
+one that shipped was an ASCII `~`.
 
 **The sheet's heading is `readingProgressTitle` ("Reading progress"), not the book
 title.** A sheet that names the book says nothing about what it does, and the book is

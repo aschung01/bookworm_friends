@@ -89,8 +89,13 @@ Future<void> _pump(
   );
 }
 
-/// What the default `_pump` draws for its page: derived, so it wears the tilde.
-const String _derivedPage = '~ p.213';
+/// What the default `_pump` draws for its page.
+///
+/// **It read `~ p.213` and the tilde is gone**, deleted with `progressApproxPage`: a derived
+/// page and a typed one print identically now. Kept as a named constant anyway, because the
+/// cases below care *which* number is drawn and the `derived against given` group still has
+/// something to say — the distinction moved from the format to the number.
+const String _derivedPage = 'p.213';
 
 /// The decoration actually drawn on a part, merged the way `Text` merges it.
 TextDecoration? _decorationOf(WidgetTester tester, String label) =>
@@ -353,19 +358,27 @@ void main() {
   });
 
   group('derived against given', () {
+    // **The tilde is gone, and this group is about the number now rather than the format.**
+    // A derived page printed `~ p.147` and a typed one `p.147`; `progressApproxPage` was
+    // deleted on instruction, so both print `p.147` and the two cases that used to tell the
+    // formats apart would now pass on a widget that had thrown the stored page away. They
+    // assert the *value* instead, which is the claim worth holding: `given` still decides
+    // which number is drawn, it just no longer decides how.
     testWidgets(
-      'Given no typed page, When the line is drawn, Then the page wears the tilde',
+      'Given no typed page, Then the page is the arithmetic and is not marked as such',
       (tester) async {
         await _pump(tester, progress: 0.46, pageCount: 320);
 
-        // 46% of 320 is p.147, and in percent mode a stop is 3.2 pages — so the page
-        // is the arithmetic's, not the reader's, and it says so.
-        expect(find.text('~ p.147'), findsOneWidget);
-        expect(find.text('p.147'), findsNothing);
+        // 46% of 320 is p.147, and in percent mode a stop is 3.2 pages — so this page is
+        // the arithmetic's rather than the reader's, and the line no longer says so. That
+        // is the accepted cost of removing the mark: a reader who aimed at p.148 is shown
+        // p.147 as flatly as if they had typed it.
+        expect(find.text('p.147'), findsOneWidget);
+        expect(find.textContaining('~'), findsNothing);
       },
     );
 
-    testWidgets('Given a typed page, When the line is drawn, Then the tilde is gone', (
+    testWidgets('Given a typed page, Then it is that page and not the derived one', (
       tester,
     ) async {
       // **The fraction is deliberately the one that does not agree.** 0.46 of 432
@@ -376,10 +389,11 @@ void main() {
       // then pass on a version that had thrown the stored one away.
       await _pump(tester, progress: 0.46, progressPage: 200, pageCount: 432);
 
-      // The whole reason `progress_page` is stored: a page past a count it no longer
-      // divides evenly into is still the page the reader said.
+      // **The reason `progress_page` is stored**, which the widget's doc used to credit to
+      // the tilde: a page past a count it no longer divides evenly into is still the page
+      // the reader said. Removing the mark did not touch this, and the pairing of 0.46 with
+      // a typed 200 is what proves it — the two numbers cannot be confused for each other.
       expect(find.text('p.200'), findsOneWidget);
-      expect(find.textContaining('~'), findsNothing);
       expect(find.textContaining('199'), findsNothing);
     });
 
@@ -396,7 +410,7 @@ void main() {
         expect(page, 213);
 
         await _pump(tester, progress: progress, pageCount: pageCount);
-        expect(find.text('~ p.$page'), findsOneWidget);
+        expect(find.text('p.$page'), findsOneWidget);
       },
     );
   });
@@ -425,7 +439,7 @@ void main() {
         // The other half of the same distinction, which a test on null alone would
         // let a `progress == 0` guard pass.
         expect(find.text('0%'), findsOneWidget);
-        expect(find.text('~ p.0'), findsOneWidget);
+        expect(find.text('p.0'), findsOneWidget);
       },
     );
   });
@@ -480,9 +494,9 @@ void main() {
         // `p.{page}` against `{page}쪽` is why each whole span is underlined rather
         // than its digits: the number sits on the other side of the affix here, so
         // there is no locale-independent way to split the formatted string.
-        expect(find.text('~ 213쪽'), findsOneWidget);
+        expect(find.text('213쪽'), findsOneWidget);
         expect(find.text('/ 462'), findsOneWidget);
-        expect(_decorationOf(tester, '~ 213쪽'), TextDecoration.underline);
+        expect(_decorationOf(tester, '213쪽'), TextDecoration.underline);
         expect(_decorationOf(tester, '/ 462'), TextDecoration.underline);
       },
     );

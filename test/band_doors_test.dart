@@ -154,7 +154,7 @@ void main() {
         // rather than restated as a literal, which is what makes it the *same*
         // rounding rather than a second opinion that happens to agree today.
         expect(bookProgressPage(0.46, 320), 147);
-        expect(_inReadOut(find.text('~ p.147')), findsOneWidget);
+        expect(_inReadOut(find.text('p.147')), findsOneWidget);
       },
     );
 

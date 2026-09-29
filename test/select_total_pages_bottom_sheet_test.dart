@@ -386,7 +386,7 @@ void main() {
       tester,
     ) async {
       // The progress wheel's rider translates an answer into the other unit. Every
-      // translation available here — "~ p.213", "46%" — would need the position, so the
+      // translation available here — "p.213", "46%" — would need the position, so the
       // absence of the line is the absence of the value.
       await _openSheet(tester, initialTotalPages: 462);
 

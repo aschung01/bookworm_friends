@@ -58,15 +58,24 @@ const double _runGap = 2;
 /// translated output or a second set of keys holding the affixes. Underlining the span
 /// is also the truer affordance: the whole span is the tap target.
 ///
-/// ## A derived page is marked and a given page is not
+/// ## A derived page reads the same as a given one, and used to not
 ///
-/// [progressPage] non-null means the reader typed a page, so it is printed exactly, as
-/// `l10n.progressPage`. Null means the page was computed from the fraction, so it is
-/// printed as `l10n.progressApproxPage` — `~ p.213`. **That distinction is the entire
-/// reason `progress_page` is stored**: in percent mode the wheel has 101 stops, so at
-/// 320 pages a stop is 3.2 pages and p.148 is not expressible, and a reader who aimed
-/// at it is shown `~ p.147`. Once they have said "p.213" the tilde disappears because
-/// there is nothing left to approximate.
+/// [progressPage] non-null means the reader typed a page and it is printed as typed;
+/// null means it was computed from the fraction. **Both print `p.213` now.** The derived
+/// case used to be `l10n.progressApproxPage` — `~ p.213` — and the tilde was removed on
+/// instruction, taking the ARB key with it.
+///
+/// What the mark was for: in percent mode the wheel has 101 stops, so at 320 pages a stop
+/// is 3.2 pages and p.148 is not expressible, and a reader who aimed at it lands on p.147.
+/// The tilde was where that was admitted. **So the cost of losing it is that the line now
+/// states a page the app computed as though the reader had said it** — off by up to a
+/// stop's worth. Small, and the reason it is affordable is that the same tilde appeared
+/// under the percent wheel too: one mark meaning "derived" in two places and nothing in a
+/// third is read as a rendering glitch rather than as a distinction.
+///
+/// **It is not the reason `progress_page` is stored**, which this section used to claim.
+/// The column earns its place by making a typed page round-trip exactly — `given` still
+/// decides the number here, it just no longer decides the format — and that is untouched.
 ///
 /// The derived page comes from [bookProgressPage] and is **never recomputed here**.
 /// That free function is the app's single rounding site precisely so the band, the
@@ -342,11 +351,9 @@ class ReadingStateLine extends StatelessWidget {
     final page = given ?? bookProgressPage(value, total)!;
 
     return [
-      _pageDoor(
-        context,
-        given == null ? l10n.progressApproxPage(page) : l10n.progressPage(page),
-        onPageTap,
-      ),
+      // One label for both cases. `given` still decides the *number* — a typed page is
+      // printed as typed rather than re-derived — it just no longer decides the format.
+      _pageDoor(context, l10n.progressPage(page), onPageTap),
       _pageDoor(context, l10n.progressOfPages(total), onTotalTap),
     ];
   }

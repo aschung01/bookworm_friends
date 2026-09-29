@@ -640,6 +640,31 @@ arithmetic slip:** at the origin the read-out collapses to a single word — no 
 pair — and neither date row is drawn, which the row-sum did not model. The sheet is comfortably
 shorter than both it replaces (342 and 368) in every state.
 
+### The derived page lost its tilde
+
+`progressApproxPage` printed `~ p.213` for a page computed from the fraction, against
+`p.213` for one the reader typed. **It is deleted** — key, both translations and both call
+sites.
+
+The mark existed because in percent mode the wheel has 101 stops, so at 320 pages one stop is
+3.2 pages: a reader aiming at p.148 lands on p.147, and the tilde was where that was admitted.
+**The cost of losing it is that the read-out states the arithmetic's page as flatly as the
+reader's.**
+
+**Both call sites, not just the read-out that was pointed at.** The wheel's rider carried the
+same mark, and one mark meaning "derived" under the wheel and nothing in the read-out the wheel
+feeds is read as a rendering glitch rather than as a distinction.
+
+**It was never "the entire reason `progress_page` is stored"**, which `reading_state_line.dart`
+claimed. The column earns its place by making a typed page round-trip exactly — `given` still
+decides which number is drawn, it just no longer decides the format — and that is untouched.
+Two cases had to be re-aimed from the format to the value for the same reason: as written they
+would have passed on a widget that threw the stored page away.
+
+If a marker is ever wanted back, it cannot be `≈`: the faces are subset to Latin-1 plus Hangul,
+so `U+2248` drew from a platform fallback in another typeface, which is why the one that shipped
+was an ASCII tilde.
+
 ### Save and Reset sit at the foot, and the read-out ends at the right edge
 
 Save was in the title row beside the heading, at 92×32. It was asked for at the foot, and the

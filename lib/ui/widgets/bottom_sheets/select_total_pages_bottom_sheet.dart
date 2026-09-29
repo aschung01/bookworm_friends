@@ -74,7 +74,7 @@ const Key kTotalPagesSheetKey = ValueKey('total-pages-sheet');
 /// fraction could arrive in or leave by, so no future edit can move one by accident.
 /// That is also why there is no rider line under the field: the progress wheel's rider
 /// translates an answer into the other unit, and every translation available here
-/// ("~ p.213", "46%") would need the position.
+/// ("p.213", "46%") would need the position.
 ///
 /// The design record is `docs/superpowers/specs/2026-09-28-status-progress-merge-design.md`
 /// ("Three tappable numerals").
