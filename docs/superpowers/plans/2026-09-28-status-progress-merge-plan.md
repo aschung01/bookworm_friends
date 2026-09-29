@@ -72,8 +72,28 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
 - **Deleting `BandProgressRow` took the band's numerals with it**, which no task said to do.
   The spec and the drawing both have the card carrying "status, dates *and* position"; the
   band went silent about the position for a round, and a test was written asserting that
-  silence before it was caught. `ReadingPeriodRow` now takes `progress` / `pageCount` and
-  prints `46% · p.147 / 320` beside the dates.
+  silence before it was caught. `ReadingPeriodRow` now takes `progress` / `pageCount`.
+- **And then four values did not fit in the card, which is the one defect a reader reported
+  from the finished build.** "This looks too messy", against `[Reading] 2026.09.13 ~ | 71% ·
+  p.307 / 432 | 15 days` wrapped onto two lines. Two separate faults, and the count was the
+  lesser one: two of the four values were redundant with the other two (start date ↔ elapsed
+  days, percent ↔ page), and three things on the line were green (the badge and both
+  `brandText` values). The card now has **two slots** — *where or when*, then *how long* —
+  with exactly one of them the answer. The start date is gone from the card; the finish date
+  survives, because nothing else on the card implies it. Recorded in the spec's *One sheet,
+  one door*, in `reading_period_row.dart`, and pinned by `reading_period_row_test.dart`'s
+  `the two slots` group.
+- **A finished book was the state that still wrapped after the first fix**, which is the
+  detail worth keeping: the one book whose reading period is *complete* is the one that
+  cannot print it, because a closed range is twice as wide as an open one. It shows its
+  finish date and drops the start.
+- **The render harness for that card lied in its first frame, in the way `AGENTS.md` already
+  warns about one level down.** `test/reading_period_row_render_preview.dart` had no
+  `Material` ancestor, so every inherited `Text` fell back to `MaterialApp`'s
+  `_errorTextStyle` — red with a yellow double underline — while the spans that set a colour
+  explicitly survived. The result looks like a selectively broken widget rather than a broken
+  harness, and it cost a round of reading the wrong thing. A missing `Material` and a missing
+  icon font are the two things to check before believing a preview.
 - **`BookStatusBadge` would have said "Other"**, as Task 9 predicted. Its `switch` is now
   lifted into `BookStatusBadge.presentation`, which the sheet's read-out borrows, so the chip
   and the running text cannot drift about either the word or the colour.
@@ -295,13 +315,13 @@ because the label row overflowed, which the `Flexible` restoration made live aga
       is the second door and the only immediate position writer; removing it is what makes
       Save-commits true everywhere.
 - [x] **Step 3: Move `kBandProgressRowSpill` before deleting its file.**
-      `reading_period_row.dart:43` defines `kStatusVerbSpill = kBandProgressRowSpill`, so the
+      `reading_period_row.dart:42` defines `kStatusVerbSpill = kBandProgressRowSpill`, so the
       deletion breaks that file unless the constant moves into it. Its sibling
       `kBandProgressRowResidualPadding` (16 − 14 = 2) exists only for the deleted row and
       goes; the band's bottom padding returns to a plain 16.
 - [x] **Step 4: `spillsIntoBandPadding` simplifies to `true`.** The band passed
       `!showsProgressRow` because the two rows contended for one padding
-      (`reading_period_row.dart:142`). With one row there is no contention, and the comment
+      (`reading_period_row.dart:181`). With one row there is no contention, and the comment
       explaining the contention should go rather than be left describing an absent widget.
 - [x] **Step 5: On a friend's book the chevron and the tap target drop and the read-out
       stays** — the existing rule that _"a door nobody can open must not draw a handle."_

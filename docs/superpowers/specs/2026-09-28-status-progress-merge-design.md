@@ -54,9 +54,42 @@ transition.
 
 ### One sheet, one door
 
-The book-details band becomes a single card carrying status, dates **and** position, and it
-opens one sheet. `BandProgressRow` is deleted; `showSelectPercentBottomSheet` survives but
-is only reached from inside the new sheet.
+The book-details band becomes a single card, and it opens one sheet. `BandProgressRow` is
+deleted; `showSelectPercentBottomSheet` survives but is only reached from inside the new
+sheet.
+
+**This said "carrying status, dates _and_ position", it was built that way, and a reader
+called the result messy.** Four values beside the badge, wrapping onto two lines at the
+default text size on a 390pt phone — which is not a wrap valve opening, it is too much in
+the card — and two of the four were redundant with the other two: the start date and the
+elapsed day count are one fact, and so are the percent and the page.
+
+So the card has **two slots**. The first is _where or when_ and takes the most specific fact
+there is: the position if there is one, the finish date if there is not, nothing if there is
+neither. The second is _how long_, always, because the day count is the one thing neither
+the position nor the sheet behind the card states. Exactly one of the two is `brandText`;
+the other recedes to `secondaryText`, since two green values beside a green badge was the
+other half of "messy".
+
+| state                    | where / when        | how long  |
+| ------------------------ | ------------------- | --------- |
+| Reading, with a position | `71% · p.307 / 432` | `15 days` |
+| Reading, no position yet | —                   | `15 days` |
+| Set aside, with one      | `46% · p.199 / 432` | `15 days` |
+| Finished                 | `2026.09.28`        | `15 days` |
+
+**The start date is gone from the card, and the finish date is not.** `15 days` is what the
+start date was there to say, in the form a reader wants it; nobody subtracts dates to learn
+a book has been open a fortnight. Nothing on the card implies the _finish_ date, so it stays
+— when a book landed is a memory anchor. Both dates remain visible and editable in the sheet
+this card opens, which is what makes the loss affordable.
+
+A finished book was the state that actually wrapped: `2026.09.13 ~ 2026.09.28` plus
+`15 days` does not fit beside a badge at 333pt, so the one book whose reading period is
+_complete_ was the one drawing two lines, and spending both on a closed range with its own
+duration printed underneath it. Dropping `15 days` there instead would have fixed the wrap
+too and costs more — a settled "it took me 15 days" is the satisfying number on a book you
+have finished, where two ISO dates are a database row.
 
 This saves **30pt of row — 40pt in the prompt state**, and the two numbers are not the same
 measurement: the row is a `SizedBox(height: 30)`, while `BandProgressRow`'s doc measures 40

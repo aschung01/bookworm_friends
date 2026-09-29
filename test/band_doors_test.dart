@@ -78,7 +78,7 @@ Future<void> _openTheDoor(WidgetTester tester) async {
 void main() {
   group('the position the band carries', () {
     testWidgets('Given a position, When the band is drawn, Then the card prints it '
-        'beside the dates and the edge is inked', (tester) async {
+        'instead of the dates and the edge is inked', (tester) async {
       // **The band says the position once, in the card, plus the inked edge.**
       //
       // This case was written the other way round first — asserting the band printed
@@ -86,9 +86,14 @@ void main() {
       // merge deleted the second row, `BandProgressRow`, which carried both the numerals
       // and a second door; deleting it took the numerals with it, so the band went silent
       // about the fact that changes most often. The drawing has the card carrying
-      // `46% · p.213`, and the spec says the card carries "status, dates *and*
-      // position". So the numerals came back into this card, and only the door was
+      // `46% · p.213`, so the numerals came back into this card and only the door was
       // removed. Printed *once*, which is what the original absence was really guarding.
+      //
+      // **This used to say "beside the dates", and the spec used to say the card carries
+      // "status, dates *and* position".** Both were true for one round and the result
+      // wrapped onto two lines; the card has two slots now and the position takes the one
+      // the start date had. See `reading_period_row_test.dart` for the rule — this case
+      // only cares that the band states the position exactly once.
       await pumpBookDetails(
         tester,
         book: readingBook(ownerId: meId, progress: 0.46, pageCount: 320),

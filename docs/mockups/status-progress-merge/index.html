@@ -1471,6 +1471,21 @@
                 color: var(--brandText);
                 font-variant-numeric: tabular-nums;
             }
+            /* The card once it carries a position, which inverts the emphasis above.
+               Unmodified `.prd` is the CURRENT card and keeps the old weights so the
+               before-and-after screens can be read against each other: there, the day
+               count is the only value with an answer in it and the range beside it is
+               reference. With a position in the first slot the position IS the answer,
+               and two green values beside a green chip is the "three green things" the
+               shipped card was called messy for. */
+            .dev .prd.pos .dt {
+                color: var(--brandText);
+                font-weight: 700;
+            }
+            .dev .prd.pos .dy {
+                color: var(--text2);
+                font-weight: 400;
+            }
             .dev .brow {
                 display: flex;
                 align-items: center;
@@ -1837,7 +1852,7 @@
                     case "ann":
                         return `<div class="ann">${b.v}</div>`;
                     case "prd":
-                        return `<div class="prd"><span class="chip${b.tone === "fl" ? " fl" : ""}">${b.chip}</span><span class="dt">${b.dates}</span><span class="dy">${b.days}</span><span class="chev" style="color:var(--text2)">&#8250;</span></div>`;
+                        return `<div class="prd${b.pos ? " pos" : ""}"><span class="chip${b.tone === "fl" ? " fl" : ""}">${b.chip}</span><span class="dt">${b.dates}</span><span class="dy">${b.days}</span><span class="chev" style="color:var(--text2)">&#8250;</span></div>`;
                     case "brow":
                         return `<div class="brow"><span class="l">${b.label}</span>${
                             b.v ? `<span class="r">${b.v}</span>` : ""
@@ -2263,7 +2278,7 @@
                         [
                             "one-band",
                             "Band &middot; one row, one door",
-                            'What the merge buys on the details page: the two rows become one card carrying status, dates <i>and</i> position, and the second door goes. Saves the 40pt the prompt state costs today. On a friend\'s book the chevron and the tap target drop, and the read-out stays &mdash; the existing rule that "a door nobody can open must not draw a handle."',
+                            'What the merge buys on the details page: the two rows become one card, and the second door goes. Saves the 40pt the prompt state costs today. On a friend\'s book the chevron and the tap target drop, and the read-out stays &mdash; the existing rule that "a door nobody can open must not draw a handle."<br><br><b>This card shipped carrying status, dates <i>and</i> position, and it was called messy.</b> Four values beside the chip wrapped onto two lines at the default text size on a 390pt phone, with two redundant pairs in them: the start date and the day count are one fact, and so are the percent and the page. The card has <b>two slots</b> now &mdash; <i>where or when</i>, then <i>how long</i> &mdash; and the position takes the slot the start date had. A finished book, which has no position worth printing, shows its finish date there instead; the start date is gone from the card and is still editable in the sheet it opens.',
                             {
                                 band: true,
                                 pt: 98,
@@ -2274,6 +2289,7 @@
                                     {
                                         t: "prd",
                                         chip: "Reading",
+                                        pos: true,
                                         dates: "46% &middot; p.213",
                                         days: "1106 days",
                                     },
@@ -2958,11 +2974,11 @@
                         [
                             "flow-nudge-new",
                             "Moving the bookmark &middot; proposed",
-                            "<b>Two taps and a drag</b> &mdash; open the card, drag the thumb, Save. Matches today's count, on one door instead of two, and with the status, the dates and the position all visible while you do it. No arming step: a tap on the bar does nothing, and that is the platform's doing rather than a gate of ours &mdash; the sliders are relative, so a tap is a drag of zero delta. See <code>el-track</code>.",
+                            "<b>Two taps and a drag</b> &mdash; open the card, drag the thumb, Save. Matches today's count, on one door instead of two, and with the status, the dates and the position all visible in the sheet while you do it. No arming step: a tap on the bar does nothing, and that is the platform's doing rather than a gate of ours &mdash; the sliders are relative, so a tap is a drag of zero delta. See <code>el-track</code>.",
                             [
                                 [
                                     "Band",
-                                    "One card, one door. Status, dates and position on it.",
+                                    "One card, one door. Status, then the position, then how long.",
                                     {
                                         band: true,
                                         pt: 98,
@@ -2972,6 +2988,7 @@
                                             {
                                                 t: "prd",
                                                 chip: "Reading",
+                                                pos: true,
                                                 dates: "46% &middot; p.213",
                                                 days: "1106 days",
                                             },
@@ -3482,6 +3499,7 @@
                                                 {
                                                     t: "prd",
                                                     chip: "Reading",
+                                                    pos: true,
                                                     dates: "46% &middot; p.213",
                                                     days: "1106 days",
                                                 },

@@ -4,6 +4,7 @@ import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
+import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 
 /// Minimum height of the card once it is a door. The card draws 42, so reaching the
@@ -111,10 +112,16 @@ const double kBandResidualPadding = 2;
 /// white card left in the band to be confused with — and since the merge there is no
 /// second row either, so the band has one ground and one door.
 ///
-/// Laid out as a [Wrap] so a long range (or a longer localized label) moves to
+/// Laid out as a [Wrap] so a long value (or a longer localized label) moves to
 /// the next line instead of overflowing or truncating — every value stays
 /// readable at any width. That survives the door treatment: the value group is
 /// pushed right *and* still wraps, rather than being pinned to one line.
+///
+/// **It is a safety valve and no longer a working layout, which is the point of the
+/// two-slot rule in `build`.** The card wrapped in normal use for one round, on a
+/// finished book, and a wrap that happens at the default text size on the widest phone
+/// is not a valve opening — it is four values in a space for two. The `Wrap` stays for
+/// accessibility sizes and for a locale that needs the room.
 class ReadingPeriodRow extends StatefulWidget {
   const ReadingPeriodRow({
     super.key,
@@ -273,52 +280,99 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
     }
 
     final finish = widget.finishDate;
-    final range =
-        '${ReadingPeriodRow._formatDate(start)} ~ ${finish != null ? ReadingPeriodRow._formatDate(finish) : ''}';
-
     final position = widget.progress;
     final total = widget.pageCount;
 
-    final values = [
-      Text(range, style: AppTextStyles.label),
-      // The position, between the dates and the duration: all three are facts about this
-      // reading, and the row is one wrap so a narrow band reflows them together rather
-      // than clipping the last one.
-      //
-      // Two spans when there is a total, so it can sit back at 60% — the page is the
-      // answer and the count is only context. That treatment came from the deleted row and
-      // is kept rather than re-derived.
-      if (position != null)
-        RichText(
-          text: TextSpan(
-            style: AppTextStyles.label.copyWith(
-              color: context.colors.brandText,
-            ),
-            children: [
-              // Not localized: a numeral and a percent sign, which sit the same way round
-              // in both supported locales.
-              TextSpan(text: '${(position * 100).round()}%'),
-              if (total != null) ...[
-                TextSpan(
-                  text:
-                      ' · ${l10n.progressPage(bookProgressPage(position, total)!)}',
-                ),
-                TextSpan(
-                  text: ' ${l10n.progressOfPages(total)}',
-                  style: TextStyle(
-                    color: context.colors.brandText.withValues(alpha: 0.6),
+    // **Two slots, and no date the day count already implies.**
+    //
+    // Four values fitted here for one round — the range, the position and the day count
+    // beside the badge — and a reader called it messy, correctly. The count was not the
+    // whole of it. Two of the four said the same thing twice:
+    //
+    //  * `71%` and `p.307 / 432` are one fact, given the total.
+    //  * the **start** date and the elapsed day count are one fact. `15 days` *is*
+    //    `2026.09.13 ~` measured from today, and it is the half that keeps moving.
+    //
+    // So the card has two slots and a rule for each. The second is always the day count —
+    // *how long* — because it is the one thing neither the position nor the sheet behind
+    // this card states. The first is *where or when*, and it takes the most specific fact
+    // available:
+    //
+    // | state                     | where / when         | how long  |
+    // | ------------------------- | -------------------- | --------- |
+    // | Reading, with a position  | `71% · p.307 / 432`  | `15 days` |
+    // | Reading, no position yet  | —                    | `15 days` |
+    // | Set aside, with one       | `46% · p.199 / 432`  | `15 days` |
+    // | Finished                  | `2026.09.28`         | `15 days` |
+    //
+    // **The start date is gone from the card, and that is the reversal here.** The card
+    // used to lead with `2026.09.13 ~`, which is the fact the day count already carries in
+    // the form a reader wants it — nobody subtracts dates to learn a book has been open a
+    // fortnight. The *finish* date survives because nothing else on the card implies it:
+    // when this landed is a memory anchor, and it is the one date the day count cannot
+    // reconstruct without the other. Both dates are still one tap away and still editable
+    // in the sheet this card opens, which is the reason the loss is affordable.
+    //
+    // **A finished book prints that date rather than the range, and the range is what
+    // wrapped.** `2026.09.13 ~ 2026.09.28` plus `15 days` does not fit beside a badge at
+    // 333pt, so the one state whose period is *complete* was the one drawing two lines —
+    // and it was spending both on a closed range whose duration was printed underneath it.
+    // Dropping `15 days` there instead would have fixed the wrap too, and costs more: a
+    // settled "it took me 15 days" is the satisfying number on a book you have finished,
+    // where two ISO dates are a database row.
+    //
+    // **Finished is excluded from the position explicitly, and the first version of this
+    // forgot to**: a finished book has a non-null position of exactly 1, so `position !=
+    // null` alone let it print `100% · p.432 / 432` beside a badge already reading
+    // *Finished*. Three ways of saying "the end".
+    final hasPosition = position != null && widget.status != bookStatusFinished;
+
+    // **One green thing, and it is whichever slot holds the answer.** Two `brandText`
+    // values beside a green badge is what made three greens on one line, so the slot that
+    // is only context recedes to `secondaryText`.
+    final answerStyle = AppTextStyles.label.copyWith(
+      color: context.colors.brandText,
+    );
+
+    final Widget? anchor = hasPosition
+        // Two spans when there is a total, so the count can sit back at 60%: the page is
+        // the answer and the total is only context. That treatment came from the row this
+        // card absorbed, and is kept rather than re-derived.
+        ? RichText(
+            text: TextSpan(
+              style: answerStyle,
+              children: [
+                // Not localized: a numeral and a percent sign, which sit the same way
+                // round in both supported locales.
+                TextSpan(text: '${(position * 100).round()}%'),
+                if (total != null) ...[
+                  TextSpan(
+                    text:
+                        ' · ${l10n.progressPage(bookProgressPage(position, total)!)}',
                   ),
-                ),
+                  TextSpan(
+                    text: ' ${l10n.progressOfPages(total)}',
+                    style: TextStyle(
+                      color: context.colors.brandText.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-        ),
+            ),
+          )
+        : finish != null
+        ? Text(ReadingPeriodRow._formatDate(finish), style: answerStyle)
+        : null;
+
+    final values = [
+      if (anchor != null) anchor,
       Text(
         l10n.daysCount((finish ?? DateTime.now()).difference(start).inDays),
-        // Same token as the range beside it: `brandText` is what marks the
-        // duration as the row's answer, so emphasising it twice would only
-        // make one line of small print look like a different size.
-        style: AppTextStyles.label.copyWith(color: context.colors.brandText),
+        // Green only when it is the whole answer, which is a book that has been opened
+        // and has neither a position nor a finish date.
+        style: anchor == null
+            ? answerStyle
+            : AppTextStyles.label.copyWith(color: context.colors.secondaryText),
       ),
     ];
 
@@ -432,9 +486,15 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
 /// **`brandText` rather than `secondaryText`, unlike `How far in?`.** That row's
 /// prompt is in the no-value-yet tone because it will be *replaced by* a value in the
 /// same slot at the same size, and the app's green is what marks the answer. This one
-/// is replaced by a date range, which is not green either — it is an offer to act, not
-/// a blank waiting to be filled, so it takes the colour the app gives to things you
-/// can do.
+/// is an offer to act rather than a blank waiting to be filled, so it takes the colour
+/// the app gives to things you can do.
+///
+/// **This used to add "and what replaces it is not green either", and that was never
+/// true.** The value group that fills this slot at status 1 has always had a green
+/// answer in it — the day count, back when the card printed a range beside it, and the
+/// day count again now that a just-started book's card prints nothing else. So green
+/// here is not doing the work of distinguishing the verb from its successor, and the
+/// reason above is the whole reason.
 ///
 /// The opacity is the press state, and on a wordmark with no fill it is the only one
 /// available: there is no ground to darken the way the card darkens toward the band.

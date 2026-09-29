@@ -426,6 +426,52 @@ ok(
   "the book title survives as rej-drawn's heading, so the reversal is browsable",
 );
 
+console.log("-- the band card has two slots and one green value --");
+/* The card shipped with four values in it -- range, position, day count -- and wrapped
+   onto two lines on a 390pt phone, which is not a wrap valve opening. Two facts are
+   pinned here. First, every card that carries a position says so in the `dates` slot
+   *instead of* a date, so no screen can quietly go back to printing both. Second, the
+   emphasis inverts with `.pos`: the position is the answer and the day count recedes,
+   because two green values beside a green chip is what "messy" turned out to mean.
+
+   Every version, and flow steps as well as screens: half the cards live inside a flow's
+   states, and a sweep of `track`'s screens alone found two and called the rule broken. */
+const cards = [];
+for (const v of A.VERSIONS.map((x) => x[0])) {
+  for (const [, l] of A.resolveView(v, "screens"))
+    for (const it of l)
+      for (const b of it[3].body || []) if (b.t === "prd") cards.push([it[0], b]);
+  for (const [, l] of A.resolveView(v, "flows"))
+    for (const it of l)
+      for (const st of it[3])
+        for (const b of st[2].body || [])
+          if (b.t === "prd") cards.push([it[0] + "/" + st[0], b]);
+}
+ok(cards.length >= 6, cards.length + " period cards drawn");
+const bothSlots = cards.filter(
+  ([, b]) => /%/.test(b.dates) && /\d{4}\./.test(b.dates),
+);
+ok(
+  bothSlots.length === 0,
+  "no card prints a date and a position in the same slot (" +
+    bothSlots.map(([id]) => id).join() +
+    ")",
+);
+const positional = cards.filter(([, b]) => /%/.test(b.dates));
+ok(
+  positional.length >= 3 && positional.every(([, b]) => b.pos === true),
+  positional.length + " cards with a position all carry the .pos emphasis",
+);
+ok(
+  cards.filter(([, b]) => !/%/.test(b.dates)).every(([, b]) => !b.pos),
+  "and the CURRENT cards, which lead with a range, do not",
+);
+ok(
+  /\.dev \.prd\.pos \.dt \{[^}]*color: var\(--brandText\)/.test(src) &&
+    /\.dev \.prd\.pos \.dy \{[^}]*color: var\(--text2\)/.test(src),
+  "the .pos rule makes the position green and the day count recede",
+);
+
 console.log("-- Stop reading this is centred and full width --");
 /* The page's real predicates for both halves: the `.lnk` rule centres the text,
    and its 8pt vertical padding on a full-width block is what makes the target a
