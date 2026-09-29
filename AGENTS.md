@@ -1436,7 +1436,7 @@ Four things not to undo:
   this — once when fonts were loaded, once when the frame went in — and its own comment had
   recorded the first.
 
-### Save and Reset are at the foot, and the read-out ends flush right
+### Save and Discard changes are at the foot, and the read-out ends flush right
 
 Save left the title row on instruction. Two things not to undo:
 
@@ -1450,17 +1450,49 @@ Save left the title row on instruction. Two things not to undo:
   slack. It was reported from a photograph. And a test that measures `find.text('Save')` reports
   the row 14pt clear of a foot it is flush with: the label's box is shorter than its 44pt
   button.
-- **`Reset` restores the sheet's arguments, not a later snapshot.** Those are the same values
-  `dirty` compares against, so a reset sheet is clean by construction and the commit row cannot
-  survive its own press. It is **not** `Cancel`: dismissing already discards, so a button that
-  dismissed would be a second spelling of a gesture the reader has. Reset stays on the sheet,
-  which is the point — someone who over-dragged the track wants the old value back and to carry
-  on.
+- **The recessive button says `Discard changes`, and the ARB key is `discardChanges`.** It was
+  `reset` / `Reset` for two rounds; renamed on instruction, because `Reset` names a mechanism
+  where this names the consequence the reader is weighing against Save. The cost is width — two
+  words in a half-width 44pt button, which only fits because the pair is `Expanded` and sized by
+  the row rather than by its labels.
+- **It restores the sheet's arguments, not a later snapshot.** Those are the same values
+  `dirty` compares against, so a discarded sheet is clean by construction and the commit row
+  cannot survive its own press. It is **not** `Cancel`: dismissing already discards, so a button
+  that dismissed would be a second spelling of a gesture the reader has. This one stays on the
+  sheet, which is the point — someone who over-dragged the track wants the old value back and to
+  carry on.
 - **The page pair is right-aligned by `WrapAlignment.spaceBetween` over _two nested groups_.**
   Over the flat list of four parts it spreads all four and floats the percent into the middle;
   and a `Row` with a `Spacer` — the obvious spelling — throws away the reason
   `ReadingStateLine` is a `Wrap` at all, since a `Row`'s children have no run to drop to and a
   clipped status word is the one failure that makes the line lie about the book.
+
+**Nothing in the read-out is underlined, and `Add total pages` is.** The two page numerals
+carried the mark against a bare percent for two rounds, and the spec defended it through a
+re-litigation. It went the other way on instruction: the numerals lost it, `Stop reading this`
+and `Start reading again` gained it, and the rule to keep is **an underline marks an action, not
+a value.** The offer is not an exception — it is the line's only call to action, and the one
+place the mark is load-bearing, since an unmarked grey sentence inside a read-out reads as a
+caption. Stated cost, accepted knowingly: nothing announces that `213` opens a wheel. Only the
+ink is left, which was never an affordance, plus the 44pt track below. `Semantics(button: true)`
+is untouched, so VoiceOver is better served than sight here.
+
+**The page pair takes one ink for both spans, decided by the page's door.** Per-span ink was
+invisible while the pair was two doors or two dead spans; freezing Set aside made it visible and
+wrong, drawing `p.213` grey beside `/ 462` dark — one phrase in two colours, which reads as a
+rendering fault. Do not "fix" the total back to its own ink: since the underline left this line,
+ink separates a live value from ambient context rather than marking what is tappable.
+
+**The mockup's underline check passed against a page drawing no underline at all**, because it
+looked for `<u>213</u>` and the numerals are still wrapped in `<u>` — what changed is the CSS
+that gives `<u>` a rule. Both checks read the stylesheet now. A tag is not a treatment.
+
+**The stop-reading confirmation is one sentence.** It was two: it named `Set aside` as the
+destination so the chip afterwards would not surprise anyone. Removed on instruction — a
+yes-or-no question about the reader's own book should not require them to hold the app's status
+taxonomy — and the cost is that the destination is learned after the fact. `place` became
+`progress`, matching `readingProgressTitle`. The test asserts the **absence** of the old
+sentence, since matching only the new one passes with both.
 
 **A test for the trailing edge needs a wider box than the sheet's 327.**
 `reading_state_line_test.dart` loads no fonts, so every glyph is a one-em square, `Reading` sets
@@ -1495,6 +1527,27 @@ book resumes by moving the thumb, so a link would be a second affordance. The pr
 wrong: the thumb resumes only by _changing the position_, so a reader who stopped at 46% and
 wants to carry on from 46% had no move available. Set aside is the one status a position cannot
 imply, which makes it the one that needs a control of its own.
+
+**And now it is the _only_ way out, because the track and the two position doors are dead at Set
+aside.** On instruction, and it finishes the argument above rather than adding a second one: a
+status a position cannot imply should not be one a position can silently overwrite. It also
+closes a hole the link alone left open — the wheel's `0` stop would otherwise resume a book _and_
+send it back to Not started in a single confirm. **The total's door stays open**, because a page
+count is a fact about the book rather than about the reader's place in it, and shutting it would
+draw `Add total pages` as an offer nobody can accept in ~65% of the corpus.
+
+**Keyed on the sheet's _pending_ status, never `currentStatus`.** Otherwise `Start reading again`
+leaves the track dead until the reader saves, closes the sheet and comes back — so the link looks
+broken — and a just-stopped book's track stays live, which is the silent resume the freeze exists
+to prevent. Both directions are pinned in `book_status_bottom_sheet_test.dart`.
+
+**`CupertinoSlider` will not draw itself disabled, and `onChanged: null` alone is a trap.**
+`isInteractive` gates its gesture recognizer and its semantics; its `paint` never reads it, so a
+disabled slider is pixel-identical to a live one — a control that looks draggable and ignores the
+finger, which reads as a broken app. `ReadingTrack` therefore wraps **only that branch** in an
+`Opacity` at the platform's 0.4. Do not wrap both: `CNSlider` takes `enabled`, which reaches
+`UISlider.isEnabled` natively and also gates its own Material fallback, so wrapping it would dim
+the native view twice.
 
 **It does not clear `finish`.** Save filters the finish date out for a reading book, so nothing
 wrong is written, and keeping it means a reader who resumes and stops again does not silently
@@ -1572,7 +1625,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2042, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2053, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1585,7 +1638,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2042 cases). There is no expected-failure list any
+`flutter test` passes completely (2053 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

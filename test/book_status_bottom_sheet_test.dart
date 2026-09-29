@@ -1136,13 +1136,18 @@ void main() {
   // The one text action.
 
   group('the commit row at the foot', () {
-    Finder reset() => find.text('Reset');
+    // **`Discard changes`, and it was `Reset` for two rounds.** Renamed on instruction:
+    // `Reset` names a mechanism where this names the consequence, which is what a reader
+    // beside a Save button is choosing between. Read from the localisation rather than
+    // hardcoded nowhere — the string is asserted literally here because a test that reads
+    // the same getter the widget does cannot catch a wrong key.
+    Finder reset() => find.text('Discard changes');
 
     testWidgets('Given a clean sheet, Then neither button is drawn', (
       tester,
     ) async {
-      // Save's arrival is still the whole dirty indicator, and Reset arrives with it: there is
-      // nothing to put back on a sheet nobody has changed.
+      // Save's arrival is still the whole dirty indicator, and `Discard changes` arrives with
+      // it: there is nothing to put back on a sheet nobody has changed.
       await _openSheet(
         tester,
         currentStatus: bookStatusReading,
@@ -1223,38 +1228,39 @@ void main() {
       );
     });
 
-    testWidgets('Given Reset, Then every field goes back and the row withdraws', (
-      tester,
-    ) async {
-      // Reset restores the sheet's *arguments*, which is the same set `dirty` compares
-      // against — so a reset sheet is clean by construction and the row cannot survive its
-      // own press. A snapshot taken any later would leave the buttons on screen.
-      final saved = <_Saved>[];
-      final start = DateTime(2024, 3, 14);
-      await _openSheet(
-        tester,
-        currentStatus: bookStatusReading,
-        startDate: start,
-        progress: 0.46,
-        progressPage: 200,
-        pageCount: _kPageCount,
-        saved: saved,
-      );
+    testWidgets(
+      'Given Discard changes, Then every field goes back and the row withdraws',
+      (tester) async {
+        // It restores the sheet's *arguments*, which is the same set `dirty` compares
+        // against — so a reset sheet is clean by construction and the row cannot survive its
+        // own press. A snapshot taken any later would leave the buttons on screen.
+        final saved = <_Saved>[];
+        final start = DateTime(2024, 3, 14);
+        await _openSheet(
+          tester,
+          currentStatus: bookStatusReading,
+          startDate: start,
+          progress: 0.46,
+          progressPage: 200,
+          pageCount: _kPageCount,
+          saved: saved,
+        );
 
-      await _dragTrackTo(tester, 0.8);
-      expect(find.text('46%'), findsNothing);
+        await _dragTrackTo(tester, 0.8);
+        expect(find.text('46%'), findsNothing);
 
-      await tester.tap(reset());
-      await tester.pumpAndSettle();
+        await tester.tap(reset());
+        await tester.pumpAndSettle();
 
-      expect(find.text('46%'), findsOneWidget);
-      expect(_dateRowText(tester, 'Start date'), '2024.03.14');
-      expect(_save, findsNothing);
-      expect(reset(), findsNothing);
-      expect(saved, isEmpty);
-    });
+        expect(find.text('46%'), findsOneWidget);
+        expect(_dateRowText(tester, 'Start date'), '2024.03.14');
+        expect(_save, findsNothing);
+        expect(reset(), findsNothing);
+        expect(saved, isEmpty);
+      },
+    );
 
-    testWidgets('and Reset puts a status change back too', (tester) async {
+    testWidgets('and it puts a status change back too', (tester) async {
       // The status is not a field the reader types, so it is the one most likely to be left
       // out of a hand-written reset. Set aside is reached through the confirmation, which
       // makes it the furthest thing from the buttons.
@@ -1278,9 +1284,7 @@ void main() {
       expect(find.text('Stop reading this'), findsOneWidget);
     });
 
-    testWidgets('and Reset is not Cancel — the sheet stays open', (
-      tester,
-    ) async {
+    testWidgets('and it is not Cancel — the sheet stays open', (tester) async {
       // Dismissing already discards, so a button that dismissed would be a second spelling of
       // a gesture the reader has. This one is for someone who over-dragged the track and wants
       // the old value back *and* to carry on.
@@ -1403,6 +1407,75 @@ void main() {
   });
 
   group('the sheet offers one text action, and which one is the status', () {
+    testWidgets('Given either of them, Then it is underlined and the read-out is not', (
+      tester,
+    ) async {
+      // **The underline moved here from the read-out's page numerals, in one trade**, and
+      // the rule that came out of it is what this pins from both sides: an underline marks
+      // an action, not a value. Asserting only the action would pass on a sheet that had
+      // grown a second underline back upstairs, which is the state the trade was meant to
+      // end.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+        progressPage: 200,
+        pageCount: _kPageCount,
+      );
+
+      expect(
+        tester.widget<Text>(find.text('Stop reading this')).style?.decoration,
+        TextDecoration.underline,
+      );
+      for (final value in ['Reading', '46%', 'p.200', '/ 432']) {
+        expect(
+          tester.widget<Text>(find.text(value)).style?.decoration,
+          TextDecoration.none,
+          reason: value,
+        );
+      }
+
+      await _stopReading(tester);
+      expect(
+        tester.widget<Text>(find.text('Start reading again')).style?.decoration,
+        TextDecoration.underline,
+      );
+    });
+
+    testWidgets('and the confirmation says what is kept without naming the destination', (
+      tester,
+    ) async {
+      // **The body lost a sentence.** It read *"Your place is kept, so you can start
+      // reading again any time. The book moves to Set aside."* — the second half on the
+      // reasoning that pre-announcing the status meant the chip afterwards would not
+      // surprise anyone. Removed on instruction, and the argument against it is that it
+      // made the reader responsible for the app's own taxonomy in order to answer a
+      // yes-or-no question about their own book. `place` became `progress`, which is the
+      // word the sheet's own title uses.
+      //
+      // The absence is the assertion worth having: a case that only matched the new
+      // sentence would pass with the old one still appended.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+      );
+
+      await tester.tap(find.text('Stop reading this'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Your progress is kept, so you can start reading again any time.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Set aside'), findsNothing);
+      expect(find.textContaining('place'), findsNothing);
+    });
+
     // **`Set aside` used to be in this list, and taking it out is a reversal.** The sheet
     // offered nothing there on the reasoning that a set-aside book resumes by moving the
     // thumb, so a link would be a second affordance for a gesture already present. The
@@ -1623,11 +1696,14 @@ void main() {
     );
 
     testWidgets(
-      'Given a set-aside book, When the thumb is moved, Then it is Reading again',
+      'Given a set-aside book, When the thumb is moved, Then nothing happens at all',
       (tester) async {
-        // The resume gesture, and the reason there is no "Put back on the shelf". Set
-        // aside is the one status a position cannot imply, so it is the one status a drag
-        // has to be able to leave.
+        // **This case asserted the exact opposite for two rounds**, under the name *"Then it
+        // is Reading again"*, and its comment called the drag "the resume gesture, and the
+        // reason there is no Put back on the shelf". Both halves are gone: the link arrived
+        // first, because stopping at 46% and resuming at 46% is not expressible as a drag,
+        // and then the track was disabled at Set aside on instruction. A status a position
+        // cannot imply should not be one a position can silently overwrite.
         final saved = <_Saved>[];
         await _openSheet(
           tester,
@@ -1640,12 +1716,98 @@ void main() {
         expect(find.text('Set aside'), findsOneWidget);
 
         await _dragTrackTo(tester, 0.6);
-        await tester.tap(_save);
-        await tester.pumpAndSettle();
 
-        expect(saved.single.status, bookStatusReading);
-        // A book being read has no finish date, whatever it was holding while closed.
-        expect(saved.single.finishDate, isNull);
+        // Not merely "the status did not change" — the drag reported nothing, so the sheet
+        // never even went dirty. That is the assertion that would fail if the track were
+        // left live and the status pinned some other way.
+        expect(find.text('Set aside'), findsOneWidget);
+        expect(find.text('46%'), findsOneWidget);
+        expect(_save, findsNothing);
+        expect(saved, isEmpty);
+      },
+    );
+
+    testWidgets('and resuming unfreezes it in the same frame, with nothing written', (
+      tester,
+    ) async {
+      // **The controls follow the *pending* status, not the saved one.** Keyed on
+      // `currentStatus` instead, a reader who tapped `Start reading again` would face a
+      // dead track until they saved, closed the sheet and came back — so the resume link
+      // would look like it had not worked.
+      final saved = <_Saved>[];
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusSetAside,
+        startDate: DateTime(2024, 3, 14),
+        finishDate: DateTime(2024, 4, 1),
+        progress: 0.46,
+        saved: saved,
+      );
+
+      await tester.tap(find.text('Start reading again'));
+      await tester.pumpAndSettle();
+      await _dragTrackTo(tester, 0.6);
+      await tester.tap(_save);
+      await tester.pumpAndSettle();
+
+      expect(saved.single.status, bookStatusReading);
+      expect(saved.single.progress, closeTo(0.6, 0.02));
+      // A book being read has no finish date, whatever it was holding while closed.
+      expect(saved.single.finishDate, isNull);
+    });
+
+    testWidgets('and stopping freezes it just as immediately', (tester) async {
+      // The other direction of the same rule, and the one that matters for silent resumes:
+      // a reader who confirms `Stop reading this` and then brushes the track must not put
+      // the book straight back to Reading.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+      );
+
+      await _stopReading(tester);
+      expect(find.text('Set aside'), findsOneWidget);
+
+      await _dragTrackTo(tester, 0.8);
+
+      expect(find.text('Set aside'), findsOneWidget);
+      expect(find.text('46%'), findsOneWidget);
+    });
+
+    testWidgets(
+      'Given a set-aside book, Then the two position doors are shut and the total is not',
+      (tester) async {
+        // The doors write a position, so they close with the track — and the percent wheel's
+        // own `0` stop would otherwise resume a book *and* send it back to Not started in one
+        // confirm. The total is a fact about the book rather than about the reader's place in
+        // it, so it stays open; closing it would also draw `Add total pages` as an offer
+        // nobody can accept, which is the majority state of the corpus.
+        await _openSheet(
+          tester,
+          currentStatus: bookStatusSetAside,
+          startDate: DateTime(2024, 3, 14),
+          finishDate: DateTime(2024, 4, 1),
+          progress: 0.46,
+          progressPage: 200,
+          pageCount: _kPageCount,
+        );
+
+        // A typed page, so the numeral is the reader's rather than a rounding of 0.46 —
+        // which keeps this case about the doors instead of about `bookProgressPage`.
+        await tester.tap(find.text('46%'));
+        await tester.pumpAndSettle();
+        expect(find.byType(ReadingTrack), findsOneWidget);
+        expect(find.text('How far in?'), findsNothing);
+
+        await tester.tap(find.text('p.200'), warnIfMissed: false);
+        await tester.pumpAndSettle();
+        expect(find.text('Current page'), findsNothing);
+
+        await tester.tap(find.text('/ 432'));
+        await tester.pumpAndSettle();
+        expect(find.text('Total pages'), findsOneWidget);
       },
     );
   });

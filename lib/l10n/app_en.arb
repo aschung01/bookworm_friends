@@ -5,9 +5,9 @@
   "continueWithGoogle": "Continue with Google",
   "save": "Save",
   "cancel": "Cancel",
-  "reset": "Reset",
-  "@reset": {
-    "description": "Discards the merged status sheet's unsaved answers and puts every field back to what the sheet opened with, without closing it. Distinct from cancel, which the app uses for a button that dismisses: this one stays on the sheet, which is the point \u2014 a reader who over-dragged the track wants the old value back and to carry on, not to start the whole visit again. Paired with save at the foot of that sheet and drawn in the recessive surfaceVariant beside it."
+  "discardChanges": "Discard changes",
+  "@discardChanges": {
+    "description": "Discards the merged status sheet's unsaved answers and puts every field back to what the sheet opened with, without closing it. Distinct from cancel, which the app uses for a button that dismisses: this one stays on the sheet, which is the point \u2014 a reader who over-dragged the track wants the old value back and to carry on, not to start the whole visit again. Paired with save at the foot of that sheet and drawn in the recessive surfaceVariant beside it. Was reset, one word, renamed on instruction: reset names a mechanism where this names the consequence, and the button sits beside Save where the reader is deciding whether to keep what they just did. The cost is width \u2014 two words in a 44pt half-width button, which is why the pair is Expanded rather than sized to its labels."
   },
   "delete": "Delete",
   "edit": "Edit",
@@ -67,9 +67,9 @@
   "@stopReadingConfirmTitle": {
     "description": "Title of the confirmation sheet behind stopReadingThis. A question, matching deleteConfirmTitle, and it repeats the action's own words so the reader can see which tap they are answering for."
   },
-  "stopReadingConfirmBody": "Your place is kept, so you can start reading again any time. The book moves to Set aside.",
+  "stopReadingConfirmBody": "Your progress is kept, so you can start reading again any time.",
   "@stopReadingConfirmBody": {
-    "description": "Body of the stop-reading confirmation. Leads with what is NOT lost, because that is the non-obvious half: setting a book aside keeps the recorded position, which is the whole reason the status exists rather than sending the book back to Not started. Names the destination status last so the word on the chip afterwards is not a surprise. Deliberately not a warning \u2014 nothing here is destructive and the tone must not suggest it is."
+    "description": "Body of the stop-reading confirmation. Leads with what is NOT lost, because that is the non-obvious half: setting a book aside keeps the recorded position, which is the whole reason the status exists rather than sending the book back to Not started. Deliberately not a warning \u2014 nothing here is destructive and the tone must not suggest it is. One sentence, and it used to be two: it said progress was kept AND that 'The book moves to Set aside.', on the reasoning that naming the destination meant the chip afterwards would not surprise anyone. Removed on instruction, and the reasoning against it is that the sentence made the reader responsible for the app's own taxonomy in order to answer a yes-or-no question about their own book \u2014 the title already names the act and the chip names the result a tap later. Cost, stated: the destination is now learned after the fact rather than before. Also 'place' became 'progress', which is the word the sheet's own title uses (readingProgressTitle), so the two agree."
   },
   "stopReadingConfirmAction": "Stop reading",
   "@stopReadingConfirmAction": {

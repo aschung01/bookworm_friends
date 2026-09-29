@@ -100,6 +100,7 @@ Future<void> _pump(
   double textScale = 1,
   double width = _kBox,
   String? semanticsLabel,
+  bool enabled = true,
 }) async {
   final held = ValueNotifier<double?>(progress);
   addTearDown(held.dispose);
@@ -131,6 +132,7 @@ Future<void> _pump(
                       builder: (context, current, _) => ReadingTrack(
                         progress: current,
                         semanticsLabel: semanticsLabel,
+                        enabled: enabled,
                         onChanged: (next) {
                           reports.add(next);
                           held.value = next;
@@ -509,6 +511,88 @@ void main() {
 
       expect(reports, isEmpty);
       expect(sounds, isEmpty);
+    });
+  });
+
+  group('it can be switched off, and then it has to look switched off', () {
+    testWidgets('Given enabled: false, Then a drag reports nothing', (
+      tester,
+    ) async {
+      // The merged sheet's Set aside state. Nothing is written and nothing is felt: a
+      // reader who brushes a frozen track must not resume the book, which is the whole
+      // reason the flag exists.
+      await _pump(tester, progress: 0.46, enabled: false);
+      _captureTicks(tester);
+
+      await _slide(tester, from: 0.46, dx: 60);
+
+      expect(reports, isEmpty);
+      expect(haptics, isEmpty);
+      expect(sounds, isEmpty);
+    });
+
+    testWidgets('and it is dimmed, because CupertinoSlider will not do it', (
+      tester,
+    ) async {
+      // **The case that justifies the `Opacity` at all.** `CupertinoSlider` reads
+      // `onChanged == null` as behaviour only — `isInteractive` gates its gesture
+      // recognizer and its semantics, and `paint` never looks at it — so a disabled slider
+      // is pixel-identical to a live one. Left that way it is a control that looks
+      // draggable and ignores the finger, which reads as a broken app rather than as a
+      // closed door, and *no* assertion about `onChanged` would have caught it.
+      await _pump(tester, progress: 0.46, enabled: false);
+
+      final dimmed = tester.widget<Opacity>(
+        find.ancestor(
+          of: find.byType(CupertinoSlider),
+          matching: find.byType(Opacity),
+        ),
+      );
+      expect(dimmed.opacity, lessThan(1));
+    });
+
+    testWidgets('and an enabled track is not dimmed', (tester) async {
+      // The other half, so the constant cannot be left applied unconditionally — which
+      // would ship a permanently faded track and still pass the case above.
+      await _pump(tester, progress: 0.46);
+
+      final opacities = find.ancestor(
+        of: find.byType(CupertinoSlider),
+        matching: find.byType(Opacity),
+      );
+      for (final o in tester.widgetList<Opacity>(opacities)) {
+        expect(o.opacity, 1);
+      }
+    });
+
+    testWidgets('and the slider itself is what refuses the touch', (
+      tester,
+    ) async {
+      // Not the opacity: an `Opacity` still hit-tests, so dimming alone would leave a
+      // faded control that worked. `onChanged: null` is the disable and the dimming is
+      // only what makes it visible.
+      await _pump(tester, progress: 0.46, enabled: false);
+
+      expect(
+        tester.widget<CupertinoSlider>(find.byType(CupertinoSlider)).onChanged,
+        isNull,
+      );
+    });
+
+    testWidgets('and it still draws its value and its end labels', (
+      tester,
+    ) async {
+      // Frozen is not blank. The position is still true — the stop-reading confirmation
+      // promises in words that the progress is kept — so the thumb stays where it was and
+      // the ends still name what the extremes mean.
+      await _pump(tester, progress: 0.46, enabled: false);
+
+      expect(
+        tester.widget<CupertinoSlider>(find.byType(CupertinoSlider)).value,
+        closeTo(0.46, 0.001),
+      );
+      expect(find.text('Not started'), findsOneWidget);
+      expect(find.text('Finished'), findsOneWidget);
     });
   });
 

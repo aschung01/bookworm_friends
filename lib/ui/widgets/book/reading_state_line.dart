@@ -27,15 +27,35 @@ const double _runGap = 2;
 /// together. It is also why the status word is *in* this line rather than in a chip
 /// above it: a chip is a second object making the same claim.
 ///
-/// ## Only the page numerals are underlined
+/// ## Nothing in the read-out is underlined, and the mark moved to the sheet's actions
 ///
-/// The percent is equally tappable and carries **no** underline. It is the largest
-/// thing on the line (20pt against the pair's 13) and obviously the value, where the
-/// page numerals are small and sit inside a phrase — a phrase whose tappable parts
-/// are not otherwise discoverable. Underlining all three made *three competing
-/// affordances out of one read-out*, which is the objection that was raised against an
-/// earlier draft and is recorded here because it has been re-litigated once already.
-/// Do not "finish the job" by marking the percent.
+/// **This reverses two rounds of the opposite.** The line shipped with the two page
+/// numerals underlined and the percent bare, and the reasoning was that the percent is
+/// the largest thing here (20pt against the pair's 13) and obviously the value, where
+/// the numerals are small, sit inside a phrase, and have no other affordance. That
+/// argument had already survived one re-litigation, and the note here said *do not
+/// "finish the job" by marking the percent*.
+///
+/// It was finished the other way, on instruction: the numerals lost their underline and
+/// `Stop reading this` / `Start reading again` gained one. The reasoning that replaces
+/// it is a cleaner rule than the one it displaces — **an underline marks an action, not
+/// a value.** Every part of this line is a value; the two text actions are the only
+/// things on the sheet that *do* something, and they were the only unmarked tappable
+/// text left. So the sheet now has one meaning for one mark, where before it had an
+/// underline meaning "opens a wheel" in the read-out and nothing meaning anything below.
+///
+/// **What it costs is real and was accepted knowingly: the doors are now undiscoverable.**
+/// Nothing announces that `p.213` opens a wheel. What is left is the ink — `primaryText`
+/// when a span is a door, `secondaryText` when it is not — which is a far weaker signal
+/// and was never designed to be an affordance; see the section on closed doors below. The
+/// coarse control is the track immediately underneath, which is 44pt and spans the sheet,
+/// so a reader who never discovers the numerals is not stuck.
+///
+/// **The one underline that stays is `Add total pages`**, and it is not an exception to
+/// the rule above: it is not a value but an offer — the only *call to action* the line
+/// can contain — and about two books in three have no page count, so it is the line's
+/// majority state rather than an edge. Marking it is also the whole reason it works: a
+/// grey unmarked sentence in a read-out is read as a caption.
 ///
 /// ## The page pair reuses two existing strings, and prints `/` rather than `of`
 ///
@@ -93,11 +113,18 @@ const double _runGap = 2;
 ///
 /// ## A door nobody can open must not draw a handle
 ///
-/// All three callbacks are independently nullable. Null drops the tap target *and* the
-/// underline, and drops the page pair's ink from `primaryText` to `secondaryText`, so
-/// the part reads as the ambient context it is. On a friend's book all three are null
-/// and the whole line is plain text — the existing house rule, and the same one
-/// the band's deleted progress row applied to its chevron.
+/// All three callbacks are independently nullable. Null drops the tap target, and for
+/// the page pair it drops the ink from `primaryText` to `secondaryText`, so the part
+/// reads as the ambient context it is. On a friend's book all three are null and the
+/// whole line is plain text — the existing house rule, and the same one the band's
+/// deleted progress row applied to its chevron.
+///
+/// **It no longer drops an underline, because there is none to drop.** The percent is the
+/// one part whose appearance does not change at all with its door, which is deliberate:
+/// it is the value the whole sheet is about, and a set-aside book's 46% is exactly as true
+/// as a reading book's. Dimming it to signal "not editable here" would contradict the
+/// confirmation that put the book there, which promises in words that the progress is
+/// kept.
 ///
 /// ## The status word is a parameter, not a derivation
 ///
@@ -341,7 +368,17 @@ class ReadingStateLine extends StatelessWidget {
   ) {
     final total = pageCount;
     if (total == null) {
-      return [_pageDoor(context, l10n.addTotalPages, onTotalTap)];
+      // **The offer keeps its underline**, alone on this line. See the class doc: it is a
+      // call to action rather than a value, and it is the majority state.
+      return [
+        _pageSpan(
+          context,
+          l10n.addTotalPages,
+          onTotalTap,
+          live: onTotalTap != null,
+          underline: onTotalTap != null,
+        ),
+      ];
     }
 
     final given = progressPage;
@@ -350,16 +387,39 @@ class ReadingStateLine extends StatelessWidget {
     // above it rather than an assumption.
     final page = given ?? bookProgressPage(value, total)!;
 
+    // **One ink for both spans, and the page's door decides it.**
+    //
+    // Per-span ink was invisible while the pair was either two doors or two not-doors.
+    // The merged sheet's Set aside state made it visible and wrong: it closes the
+    // position's doors and leaves the total's open, so `p.213` came out `secondaryText`
+    // beside `/ 462` in `primaryText` — two halves of one phrase in two inks, which reads
+    // as a rendering fault rather than as a distinction. The pair is one sentence about
+    // where the reader is, so it gets one colour, and the page is its subject.
+    //
+    // The total stays tappable in both inks. That is not the contradiction it looks like:
+    // since the underline moved out of this line, ink is no longer claiming to mark what is
+    // tappable — it separates a live value from ambient context, and a set-aside book's page
+    // is context.
+    final pairIsLive = onPageTap != null;
+
     return [
       // One label for both cases. `given` still decides the *number* — a typed page is
       // printed as typed rather than re-derived — it just no longer decides the format.
-      _pageDoor(context, l10n.progressPage(page), onPageTap),
-      _pageDoor(context, l10n.progressOfPages(total), onTotalTap),
+      _pageSpan(context, l10n.progressPage(page), onPageTap, live: pairIsLive),
+      _pageSpan(
+        context,
+        l10n.progressOfPages(total),
+        onTotalTap,
+        live: pairIsLive,
+      ),
     ];
   }
 
-  /// One span of the pair: underlined `primaryText` when it is a door, plain
-  /// `secondaryText` when it is not.
+  /// One span of the page pair, or the offer that replaces it.
+  ///
+  /// [live] is the pair's shared ink rather than this span's own tappability — see
+  /// `_pagePair`. [underline] is false for every value and true only for the
+  /// `Add total pages` offer; the class doc has the rule.
   ///
   /// **The weight does not change with the state**, though the drawing sets the
   /// underlined spans a step heavier. A weight change is a width change, so a friend's
@@ -370,21 +430,29 @@ class ReadingStateLine extends StatelessWidget {
   /// multiple of the font's own underline metric rather than a length, so the drawing's
   /// 1.25pt rule at a 2.5pt offset is not expressible in points. Left at the font's
   /// defaults rather than approximated with a magic multiplier.
-  Widget _pageDoor(BuildContext context, String label, VoidCallback? onTap) {
+  Widget _pageSpan(
+    BuildContext context,
+    String label,
+    VoidCallback? onTap, {
+    required bool live,
+    bool underline = false,
+  }) {
     final colors = context.colors;
-    final isDoor = onTap != null;
+    final ink = live ? colors.primaryText : colors.secondaryText;
     return _Door(
       onTap: onTap,
       child: Text(
         label,
         style: _pageStyle.copyWith(
-          color: isDoor ? colors.primaryText : colors.secondaryText,
-          decoration: isDoor ? TextDecoration.underline : TextDecoration.none,
-          // Pinned for the reason the status word's `none` is pinned: unset means
-          // inherited, and the ambient fallback's underline is a *yellow double*
-          // rule. The mark has to be one solid line in the span's own ink whatever
-          // it is nested inside.
-          decorationColor: isDoor ? colors.primaryText : null,
+          color: ink,
+          // `none` is pinned for the reason the status word's is: unset means inherited,
+          // and the ambient fallback's underline is a *yellow double* rule. Now that the
+          // values are unmarked, leaving this unset would let a harness without a
+          // `Material` ancestor draw the very mark this round removed.
+          decoration: underline
+              ? TextDecoration.underline
+              : TextDecoration.none,
+          decorationColor: underline ? ink : null,
           decorationStyle: TextDecorationStyle.solid,
         ),
       ),
@@ -398,10 +466,12 @@ class ReadingStateLine extends StatelessWidget {
 /// and no inert wrapper — so nothing on a friend's book advertises a gesture that does
 /// nothing, to the finger or to VoiceOver.
 ///
-/// `button: true` is not decoration: the underline is the only visual affordance these
-/// spans have and a screen reader cannot see it, so without this the three doors are
-/// announced as three pieces of text. `HitTestBehavior.opaque` so the span's own
-/// bounding box is the target rather than its glyphs.
+/// `button: true` is not decoration, and it matters more now than when it was written:
+/// it used to be the screen reader's substitute for an underline a screen reader cannot
+/// see, and since the values lost their underline it is the **only** affordance any of
+/// them has in any modality. VoiceOver is now better served than sight is — stated
+/// plainly because it is the inverse of the usual defect. `HitTestBehavior.opaque` so the
+/// span's own bounding box is the target rather than its glyphs.
 ///
 /// **The targets are smaller than 44pt and that is accepted rather than overlooked.**
 /// At 1× the pair measures about 33×16 and 34×16 and the percent about 45×23. Reaching

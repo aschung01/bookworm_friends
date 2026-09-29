@@ -182,7 +182,7 @@ say the same thing"_). The exact path is the numerals instead.
 Rejected: **the bare draggable track**, i.e. live on first touch. Kept in the mockups as
 `rej-bare` so the rejection stays browsable rather than asserted.
 
-### Three tappable numerals, and only two of them underlined
+### Three tappable numerals, none of them underlined
 
 The read-out is **one line**: status word, percent, and the page inside the total.
 
@@ -192,9 +192,36 @@ The read-out is **one line**: status word, percent, and the page inside the tota
 - `462` → a new total-pages sheet. **Keypad first, wheel second**, and no Percent/Page
   segment, because a total has one unit.
 
-**Only the page numerals carry underlines.** They are small and sit inside a phrase. The
-percent is the largest thing on the line and obviously the value; underlining it too made
-three competing affordances out of one read-out.
+**Nothing on the line is underlined, and this reverses two rounds of the opposite.** It read:
+_"Only the page numerals carry underlines. They are small and sit inside a phrase. The percent
+is the largest thing on the line and obviously the value; underlining it too made three
+competing affordances out of one read-out."_ That argument had already survived one
+re-litigation. It was settled the other way on instruction — the numerals lost the mark and the
+sheet's two text actions gained it — and the rule that replaces it is narrower than the one it
+displaces: **an underline marks an action, not a value.** Every part of this line is a value;
+`Stop reading this` and `Start reading again` are the only things on the sheet that _do_
+something, and they were the only unmarked tappable text left. One device, one meaning.
+
+**The cost is that the doors are now undiscoverable, and it was accepted knowingly.** Nothing
+announces that `213` opens a wheel. What remains is the ink — `primaryText` for a live span,
+`secondaryText` for a dead one — which was designed to separate a value from ambient context
+rather than to advertise a gesture, and the 44pt track immediately below, which is why a reader
+who never finds the numerals is not stuck. `Semantics(button: true)` is untouched, so VoiceOver
+is now better served than sight is; stated plainly because it is the inverse of the usual
+defect.
+
+**`Add total pages` keeps its underline**, alone on the line. Not an exception to the rule but
+an instance of it: it is the only _call to action_ the line can contain, and the one state
+where the mark is load-bearing rather than decorative — an unmarked grey sentence inside a
+read-out is read as a caption. It is also the majority state, at ~65% of the corpus.
+
+**The page pair takes one ink for both spans, decided by the page's own door.** Per-span ink
+was invisible while the pair was either two doors or two dead spans; the Set aside state made
+it visible and wrong, because it closes the position's doors and leaves the total's open — so
+`p.213` came out grey beside `/ 462` dark, two halves of one phrase in two colours, which reads
+as a rendering fault rather than as a distinction. The total stays tappable in either ink,
+which is only a contradiction if ink is still claiming to mark what is tappable; since the
+underline left this line, it is not.
 
 **Editing the total is a new capability and the largest single win here.** `page_count` is
 written once by `addBook` and never again — the wheel's own doc says _"Never written"_ —
@@ -281,6 +308,28 @@ is the one status a position cannot imply, which makes it the one status that ne
 of its own. The related rejection of **"Start reading"** still stands, and is a different
 thing: that named a transition the thumb does perform, from the origin.
 
+**And then the thumb stopped resuming at all.** On instruction, a set-aside book's track and
+its two position doors are dead, so `Start reading again` is not merely the discoverable way
+out but the only one. That is the coherent end of the same argument rather than a second
+change: a status a position cannot imply should not be a status a position can silently
+overwrite. It also closes a hole the link alone left open — the percent wheel's `0` stop would
+otherwise resume a book _and_ send it back to Not started in a single confirm.
+
+Two details in that, both load-bearing. **The total's door stays open**, because a page count
+is a fact about the book rather than about the reader's place in it and there is nothing to
+resume in order to record one; closing it would also draw `Add total pages` as an offer nobody
+can accept, in the majority state of the corpus. And the freeze is keyed on the sheet's
+**pending** status rather than the saved one, so tapping `Start reading again` unfreezes the
+track in the same frame with nothing written — keyed on the argument, a resumed book's track
+would stay dead until the reader saved, closed the sheet and reopened it, and a just-stopped
+book's track would stay live, which is the silent resume this exists to prevent.
+
+**The two actions are the sheet's only underline**, which arrived in the same trade that took
+the mark off the read-out's numerals. Before it they were grey 13pt centred text with no
+furniture at all, so the only thing that read as tappable was position — on the same 36pt band
+this section describes two paragraphs down as easy to hit _by accident_, which is a sentence
+about something that does not look like a control.
+
 **`Stop reading this` opens a confirmation sheet; `Start reading again` does not.** The
 asymmetry is not about which act is weightier — setting a book aside is reversible in one tap
 now, and every string here is written to keep judgement out of it. It is about what the control
@@ -288,6 +337,17 @@ physically is: a full-width opaque band of grey text directly under a tappable d
 no fill and no border, deliberately wide because a text-sized target for the least important
 label on the sheet is hard to land on. The cost of that width is that it is easy to hit without
 meaning to, and an accidental _resume_ costs a reader nothing.
+
+**The confirmation says what is kept and no longer says where the book goes.** The body was
+_"Your place is kept, so you can start reading again any time. The book moves to Set aside."_
+and is now the first sentence alone, with `place` → `progress`. Both halves on instruction, and
+both defensible on their own terms. The deleted sentence was there so the chip afterwards would
+not surprise anyone; against it, a yes-or-no question about the reader's own book should not
+require them to hold the app's status taxonomy — the title already names the act, and the chip
+names the result one tap later. The cost, stated: the destination is now learned after the fact.
+`progress` over `place` is the smaller win and the surer one — it is the word the sheet's own
+title uses (`readingProgressTitle`), so the two agree instead of describing the same number
+twice.
 
 **The confirmation does not write**, which is what lets it exist here at all. Like
 `showSelectDateBottomSheet` and `showSelectPercentBottomSheet` it hands an answer back and the
@@ -726,14 +786,21 @@ If a marker is ever wanted back, it cannot be `≈`: the faces are subset to Lat
 so `U+2248` drew from a platform fallback in another typeface, which is why the one that shipped
 was an ASCII tilde.
 
-### Save and Reset sit at the foot, and the read-out ends at the right edge
+### Save and Discard changes sit at the foot, and the read-out ends at the right edge
 
 Save was in the title row beside the heading, at 92×32. It was asked for at the foot, and the
-move brings two things with it: `Reset` becomes possible — a 92pt slot next to a title has room
-for one button, a full-width row has room for a pair — and the sheet stops putting its only
+move brings two things with it: a second button becomes possible — a 92pt slot next to a title
+has room for one, a full-width row has room for a pair — and the sheet stops putting its only
 write control in the corner furthest from the thumb, on a sheet whose whole argument for being a
 sheet is that the control sits in the thumb's arc. The delete sheet's geometry: two `Expanded`
 buttons at 44 with a 12pt gap, recessive on the left.
+
+**The recessive button says `Discard changes`, and said `Reset` for two rounds.** Renamed on
+instruction, and the reason it holds is that `Reset` names a mechanism where this names the
+consequence — which is what a reader standing in front of a Save button is actually choosing
+between. The cost is width: two words in a half-width 44pt button, survivable only because the
+pair is `Expanded`, so both buttons are sized by the row rather than by their labels. The ARB key
+was renamed with the value; it had exactly one reader.
 
 **Its arrival is still the dirty indicator**, so there is no other unsaved marker and no
 disabled Save to explain. Arriving _below_ the track is also what let the title row's pinned
@@ -759,7 +826,7 @@ page and obvious in a photograph of a device. Same blind spot the streak widget'
 has about WidgetKit. `build/status_sheet_preview/readingdirty_light_en.png` is the frame that
 shows it.
 
-**`Reset` is not `Cancel`, and the difference is that it stays.** Dismissing already discards,
+**`Discard changes` is not `Cancel`, and the difference is that it stays.** Dismissing already discards,
 so a button that dismissed would be a second spelling of a gesture the reader has. This one puts
 every field back to what the sheet opened with and leaves them on it, which is what someone who
 over-dragged the track wants: the old value back, and to carry on. It restores the _arguments_,

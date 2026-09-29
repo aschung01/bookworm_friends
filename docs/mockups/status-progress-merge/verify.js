@@ -254,7 +254,13 @@ ok(
   "derived-wheel removes the track element",
 );
 
-console.log("-- the percent is tappable but NOT underlined --");
+console.log("-- nothing in the read-out is underlined; the actions are --");
+/* **These checks were inverted on instruction, and the tag is why they had to be
+   rewritten rather than flipped.** The old pair asserted "no percent carries the
+   underline class" and "the page numerals do carry underlines" -- the second by looking
+   for `<u>213</u>`. The numerals are still wrapped in `<u>`; what changed is the CSS
+   that gives `<u>` a rule. So the old check passes unmodified against a page that draws
+   no underline at all, which makes it worse than absent. Read the stylesheet. */
 const readouts = [];
 for (const [, l] of A.resolveView("track", "screens"))
   for (const it of l) {
@@ -266,9 +272,60 @@ ok(
   readouts.every(([, h]) => !h.includes('class="pc tap"')),
   "no percent carries the underline class",
 );
+const css = src.slice(src.indexOf("<style"), src.indexOf("</style>"));
+const rule = (sel) => {
+  const i = css.indexOf(sel);
+  if (i < 0) return null;
+  const open = css.indexOf("{", i);
+  return css.slice(open + 1, css.indexOf("}", open));
+};
+ok(
+  /text-decoration:\s*none/.test(rule(".dev .sl .sub u") || ""),
+  "the page numerals are explicitly NOT underlined",
+);
+ok(
+  /text-decoration:\s*underline/.test(rule(".dev .sl .sub .add") || ""),
+  "but the Add total pages offer is, being the line's one call to action",
+);
+ok(
+  /text-decoration:\s*underline/.test(rule(".dev .lnk") || ""),
+  "and the mark moved to the sheet's two text actions",
+);
 ok(
   readouts.some(([, h]) => h.includes("<u>213</u>")),
-  "the page numerals do carry underlines",
+  "the numerals are still their own tap targets, <u> and all",
+);
+
+console.log("-- Set aside freezes the position --");
+/* `resolveView` yields `[group, items]` pairs and the items are
+   `[id, name, caption, spec]`, so a screen is found by scanning rather than by key. */
+const screenById = (id) => {
+  for (const [, l] of A.resolveView("track", "screens"))
+    for (const it of l) if (it[0] === id) return it;
+  return null;
+};
+const aside = screenById("one-setaside");
+ok(!!aside, "one-setaside is drawn in the shipped version");
+const asideHtml = A.frame(aside[3]);
+ok(
+  asideHtml.includes('class="trk rest off'),
+  "its track is drawn disabled, not merely at rest",
+);
+ok(
+  asideHtml.includes('class="sub off"'),
+  "and the page pair recedes with it",
+);
+ok(
+  asideHtml.includes('class="pc"'),
+  "while the percent does not, since 46% is still true",
+);
+ok(
+  /opacity:\s*0\.4/.test(rule(".dev .trk.off") || ""),
+  "the disabled strength is the platform's 0.4, drawn rather than implied",
+);
+ok(
+  A.frame(screenById("one-rest")[3]).includes('class="trk rest glass'),
+  "and a Reading book's track carries no off class",
 );
 
 console.log("-- the page pair shares the status line, not its own --");
@@ -295,19 +352,24 @@ ok(hasSave("one-null") === false, "one-null (clean) has no Save");
 ok(hasSave("one-nopages") === false, "one-nopages (clean) has no Save");
 ok(hasSave("one-armed") === true, "one-armed (dirty) has Save");
 
-console.log("-- and it is at the foot, with Reset beside it --");
+console.log("-- and it is at the foot, with Discard changes beside it --");
 /* Save sat in the title row at 92x32 and was asked for at the foot, which is what made
    `Reset` possible: a slot beside a title holds one button, a full-width row holds a pair.
    Checked as *order within the rendered frame* rather than by looking for a block, because
    "at the foot" is the claim -- the buttons must come after the track, not before it. */
-/* Its own lookup: `specOf` is declared further down, and hoisting a `const` is not a thing. */
+/* Reuses `screenById` above. It used to carry its own copy of that scan, with a comment
+   saying `specOf` is declared further down and a `const` does not hoist -- still true, and
+   the reason the helper now lives before the first of its three callers. */
 const frameOf = (id) => {
-  for (const [, l] of A.resolveView("track", "screens"))
-    for (const it of l) if (it[0] === id) return A.frame(it[3]);
-  return "";
+  const it = screenById(id);
+  return it ? A.frame(it[3]) : "";
 };
 const dirtyFrame = frameOf("one-armed");
-ok(dirtyFrame.includes('class="rst"'), "one-armed draws Reset");
+ok(dirtyFrame.includes('class="rst"'), "one-armed draws the recessive button");
+ok(
+  dirtyFrame.includes(">Discard changes<"),
+  "and it says Discard changes, not Reset -- the consequence, not the mechanism",
+);
 ok(
   dirtyFrame.indexOf('class="cfm"') > dirtyFrame.indexOf('class="trk"') &&
     dirtyFrame.indexOf('class="rst"') > dirtyFrame.indexOf('class="trk"'),
@@ -315,7 +377,7 @@ ok(
 );
 ok(
   dirtyFrame.indexOf('class="rst"') < dirtyFrame.indexOf('class="cfm"'),
-  "Reset is the leading, recessive one",
+  "it is the leading, recessive one",
 );
 ok(
   !frameOf("one-rest").includes('class="rst"'),

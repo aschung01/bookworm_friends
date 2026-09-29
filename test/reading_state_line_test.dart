@@ -2,14 +2,18 @@
 //
 // Five properties matter here and none of them is visible in a type signature.
 //
-// **Only the page numerals are underlined.** The percent is equally tappable and
-// carries no underline: it is the largest thing on the line and obviously the value,
-// and marking all three made three competing affordances out of one read-out. That has
-// been re-litigated once, so it is pinned from both sides — the pair must be marked and
-// the percent must not.
+// **No value on this line is underlined, and `Add total pages` is.** This inverts what
+// the file pinned for two rounds — it read *"only the page numerals are underlined ...
+// pinned from both sides"* — and the mark moved to the sheet's two text actions. The rule
+// that replaced it is narrower and is what these cases now hold from both sides: an
+// underline marks an **action**, and the only action this line can contain is the offer to
+// supply a total. Everything else here is a value.
 //
-// **A door nobody can open must not draw a handle.** A null callback drops the tap
-// target *and* the underline, which is what makes a friend's book read as plain text.
+// **A door nobody can open must not draw a handle**, which since the swap is only about the
+// tap target and the ink — there is no underline left to drop. The page pair takes **one**
+// ink for both spans, decided by the page's own door, because the merged sheet's Set aside
+// state closes the position's doors while leaving the total's open and per-span ink drew one
+// phrase in two colours.
 //
 // **No page count is the majority case** — about two reading books in three — so the
 // interesting assertion is the absence of `p.213 of —` rather than the presence of the
@@ -104,15 +108,21 @@ TextDecoration? _decorationOf(WidgetTester tester, String label) =>
 void main() {
   group('the underline', () {
     testWidgets(
-      'Given all three doors, When the line is drawn, Then both page spans are '
-      'underlined and the percent is not',
+      'Given all three doors, When the line is drawn, Then no value is underlined',
       (tester) async {
         await _pump(tester);
 
         // The two small spans inside a phrase, which is where the affordance is not
         // otherwise discoverable.
-        expect(_decorationOf(tester, _derivedPage), TextDecoration.underline);
-        expect(_decorationOf(tester, '/ 462'), TextDecoration.underline);
+        // All three are doors and none of them advertises it. The cost is stated in the
+        // widget's own doc: after this swap nothing announces that `p.213` opens a wheel.
+        for (final label in ['Reading', '46%', _derivedPage, '/ 462']) {
+          expect(
+            _decorationOf(tester, label),
+            TextDecoration.none,
+            reason: label,
+          );
+        }
 
         // And the one that must stay unmarked however tappable it is. `isNot` would
         // pass on a null style, so this asserts the value.
@@ -180,7 +190,7 @@ void main() {
 
   group('the ambient text style', () {
     testWidgets('Given an ancestor that underlines everything, When the line is drawn, Then '
-        'only the page spans are still marked', (tester) async {
+        'nothing on it is marked', (tester) async {
       // **Found by looking at a render, not by a failing test.** `Text` merges its
       // own style onto the ambient `DefaultTextStyle`, so any property this line
       // leaves unset is the ancestor's to choose -- and `MaterialApp`'s fallback
@@ -223,25 +233,58 @@ void main() {
         ),
       );
 
-      final colors = AppTheme.light.extension<AppColors>()!;
-
-      // The two parts that must stay unmarked, whatever they are nested inside.
-      for (final label in ['Reading', '46%']) {
+      // **Every part, now.** This case used to split the line into two that had to stay
+      // unmarked and two that had to be marked; since the swap there is no second list, and
+      // the hostile ancestor is a bigger risk than before rather than a smaller one — a
+      // property left unset would now restore the exact mark this round removed, and it
+      // would appear only in a harness with no `Material` above, which is every render
+      // preview of this sheet.
+      for (final label in ['Reading', '46%', _derivedPage, '/ 462']) {
         expect(
           tester.widget<Text>(find.text(label)).style?.decoration,
           TextDecoration.none,
           reason: label,
         );
       }
+    });
 
-      // And the two that must be marked, as one solid rule in their own ink rather
-      // than as the ancestor's yellow double.
-      for (final label in [_derivedPage, '/ 462']) {
-        final style = tester.widget<Text>(find.text(label)).style!;
-        expect(style.decoration, TextDecoration.underline, reason: label);
-        expect(style.decorationStyle, TextDecorationStyle.solid, reason: label);
-        expect(style.decorationColor, colors.primaryText, reason: label);
-      }
+    testWidgets('and the offer, which is marked, is marked in its own ink', (
+      tester,
+    ) async {
+      // The one underline left on the line, under the same hostile ancestor: one solid
+      // rule in the span's own colour rather than the ancestor's yellow double.
+      tester.view.physicalSize = _smallestPhone * tester.view.devicePixelRatio;
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DefaultTextStyle(
+            style: const TextStyle(
+              decoration: TextDecoration.underline,
+              decorationColor: Color(0xFFFFFF00),
+              decorationStyle: TextDecorationStyle.double,
+            ),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: ReadingStateLine(
+                statusLabel: 'Reading',
+                statusColor: const Color(0xFF067657),
+                progress: 0.46,
+                onTotalTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final colors = AppTheme.light.extension<AppColors>()!;
+      final style = tester.widget<Text>(find.text('Add total pages')).style!;
+      expect(style.decoration, TextDecoration.underline);
+      expect(style.decorationStyle, TextDecorationStyle.solid);
+      expect(style.decorationColor, colors.primaryText);
     });
   });
 
@@ -291,8 +334,28 @@ void main() {
 
         // The three are independent, which is what lets the total ship before its
         // sheet exists — or after, while the wheel is being rebuilt.
-        expect(_decorationOf(tester, '/ 462'), TextDecoration.underline);
-        expect(_decorationOf(tester, _derivedPage), TextDecoration.none);
+        //
+        // **This is also the merged sheet's Set aside state**, and the assertion that
+        // matters most is the ink. The pair is one phrase and takes one colour, decided by
+        // the page's door: without that, closing the position's doors while leaving the
+        // total's open drew `p.213` grey beside `/ 462` dark, which reads as a rendering
+        // fault. The total is still a door in either ink — since the underline left this
+        // line, ink separates a live value from ambient context rather than marking what is
+        // tappable.
+        final colors = AppTheme.light.extension<AppColors>()!;
+        for (final label in [_derivedPage, '/ 462']) {
+          expect(
+            _decorationOf(tester, label),
+            TextDecoration.none,
+            reason: label,
+          );
+          expect(
+            tester.widget<Text>(find.text(label)).style?.color,
+            colors.secondaryText,
+            reason: label,
+          );
+        }
+
         await tester.tap(find.text(_derivedPage), warnIfMissed: false);
         expect(_taps, isEmpty);
 
@@ -491,13 +554,14 @@ void main() {
       (tester) async {
         await _pump(tester, statusLabel: '읽는 중', locale: const Locale('ko'));
 
-        // `p.{page}` against `{page}쪽` is why each whole span is underlined rather
-        // than its digits: the number sits on the other side of the affix here, so
-        // there is no locale-independent way to split the formatted string.
+        // `p.{page}` against `{page}쪽` is why the span rather than the digits was the
+        // unit when this line was underlined, and it is still why the span is the tap
+        // target: the number sits on the other side of the affix here, so there is no
+        // locale-independent way to split the formatted string.
         expect(find.text('213쪽'), findsOneWidget);
         expect(find.text('/ 462'), findsOneWidget);
-        expect(_decorationOf(tester, '213쪽'), TextDecoration.underline);
-        expect(_decorationOf(tester, '/ 462'), TextDecoration.underline);
+        expect(_decorationOf(tester, '213쪽'), TextDecoration.none);
+        expect(_decorationOf(tester, '/ 462'), TextDecoration.none);
       },
     );
   });

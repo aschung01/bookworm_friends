@@ -151,6 +151,20 @@ Future<void> showBookStatusBottomSheet(
         final colors = context.colors;
         final chip = BookStatusBadge.presentation(l10n, colors, status);
 
+        // **The position is read-only while the book is set aside**, so the track and the
+        // two position doors are dead and `Start reading again` is the only way to reach
+        // them. Asked for in those words: the reader has to resume before they can set a
+        // position.
+        //
+        // **Keyed on the pending `status`, not on `currentStatus`**, which is what makes the
+        // pair of text actions feel like controls rather than like a saved setting: tapping
+        // `Start reading again` unfreezes the track in the same frame, with nothing written
+        // yet, and confirming `Stop reading this` freezes it just as immediately. Reading the
+        // argument instead would leave a resumed book's track disabled until the reader
+        // saved, closed the sheet and came back — and would leave a just-stopped book's track
+        // live, which is the silent-resume this exists to prevent.
+        final isSetAside = status == bookStatusSetAside;
+
         // **Nothing is written until this is true and the reader presses Save**, so it is
         // also the whole of the sheet's unsaved-changes model. Compared against the
         // values the sheet opened with rather than tracked with a flag per field: a
@@ -170,9 +184,23 @@ Future<void> showBookStatusBottomSheet(
         void takePercentAnswer(double? value, {int? page}) {
           position = value;
           positionPage = page;
-          // Set aside is the one status a position cannot imply, so it is the one status
-          // a drag has to be able to leave. Moving the thumb resumes the book, which is
-          // why there is no "start reading again" link anywhere on this sheet.
+          // **Set aside can no longer be reached here at all, and this comment used to say
+          // the opposite.** It read: *"Set aside is the one status a position cannot imply,
+          // so it is the one status a drag has to be able to leave. Moving the thumb resumes
+          // the book, which is why there is no 'start reading again' link anywhere on this
+          // sheet."* Both halves went, in two steps. The link arrived first, because a reader
+          // stopping at 46% and resuming at 46% had no drag available; then the track and the
+          // two position doors were disabled at Set aside on instruction, so the link is now
+          // the *only* door out. That is the coherent end of the same argument rather than a
+          // second change: a status a position cannot imply should not be something a
+          // position can silently overwrite.
+          //
+          // So every path into here — the track, the percent wheel, the page wheel — is
+          // closed while the book is set aside, and the arithmetic below never sees that
+          // status. It is left unguarded rather than defended with an early return: a guard
+          // would be unreachable code asserting a policy that lives in the widget tree, and
+          // the day someone re-opens one of those doors they should get the old behaviour
+          // back rather than a silent no-op.
           status = value == null
               ? 0
               : (value >= 1 ? bookStatusFinished : bookStatusReading);
@@ -269,21 +297,28 @@ Future<void> showBookStatusBottomSheet(
                       progress: position,
                       progressPage: positionPage,
                       pageCount: total,
-                      onPercentTap: () => showSelectPercentBottomSheet(
-                        context,
-                        initialProgress: position,
-                        initialPage: positionPage,
-                        pageCount: total,
-                        onProgressSelected: (answer) => setState(
-                          () => takePercentAnswer(
-                            answer.progress,
-                            page: answer.page,
-                          ),
-                        ),
-                      ),
+                      // Closed while the book is set aside. Both of these write a
+                      // position, so leaving them open would be leaving two silent ways
+                      // to resume a book beside the one explicit way — and the wheel's
+                      // own `0` stop would resume a book *and* put it back to Not
+                      // started in a single confirm.
+                      onPercentTap: isSetAside
+                          ? null
+                          : () => showSelectPercentBottomSheet(
+                              context,
+                              initialProgress: position,
+                              initialPage: positionPage,
+                              pageCount: total,
+                              onProgressSelected: (answer) => setState(
+                                () => takePercentAnswer(
+                                  answer.progress,
+                                  page: answer.page,
+                                ),
+                              ),
+                            ),
                       // Only a book with a total has a page to edit. Opened straight into
                       // Page mode, because tapping the page has already said "pages".
-                      onPageTap: total == null
+                      onPageTap: total == null || isSetAside
                           ? null
                           : () => showSelectPercentBottomSheet(
                               context,
@@ -303,6 +338,14 @@ Future<void> showBookStatusBottomSheet(
                       // total, without one it is the `Add total pages` offer, and that offer
                       // is the largest single thing this sheet adds — about two books in
                       // three have no count at all.
+                      //
+                      // **Open even at Set aside, unlike the two above.** A total is a fact
+                      // about the book rather than about the reader's position in it, and it
+                      // is true whether or not the book is being read — so there is nothing
+                      // to resume in order to record it. Closing it would also make the
+                      // majority state draw a dead offer: `Add total pages` is a call to
+                      // action, and an unanswerable one reads as a bug. It writes no
+                      // position and cannot change the status.
                       onTotalTap: () => showSelectTotalPagesBottomSheet(
                         context,
                         initialTotalPages: total,
@@ -312,9 +355,15 @@ Future<void> showBookStatusBottomSheet(
                     ),
                     const SizedBox(height: 12),
                     // The control. Drag-only: a tap on it does nothing, deliberately.
+                    //
+                    // **Dead while the book is set aside**, along with the two position
+                    // doors above it, so resuming is a decision and not a side effect of
+                    // touching a slider. See `takePercentAnswer` for the argument and
+                    // [ReadingTrack.enabled] for what "dead" is drawn as.
                     ReadingTrack(
                       progress: position,
                       semanticsLabel: l10n.howFarIn,
+                      enabled: !isSetAside,
                       onChanged: (value) =>
                           setState(() => takePercentAnswer(value)),
                     ),
@@ -453,9 +502,17 @@ Future<void> showBookStatusBottomSheet(
                           Expanded(
                             child: ElevatedActionButton(
                               height: 44,
-                              buttonText: l10n.reset,
+                              buttonText: l10n.discardChanges,
                               backgroundColor: colors.surfaceVariant,
                               textStyle: AppTextStyles.label,
+                              // **`Discard changes`, not `Reset`** — renamed on
+                              // instruction. `Reset` names the mechanism, this names the
+                              // consequence, and the consequence is what a reader standing
+                              // in front of a Save button is choosing between. The cost is
+                              // width: two words in a half-width 44pt button, which is
+                              // survivable only because the pair is `Expanded` and so both
+                              // buttons are sized by the row rather than by their labels.
+                              //
                               // **Not `Cancel`, and the difference is that this one stays.**
                               // Dismissing the sheet already discards — that is the invariant
                               // Save is the other half of — so a button that dismissed would
@@ -560,6 +617,24 @@ class _SheetTextAction extends StatelessWidget {
           textAlign: TextAlign.center,
           style: AppTextStyles.label.copyWith(
             color: context.colors.secondaryText,
+            // **The sheet's only underline, and it arrived by trade.** The read-out's page
+            // numerals carried one and lost it in the same round this gained one, on
+            // instruction, and the rule that came out of the swap is worth keeping: an
+            // underline marks an action, not a value. Everything on the line above is a
+            // value; these two words are the only text on the sheet that *does* something.
+            //
+            // It is also the fix for a real gap rather than a relabelling. This was grey
+            // 13pt centred text with no furniture at all — the only reason it read as
+            // tappable was position — and the class doc below has been arguing that its
+            // 36pt band is easy to hit *by accident*, which is a sentence about something
+            // that does not look like a control.
+            decoration: TextDecoration.underline,
+            // Pinned, both of them, for the reason `reading_state_line.dart` pins its own:
+            // unset means inherited, and `MaterialApp`'s ambient fallback draws a *yellow
+            // double* rule wherever there is no `Material` above — which is every render
+            // preview of this sheet.
+            decorationColor: context.colors.secondaryText,
+            decorationStyle: TextDecorationStyle.solid,
           ),
         ),
       ),

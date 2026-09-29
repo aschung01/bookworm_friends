@@ -122,6 +122,7 @@ class ReadingTrack extends StatefulWidget {
     required this.progress,
     required this.onChanged,
     this.semanticsLabel,
+    this.enabled = true,
   });
 
   /// The stored fraction 0..1, or null when nothing has been recorded.
@@ -136,9 +137,39 @@ class ReadingTrack extends StatefulWidget {
   /// Spoken instead of a bare number. The parent's, because the strings are.
   final String? semanticsLabel;
 
+  /// False on a book whose position must not be edited here — today, a set-aside one.
+  ///
+  /// **A `bool` rather than a nullable `onChanged`**, which is the framework's idiom
+  /// (`Slider.onChanged == null` disables it). Two reasons not to follow it. The callback
+  /// is `required` and non-null, so making it nullable would push a null check into every
+  /// caller for a state only one of them has; and `enabled` is what `CNSlider` itself
+  /// takes, so the flag is passed through rather than translated at the one site where the
+  /// translation could go wrong.
+  final bool enabled;
+
   /// The slider's own band. [CNSlider]'s platform view is sized by this exactly, so it is
   /// the height a `UISlider` wants rather than a number chosen for the layout.
   static const double _kSliderHeight = 28;
+
+  /// What a disabled track is drawn at.
+  ///
+  /// **Only the [CupertinoSlider] branch needs this, and finding that out is the point of
+  /// the number existing.** `CupertinoSlider` treats `onChanged: null` as *behaviour* and
+  /// nothing else: `isInteractive` gates the gesture recognizer and the semantics, and its
+  /// `paint` never reads it — so a disabled slider is pixel-identical to a live one. A
+  /// control that looks draggable and ignores the finger is worse than no control, because
+  /// it reads as a broken app rather than as a closed door.
+  ///
+  /// `CNSlider` needs none of it: `enabled: false` reaches `UISlider.isEnabled` on the
+  /// platform side, which dims natively, and its own non-Apple fallback is a Material
+  /// `Slider` whose disabled state is already drawn. Wrapping both would dim the native one
+  /// twice.
+  ///
+  /// 0.4 rather than a token, because this is the platform's convention for a disabled
+  /// control and not a colour in the app's palette — and because the two stops it has to
+  /// mute (`brand` and `surfaceVariant`) would each need a separate muted token to say the
+  /// same thing.
+  static const double _kDisabledOpacity = 0.4;
   static const double _kLabelGap = 4;
   static const double _kLabelLine = 16;
 
@@ -225,6 +256,7 @@ class _ReadingTrackState extends State<ReadingTrack> {
     final colors = context.colors;
     final progress = widget.progress;
     final value = (progress ?? 0).clamp(0.0, 1.0);
+    final enabled = widget.enabled;
 
     // Whole percents, and the origin reported as an erasure rather than as zero.
     //
@@ -269,6 +301,10 @@ class _ReadingTrackState extends State<ReadingTrack> {
               child: useNativeGlass
                   ? CNSlider(
                       value: value,
+                      // Reaches `UISlider.isEnabled`, so the native view dims itself and
+                      // refuses the touch. `CNSlider` also applies it to its own Material
+                      // fallback, so this one flag covers both of its branches.
+                      enabled: enabled,
                       onChanged: report,
                       // The wheel's granularity, so the two controls cannot disagree about
                       // which values exist.
@@ -285,11 +321,18 @@ class _ReadingTrackState extends State<ReadingTrack> {
                       // depth it reads; see `native_glass.dart`.
                       autoHideOnModal: true,
                     )
-                  : CupertinoSlider(
-                      value: value,
-                      onChanged: report,
-                      activeColor: colors.brand,
-                      thumbColor: CupertinoColors.white,
+                  : Opacity(
+                      // See [_kDisabledOpacity]: this widget draws the same whether or not
+                      // it is interactive, so the dimming has to be done from outside it.
+                      opacity: enabled ? 1 : ReadingTrack._kDisabledOpacity,
+                      child: CupertinoSlider(
+                        value: value,
+                        // Null is what actually disables it — the opacity above is only
+                        // what makes that visible.
+                        onChanged: enabled ? report : null,
+                        activeColor: colors.brand,
+                        thumbColor: CupertinoColors.white,
+                      ),
                     ),
             ),
           ),

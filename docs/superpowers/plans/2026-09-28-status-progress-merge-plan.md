@@ -206,6 +206,58 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   two equal-length lists show matching rates rather than pairing.
 - **`_kHapticStep` became `_kTickStep`** once it gated two channels, so one constant still keeps
   the click and the vibration from becoming two events at similar rates.
+- **The underline traded places: off the read-out's numerals, onto the two text actions.** On
+  instruction, and it overturns a rule the spec had defended through one re-litigation
+  (*"only the page numerals carry underlines"*). What replaces it is narrower and covers more:
+  an underline marks an **action**, not a value. Stated cost, accepted knowingly: nothing now
+  announces that `213` opens a wheel, leaving only the ink — which was never designed as an
+  affordance — and the 44pt track below. `Semantics(button: true)` is untouched, so VoiceOver is
+  now better served than sight, which is the inverse of the usual defect.
+- **`Add total pages` keeps its underline, and that is the rule rather than an exception to it.**
+  It is the only *call to action* the line can contain, it is ~65% of the corpus, and an unmarked
+  grey sentence inside a read-out reads as a caption. So the read-out's one mark is now on the
+  one part that is not a value.
+- **Removing the underline exposed a two-tone page pair, which the old rule had been hiding.**
+  Per-span ink was invisible while the pair was two doors or two dead spans; freezing Set aside
+  closes the position's doors and leaves the total's open, so `p.213` drew grey beside `/ 462`
+  dark — one phrase in two colours, which reads as a rendering fault. The pair now takes one ink,
+  decided by the page's door, and the total stays tappable in either. That is only a
+  contradiction if ink still claims to mark what is tappable, and since the underline left the
+  line it does not.
+- **A set-aside book's track and its two position doors are dead, so the resume link is the only
+  way out.** On instruction, and it is the coherent end of an argument this log already records
+  half of: the link was added because stopping at 46% and resuming at 46% is not expressible as a
+  drag. A status a position cannot imply should not be one a position can silently overwrite. It
+  also closes a hole the link alone left: the wheel's `0` stop would otherwise resume a book *and*
+  send it back to Not started in a single confirm.
+- **`CupertinoSlider` does not draw itself as disabled, and no assertion about `onChanged` would
+  have caught that.** `isInteractive` gates its gesture recognizer and its semantics; `paint`
+  never reads it, so `onChanged: null` alone ships a control that looks draggable and ignores the
+  finger — which reads as a broken app rather than as a closed door. Hence the `Opacity` at the
+  platform's 0.4, on that branch only: `CNSlider` reaches `UISlider.isEnabled` natively and dims
+  its own Material fallback, so wrapping both would dim the native one twice. Verified by
+  measuring the render — the track's fill came back `(146, 222, 198)`, which is `brand` at exactly
+  0.4 over the sheet.
+- **The freeze is keyed on the sheet's pending status, not the saved one.** Keyed on the argument,
+  `Start reading again` would leave the track dead until the reader saved, closed the sheet and
+  reopened it — so the link would look like it had not worked — and a just-stopped book's track
+  would stay live, which is the silent resume the freeze exists to prevent. Both directions are
+  pinned.
+- **The total's door stays open at Set aside**, because a page count is a fact about the book
+  rather than about the reader's place in it, and closing it would draw `Add total pages` as an
+  offer nobody can accept in the majority state of the corpus.
+- **`Reset` became `Discard changes`**, ARB key and all — it had one reader. The first names a
+  mechanism, the second the consequence the reader is weighing against Save. Cost: two words in a
+  half-width 44pt button, which only fits because the pair is `Expanded`.
+- **The stop-reading confirmation lost its second sentence** and `place` became `progress`. It
+  said the book moves to Set aside, so the chip afterwards would not surprise anyone; against
+  that, a yes-or-no question about the reader's own book should not require holding the app's
+  status taxonomy. Cost: the destination is learned after the fact. `progress` is the word the
+  sheet's own title already uses.
+- **The mockup's underline check passed against a page that drew no underline**, which is worse
+  than not having it. It looked for `<u>213</u>` — and the numerals are still wrapped in `<u>`;
+  what changed is the CSS that gives `<u>` a rule. Both checks now read the stylesheet, and
+  `verify.js` grew a group for the frozen Set aside screen.
 - **The tilde is gone from the derived page, and `progressApproxPage` with it**, on
   instruction. The mark distinguished a page the app computed from one the reader typed, and
   it was removed from **both** call sites rather than only the read-out that was pointed at:

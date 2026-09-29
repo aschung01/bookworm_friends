@@ -1240,6 +1240,15 @@
                         rgba(0, 0, 0, 0.35)
                 );
             }
+            /* **Set aside freezes the position**, so the track is drawn at the
+               platform's disabled strength. Worth knowing why the app needs a number
+               here at all: `CupertinoSlider` reads `onChanged: null` as behaviour only
+               -- its `paint` never looks at it -- so a disabled slider is
+               pixel-identical to a live one unless something outside it dims the
+               control. `CNSlider` does it natively through `UISlider.isEnabled`. */
+            .dev .trk.off {
+                opacity: 0.4;
+            }
             .dev .trk.null .bar {
                 background: none;
                 outline: calc(1 * var(--pt)) dashed #b9c0b9;
@@ -1326,13 +1335,24 @@
                 );
             }
 
-            /* Tappable numerals. The two page numbers carry the underline; the
-               percent does not. It is the largest thing on the line and obviously
-               the value, so an underline there would make three competing
-               affordances out of one read-out. */
+            /* **No value on this line is underlined, and that reverses two rounds of
+               the opposite.** The numerals carried the mark and the percent did not,
+               on the argument that marking all three made three competing affordances
+               out of one read-out. It went the other way instead, on instruction: the
+               numerals lost it and the sheet's two text actions gained it (`.lnk`
+               below), which leaves one rule -- an underline marks an *action*, not a
+               value.
+
+               `.add` is not an exception to that rule but an instance of it: `Add
+               total pages` is the only call to action the line can contain, and it is
+               the majority state, since ~65% of the corpus has no count. The cost of
+               the swap is that nothing announces the numerals as doors any more; see
+               the caption on `one-rest`. */
             .dev .pg u,
+            .dev .sl .sub u {
+                text-decoration: none;
+            }
             .dev .pg .add,
-            .dev .sl .sub u,
             .dev .sl .sub .add {
                 text-decoration: underline;
                 text-decoration-thickness: calc(1.25 * var(--pt));
@@ -1342,6 +1362,14 @@
             .dev .pg u {
                 color: var(--text);
                 font-weight: 700;
+            }
+            /* **One ink for the whole phrase**, which is what Set aside forced: it
+               closes the position's doors and leaves the total's open, so per-span ink
+               drew `p.213` grey beside `/ 432` dark -- one sentence in two colours,
+               which reads as a rendering fault. The page's door decides both. */
+            .dev .sl .sub.off u,
+            .dev .pg.off u {
+                color: var(--text2);
             }
             .dev .sl .sub .add,
             .dev .pg .add {
@@ -1447,12 +1475,20 @@
                vertical padding is the shipped `EdgeInsets.symmetric(vertical: 8)`
                -- so the target is a band rather than the glyphs. `.left` is the
                superseded alignment, drawn only by `rej-drawn`. */
+            /* **Underlined, and that is where the read-out's mark went.** These two
+               words are the only text on the sheet that *does* something, and before
+               the swap they were grey centred 13pt with no furniture at all -- the only
+               thing that read as tappable was position, on a 36pt band the design
+               record simultaneously describes as easy to hit by accident. */
             .dev .lnk {
                 text-align: center;
                 padding: calc(8 * var(--pt)) 0;
                 font-size: calc(13 * var(--pt));
                 font-weight: 600;
                 color: var(--text2);
+                text-decoration: underline;
+                text-decoration-thickness: calc(1.25 * var(--pt));
+                text-underline-offset: calc(2.5 * var(--pt));
             }
             .dev .lnk.left {
                 text-align: left;
@@ -1820,7 +1856,10 @@
                            put the buttons above the read-out again. */
                         return `<div class="ttl">${b.v}</div>`;
                     case "cmt":
-                        return `<div class="cmt"><span class="rst">Reset</span><span class="cfm">${b.btn || "Save"}</span></div>`;
+                        /* `Discard changes`, renamed from `Reset` on instruction: the
+                           first names a mechanism, the second names the consequence the
+                           reader is weighing against Save. */
+                        return `<div class="cmt"><span class="rst">Discard changes</span><span class="cfm">${b.btn || "Save"}</span></div>`;
                     case "seg":
                         return `<div class="seg${b.items.length > 3 ? " four" : ""}">${b.items
                             .map(
@@ -1841,7 +1880,7 @@
                                 : ""
                         }${
                             b.page
-                                ? `<span class="sub">p.<u>${b.page}</u> of <u>${b.total}</u></span>`
+                                ? `<span class="sub${b.off ? " off" : ""}">p.<u>${b.page}</u> of <u>${b.total}</u></span>`
                                 : b.add
                                   ? `<span class="sub"><span class="add">${b.add}</span></span>`
                                   : b.sub
@@ -1854,7 +1893,7 @@
                            material, and `thumb:"rib"` restores the SUPERSEDED
                            bookmark-ribbon thumb for `rej-drawn`. The nesting is
                            the platform's geometry, not decoration -- see the CSS. */
-                        return `<div class="trk ${b.mode || "rest"}${b.glass === false ? "" : " glass"}${b.thumb === "rib" ? " ribbon" : ""}" style="--w:${b.pct}%"><div class="bar"></div><div class="rail">${
+                        return `<div class="trk ${b.mode || "rest"}${b.off ? " off" : ""}${b.glass === false ? "" : " glass"}${b.thumb === "rib" ? " ribbon" : ""}" style="--w:${b.pct}%"><div class="bar"></div><div class="rail">${
                             b.mode === "null" ? "" : '<div class="fill"></div>'
                         }<div class="thm"></div></div></div>`;
                     case "pg":
@@ -2123,7 +2162,7 @@
                         [
                             "one-rest",
                             "Resting &middot; Reading at 46%, clean",
-                            "<b>One line carries the whole state:</b> status, percent, and the page inside the total. The two page numerals are underlined because they are small and sit inside a phrase; the percent is not, though it is equally tappable &mdash; it is the largest thing on the line and obviously the value, so underlining it would make three competing affordances out of one read-out. <b>No Save</b>: nothing is dirty yet. <b>The heading is the sheet's, not the book's</b> (<code>readingProgressTitle</code>) &mdash; the book's own title was drawn here first and read as a page header; see <code>rej-drawn</code>. <b>The track is a real <code>UISlider</code></b>, so the thumb is the platform's white disc and the tap on it is inert for free &mdash; see <code>el-track</code>. <b>275pt, measured</b> at 375&times;667 with the app's fonts loaded, against 270 estimated here.",
+                            "<b>One line carries the whole state:</b> status, percent, and the page inside the total. <b>All three are tappable and none of them is marked.</b> The numerals were underlined for two rounds &mdash; small, inside a phrase, no other affordance &mdash; against a bare percent, on the argument that marking all three made three competing affordances out of one read-out. It was settled the other way on instruction: the numerals lost the mark and <code>Stop reading this</code> / <code>Start reading again</code> gained it, which leaves one rule for one device &mdash; <b>an underline marks an action, not a value.</b> The cost is real and was taken knowingly: nothing now announces that <code>213</code> opens a wheel. What is left is the ink, which was never designed as an affordance, and the 44pt track directly below, which is why a reader who never finds the numerals is not stuck. <b>No Save</b>: nothing is dirty yet. <b>The heading is the sheet's, not the book's</b> (<code>readingProgressTitle</code>) &mdash; the book's own title was drawn here first and read as a page header; see <code>rej-drawn</code>. <b>The track is a real <code>UISlider</code></b>, so the thumb is the platform's white disc and the tap on it is inert for free &mdash; see <code>el-track</code>. <b>275pt, measured</b> at 375&times;667 with the app's fonts loaded, against 270 estimated here.",
                             {
                                 pt: 275,
                                 body: [
@@ -2228,7 +2267,7 @@
                         [
                             "one-setaside",
                             "Set aside &middot; closed at 46%",
-                            "<b>Its own status, value 3 &mdash; and that reverses the derived scheme this page shipped with.</b> The reason: position alone cannot tell &ldquo;at 46% and still reading&rdquo; from &ldquo;closed at 46%&rdquo;, so a second bit was always needed. Once it is displayed as a first-class word, storing it as <code>status 2</code> makes the column say &ldquo;Read&rdquo; about a book nobody read. <code>finish_date</code> is the day it was closed. <b>It does have a resume link now, and that reverses this caption:</b> it read &ldquo;no resume link &mdash; moving the thumb resumes it&rdquo;, and the premise was wrong. The thumb resumes only by <i>changing the position</i>, so a reader who stopped at 46% and wants to carry on from 46% had no move at all. Set aside is the one status a position cannot imply, so it is the one that needs a control. <code>Start reading again</code> takes the slot <code>Stop reading this</code> occupies while the book is open, and is <b>not confirmed</b>, unlike its opposite &mdash; picking a book back up loses nothing. <b>One cost the drawing hides:</b> <code>BookStatusBadge</code>'s <code>switch</code> ends <code>_ =&gt; statusOther</code>, so without a fourth arm this chip reads <b>Other</b> &mdash; the same silent-wrong-label trap as <code>rej-four</code>'s <code>clamp</code>, and it fails soft, so nothing catches it. <b>276pt clean, measured</b> &mdash; the same rows as <code>one-finished</code>, to the point. Reached from Reading it is dirty and <b>287pt</b>, which is the tallest this sheet gets: read-out, track, both date rows and Save at once.",
+                            "<b>Its own status, value 3 &mdash; and that reverses the derived scheme this page shipped with.</b> The reason: position alone cannot tell &ldquo;at 46% and still reading&rdquo; from &ldquo;closed at 46%&rdquo;, so a second bit was always needed. Once it is displayed as a first-class word, storing it as <code>status 2</code> makes the column say &ldquo;Read&rdquo; about a book nobody read. <code>finish_date</code> is the day it was closed. <b>It does have a resume link now, and that reverses this caption:</b> it read &ldquo;no resume link &mdash; moving the thumb resumes it&rdquo;, and the premise was wrong. The thumb resumes only by <i>changing the position</i>, so a reader who stopped at 46% and wants to carry on from 46% had no move at all. Set aside is the one status a position cannot imply, so it is the one that needs a control. <code>Start reading again</code> takes the slot <code>Stop reading this</code> occupies while the book is open, and is <b>not confirmed</b>, unlike its opposite &mdash; picking a book back up loses nothing. <b>The track and the two position doors are dead here, and that link is the only way out.</b> Asked for in those words, and it is the coherent end of the same argument rather than a second change: a status a position cannot imply should not be one a position can silently overwrite. The drag used to <i>be</i> the resume gesture, which is the third reversal in this caption. The total's door stays open &mdash; a page count is a fact about the book rather than about the reader's place in it, and closing it would draw <code>Add total pages</code> as an offer nobody can accept, in the majority state of the corpus. <b>Note this is not available to the rejected <code>derived</code> scheme below:</b> where the status <i>is</i> the position, there is no position to freeze, so that variant has to leave the track live. One more cost of deriving it. <b>One cost the drawing hides:</b> <code>BookStatusBadge</code>'s <code>switch</code> ends <code>_ =&gt; statusOther</code>, so without a fourth arm this chip reads <b>Other</b> &mdash; the same silent-wrong-label trap as <code>rej-four</code>'s <code>clamp</code>, and it fails soft, so nothing catches it. <b>276pt clean, measured</b> &mdash; the same rows as <code>one-finished</code>, to the point. Reached from Reading it is dirty and <b>287pt</b>, which is the tallest this sheet gets: read-out, track, both date rows and Save at once.",
                             {
                                 pt: 276,
                                 body: [
@@ -2241,11 +2280,17 @@
                                         tone: "fl",
                                         page: "213",
                                         total: "462",
+                                        /* The position is frozen here, so the page
+                                           pair recedes -- see the caption. `pc`
+                                           does not: 46% is exactly as true of a
+                                           closed book as of an open one. */
+                                        off: true,
                                     },
                                     {
                                         t: "track",
                                         mode: "rest",
                                         pct: 46,
+                                        off: true,
                                     },
                                     {
                                         t: "ends",
@@ -2298,7 +2343,7 @@
                         [
                             "one-nopages",
                             "Reading &middot; no page count (the 65% case)",
-                            "<b>This is the majority of the corpus, and it is what editing the total buys.</b> ~65% of books have no <code>page_count</code> &mdash; Kakao supplies none at all &mdash; which is why the wheel hides Page mode and stores a fraction. <code>page_count</code> is written once by <code>addBook</code> and never again, so the underlined <i>Add total pages</i> is a new capability: fill it in and Page mode, the derived page and the widget's page read-out all light up for a book that had none. <b>275pt</b>, the same as <code>one-rest</code> to the point: the offer stands in for the page pair on the line it already occupies, so it costs no row.",
+                            "<b>This is the majority of the corpus, and it is what editing the total buys.</b> ~65% of books have no <code>page_count</code> &mdash; Kakao supplies none at all &mdash; which is why the wheel hides Page mode and stores a fraction. <code>page_count</code> is written once by <code>addBook</code> and never again, so the underlined <i>Add total pages</i> is a new capability &mdash; and <b>it is the one underline the read-out keeps</b>, now that the numerals have lost theirs. Not an exception to the new rule but an instance of it: this is the only <i>call to action</i> the line can contain, where every numeral is a value. It is also the whole reason the offer works, since an unmarked grey sentence in a read-out is read as a caption: fill it in and Page mode, the derived page and the widget's page read-out all light up for a book that had none. <b>275pt</b>, the same as <code>one-rest</code> to the point: the offer stands in for the page pair on the line it already occupies, so it costs no row.",
                             {
                                 pt: 275,
                                 body: [
@@ -2841,13 +2886,13 @@
                         [
                             "el-readout",
                             "The read-out &middot; one line, three doors",
-                            "<b>Status, percent and the page inside the total, on one line.</b> <code>46%</code> opens the wheel; <code>213</code> opens it in Page mode; <code>462</code> opens the total-pages sheet. That is what replaced &minus;&nbsp;/&nbsp;+. Only the two page numerals are underlined: they are small and sit inside a phrase, where the percent is the largest thing on the line and needs no marking.",
+                            "<b>Status, percent and the page inside the total, on one line.</b> <code>46%</code> opens the wheel; <code>213</code> opens it in Page mode; <code>462</code> opens the total-pages sheet. That is what replaced &minus;&nbsp;/&nbsp;+. <b>None of the three is underlined</b>, since the mark moved to the sheet's text actions: an underline marks an action and every part of this line is a value. <b>On a set-aside book the first two are shut</b> &mdash; they write a position, and resuming has to be a decision rather than a side effect of touching a slider &mdash; while <code>462</code> stays open, a total being a fact about the book rather than about the reader's place in it.",
                             `<div class="dev" style="padding:14px 16px">${blocks([{ t: "status", state: "Reading", pc: "46%", page: "213", total: "462" }])}</div>`,
                         ],
                         [
                             "el-pageline",
                             "The line's right-hand end &middot; and the 65% case",
-                            "Two underlines when the book has a count; one green prompt when it does not, which is <b>~65% of the corpus</b>. That prompt is the new capability &mdash; <code>page_count</code> is written once by <code>addBook</code> and never again today, so filling it in is what turns Page mode on for a book that never had it.",
+                            "No underline when the book has a count; one underlined green prompt when it does not, which is <b>~65% of the corpus</b>. That prompt is the new capability &mdash; <code>page_count</code> is written once by <code>addBook</code> and never again today, so filling it in is what turns Page mode on for a book that never had it.",
                             `<div class="dev" style="padding:14px 16px">${blocks(
                                 [
                                     { t: "pg", page: "213", total: "462" },
