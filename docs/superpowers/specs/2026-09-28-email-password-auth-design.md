@@ -244,7 +244,8 @@ no provider-specific branch to add.
 | ------------------------------------------------ | ----------------------------------------------------- |
 | `lib/providers/auth_provider.dart`               | `recovering`, 5 methods, 1 branch in `_apply`         |
 | `lib/ui/pages/auth_page.dart`                    | third button, `_kLockupHeight` 300 → 356, stack clear |
-| `lib/ui/pages/email_auth_page.dart`              | new: form, 3 modes, 2 phases, error mapper            |
+| `lib/ui/pages/email_auth_page.dart`              | new: form, 3 modes, 2 phases                          |
+| `lib/core/email_auth_error.dart`                 | new: the pure error mapper                            |
 | `lib/ui/pages/new_password_page.dart`            | new: `fullscreenDialog` via `onGenerateRoute`         |
 | `lib/ui/widgets/password_recovery_listener.dart` | new: beside `InviteLinkListener`                      |
 | `lib/constants/app_routes.dart`                  | `emailAuth`, `newPassword`                            |
@@ -273,20 +274,42 @@ reset ────> resetPasswordForEmail(redirectTo:) ──> phase: sent
 
 ## Tests
 
+51 new cases; the suite is **1972 green** with no errors or warnings from `flutter analyze`.
+
 - `email_auth_page_test.dart` — mode toggle, validation, submit reaches the notifier, error
   renders, `sent` phase renders, and sign-up with a known address still says _check your
-  inbox_.
-- `auth_error_message_test.dart` — every branch of the mapper, including the local-storage
-  verifier case.
-- `password_recovery_test.dart` — `_apply` sets `recovering` on the event; it **survives
-  `tokenRefreshed`**; `signOut` clears it; the listener pushes once, and once only.
+  inbox_. Also the 375x667-with-keyboard case that is this page's whole reason for existing.
+- `email_auth_error_test.dart` — every branch of the mapper, including the local-storage
+  verifier case and a non-`AuthException` input, since the page hands it whatever `catch`
+  caught.
+- `password_recovery_test.dart` — `recovering` rides on an `authenticated` status; the
+  listener presents on a live event **and** on a cold start; it does not stack a second copy;
+  it reopens for a second link; `dismissRecovery` leaves the session intact.
 - `auth_page_navigation_test.dart` — a case pinning that `recovering` does **not** stop the
   page leaving for home, so the rejected fix above cannot be quietly reinstated; and one
-  pinning that a session arriving **while `EmailAuthPage` is on top** leaves no `AuthPage`
-  anywhere in the stack.
-- `auth_hero_test.dart` — updated for `_kLockupHeight` 356. It exercises the mascot at an
-  explicit surface size rather than on a phone, which is what makes the 18.2pt of remaining
-  slack checkable.
+  pinning that a session arriving **while `EmailAuthPage` is on top** leaves nothing below
+  the library.
+
+### Two things found by writing them, both corrections to this document
+
+**`auth_hero_test.dart` needed no change, and this spec predicted it would.** It asserts
+behaviour — "the mascot never reaches the buttons on a short phone" — rather than the value of
+`_kLockupHeight`, so it _checked_ the 18.2pt arithmetic instead of having to be taught it. The
+prediction was wrong in the good direction, and it is a point in favour of how that test was
+written.
+
+**The stack guard was tautological on the first attempt, and only re-breaking the fix showed
+it.** `expect(find.byType(AuthPage), findsNothing)` is the obvious assertion and it proves
+nothing: routes beneath an opaque route are offstage, and finders skip offstage widgets by
+default, so it passes whether or not the route is still in the navigator's history. Restoring
+`pushReplacementNamed` produced a **fully green run**.
+
+The assertion is now `navigator.canPop()`, which reads the history directly and is also
+literally the Android back gesture the bug is about. Re-verified the other way: with
+`pushReplacementNamed` restored, exactly one case fails, on `canPop()` being `true`.
+
+This is the same trap the streak notes record for `FractionallySizedBox` — measuring the
+widget that sizes itself to the constraints it was handed, and so passing on the bug.
 
 ## Out of scope, and not by accident
 

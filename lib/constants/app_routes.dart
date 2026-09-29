@@ -3,11 +3,13 @@
 import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/material.dart';
 import 'package:bookworm_friends/ui/pages/auth_page.dart';
+import 'package:bookworm_friends/ui/pages/email_auth_page.dart';
 import 'package:bookworm_friends/ui/pages/home_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_consent_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_dead_page.dart';
 import 'package:bookworm_friends/ui/pages/invite_done_page.dart';
 import 'package:bookworm_friends/ui/pages/manage_friend_page.dart';
+import 'package:bookworm_friends/ui/pages/new_password_page.dart';
 import 'package:bookworm_friends/ui/pages/reading_streak_page.dart';
 import 'package:bookworm_friends/ui/pages/scan_book_page.dart';
 import 'package:bookworm_friends/ui/pages/settings_page.dart';
@@ -23,6 +25,22 @@ class AppRoutes {
   static const String home = '/home';
   static const String details = '/details';
   static const String settings = '/settings';
+
+  /// Email and password: sign in, sign up, and requesting a reset link.
+  ///
+  /// Pushed from the sign-in screen's third button. An ordinary entry in [routes] — this
+  /// *is* one level deeper into signing in, so it arrives from the trailing edge like
+  /// [settings] does, unlike the three covers below.
+  static const String emailAuth = '/email_auth';
+
+  /// Choosing a new password, after a reset link has been exchanged.
+  ///
+  /// **Not reached by a tap.** `PasswordRecoveryListener` pushes it when the auth state
+  /// reports a recovery, over whatever the reader landed on — see that class on why a
+  /// recovery is presented rather than routed to.
+  ///
+  /// **Presented upward, and therefore not in [routes].** See [onGenerateRoute].
+  static const String newPassword = '/new_password';
 
   /// Identity, per-friend notifications, and Remove.
   ///
@@ -99,6 +117,7 @@ class AppRoutes {
     inviteDead: (_) => const InviteDeadPage(),
     details: (_) => const BookDetailsTabView(),
     settings: (_) => const SettingsPage(),
+    emailAuth: (_) => const EmailAuthPage(),
   };
 
   /// Routes that need a transition the [routes] table cannot express.
@@ -184,6 +203,15 @@ class AppRoutes {
         settings: settings,
         fullscreenDialog: true,
         builder: (_) => const ReadingStreakPage(),
+      ),
+      // A cover for the same reason the three above are: the one thing on screen, with an
+      // ✕ rather than a back edge. It is also the only one of the four that is not reached
+      // by a tap — it interrupts, so arriving from the side (as if the reader had asked)
+      // would misdescribe it.
+      newPassword => CupertinoPageRoute<void>(
+        settings: settings,
+        fullscreenDialog: true,
+        builder: (_) => const NewPasswordPage(),
       ),
       _ => null,
     };

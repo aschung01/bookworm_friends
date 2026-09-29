@@ -13,6 +13,7 @@ import 'package:bookworm_friends/providers/theme_provider.dart';
 import 'package:bookworm_friends/services/image_disk_cache.dart';
 import 'package:bookworm_friends/services/notification_service.dart';
 import 'package:bookworm_friends/ui/widgets/invite_link_listener.dart';
+import 'package:bookworm_friends/ui/widgets/password_recovery_listener.dart';
 import 'package:bookworm_friends/ui/widgets/shell_chrome.dart';
 import 'package:bookworm_friends/ui/widgets/streak_widget_sync.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -210,12 +211,18 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
       // and the home-screen widget has to follow all three. Innermost of the three so it is
       // below `Localizations` — it needs `AppLocalizations` to put translated copy in the
       // snapshot, which is what keeps those strings out of Swift.
+      // `PasswordRecoveryListener` is here on the same grounds: a reset link can be
+      // exchanged while the reader is anywhere, and the set-password screen is pushed over
+      // whatever they landed on rather than routed to. See its class comment.
       builder: (context, child) => _easyLoading(
         context,
         InviteLinkListener(
           navigatorKey: navigatorKey,
-          child: StreakWidgetSync(
-            child: ShellChrome(navigatorKey: navigatorKey, child: child!),
+          child: PasswordRecoveryListener(
+            navigatorKey: navigatorKey,
+            child: StreakWidgetSync(
+              child: ShellChrome(navigatorKey: navigatorKey, child: child!),
+            ),
           ),
         ),
       ),

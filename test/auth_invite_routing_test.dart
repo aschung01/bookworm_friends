@@ -10,6 +10,14 @@
 // want and the two must not share an input. The cost is the deferred tier: a reader who
 // installs from the landing page and opens the app cold has no invite until they tap the
 // link again.
+//
+// **These cases used to assert `didReplace` and now assert arrival plus an empty stack
+// beneath.** `AuthPage` reached the library with `pushReplacementNamed` until
+// `EmailAuthPage` was added above it, at which point replacing the navigator's *topmost*
+// route stopped meaning replacing this page -- see `_leaveIfSignedIn`. Watching for
+// `didReplace` was therefore watching the mechanism, and the mechanism was the bug; what
+// these cases are actually about is that consent lands *onto* a real library, which is
+// unchanged.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +46,7 @@ class _SignedIn extends AuthNotifier {
 class _Recorder extends NavigatorObserver {
   final pushed = <String?>[];
   final replaced = <String?>[];
+  final removed = <String?>[];
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previous) =>
@@ -46,6 +55,17 @@ class _Recorder extends NavigatorObserver {
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
       replaced.add(newRoute?.settings.name);
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previous) =>
+      removed.add(route.settings.name);
+
+  /// Arrival at a route, by whichever means the navigator reported.
+  ///
+  /// A push and a replacement are the same fact to every one of these cases: the reader is
+  /// looking at that screen. Distinguishing them is what made two cases fail for a change
+  /// that altered nothing a reader could see.
+  Iterable<String?> get arrivals => [...pushed, ...replaced];
 }
 
 Future<_Recorder> _pump(
@@ -87,7 +107,7 @@ void main() {
     (tester) async {
       final observer = await _pump(tester, pendingToken: 'K7M2QP4X');
 
-      expect(observer.replaced, contains(AppRoutes.home));
+      expect(observer.arrivals, contains(AppRoutes.home));
       expect(observer.pushed, contains(AppRoutes.inviteConsent));
       // Dismissing consent has to leave the reader somewhere real.
       expect(find.text('CONSENT'), findsOneWidget);
@@ -121,21 +141,23 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Given no link, When a sign-in completes, Then the reader is left on their library '
-    'with nothing asked of them',
-    (tester) async {
-      final observer = await _pump(tester, pendingToken: null);
+  testWidgets('Given no link, When a sign-in completes, Then the reader is left on their library '
+      'with nothing asked of them', (tester) async {
+    final observer = await _pump(tester, pendingToken: null);
 
-      expect(observer.replaced, contains(AppRoutes.home));
-      expect(find.text('LIBRARY'), findsOneWidget);
-      expect(
-        observer.pushed,
-        isNot(contains(AppRoutes.inviteConsent)),
-        reason: 'there is no token to consent to',
-      );
-    },
-  );
+    expect(observer.arrivals, contains(AppRoutes.home));
+    expect(find.text('LIBRARY'), findsOneWidget);
+    expect(
+      observer.pushed,
+      isNot(contains(AppRoutes.inviteConsent)),
+      reason: 'there is no token to consent to',
+    );
+    // **No assertion here that the stack was cleared, deliberately.** Nothing is ever
+    // pushed above `AuthPage` in this harness, so it is the navigator's topmost route when
+    // `_leaveIfSignedIn` runs and `pushReplacementNamed` and `pushNamedAndRemoveUntil`
+    // produce the identical stack. A check here would pass either way; the one that can
+    // fail lives in `auth_page_navigation_test.dart`, which stacks the email form first.
+  });
 
   testWidgets(
     'Given a sign-in with no link, When the landing is inspected, Then no invite-code '

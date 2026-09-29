@@ -98,6 +98,10 @@ Future<_RouteLog> _pumpAuthPage(
         routes: {
           AppRoutes.auth: (_) => const AuthPage(),
           AppRoutes.home: (_) => const _Library(),
+          // A stub, so a case can stack something above the sign-in page without the real
+          // form's dependencies. What matters is only that *something* is on top.
+          AppRoutes.emailAuth: (_) =>
+              const Scaffold(body: Center(child: Text('EMAIL FORM'))),
         },
       ),
     ),
@@ -183,5 +187,73 @@ void main() {
         expect(_arrivalsAtHome(log), 1);
       },
     );
+  });
+
+  group('nothing of the sign-in stack survives the session', () {
+    testWidgets('Given the email form is on top, When a session arrives, Then neither it nor the '
+        'sign-in page is left underneath the library', (tester) async {
+      // **The bug this pins is a one-word difference.** `pushReplacementNamed` replaces
+      // the navigator's *topmost* route, not the route that called it -- so with the
+      // email form pushed above, a confirmation link disposed the form, pushed the
+      // library, and left `AuthPage` alive beneath it. On Android system back then popped
+      // the library and revealed the sign-in buttons, with `_leaving` already true so
+      // nothing navigated again: a signed-in reader stranded on sign-in, which is exactly
+      // what the first case in this file exists to forbid.
+      //
+      // It could not have been caught before `EmailAuthPage` existed, because until then
+      // `AuthPage` was always the topmost route and the two spellings agreed.
+      final notifier = _FakeAuthNotifier(const AuthState.unauthenticated());
+      await _pumpAuthPage(tester, notifier);
+      await tester.pumpAndSettle();
+
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.pushNamed(AppRoutes.emailAuth);
+      await tester.pumpAndSettle();
+      expect(find.text('EMAIL FORM'), findsOneWidget);
+
+      notifier.emit(_signedIn());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(_Library), findsOneWidget);
+
+      // **`canPop` is the assertion, and the obvious one does not work.**
+      // `find.byType(AuthPage)` finding nothing proves nothing here: routes under an
+      // opaque route are offstage, and finders skip offstage widgets by default, so that
+      // expectation passes whether or not the route is still in the history. Verified by
+      // restoring `pushReplacementNamed` and watching it pass anyway.
+      //
+      // The history is what the bug is about, and `canPop` reads it directly -- it is also
+      // literally the Android back gesture that would have revealed the sign-in buttons.
+      expect(
+        navigator.canPop(),
+        isFalse,
+        reason:
+            'anything left below the library is reachable with system back, and _leaving '
+            'means the sign-in page will not navigate again',
+      );
+      expect(find.text('EMAIL FORM', skipOffstage: false), findsNothing);
+      expect(find.byType(AuthPage, skipOffstage: false), findsNothing);
+    });
+  });
+
+  group('a password recovery is not a reason to stay', () {
+    testWidgets('Given a session that arrived through a reset link, When it is seen, Then the page '
+        'still leaves for the library', (tester) async {
+      // **The rejected design, pinned so it cannot come back.** Gating `_leaveIfSignedIn`
+      // on `recovering` is the obvious way to give the reader a chance to set a new
+      // password, and it is wrong: a recovery session is a real session, and on a cold
+      // start it is `SplashPage` rather than this page that routes, so the gate would be
+      // bypassed anyway. `PasswordRecoveryListener` pushes the set-password screen *over*
+      // wherever the reader lands instead.
+      final notifier = _FakeAuthNotifier(const AuthState.unauthenticated());
+      final log = await _pumpAuthPage(tester, notifier);
+      await tester.pumpAndSettle();
+
+      notifier.emit(const AuthState.passwordRecovery(_user));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(_Library), findsOneWidget);
+      expect(_arrivalsAtHome(log), 1);
+    });
   });
 }

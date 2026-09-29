@@ -3,6 +3,10 @@
   "appTitle": "Libstack",
   "continueWithApple": "Continue with Apple",
   "continueWithGoogle": "Continue with Google",
+  "continueWithEmail": "Continue with email",
+  "@continueWithEmail": {
+    "description": "The third button on the sign-in screen, below Apple and Google. 'Continue with' matches its two siblings because it is the same kind of promise — a door, not a commitment to signing up rather than in; which of the two it turns out to be is chosen on the page behind it."
+  },
   "save": "Save",
   "cancel": "Cancel",
   "delete": "Delete",
@@ -799,5 +803,63 @@
   "@streakCelebrationRecord": {
     "description": "Shown instead of the countdown when the run is the longest on record. longestReadingRun counts the current run, so this is the case where streak == best \u2014 the reader is setting the record as they read, which is a real reward that costs no new feature."
   },
-  "streakCelebrationGo": "Keep it going"
+  "streakCelebrationGo": "Keep it going",
+
+  "emailAuthSignIn": "Sign in",
+  "@emailAuthSignIn": {
+    "description": "Both the sign-in mode's heading and its submit button. One key for both deliberately: the heading names the errand and the button commits to it, and two different words for one act would read as two different acts."
+  },
+  "emailAuthSignUp": "Create account",
+  "@emailAuthSignUp": {
+    "description": "Heading and submit for the sign-up mode. 'Create account' rather than 'Sign up' because it pairs with 'Sign in' without rhyming with it — the two modes are one letter apart when spelled up/in, which is the kind of distinction a reader skimming a toggle does not make."
+  },
+  "emailAuthResetTitle": "Reset password",
+  "emailAuthResetBody": "We'll email you a link to set a new password.",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "emailAuthForgot": "Forgot password?",
+  "emailAuthToSignUp": "New here? Create an account",
+  "emailAuthToSignIn": "Already have an account? Sign in",
+  "emailAuthSendReset": "Send reset link",
+  "emailAuthCheckInbox": "Check your inbox",
+  "emailAuthConfirmSent": "We sent a confirmation link to {email}. Open it on this device to finish signing up.",
+  "@emailAuthConfirmSent": {
+    "description": "Shown after sign-up, which with email confirmation on returns no session. 'On this device' is not padding: the PKCE code verifier is stored locally by the client that made the request, so a link opened elsewhere cannot complete the exchange.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "emailAuthResetSent": "We sent a reset link to {email}. Open it on this device to set a new password.",
+  "@emailAuthResetSent": {
+    "description": "Shown after a reset request. Worded the same as emailAuthConfirmSent and for the same reason — see that key on why the device matters. Sent unconditionally, even for an address with no account: saying otherwise would confirm who has one.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "emailAuthEmailRequired": "Enter your email address.",
+  "emailAuthPasswordTooShort": "Use at least 6 characters.",
+  "@emailAuthPasswordTooShort": {
+    "description": "Client-side, matching Supabase's own default minimum so the reader is not sent on a round trip to be told. The server still enforces it and answers weak_password, which maps to emailAuthWeakPassword."
+  },
+  "emailAuthInvalidCredentials": "That email and password don't match.",
+  "@emailAuthInvalidCredentials": {
+    "description": "Names the pair rather than either half. 'No account with that email' would be the more helpful sentence and is the one thing not to write: it confirms which addresses have accounts, which is exactly what Supabase's email-enumeration protection exists to withhold."
+  },
+  "emailAuthEmailNotConfirmed": "Confirm your email first \u2014 the link is in your inbox.",
+  "emailAuthWeakPassword": "Pick a longer password.",
+  "emailAuthTooManyRequests": "Too many attempts. Try again in a few minutes.",
+  "emailAuthInvalidEmail": "That doesn't look like an email address.",
+  "emailAuthWrongDevice": "Open the link on the device that asked for the reset.",
+  "@emailAuthWrongDevice": {
+    "description": "Not a server error. Under PKCE the code verifier lives in local storage on the device that requested the reset, so a link opened on another one fails with 'Code verifier could not be found in local storage.' It gets its own sentence because the generic failure would read as a bug in the link."
+  },
+  "emailAuthFailed": "Something went wrong. Try again.",
+  "newPasswordTitle": "Set a new password",
+  "newPasswordLabel": "New password",
+  "newPasswordSave": "Save password",
+  "newPasswordSaved": "Password updated"
 }

@@ -64,13 +64,26 @@ const double _kBrandMarkSize = 96;
 /// lockup ends in order to size itself, and both are laid out in the same pass. A
 /// `GlobalKey` measurement would only be available on the *next* frame, so the mascot
 /// would visibly pop from one size to another after the screen appeared.
+///
+/// **Which also makes this the thing a new button has to remember to update.** Adding
+/// `Continue with email` grew it 300 -> 356; leaving it at 300 does not overflow anything,
+/// it just puts the cat's ears through the new button, because [_MascotHero] would still be
+/// solving for a lockup two rows shorter than the one on screen.
+///
+/// The 56 it grew by is most of the slack there was. On an iPhone SE (375x667, top inset 20)
+/// the room under the lockup falls 157.5 -> 129.5, against the 111.3 the mascot needs at
+/// [kAuthMascotHeight] and this crop -- so **the cat is unchanged at its design size and
+/// there is 18.2pt left.** A fourth button would not fit, and would show up as the mascot
+/// silently shrinking rather than as any kind of error.
 const double _kLockupHeight =
     _kBrandMarkSize +
     20 + // the gap under the mark
     36 + // the wordmark's line box: `AppTextStyles.hero` is 30pt at `height: 1.2`
     48 + // the gap above the buttons
     kSignInButtonHeight +
-    12 + // between the two buttons
+    12 + // between Apple and Google
+    kSignInButtonHeight +
+    12 + // between Google and email
     kSignInButtonHeight;
 
 /// Design height of the mascot, and the size it was reviewed at.
@@ -131,7 +144,22 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     if (auth.status != AuthStatus.authenticated) return;
 
     _leaving = true;
-    Navigator.pushReplacementNamed(context, AppRoutes.home);
+    // **The whole stack goes, not just the route on top of it.**
+    // `pushReplacementNamed` replaces the navigator's *topmost* route, not the route that
+    // called it. While this page was the only one that mattered the two spellings agreed;
+    // with `EmailAuthPage` pushed over it they do not -- a confirmation link arriving while
+    // the reader is looking at `Check your inbox` would dispose that page, push the library,
+    // and leave **this page still sitting underneath it**. Invisible on iOS and live on
+    // Android, where system back pops the library and reveals the sign-in buttons: `_leaving`
+    // is already true by then, so nothing navigates again and the reader is stranded on the
+    // sign-in screen holding a valid session -- the exact bug
+    // `auth_page_navigation_test.dart` exists to pin, through a route that did not exist
+    // when it was written.
+    //
+    // Clearing is also the honest spelling: a sign-in stack is not history worth keeping
+    // once there is a session. `_spendPendingInvite` still pushes consent onto the library
+    // afterwards, so that pair is unaffected.
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (_) => false);
     _spendPendingInvite();
   }
 
@@ -238,6 +266,31 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   textColor: Colors.black,
                   onPressed: () =>
                       ref.read(authProvider.notifier).signInWithGoogle(),
+                ),
+                const SizedBox(height: 12),
+                // **Brand green, not a third neutral plate.** Google's button is already
+                // white with black text, so a white or outlined email button would read as
+                // a twin of a vendor's rather than as the app's own door. `brandFill` is
+                // the token authored to carry white text and is dark in both themes for
+                // exactly that reason -- the trap `kStatTileCool` records is using a token
+                // picked for one role as a fill and finding it flips lightness per theme.
+                //
+                // Third, and the same size as the other two, which is what satisfies
+                // Apple's prominence rule: they ask that Sign in with Apple be no less
+                // prominent, not that it be the only coloured button.
+                _SignInButton(
+                  label: l10n.continueWithEmail,
+                  icon: const Icon(
+                    Icons.mail_outline,
+                    // The same 19/44 the two marks above use, so all three optical centres
+                    // sit on one line.
+                    size: kSignInButtonHeight * kSignInContentRatio,
+                    color: Colors.white,
+                  ),
+                  backgroundColor: context.colors.brandFill,
+                  textColor: Colors.white,
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.emailAuth),
                 ),
               ],
             ),
