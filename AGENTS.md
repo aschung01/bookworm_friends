@@ -1271,9 +1271,129 @@ literals back out of the Swift.
 widget cannot be re-added — `simctl` can install and screenshot but not place a widget. Expect to
 ask for a screenshot rather than to take one.
 
+## Status and reading position are one sheet, and the band has one door
+
+`showBookStatusBottomSheet` is the whole of it on the details page. The percent wheel is no
+longer a second door off the band: `BandProgressRow` and `book_details_tab_view.dart`'s
+`_onEditProgressPressed` are deleted, and on that page `showSelectPercentBottomSheet` is
+reached only from inside the merged sheet. **It still has its own caller on the streak
+page**, in `_recordToday`'s pick-a-book-then-how-far flow, so it is not a private helper and
+its contract — hand the value out, let the caller write — has to keep holding for both. The
+merged sheet's hero is a reading track, the status **word is derived from the position**, and
+`Save` is the only writer.
+
+The full record is `docs/superpowers/specs/2026-09-28-status-progress-merge-design.md` plus
+the plan's **Build log** beside it. What follows is the part that is expensive to
+rediscover.
+
+### The track is the platform's slider, and its own fallback is the wrong one
+
+`ReadingTrack` (`lib/ui/widgets/book/reading_track.dart`) is `CNSlider` from
+`cupertino_native_better` behind `useNativeGlass` and **`CupertinoSlider` everywhere
+else** — which means it overrides the package's own fallback, deliberately.
+
+**`CNSlider` falls back to a Material `Slider`, and a Material `Slider` is absolute: a tap
+on the track seeks to it.** That is `band-scrubber`, the arrangement this design rejected.
+Since `useNativeGlass` is **false under `flutter test`** (it reports Android), letting the
+package choose would put the rejected behaviour in every test and on every Android device
+while the reviewed behaviour existed only on iOS 26.
+
+**The inert tap is the platform's, not a gate of ours.** `CupertinoSlider` and `UISlider`
+are _relative_: `_RenderCupertinoSlider` holds one `HorizontalDragGestureRecognizer`, sets
+`_currentDragValue = _value` and adds deltas, so a tap is a drag of zero delta and reports
+nothing. Two real gates come with that and are worth knowing before debugging a test:
+`hitTestSelf` accepts a pointer only within about **22pt of the thumb** (`_kPadding` 8 plus
+`CupertinoThumbPainter.radius` 14), and `_handleChanged` reports only when the value
+actually differs.
+
+**So a test must drag from the thumb, and inside a sheet it needs two `moveBy`s** — about
+24pt first to win the gesture arena against drag-to-dismiss, then the real delta. Dragging
+mid-track reaches nothing and **passes vacuously**, which is not hypothetical: it silently
+disabled the celebrate-on-the-transition assertion in `book_details_streak_test.dart`.
+
+**Do not add a `TapGestureRecognizer` to make the tap inert.** A lone drag recognizer wins
+its arena at pointer-down, so "use a drag recognizer only" does not make a tap inert by
+itself; the relative arithmetic is what does. A no-op tap recognizer as a second arena
+member fixes the tap and not the vertical pan.
+
+And the thumb is **the platform's**, not the app's bookmark ribbon. That was built — so
+that what you set here was what you saw on the shelf — and a reader's verdict was "the
+bookmark makes an ugly thumb": it is a tall asymmetric notched shape with a shadow, hung
+off a 4pt bar.
+
+### Erasing a position needed a new flag, because `null` was already taken
+
+`updateBookStatus`'s `progress` parameter uses `null` to mean **do not write**, so "the
+reader dragged back to the origin, forget where they were" had no spelling at all. There is
+now an explicit `clearProgress` flag on both the provider and `BookStatusEdit`. **Do not
+collapse it back into a nullable `progress`** — the asymmetry is the point.
+
+A drag to the **origin writes `null`**, which costs 0% as a recordable position; 0% is
+still reachable through the wheel's own `0` stop.
+
+`updateBookStatus` also gained **`fromStatus`**, which gates the `reading_shelf_index`
+re-head. Without it, saving a position promotes the book to the head of the Reading shelf —
+a reader who nudges a bookmark reorders their shelf.
+
+`recordReadingPosition` is the narrow position writer and `recordTotalPages` is new;
+`kMinTotalPages` / `kMaxTotalPages` live beside them in `library_provider.dart`.
+
+### Set aside is its own status, not a reading book with a low number
+
+`bookStatusSetAside = 3`. It was specified as `status 2 + progress < 1` first and that is
+not the same thing: a finished book's position is exactly 1, so the predicate would have
+made every partially-read _Reading_ book abandoned, and there would be no way to record
+"I stopped" for a book with no position at all.
+
+`BookStatusBadge.presentation(l10n, colors, status)` is the one place the word and the
+colour are chosen, and the sheet's read-out borrows it so the chip and the running text
+cannot disagree. Its `switch` had a silent `_` arm that rendered **"Other"** for status 3
+before this.
+
+The vocabulary moved with it: _Interested_ → **Not started**, _Read_ → **Finished**.
+
+### Two small traps in the strings and one in the sheet's title
+
+**`U+2248` is not in the app's font subset.** The faces are Latin-1 plus Hangul, so `≈`
+came from a platform fallback in a different typeface. `progressApproxPage` uses an ASCII
+`~`. Pre-existing, and the merged read-out is what made it prominent.
+
+**The sheet's heading is `readingProgressTitle` ("Reading progress"), not the book
+title.** A sheet that names the book says nothing about what it does, and the book is
+already the page behind it.
+
+**The Korean for the twelve new strings was written rather than natively reviewed** — the
+plan's build log lists which.
+
+### The band card has two slots, and it had four values for one round
+
+See `ReadingPeriodRow`'s own doc for the rule and the reversal it records. The short
+version: _where or when_ (the position, else the finish date, else nothing), then *how
+long* (the day count, always), with exactly one of the two in `brandText`. **The start date
+is gone from the card** — `15 days` is what it was there to say — and both dates are still
+editable in the sheet the card opens.
+
+**A `Wrap` that opens at the default text size on the widest phone is not a valve
+opening.** That is how this was caught, and it is the check to apply to the rest of the
+band: the `Wrap`s in there are for accessibility sizes and long locales, so one wrapping in
+English at 1.0 means the content is too much, not that the layout is working.
+
+### Rendering the band card, and the harness that lied about it
+
+`flutter test test/reading_period_row_render_preview.dart` writes
+`build/period_row_preview/{light,dark}.png` across six states. Its first frame came back
+with red text and yellow double underlines everywhere, which reads exactly like a defect in
+the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
+inherits its colour fell back to `MaterialApp`'s `_errorTextStyle`, while the spans setting
+a colour explicitly survived — a frame that looks _selectively_ broken. `Material` is where
+`AnimatedDefaultTextStyle` comes from; a `ColoredBox` is not a substitute.
+
+The other half is the same as `read_week_row_render_preview.dart`'s: **load the real fonts,
+icon font included**, or the chevron is an empty square and every glyph is 40% too wide.
+
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (1851 cases). There is no expected-failure list any
+`flutter test` passes completely (2011 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3
