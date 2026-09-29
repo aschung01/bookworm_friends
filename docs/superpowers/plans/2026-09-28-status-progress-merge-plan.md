@@ -160,6 +160,28 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   rather than deleted. The void on Not started went 165 → **214**, over half that sheet; the jump
   the frame prevents went 115 → 165 in the same move, so both sides of the trade got worse at
   once. Three ways out are written into the spec and none is taken.
+- **The track ticks, and the step is the only number in it that was a decision.** Asked for
+  haptics "similar to the wheel"; the wheel is a `CupertinoPicker` and its call is copied
+  verbatim. The step is **5%** because 1% costs 2.83pt of finger travel against the picker's
+  34pt `_kItemExtent` — one twelfth, which is vibration and not clicks, at every speed. The
+  *value* is not quantised, so the ticks are landmarks rather than detents and 73% is still
+  reachable; real detents via `divisions` are the alternative and would cost expressiveness the
+  haptics did not ask for.
+- **Copying `CupertinoPicker`'s iOS-only gate broke every case, and the reason is a coupling
+  nobody would guess.** `useNativeGlass` reads `defaultTargetPlatform`, so
+  `debugDefaultTargetPlatformOverride = TargetPlatform.iOS` flips the glass branch as well —
+  the cases came back with *"Found 0 widgets with type CupertinoSlider"*, holding a `CNSlider`
+  platform view they could not drag. The widget follows the app's own convention instead
+  (`read_filter.dart`, `friends_sheet.dart`, `library_sheet.dart` all call `selectionClick()`
+  unconditionally), which is both more consistent and testable. Cost: on Android the track
+  ticks where the wheel does not.
+- **`ReadingTrack` became a `StatefulWidget`** to hold the last felt band, for the reason
+  `CupertinoPicker` holds `_lastHapticIndex`: the parent's `setState` has not run when the next
+  report arrives, so the widget's own value is a frame stale. `didUpdateWidget` re-syncs it, or
+  a value handed back by the wheel would make the next drag tick for ground it did not cross.
+- **`_slide` reports exactly once however far it travels**, because it makes a single `moveBy`
+  on purpose — so the density case had to drive forty small moves by hand. A case written
+  against `_slide` measured one report and looked like the haptics were firing per report.
 - **The tilde is gone from the derived page, and `progressApproxPage` with it**, on
   instruction. The mark distinguished a page the app computed from one the reader typed, and
   it was removed from **both** call sites rather than only the read-out that was pointed at:

@@ -640,6 +640,45 @@ arithmetic slip:** at the origin the read-out collapses to a single word — no 
 pair — and neither date row is drawn, which the row-sum did not model. The sheet is comfortably
 shorter than both it replaces (342 and 368) in every state.
 
+### The track ticks every 5%, where the wheel ticks every stop
+
+Asked for: _"similar haptics when moving the linear progress bar's thumb with when we scroll
+the custom wheel."_ The wheel is a `CupertinoPicker`, whose `_handleHapticFeedback` calls
+`HapticFeedback.selectionClick()` on each change of selected item. That call is copied
+exactly. Two things about it are not.
+
+**The step is 5%, not 1%, and the arithmetic is the whole argument.** The picker's
+`_kItemExtent` is 34, so one tick costs 34pt of finger travel. `CupertinoSlider` maps its value
+over `width - 44`, which on this sheet's 327pt is 283pt for the full range — so a 1% tick costs
+**2.83pt**, one twelfth of the wheel's. At an ordinary drag speed that is not a sequence of
+clicks, it is vibration, and it would be vibration at every speed because the ratio is
+scale-free. 5% costs 14.15pt, within about 2.4× of the wheel, which reads as ticks.
+
+**The value is not quantised to match**, so 73% is still reachable by dragging and the ticks
+are landmarks — a ruler's graduations rather than detents. The alternative is real detents:
+give `CupertinoSlider` a `divisions` and let the number move in fives, which would make every
+tick coincide with a visible change and is arguably on-brief, since the track is for coarse
+work and the read-out's doors are for exact answers. Not taken, because it costs something the
+haptics did not ask for — the track would express less than the wheel it is meant to agree
+with.
+
+**It ticks on every platform, where the wheel ticks only on iOS.** `CupertinoPicker`'s switch
+returns for every non-iOS platform, but that is Flutter's decision inside a stock widget rather
+than this app's: the app's own three selection haptics — `read_filter.dart`,
+`friends_sheet.dart`, `library_sheet.dart` — are all unconditional, and Android has a good
+selection haptic. So this follows the app. The cost, stated: on Android the track ticks where
+the wheel does not.
+
+**Copying the iOS gate was the first attempt and it is a trap worth recording.**
+`useNativeGlass` reads `defaultTargetPlatform` too, so a test that overrode the platform to
+iOS to reach the haptic also flipped the glass branch, built a `CNSlider`, and left the case
+holding a platform view it could not drag — _"Found 0 widgets with type CupertinoSlider"_. The
+two switches look independent and are not.
+
+**No `SystemSound.play(SystemSoundType.tick)`**, which the picker plays alongside the haptic.
+iOS's own sliders are silent, the audible click is a picker affordance, and the request was
+about haptics.
+
 ### The derived page lost its tilde
 
 `progressApproxPage` printed `~ p.213` for a page computed from the fraction, against

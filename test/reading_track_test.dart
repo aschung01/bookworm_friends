@@ -54,7 +54,9 @@
 import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/constants/app_text_styles.dart';
@@ -211,8 +213,174 @@ Future<void> _assist(WidgetTester tester, SemanticsAction action) async {
   await tester.pumpAndSettle();
 }
 
+/// Every `HapticFeedback.*` the platform channel was asked for, in order.
+///
+/// Captured rather than counted through a spy on the widget, because the claim worth holding
+/// is *which system call* it makes: the wheel is a `CupertinoPicker` and its
+/// `_handleHapticFeedback` calls `HapticFeedback.selectionClick()`, so "similar haptics"
+/// means that exact method and not merely some vibration.
+final List<String> haptics = <String>[];
+
+void _captureHaptics(WidgetTester tester) {
+  haptics.clear();
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+    SystemChannels.platform,
+    (call) async {
+      if (call.method == 'HapticFeedback.vibrate') {
+        haptics.add(call.arguments as String? ?? 'default');
+      }
+      return null;
+    },
+  );
+  addTearDown(
+    () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    ),
+  );
+}
+
 void main() {
   setUp(reports.clear);
+
+  group('it ticks like the wheel', () {
+    // **No `debugDefaultTargetPlatformOverride` here, and that was the first attempt.**
+    // `CupertinoPicker` gates its haptic on iOS, so copying the gate looked right — and then
+    // every case in this group failed with *"Found 0 widgets with type CupertinoSlider"*,
+    // because `useNativeGlass` reads `defaultTargetPlatform` too. Overriding to iOS on a
+    // macOS 26 host flips the glass branch as well, builds a `CNSlider`, and leaves the case
+    // holding a platform view it cannot drag. The two switches look independent and are not.
+    //
+    // So the widget follows the app's own convention instead — `read_filter.dart`,
+    // `friends_sheet.dart` and `library_sheet.dart` all call `selectionClick()`
+    // unconditionally — which is both the more consistent choice and the testable one.
+
+    testWidgets('Given a drag across a 5% band, Then it is a selectionClick', (
+      tester,
+    ) async {
+      await _pump(tester, progress: 0.46);
+      _captureHaptics(tester);
+
+      // 331pt of travel for the full range in this 375pt box, so 5% is ~16.5pt. 20 clears
+      // one band boundary (46% -> ~52%) and no more.
+      await _slide(tester, from: 0.46, dx: 20);
+
+      expect(haptics, ['HapticFeedbackType.selectionClick']);
+    });
+
+    testWidgets(
+      'and a drag inside one band is felt exactly as much as it is reported',
+      (tester) async {
+        // The band is 5% wide, so a move of a couple of percent reports a new value — the
+        // read-out changes — and does *not* tick. That is the whole cost of the 5% step,
+        // stated as a case: the tick is a landmark rather than a confirmation of the number.
+        await _pump(tester, progress: 0.46);
+        _captureHaptics(tester);
+
+        // ~2%: enough to report, not enough to leave the 45-49 band.
+        await _slide(tester, from: 0.46, dx: 7);
+
+        expect(reports, isNotEmpty);
+        expect(haptics, isEmpty);
+      },
+    );
+
+    testWidgets('and a long drag ticks once per band rather than once per percent', (
+      tester,
+    ) async {
+      // **The reason the step is 5 and not 1**, and the one case that has to drag the way a
+      // finger does. `_slide` makes a single `moveBy` on purpose, so it produces exactly one
+      // report however far it travels — right for the cases that reason about a landing
+      // value, useless for one about density. Forty small moves over half the track is
+      // ~1.25% each: enough reports to count against the ticks.
+      await _pump(tester, progress: 0);
+      _captureHaptics(tester);
+
+      final gesture = await tester.startGesture(_onThumb(tester, 0));
+      for (var i = 0; i < 40; i++) {
+        await gesture.moveBy(const Offset(165 / 40, 0));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(reports.length, greaterThan(20));
+      expect(haptics.length, greaterThan(6));
+      expect(haptics.length, lessThan(15));
+      expect(
+        haptics.every((h) => h == 'HapticFeedbackType.selectionClick'),
+        isTrue,
+      );
+    });
+
+    testWidgets('and an inert tap is felt as little as it is reported', (
+      tester,
+    ) async {
+      // The tap is the property this control was designed around, and a haptic would
+      // undo the reassurance: something that buzzes has done something.
+      await _pump(tester, progress: 0.46);
+      _captureHaptics(tester);
+
+      await tester.tapAt(_onThumb(tester, 0.46));
+      await tester.pumpAndSettle();
+
+      expect(reports, isEmpty);
+      expect(haptics, isEmpty);
+    });
+
+    testWidgets('and crossing the origin ticks, because the status word changes', (
+      tester,
+    ) async {
+      // `null` is its own band. The origin is not a number here — it means "never asked" —
+      // and arriving at it turns the word above the track to `Not started`, which is the
+      // same kind of event the wheel ticks for.
+      await _pump(tester, progress: 0.02);
+      _captureHaptics(tester);
+
+      await _slide(tester, from: 0.02, dx: -30);
+
+      expect(reports.last, isNull);
+      expect(haptics, isNotEmpty);
+    });
+
+    testWidgets(
+      'Given a value set from outside, Then the next drag does not tick for it',
+      (tester) async {
+        // `didUpdateWidget` re-syncs the band. Without it, the percent wheel handing back 0.80
+        // would leave the last felt band at 46%'s, and the first report of the next drag would
+        // tick for ground the thumb had already been moved across by someone else.
+        await _pump(tester, progress: 0.46);
+        await _slide(tester, from: 0.46, dx: 100);
+        _captureHaptics(tester);
+
+        // A move too small to leave the band the thumb is now in.
+        final landed = reports.last!;
+        await _slide(tester, from: landed, dx: 3);
+
+        expect(haptics, isEmpty);
+      },
+    );
+  });
+
+  group('and it ticks on every platform, unlike the wheel', () {
+    testWidgets('Given the Android test platform, Then a drag still ticks', (
+      tester,
+    ) async {
+      // `flutter test` reports Android, so this is the default path and it is *not* silent.
+      // The divergence from `CupertinoPicker` is deliberate and this is where it is pinned:
+      // the app's own three selection haptics carry no platform gate, Android has a good
+      // selection haptic, and the framework's iOS-only switch is Flutter's decision rather
+      // than this app's. The cost, stated: on Android the track ticks where the wheel does
+      // not.
+      await _pump(tester, progress: 0.46);
+      _captureHaptics(tester);
+
+      await _slide(tester, from: 0.46, dx: 60);
+
+      expect(reports, isNotEmpty);
+      expect(haptics, isNotEmpty);
+    });
+  });
 
   group('it is the relative slider, not the absolute one', () {
     testWidgets('Given a build, Then it is a CupertinoSlider and not a Slider', (

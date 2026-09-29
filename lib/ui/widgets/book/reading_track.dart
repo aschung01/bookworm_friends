@@ -1,5 +1,6 @@
 import 'package:cupertino_native_better/cupertino_native_better.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
@@ -70,7 +71,37 @@ import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 /// further on, at the percent wheel's own `0` stop.
 ///
 /// Hence `ValueChanged<double?>`: the state is in the type rather than in a sentinel.
-class ReadingTrack extends StatelessWidget {
+///
+/// ## It ticks every 5%, where the wheel ticks every stop
+///
+/// Asked for: _"similar haptics when moving the linear progress bar's thumb with when we
+/// scroll the custom wheel."_ The wheel is a `CupertinoPicker`, whose
+/// `_handleHapticFeedback` fires `HapticFeedback.selectionClick()` on every change of
+/// selected item, so that call is copied exactly. Two things about it are not: the step, and
+/// the platform gate — see [_ReadingTrackState._kHapticStep] and
+/// [_ReadingTrackState._tick].
+///
+/// **A tick per whole percent would be a buzz rather than a click, and the arithmetic is the
+/// whole argument.** The picker's `_kItemExtent` is 34, so one tick costs 34pt of finger
+/// travel. `CupertinoSlider` maps its value over `width - 44`, which on this sheet's 327pt
+/// is 283pt for the full range — so a 1% tick costs **2.83pt**, one twelfth of the wheel's.
+/// At an ordinary drag speed that is not a sequence of clicks, it is vibration, and it would
+/// be vibration at every speed because the ratio is scale-free. 5% costs 14.15pt, within
+/// about 2.4× of the wheel, which reads as ticks.
+///
+/// **The value is not quantised to match.** Only the haptic is, so 73% is still reachable by
+/// dragging and the ticks are landmarks — a ruler's graduations rather than detents. The
+/// alternative is real detents: give `CupertinoSlider` a `divisions` and let the number move
+/// in fives, which would make every tick coincide with a visible change and is arguably
+/// on-brief, since this sheet's own comment says the track is for coarse work and the
+/// read-out's doors are for exact answers. It is not taken because it costs something the
+/// haptics did not ask for — the track would express less than the wheel it is meant to
+/// agree with.
+///
+/// **No `SystemSound.play(SystemSoundType.tick)`, which the picker does play** alongside the
+/// haptic. iOS's own sliders are silent; the audible click is a picker affordance, and the
+/// request was about haptics.
+class ReadingTrack extends StatefulWidget {
   const ReadingTrack({
     super.key,
     required this.progress,
@@ -103,9 +134,70 @@ class ReadingTrack extends StatelessWidget {
   static const double height = _kSliderHeight + _kLabelGap + _kLabelLine;
 
   @override
+  State<ReadingTrack> createState() => _ReadingTrackState();
+}
+
+class _ReadingTrackState extends State<ReadingTrack> {
+  /// How far the thumb travels between ticks, in percent. See the class doc for why it is
+  /// not 1.
+  static const int _kHapticStep = 5;
+
+  /// Which 5% band the thumb was last felt in, or null at the origin.
+  ///
+  /// Held in state rather than derived from `widget.progress` at the moment of the report,
+  /// for the reason `CupertinoPicker` holds `_lastHapticIndex`: the parent's `setState` has
+  /// not run yet when the next report arrives, so the widget's own value is a frame stale
+  /// and two reports inside one frame would compare against the same old band.
+  int? _lastDetent;
+
+  /// Null at the origin, so crossing into or out of `null` is a band change and ticks. The
+  /// origin is a state rather than a number here — it means "never asked" — and it is worth
+  /// a tick for the same reason the wheel ticks: the word above the track changes.
+  static int? _detentOf(double? progress) =>
+      progress == null ? null : (progress * 100).round() ~/ _kHapticStep;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastDetent = _detentOf(widget.progress);
+  }
+
+  @override
+  void didUpdateWidget(ReadingTrack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-synced on every external write — Reset, or the percent wheel handing a value back —
+    // so the first drag afterwards does not tick for a band it did not cross.
+    _lastDetent = _detentOf(widget.progress);
+  }
+
+  /// The wheel's own call, `HapticFeedback.selectionClick()`.
+  ///
+  /// **Not the wheel's platform gate, though, and that is deliberate.**
+  /// `CupertinoPicker._handleHapticFeedback` switches on `defaultTargetPlatform` and returns
+  /// for everything but iOS — but that is Flutter's choice inside a stock widget, not this
+  /// app's. The app's own three selection haptics — `read_filter.dart`,
+  /// `friends_sheet.dart`, `library_sheet.dart` — all call `selectionClick()` unconditionally,
+  /// and Android has a perfectly good selection haptic. So this follows the app rather than
+  /// the framework, and the consequence is stated: on Android the track ticks where the
+  /// wheel does not.
+  ///
+  /// It is also what keeps this testable. Gating on `defaultTargetPlatform` would mean every
+  /// case had to set `debugDefaultTargetPlatformOverride = TargetPlatform.iOS` — which flips
+  /// `useNativeGlass` with it, builds `CNSlider` instead of `CupertinoSlider`, and leaves the
+  /// case with a platform view it cannot drag. That is a real trap rather than a convenience:
+  /// the two switches look independent and are not.
+  void _tick(double? next) {
+    final detent = _detentOf(next);
+    if (detent == _lastDetent) return;
+    _lastDetent = detent;
+    HapticFeedback.selectionClick();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final colors = context.colors;
+    final progress = widget.progress;
     final value = (progress ?? 0).clamp(0.0, 1.0);
 
     // Whole percents, and the origin reported as an erasure rather than as zero.
@@ -121,7 +213,11 @@ class ReadingTrack extends StatelessWidget {
       final percent = (raw * 100).round();
       final next = percent == 0 ? null : percent / 100;
       if (next == progress) return;
-      onChanged(next);
+      // Before the report, so the tick lands with the movement rather than after the frame
+      // the parent rebuilds in. Inside the no-op guard, which means a slip that reports
+      // nothing also feels like nothing.
+      _tick(next);
+      widget.onChanged(next);
     }
 
     final labelStyle = AppTextStyles.label.copyWith(
@@ -141,9 +237,9 @@ class ReadingTrack extends StatelessWidget {
         // being set. Merged so VoiceOver announces them together.
         MergeSemantics(
           child: Semantics(
-            label: semanticsLabel,
+            label: widget.semanticsLabel,
             child: SizedBox(
-              height: _kSliderHeight,
+              height: ReadingTrack._kSliderHeight,
               child: useNativeGlass
                   ? CNSlider(
                       value: value,
@@ -154,7 +250,7 @@ class ReadingTrack extends StatelessWidget {
                       trackColor: colors.brand,
                       trackBackgroundColor: colors.surfaceVariant,
                       thumbColor: CupertinoColors.white,
-                      height: _kSliderHeight,
+                      height: ReadingTrack._kSliderHeight,
                       // Destroys the platform view while one of this sheet's three
                       // sub-sheets is above it. Left at its default on purpose: every door
                       // in the read-out opens a sheet over this one, and an undestroyed
@@ -172,7 +268,7 @@ class ReadingTrack extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: _kLabelGap),
+        const SizedBox(height: ReadingTrack._kLabelGap),
         // **The same strings as the status word above**, which is the point: the ends name
         // the two states the track's extremes mean, so a reader can see what the word is a
         // read-out of. Two words for one state is the defect this sheet exists to remove.

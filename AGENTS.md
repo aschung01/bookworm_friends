@@ -1311,6 +1311,30 @@ actually differs.
 mid-track reaches nothing and **passes vacuously**, which is not hypothetical: it silently
 disabled the celebrate-on-the-transition assertion in `book_details_streak_test.dart`.
 
+**The track ticks every 5%, and 1% would be a buzz.** `HapticFeedback.selectionClick()` is
+copied verbatim from `CupertinoPicker._handleHapticFeedback`, which is what the percent wheel
+is. The step is not: the picker's `_kItemExtent` is 34, so one of its ticks costs 34pt of
+finger travel, while `CupertinoSlider` maps its value over `width - 44` — 283pt of travel on
+this sheet's 327 — so a 1% tick costs **2.83pt**. One twelfth of the wheel's, at every speed,
+because the ratio is scale-free. **The value is not quantised to match**, so the ticks are
+landmarks rather than detents and 73% stays reachable by dragging.
+
+**It ticks on every platform, and `CupertinoPicker` does not — that is deliberate.** The
+picker's switch returns for everything but iOS, but the app's own three selection haptics
+(`read_filter.dart`, `friends_sheet.dart`, `library_sheet.dart`) are all unconditional. This
+follows the app, not the framework.
+
+**Copying the picker's iOS gate breaks every test in a way that looks unrelated, so don't.**
+`useNativeGlass` reads `defaultTargetPlatform` too, so
+`debugDefaultTargetPlatformOverride = TargetPlatform.iOS` flips the glass branch with it: the
+case builds a `CNSlider`, cannot drag a platform view, and fails with **"Found 0 widgets with
+type CupertinoSlider"**. Two switches that look independent and are not.
+
+**`_slide` in `reading_track_test.dart` reports exactly once however far it travels** — one
+`moveBy`, deliberately, so a case can reason about a landing value. Anything about tick
+_density_ has to drive many small moves by hand; written against `_slide` it measures one
+report and one tick and looks like proof of something it has not tested.
+
 **Do not add a `TapGestureRecognizer` to make the tap inert.** A lone drag recognizer wins
 its arena at pointer-down, so "use a drag recognizer only" does not make a tap inert by
 itself; the relative arithmetic is what does. A no-op tap recognizer as a second arena
@@ -1527,7 +1551,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2029, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2036, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1540,7 +1564,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2029 cases). There is no expected-failure list any
+`flutter test` passes completely (2036 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3
