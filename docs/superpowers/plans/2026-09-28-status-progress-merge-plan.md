@@ -450,6 +450,19 @@ because the label row overflowed, which the `Flexible` restoration made live aga
       hand-rolled blur. Take the existing division of labour — _Flutter draws every pixel of
       content, the platform supplies the material behind it_ — and do not introduce a third
       glass idiom.
+
+      **This step named the wrong exemplar, and a reader found it: the filter popover
+      "isn't glassy".** The instruction was right and there were already *two* idioms rather
+      than one, so "do not introduce a third" pointed at whichever was cited — and
+      `shelf_picker_popover`'s `LiquidGlassContainer` is the one `read_filter.dart` and
+      `adaptive_icon_button.dart` both call *the thing that does not work*: a bare
+      `glassEffect(.regular)` with no material of its own, which over the opaque sheet a
+      platform view is composited onto comes out flat, with no rim and no shadow. The working
+      idiom is a contentless `CNButton(style: glass)` stretched behind the content, whose
+      material comes from the button configuration. See `AGENTS.md`, which now carries the
+      whole thing, including the three details that are easy to get wrong — a non-null no-op
+      `onPressed`, an `IgnorePointer`, and **not** clipping a material whose rim and shadow
+      are drawn outside its own box.
 - [x] **Step 5: Real `Slider` semantics, and this is not optional.** A drag-only scalar is
       unusable under VoiceOver. Wrap in `Semantics` with `slider: true` and implement
       `onIncrease`/`onDecrease`; the accessible path is allowed to do what the touch path

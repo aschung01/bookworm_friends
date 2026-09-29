@@ -1367,6 +1367,62 @@ that what you set here was what you saw on the shelf — and a reader's verdict 
 bookmark makes an ugly thumb": it is a tall asymmetric notched shape with a shadow, hung
 off a 4pt bar.
 
+### There are two glass idioms and `LiquidGlassContainer` is the broken one
+
+**Do not reach for `LiquidGlassContainer` for a surface that sits on an opaque background.**
+It renders a bare `glassEffect(.regular)` layer with **no material of its own**, and glass
+refracts what is behind it — so over an opaque sheet, which is what a platform view is
+composited over, it comes out flat: no rim, no specular edge, no shadow. `read_filter.dart`
+and `adaptive_icon_button.dart` both call it _the thing that does not work_ and say why.
+`CNGlassEffect.prominent` is not an escape: the plugin's Swift pins `Glass.regular` either
+way.
+
+**The idiom that works is a contentless `CNButton` with `CNButtonStyle.glass`, stretched
+behind Flutter's own content** — `Stack(fit: StackFit.passthrough)` with a
+`Positioned.fill`, so the content sizes the box and no `getIntrinsicSize` round-trip is
+needed. A glass `UIButton`'s material comes from its button _configuration_, which carries
+the rim and the shadow whatever is behind it. `read_filter._Capsule._glass` and
+`AdaptiveContentButton` are the two worked examples.
+
+**This was rediscovered a third time, on the read sheet's filter popover**, which a reader
+said "isn't glassy". It had copied `shelf_picker_popover.dart`, and the plan's own Step 4
+said to reuse the existing division of labour and _"not introduce a third glass idiom"_ —
+correct instruction, wrong exemplar: there were already two, and it pointed at the one that
+does not work. **`shelf_picker_popover.dart` still uses `LiquidGlassContainer` and has the
+same defect**; it is deliberately left until the popover's fix has been looked at on a
+device, so that two twins are not changed on one unverified diagnosis.
+
+Three details that are easy to get wrong and are all load-bearing:
+
+- **`onPressed` must be a non-null no-op, not null.** `CNButton` sends
+  `'enabled': (widget.enabled && widget.onPressed != null)`, so a null callback disables the
+  platform button and UIKit draws a **dimmed** material — the same flat result, reached from
+  the other direction.
+- **Wrap it in `IgnorePointer` when it is material rather than a control.** `CNButton` hangs
+  a `Listener` off the platform view to push `isHighlighted` on pointer down, and its own tap
+  recognizer joins the arena and usually beats the row's. On a menu that means the whole card
+  flashes under a finger aimed at one row, and the wrong row can answer. `_Capsule` leaves it
+  interactive on purpose, which is the opposite case, not a contradiction.
+- **Do not clip it.** A glass button draws its rim and shadow **outside** its own box —
+  `_Capsule`'s row reserves 3pt for exactly that — so a `ClipRRect` around the material cuts
+  off the two things that make it read as glass. Clip the content instead, which needs it
+  anyway so row ink cannot splash past the corner arcs. And set `config.borderRadius`: null
+  means a capsule, which on a 216×97 card is a 48pt arc rather than 14.
+
+**None of this is verifiable from here.** `useNativeGlass` needs an Apple target _and_ iOS
+26, and `flutter test` reports Android — so every test and every render preview draws the
+`BackdropFilter` fallback. The native path can only be judged on an iOS 26 device or
+simulator, which is also why the fallback is what `build/read_filter_preview/` shows.
+
+**Measured, and separate from the above: the fallback is nearly invisible on a uniform
+background.** Over the read sheet's plain ground the blurred card composites to
+`(238, 238, 237)` against a `(240, 240, 240)` background — a 2/255 difference, so the card is
+carried entirely by a 0.5pt hairline and its shadow. Where covers sit behind it the blur has
+something to work with and it reads properly. This is the same trap `shelf_picker_popover`
+records from the other end (*"a blur of something uniform is that thing"*) and it is **not**
+fixed: it is a separate judgement about the non-glass path, and retuning the fill is a change
+nobody has asked for yet.
+
 ### Erasing a position needed a new flag, because `null` was already taken
 
 `updateBookStatus`'s `progress` parameter uses `null` to mean **do not write**, so "the

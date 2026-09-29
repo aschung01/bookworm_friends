@@ -310,51 +310,103 @@ class _ReadSetFilterCard extends StatelessWidget {
       ),
     );
 
-    final clipped = ClipRRect(
-      borderRadius: BorderRadius.circular(_kRadius),
-      child: useNativeGlass
-          ? LiquidGlassContainer(
-              config: const LiquidGlassConfig(
-                effect: CNGlassEffect.regular,
-                shape: CNGlassEffectShape.rect,
-                cornerRadius: _kRadius,
-                // Not interactive: the glass is material, not a control. The rows
-                // underneath it own every touch.
-                interactive: false,
-              ),
-              // **Off.** The default destroys the platform view whenever a modal is
-              // above this widget's host route, and this card *is* that modal — nothing
-              // above this route can ever need our glass gone, so the question is
-              // better not asked.
-              autoHideOnModal: false,
-              child: content,
-            )
-          : BackdropFilter(
-              // The fallback, and it is a blur rather than glass: no rim highlight and
-              // no specular edge, which is most of what the real material is.
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  // Low enough to let the sheet through, which is the whole point of
-                  // blurring it. The drawing sets white at 0.74 over a light sheet;
-                  // this is the same figure taken from the theme so the dark card is
-                  // not a white one.
-                  color: colors.surface.withValues(alpha: isDark ? 0.7 : 0.74),
-                  border: Border.all(
-                    color: colors.primaryText.withValues(
-                      alpha: isDark ? 0.14 : 0.1,
+    // **The native card's material is a contentless glass `CNButton` stretched behind the
+    // rows, and it was a [LiquidGlassContainer].** A reader's verdict on that version was
+    // that the dropdown "isn't glassy", and this app had already written down why, twice —
+    // in `read_filter.dart` and in `adaptive_icon_button.dart`, both of which call
+    // `LiquidGlassContainer` *the thing that does not work*. It renders a bare
+    // `glassEffect(.regular)` layer with **no material of its own**, and glass refracts what
+    // is behind it; behind this card is an opaque sheet that the platform view is composited
+    // over, so there is nothing to refract and it comes out flat — no rim, no specular edge,
+    // no shadow. `CNGlassEffect.prominent` would not have helped, because the plugin's Swift
+    // pins `Glass.regular` either way.
+    //
+    // A glass `UIButton`'s material comes from its *button configuration* instead, which
+    // carries the rim and the shadow whatever is behind it. So the visible content stays
+    // Flutter's and the material is the platform's — the arrangement `read_filter._Capsule`
+    // and `AdaptiveContentButton` already use, for exactly this reason.
+    //
+    // **`onPressed` is a no-op rather than null, and that is not sloppiness.** `CNButton`
+    // sends `'enabled': (widget.enabled && widget.onPressed != null)`, so a null callback
+    // disables the platform button and UIKit draws a *dimmed* material — the failure this
+    // change is fixing, arrived at from the other direction. The [IgnorePointer] is what
+    // makes it inert: `CNButton` hangs a `Listener` off the platform view to push
+    // `isHighlighted` on pointer down, and its own tap recognizer otherwise joins the arena
+    // and usually beats the row's. Neither is wanted on a menu — the whole card would flash
+    // under a finger aimed at one row, and the wrong row might answer. This is the opposite
+    // choice from `_Capsule`, which leaves its button interactive on purpose so a selected
+    // pill presses like the glass button it is.
+    final glass = useNativeGlass
+        ? Stack(
+            // **Not clipped, which is the second half of the fix.** A glass button's shadow
+            // and rim are drawn *outside* its own box — `_Capsule`'s row reserves 3pt for
+            // exactly that — so the `ClipRRect` this card used to wrap its material in was
+            // cutting off the two things that make it read as glass. The rows are still
+            // clipped, because their ink would otherwise splash past the corner arcs.
+            clipBehavior: Clip.none,
+            fit: StackFit.passthrough,
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CNButton(
+                    // No content. The rows above are Flutter's; this is here for the
+                    // material alone.
+                    label: '',
+                    onPressed: () {},
+                    config: const CNButtonConfig(
+                      style: CNButtonStyle.glass,
+                      // Null would mean a capsule, which on a 216×97 card is a 48pt arc
+                      // instead of the drawing's 14.
+                      borderRadius: _kRadius,
+                      padding: EdgeInsets.zero,
                     ),
-                    width: 0.5,
+                    // **Off.** The default destroys the platform view whenever a modal is
+                    // above this widget's host route, and this card *is* that modal —
+                    // nothing above this route can ever need our glass gone, so the
+                    // question is better not asked.
+                    autoHideOnModal: false,
                   ),
-                  borderRadius: BorderRadius.circular(_kRadius),
                 ),
+              ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(_kRadius),
                 child: content,
               ),
-            ),
-    );
+            ],
+          )
+        : null;
 
-    // Outside the clip, or it is clipped away. None on the native path: the glass
-    // brings its own, and two would read as a smear.
+    final clipped =
+        glass ??
+        ClipRRect(
+          borderRadius: BorderRadius.circular(_kRadius),
+          child: BackdropFilter(
+            // The fallback, and it is a blur rather than glass: no rim highlight and
+            // no specular edge, which is most of what the real material is.
+            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                // Low enough to let the sheet through, which is the whole point of
+                // blurring it. The drawing sets white at 0.74 over a light sheet;
+                // this is the same figure taken from the theme so the dark card is
+                // not a white one.
+                color: colors.surface.withValues(alpha: isDark ? 0.7 : 0.74),
+                border: Border.all(
+                  color: colors.primaryText.withValues(
+                    alpha: isDark ? 0.14 : 0.1,
+                  ),
+                  width: 0.5,
+                ),
+                borderRadius: BorderRadius.circular(_kRadius),
+              ),
+              child: content,
+            ),
+          ),
+        );
+
+    // The fallback's shadow, outside the clip or it is clipped away. The native path has
+    // already returned its own unclipped stack above: a glass button brings a shadow with
+    // it, and two would read as a smear.
     if (useNativeGlass) return clipped;
     return DecoratedBox(
       decoration: BoxDecoration(
