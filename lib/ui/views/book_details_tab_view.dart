@@ -1506,25 +1506,36 @@ class _BookInfoTab extends StatelessWidget {
         data: (info) => CenteredContent(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (info?.contents != null && info!.contents!.isNotEmpty) ...[
-                  Text(l10n.bookDescription, style: AppTextStyles.subtitle),
+            // `SingleChildScrollView` only loosens its cross-axis constraint
+            // rather than tightening it, so a short column (just the ISBN, when
+            // the catalogue has nothing else) shrink-wraps to its narrowest
+            // child's width instead of the screen's. `CenteredContent`'s `Align`
+            // then centres that narrow box, which is what put the ISBN in the
+            // middle of the screen instead of at its left edge. Forcing the
+            // width here is what every other `CenteredContent` caller gets for
+            // free from a sliver-backed `ListView`.
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (info?.contents != null && info!.contents!.isNotEmpty) ...[
+                    Text(l10n.bookDescription, style: AppTextStyles.subtitle),
+                    const SizedBox(height: 8),
+                    Text(info.contents!, style: AppTextStyles.body),
+                    const SizedBox(height: 24),
+                  ],
+                  if (info?.publisher != null) ...[
+                    Text(l10n.publisher, style: AppTextStyles.subtitle),
+                    const SizedBox(height: 8),
+                    Text(info!.publisher!, style: AppTextStyles.body),
+                    const SizedBox(height: 24),
+                  ],
+                  const Text('ISBN', style: AppTextStyles.subtitle),
                   const SizedBox(height: 8),
-                  Text(info.contents!, style: AppTextStyles.body),
-                  const SizedBox(height: 24),
+                  Text(book.isbn, style: AppTextStyles.body),
                 ],
-                if (info?.publisher != null) ...[
-                  Text(l10n.publisher, style: AppTextStyles.subtitle),
-                  const SizedBox(height: 8),
-                  Text(info!.publisher!, style: AppTextStyles.body),
-                  const SizedBox(height: 24),
-                ],
-                const Text('ISBN', style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
-                Text(book.isbn, style: AppTextStyles.body),
-              ],
+              ),
             ),
           ),
         ),
