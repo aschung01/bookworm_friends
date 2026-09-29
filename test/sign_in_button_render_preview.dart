@@ -17,6 +17,13 @@
 // rather than a defect.** It composites `assets/branding/app_icon_mark.png`, and an
 // `Image.asset` needs more than the async window below to resolve; on device the chalk
 // book is there. Don't "fix" the mark because of this render.
+//
+// **The email button's envelope comes out as a hollow square for the same kind of reason.**
+// `setUpAll` loads this app's own faces, not `MaterialIcons`, so `Icons.mail_outline` has no
+// glyph to draw and falls back to tofu. On device it is an envelope. What this render *is*
+// good for on that button is the thing it was added to check: that an unfilled, outlined
+// face reads as a tertiary control beside a filled black and a filled white one, and that
+// its outline is visible at all in both themes.
 
 import 'dart:io';
 import 'dart:typed_data';

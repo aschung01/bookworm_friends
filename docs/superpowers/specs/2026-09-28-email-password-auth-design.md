@@ -83,18 +83,47 @@ The clamp binds in both columns, so **nothing visibly changes** — but it needs
 phone**. A fourth button would not fit, and the existing `height < kAuthMascotHeight / 3`
 bail still covers landscape and split view.
 
-### The button is brand green, not a second white plate
+### The button is outlined and unfilled, and it shipped brand green first
 
-`colors.brandFill` (#067657) with white text and a white `Icons.mail_outline`, at
-`kSignInButtonHeight * kSignInContentRatio` like the other two marks. `brandFill` is the
-token authored to carry white text and is dark in both themes for exactly that reason — the
-same argument `read_week_row.dart` records for `stampMark`, and the trap `kStatTileCool`
-records from the other direction.
+Transparent face, a 1pt `secondaryText` outline, and `primaryText` for both the label and
+`Icons.mail_outline` at `kSignInButtonHeight * kSignInContentRatio` like the other two marks.
+No elevation, because a shadow under a transparent face is a shadow cast by nothing.
 
-White-on-white was the alternative and is worse: Google's button is already a white plate
-with black text, so the app's own door would read as a twin of a vendor's. Apple's
-prominence rule is satisfied by equal size and first position; they explicitly permit
-adjusting logo spacing to align with other providers.
+**It shipped as `brandFill` #067657 with white text, and a reader looking at a device called
+it noisy.** They were right, and the reasoning that lost is worth keeping because the premise
+of it was sound. The argument for green was that Google's button is already a white plate, so
+a pale email button would read as a twin of a vendor's. True — but what separates the two
+does not have to be **hue**, and weight does it without the cost: filled-versus-outlined is
+already how this app distinguishes a primary control from a tertiary one.
+
+What green cost, and it only showed up rendered on a phone:
+
+- **`BrandMark` directly above is the same green.** The screen carried the brand's one accent
+  twice, ~400pt apart, and the two pulled at each other. The mark is the brand; a button does
+  not need to restate it.
+- **It made the app's own door the loudest of the three.** Apple ask to be no _less_
+  prominent than the alternatives, and a saturated fill between a black plate and a white one
+  is more. Equal size and first position satisfy the letter of their rule while inverting its
+  point.
+
+So the two vendor buttons keep their mandated colours and the app's own option is the quiet
+one. **Nothing on this screen is a brand except the mark.**
+
+Contrast improved rather than suffered, which was the one risk worth checking — measured off
+the render, not estimated:
+
+|       | ink       | face      | ratio   |
+| ----- | --------- | --------- | ------- |
+| light | `#212529` | `#F8F9FA` | ~14.6:1 |
+| dark  | `#F1F3F5` | `#121212` | ~15.9:1 |
+
+against white-on-`#067657`'s ~5.6:1. **The outline is `secondaryText`, not `divider`:**
+`#E9ECEF` on `#F8F9FA` is about 1.1:1, so a `divider` border would leave the button with no
+readable edge at all — an unfilled button that reads as a label.
+
+`build/signin_preview/` has both themes; `test/sign_in_button_render_preview.dart` regenerates
+them. Note the envelope comes out as tofu there because that harness loads the app's own faces
+and not `MaterialIcons` — a renderer limitation, recorded in its header beside `BrandMark`'s.
 
 ### Recovery pushes **on top**; `_leaveIfSignedIn` is not touched
 

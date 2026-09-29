@@ -268,27 +268,41 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       ref.read(authProvider.notifier).signInWithGoogle(),
                 ),
                 const SizedBox(height: 12),
-                // **Brand green, not a third neutral plate.** Google's button is already
-                // white with black text, so a white or outlined email button would read as
-                // a twin of a vendor's rather than as the app's own door. `brandFill` is
-                // the token authored to carry white text and is dark in both themes for
-                // exactly that reason -- the trap `kStatTileCool` records is using a token
-                // picked for one role as a fill and finding it flips lightness per theme.
+                // **Outlined and unfilled, and this reverses the brand green it shipped
+                // with.** The argument for green was that Google's button is already a
+                // white plate, so a pale email button would read as a twin of a vendor's.
+                // The premise is right and the conclusion was wrong: what separates this
+                // button from Google's does not have to be *hue*, and weight does it
+                // without the cost. Filled-versus-outlined is the difference between a
+                // primary and a tertiary control everywhere else in the app.
                 //
-                // Third, and the same size as the other two, which is what satisfies
-                // Apple's prominence rule: they ask that Sign in with Apple be no less
-                // prominent, not that it be the only coloured button.
+                // Green's cost, which only showed up on a device: `BrandMark` directly
+                // above is the same green, so the screen carried the brand's one accent
+                // twice, 400pt apart, and the two pulled at each other. It also made the
+                // app's own door the loudest of the three, which inverts the hierarchy --
+                // Apple ask to be no *less* prominent than the alternatives, and a filled
+                // colour against a black and a white plate is more.
+                //
+                // So the two vendor buttons keep their mandated colours and the app's own
+                // option is the quiet one. Nothing here is a brand: the brand is the mark.
                 _SignInButton(
                   label: l10n.continueWithEmail,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.mail_outline,
                     // The same 19/44 the two marks above use, so all three optical centres
                     // sit on one line.
                     size: kSignInButtonHeight * kSignInContentRatio,
-                    color: Colors.white,
+                    color: context.colors.primaryText,
                   ),
-                  backgroundColor: context.colors.brandFill,
-                  textColor: Colors.white,
+                  // Transparent rather than `pageBackground`, so the button cannot drift
+                  // from the page it sits on if that token ever moves.
+                  backgroundColor: Colors.transparent,
+                  textColor: context.colors.primaryText,
+                  // `secondaryText`, not `divider`: #E9ECEF on #F8F9FA is about 1.1:1 and
+                  // would leave the button with no readable edge at all -- the failure mode
+                  // being an unfilled button that looks like a label. This is the same
+                  // token the app uses for text it still expects to be read.
+                  side: BorderSide(color: context.colors.secondaryText),
                   onPressed: () =>
                       Navigator.pushNamed(context, AppRoutes.emailAuth),
                 ),
@@ -314,6 +328,13 @@ class _SignInButton extends StatelessWidget {
   final Widget icon;
   final Color backgroundColor;
   final Color textColor;
+
+  /// An outline, for the button that is not a brand.
+  /// Null for the two vendor buttons, whose colours are mandated and filled. When it is
+  /// set the button also drops its elevation: a shadow under a transparent face is a
+  /// shadow cast by nothing, which reads as a rendering fault rather than as depth.
+  final BorderSide? side;
+
   final VoidCallback onPressed;
 
   const _SignInButton({
@@ -321,6 +342,7 @@ class _SignInButton extends StatelessWidget {
     required this.icon,
     required this.backgroundColor,
     required this.textColor,
+    this.side,
     required this.onPressed,
   });
 
@@ -335,8 +357,11 @@ class _SignInButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: backgroundColor,
             foregroundColor: textColor,
+            elevation: side == null ? null : 0,
+            shadowColor: side == null ? null : Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
+              side: side ?? BorderSide.none,
             ),
             // Spelled out rather than inherited. Apple tie the title's size to the
             // button's height, and Material's default button text style does not
