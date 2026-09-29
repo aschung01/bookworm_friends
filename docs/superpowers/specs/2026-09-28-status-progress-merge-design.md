@@ -678,6 +678,26 @@ buttons at 44 with a 12pt gap, recessive on the left.
 disabled Save to explain. Arriving _below_ the track is also what let the title row's pinned
 height go — anything appearing down there cannot push the track, which is what the pin was for.
 
+**And it is pinned to the foot by a `Spacer`, which took a second pass.** Framing the sheet
+leaves spare room in every state but the tallest, and top-aligned that room fell _below_ the
+commit row — so buttons asked for "at the bottom of the sheet" were drawn 49pt up it on a
+Reading book. The slack now falls above the row and under the text action: `Stop reading this`
+edits the pending status, so it belongs with the form, and the commit row is the only thing that
+belongs to the sheet's edge.
+
+The `Spacer` needs a bounded height and neither obvious spelling gives one —
+`MainAxisSize.max` inside the `ConstrainedBox` fills the _maximum_, which is most of the screen,
+and a plain `SizedBox` is bounded but clips instead of growing. `IntrinsicHeight` is the answer:
+it tightens the column to its own intrinsic height, `BoxConstraints.tighten` clamps that against
+the incoming minimum, and the column is handed a tight `max(natural, 336)`. The `Spacer`
+contributes nothing to the intrinsic measurement, which is what keeps `natural` honest.
+
+**The mockup could not have caught this.** `.dev` has no height, so every crop is drawn at its
+content's natural height and there is no slack to distribute — the defect was invisible on the
+page and obvious in a photograph of a device. Same blind spot the streak widget's review page
+has about WidgetKit. `build/status_sheet_preview/readingdirty_light_en.png` is the frame that
+shows it.
+
 **`Reset` is not `Cancel`, and the difference is that it stays.** Dismissing already discards,
 so a button that dismissed would be a second spelling of a gesture the reader has. This one puts
 every field back to what the sheet opened with and leaves them on it, which is what someone who

@@ -202,6 +202,26 @@ void main() {
     await _shoot(tester, 'dirty_light_en');
   });
 
+  // **Reading and dirty**, which is the state a reader photographed to say the buttons were
+  // not at the bottom of the sheet: 287 of content in a 336 frame, so 49pt of slack, and
+  // top-aligned it fell *under* the commit row. Reached by resuming a set-aside book, which
+  // leaves exactly that shape — Reading, one date row, the text action, and Save.
+  testWidgets('Reading and dirty, light, en', (tester) async {
+    await _open(
+      tester,
+      theme: AppTheme.light,
+      locale: const Locale('en'),
+      currentStatus: bookStatusSetAside,
+      startDate: start,
+      finishDate: DateTime(2026, 9, 28),
+      progress: 0.74,
+      pageCount: _kPageCount,
+    );
+    await tester.tap(find.text('Start reading again'));
+    await tester.pumpAndSettle();
+    await _shoot(tester, 'readingdirty_light_en');
+  });
+
   // The confirmation behind `Stop reading this`, which is the one sheet in this feature
   // that is drawn on top of another one.
   testWidgets('Stop reading confirmation, light, en', (tester) async {

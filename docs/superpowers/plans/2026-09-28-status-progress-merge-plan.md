@@ -134,6 +134,19 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   anything arriving below the track cannot push the track. `Reset` restores the sheet's
   *arguments*, the same set `dirty` compares against, so a reset sheet is clean by construction
   and the row cannot survive its own press.
+- **And the commit row needed pinning to the foot, which is a second pass on the same
+  instruction.** Framing the sheet leaves spare room in every state but the tallest, and
+  top-aligned that room fell *below* the buttons — 49pt of cream under them on a Reading book,
+  reported from a photograph of a device. The `Spacer` needs a bounded height: `MainAxisSize.max`
+  inside the `ConstrainedBox` fills the maximum (most of the screen) and a `SizedBox` clips
+  instead of growing, so `IntrinsicHeight` is what makes `max(natural, 336)` a tight constraint.
+  **The mockup cannot show this** — `.dev` has no height, so every crop is drawn at its natural
+  height and there is no slack to distribute. Rendered frame:
+  `build/status_sheet_preview/readingdirty_light_en.png`.
+- **A test measuring `find.text('Save')` reports the row 14pt clear of a foot it is flush with**,
+  because the label's box is ~14 shorter than the 44pt button around it. The case measures
+  `find.widgetWithText(ElevatedActionButton, 'Save')`, and asserts a real gap *above* the row as
+  well — flush-with-the-foot alone passes on the tallest state, which has no slack at all.
 - **The right edge needed `spaceBetween` over two nested groups, not over the flat list.** Flat it
   spreads all four parts and floats the percent into the middle; and a `Row` with a `Spacer` — the
   obvious spelling — throws away the wrap degradation `ReadingStateLine` exists for, since a Row's

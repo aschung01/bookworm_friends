@@ -1395,6 +1395,16 @@ Four things not to undo:
 
 Save left the title row on instruction. Two things not to undo:
 
+- **The commit row is pinned to the foot by a `Spacer`, and that needs `IntrinsicHeight`.**
+  The frame leaves spare room in every state but the tallest, and top-aligned it fell _below_
+  the buttons — 49pt of cream under them on a Reading book. `MainAxisSize.max` inside the
+  `ConstrainedBox` fills the maximum, which is most of the screen; a `SizedBox` is bounded but
+  clips instead of growing. `IntrinsicHeight` tightens the column to `max(natural, 336)`, which
+  is bounded, still at least the frame, and still free to grow. **The mockup cannot show this
+  defect** — `.dev` has no height, so every crop is drawn at its natural height and there is no
+  slack. It was reported from a photograph. And a test that measures `find.text('Save')` reports
+  the row 14pt clear of a foot it is flush with: the label's box is shorter than its 44pt
+  button.
 - **`Reset` restores the sheet's arguments, not a later snapshot.** Those are the same values
   `dirty` compares against, so a reset sheet is clean by construction and the commit row cannot
   survive its own press. It is **not** `Cancel`: dismissing already discards, so a button that
@@ -1517,7 +1527,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2028, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2029, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1530,7 +1540,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2028 cases). There is no expected-failure list any
+`flutter test` passes completely (2029 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

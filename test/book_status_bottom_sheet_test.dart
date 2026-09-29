@@ -1187,6 +1187,42 @@ void main() {
       expect(tester.getRect(find.byType(ReadingTrack)), trackBefore);
     });
 
+    testWidgets('Given slack in the frame, Then the row is flush with the sheet foot', (
+      tester,
+    ) async {
+      // **The defect a reader photographed.** Reading and dirty is 287 of content in a 336
+      // frame, and top-aligned the spare 49pt fell *below* the commit row — buttons asked
+      // for "at the bottom of the sheet", drawn most of the way up it. The `Spacer` moved
+      // the slack above them.
+      //
+      // Both halves are asserted, because the first alone passes on a sheet with no slack
+      // at all: the row is flush with the content box, *and* there is a real gap above it.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+        pageCount: _kPageCount,
+      );
+      await _dragTrackTo(tester, 0.8);
+
+      final box = tester.getRect(find.byType(AnimatedSize));
+      // The **button**, not its label: `_save` finds the `Text`, whose box is ~14pt
+      // shorter than the 44pt button around it, so measuring the label reports a row
+      // 14pt clear of a foot it is actually flush with.
+      final row = tester.getRect(
+        find.widgetWithText(ElevatedActionButton, 'Save'),
+      );
+      expect(row.bottom, moreOrLessEquals(box.bottom, epsilon: 0.5));
+
+      final action = tester.getRect(find.text('Stop reading this'));
+      expect(
+        row.top - action.bottom,
+        greaterThan(40),
+        reason: 'the slack is above the row, not below it',
+      );
+    });
+
     testWidgets('Given Reset, Then every field goes back and the row withdraws', (
       tester,
     ) async {

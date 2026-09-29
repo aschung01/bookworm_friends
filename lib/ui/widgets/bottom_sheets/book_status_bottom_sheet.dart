@@ -217,271 +217,302 @@ Future<void> showBookStatusBottomSheet(
               // rather than overflowing. A `SizedBox` here would trade a moving control for
               // a clipped one.
               constraints: const BoxConstraints(minHeight: _kContentHeight),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // **The sheet's own title, not the book's.** The book's title was tried
-                  // first, on the reasoning that the row should never re-centre; it read as a
-                  // page header rather than as a sheet title, and it told the reader something
-                  // they already knew — they arrived from that book's page, and the book is
-                  // still on screen behind this sheet. What a sheet title owes them is what
-                  // this sheet *does*.
-                  //
-                  // **It was a `Row` holding the title and Save, inside a `SizedBox` pinned to
-                  // 32.** Both are gone because Save moved to the foot: the `Row` had one child
-                  // left, and the pin existed only because Save is 32 where the title is ~21, so
-                  // the row grew 11pt the instant the sheet went dirty and pushed the track
-                  // down. The cause moved rather than the rule changing — the commit buttons now
-                  // arrive *below* the track, where [_kContentHeight] absorbs them.
-                  Text(
-                    l10n.readingProgressTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.subtitle,
-                  ),
-                  const SizedBox(height: 16),
-                  // The whole state in one line: the status word, the percent, and the page
-                  // inside the total. Three of its parts are doors; the track below is for
-                  // coarse work and these are for exact answers.
-                  ReadingStateLine(
-                    statusLabel: chip.label,
-                    statusColor: chip.textColor,
-                    progress: position,
-                    progressPage: positionPage,
-                    pageCount: total,
-                    onPercentTap: () => showSelectPercentBottomSheet(
-                      context,
-                      initialProgress: position,
-                      initialPage: positionPage,
+              // **[IntrinsicHeight] is what lets the [Spacer] below exist**, and the frame
+              // is useless without it: the slack has to fall *above* the commit row, not
+              // below it.
+              //
+              // Top-aligned, the buttons sat wherever the content ended and left 49pt of
+              // cream under them on a Reading book — asked for "at the bottom of the sheet"
+              // and drawn most of the way up it. A `Spacer` fixes that and needs a bounded
+              // height, which neither of the obvious spellings gives: `MainAxisSize.max`
+              // inside this `ConstrainedBox` fills the *maximum*, which here is most of the
+              // screen, and a plain `SizedBox(height: _kContentHeight)` is bounded but
+              // clips instead of growing — the thing `minHeight` is here to avoid.
+              //
+              // `IntrinsicHeight` tightens the child to its own intrinsic height, and
+              // `BoxConstraints.tighten` clamps that against the incoming minimum: so the
+              // column is handed a tight `max(natural, 336)`. Bounded, so `Spacer` works;
+              // still at least the frame; still free to grow past it. The `Spacer`
+              // contributes nothing to the intrinsic measurement, which is what makes
+              // `natural` the real content height rather than a fixed point.
+              child: IntrinsicHeight(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // **The sheet's own title, not the book's.** The book's title was tried
+                    // first, on the reasoning that the row should never re-centre; it read as a
+                    // page header rather than as a sheet title, and it told the reader something
+                    // they already knew — they arrived from that book's page, and the book is
+                    // still on screen behind this sheet. What a sheet title owes them is what
+                    // this sheet *does*.
+                    //
+                    // **It was a `Row` holding the title and Save, inside a `SizedBox` pinned to
+                    // 32.** Both are gone because Save moved to the foot: the `Row` had one child
+                    // left, and the pin existed only because Save is 32 where the title is ~21, so
+                    // the row grew 11pt the instant the sheet went dirty and pushed the track
+                    // down. The cause moved rather than the rule changing — the commit buttons now
+                    // arrive *below* the track, where [_kContentHeight] absorbs them.
+                    Text(
+                      l10n.readingProgressTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.subtitle,
+                    ),
+                    const SizedBox(height: 16),
+                    // The whole state in one line: the status word, the percent, and the page
+                    // inside the total. Three of its parts are doors; the track below is for
+                    // coarse work and these are for exact answers.
+                    ReadingStateLine(
+                      statusLabel: chip.label,
+                      statusColor: chip.textColor,
+                      progress: position,
+                      progressPage: positionPage,
                       pageCount: total,
-                      onProgressSelected: (answer) => setState(
-                        () => takePercentAnswer(
-                          answer.progress,
-                          page: answer.page,
+                      onPercentTap: () => showSelectPercentBottomSheet(
+                        context,
+                        initialProgress: position,
+                        initialPage: positionPage,
+                        pageCount: total,
+                        onProgressSelected: (answer) => setState(
+                          () => takePercentAnswer(
+                            answer.progress,
+                            page: answer.page,
+                          ),
                         ),
                       ),
-                    ),
-                    // Only a book with a total has a page to edit. Opened straight into
-                    // Page mode, because tapping the page has already said "pages".
-                    onPageTap: total == null
-                        ? null
-                        : () => showSelectPercentBottomSheet(
-                            context,
-                            initialProgress: position,
-                            initialPage: positionPage,
-                            pageCount: total,
-                            openInPageMode: true,
-                            title: l10n.currentPageTitle,
-                            onProgressSelected: (answer) => setState(
-                              () => takePercentAnswer(
-                                answer.progress,
-                                page: answer.page,
+                      // Only a book with a total has a page to edit. Opened straight into
+                      // Page mode, because tapping the page has already said "pages".
+                      onPageTap: total == null
+                          ? null
+                          : () => showSelectPercentBottomSheet(
+                              context,
+                              initialProgress: position,
+                              initialPage: positionPage,
+                              pageCount: total,
+                              openInPageMode: true,
+                              title: l10n.currentPageTitle,
+                              onProgressSelected: (answer) => setState(
+                                () => takePercentAnswer(
+                                  answer.progress,
+                                  page: answer.page,
+                                ),
                               ),
                             ),
-                          ),
-                    // Present whether or not the book has a count: with one it edits the
-                    // total, without one it is the `Add total pages` offer, and that offer
-                    // is the largest single thing this sheet adds — about two books in
-                    // three have no count at all.
-                    onTotalTap: () => showSelectTotalPagesBottomSheet(
-                      context,
-                      initialTotalPages: total,
-                      onTotalPagesSelected: (value) =>
-                          setState(() => total = value),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // The control. Drag-only: a tap on it does nothing, deliberately.
-                  ReadingTrack(
-                    progress: position,
-                    semanticsLabel: l10n.howFarIn,
-                    onChanged: (value) =>
-                        setState(() => takePercentAnswer(value)),
-                  ),
-                  if (status >= bookStatusReading) ...[
-                    const SizedBox(height: 16),
-                    DateFieldRow(
-                      label: l10n.startDate,
-                      date: start,
-                      onTap: () {
-                        showSelectDateBottomSheet(
-                          context,
-                          initialDate: start ?? DateTime.now(),
-                          title: l10n.selectStartDate,
-                          onDateSelected: (d) => setState(() {
-                            start = d;
-                            // Moving the start past the finish would leave the book
-                            // finished before it was started.
-                            if (finish != null && finish!.isBefore(d))
-                              finish = d;
-                          }),
-                        );
-                      },
-                    ),
-                  ],
-                  // Set aside has a finish date too, and it is the day the book was
-                  // *closed* rather than completed. That is what keeps the read view's
-                  // month grouping and year rail working untouched: both read the date and
-                  // neither cares why the book ended.
-                  if (status == bookStatusFinished ||
-                      status == bookStatusSetAside) ...[
-                    const SizedBox(height: 8),
-                    DateFieldRow(
-                      label: l10n.finishDate,
-                      date: finish,
-                      onTap: () {
-                        showSelectDateBottomSheet(
-                          context,
-                          initialDate: finish ?? DateTime.now(),
-                          title: l10n.selectFinishDate,
-                          // A book can't be finished before it was started.
-                          minimumDate: start,
-                          onDateSelected: (d) => setState(() => finish = d),
-                        );
-                      },
-                    ),
-                  ],
-                  // **One text action, and which one depends on the status.** Nothing has
-                  // been started at Not started, and a finished book can be neither given up
-                  // on nor resumed, so those two states offer none.
-                  //
-                  // `secondaryText`, not `flame`, for both: neither giving up on a book nor
-                  // picking it back up is destructive, and neither must be the loudest thing
-                  // on the sheet. Stopping leaves the position exactly where it is, which is
-                  // the whole point of the status existing — the read-out keeps saying 46%.
-                  if (status == bookStatusReading) ...[
-                    const SizedBox(height: 16),
-                    _SheetTextAction(
-                      label: l10n.stopReadingThis,
-                      // **Confirmed, and the confirmation does not write.** See
-                      // `stop_reading_bottom_sheet.dart` for why an action this ordinary is
-                      // confirmed at all — it is the band's size, not the act's weight — and
-                      // for why committing straight from there was rejected.
-                      onTap: () => showStopReadingBottomSheet(
+                      // Present whether or not the book has a count: with one it edits the
+                      // total, without one it is the `Add total pages` offer, and that offer
+                      // is the largest single thing this sheet adds — about two books in
+                      // three have no count at all.
+                      onTotalTap: () => showSelectTotalPagesBottomSheet(
                         context,
-                        onConfirmed: () => setState(() {
-                          status = bookStatusSetAside;
-                          finish ??= DateTime.now();
-                        }),
+                        initialTotalPages: total,
+                        onTotalPagesSelected: (value) =>
+                            setState(() => total = value),
                       ),
                     ),
-                  ] else if (status == bookStatusSetAside) ...[
-                    const SizedBox(height: 16),
-                    _SheetTextAction(
-                      label: l10n.startReadingAgain,
-                      // **This reverses a decision recorded three times in this file, and
-                      // the premise was wrong rather than the conclusion.** The claim was
-                      // that a set-aside book resumes by moving the thumb, so a link here
-                      // would be a second affordance for a gesture the sheet already has.
-                      // But the thumb resumes only by *changing the position* — a reader who
-                      // set a book aside at 46% and wants to carry on from 46% had no move
-                      // available at all, short of dragging away and back to land on the same
-                      // percent. The one status a position cannot imply is the one status
-                      // that therefore needs a control of its own.
-                      //
-                      // **No confirmation, unlike its opposite**, and the asymmetry is the
-                      // point: `showStopReadingBottomSheet` exists because a wide grey band
-                      // is easy to hit by accident, and an accidental *resume* costs a reader
-                      // nothing. Confirming both would make the pair look like a matched set
-                      // of consequential acts, which is exactly the judgement these strings
-                      // are written to avoid.
-                      onTap: () => setState(() {
-                        status = bookStatusReading;
-                        // The finish date is deliberately kept, not cleared. Save filters it
-                        // out for a reading book, so nothing wrong is written; keeping it
-                        // means a reader who resumes and stops again does not lose the day
-                        // they first closed the book. Same rule as `start` above — fill in
-                        // what the new status needs, never clear what it does not.
-                        start ??= DateTime.now();
-                      }),
+                    const SizedBox(height: 12),
+                    // The control. Drag-only: a tap on it does nothing, deliberately.
+                    ReadingTrack(
+                      progress: position,
+                      semanticsLabel: l10n.howFarIn,
+                      onChanged: (value) =>
+                          setState(() => takePercentAnswer(value)),
                     ),
-                  ],
-                  // **The commit row, at the foot of the sheet.**
-                  //
-                  // Save used to sit in the title row beside the heading, at 92×32. It was
-                  // asked for down here, and the move brings two things with it. `Reset`
-                  // becomes possible — a 92pt slot next to a title has room for one button,
-                  // a full-width row has room for a pair — and the sheet stops putting its
-                  // only write control in the corner furthest from the reader's thumb, on a
-                  // sheet whose whole argument for being a sheet was that the control is in
-                  // the thumb's arc.
-                  //
-                  // **Its arrival is still the dirty indicator**, which is why there is no
-                  // other unsaved marker on the sheet and no disabled Save to explain.
-                  // Arriving *below* the track rather than above it is also what let the
-                  // title row's pinned height go: [_kContentHeight] absorbs anything that
-                  // appears down here, where a taller title row pushed the track down.
-                  //
-                  // The delete sheet's geometry — two `Expanded` buttons at 44 with a 12pt
-                  // gap, recessive on the left — because that is the app's existing button
-                  // pair and a second arrangement would be a new thing to learn.
-                  if (dirty) ...[
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedActionButton(
-                            height: 44,
-                            buttonText: l10n.reset,
-                            backgroundColor: colors.surfaceVariant,
-                            textStyle: AppTextStyles.label,
-                            // **Not `Cancel`, and the difference is that this one stays.**
-                            // Dismissing the sheet already discards — that is the invariant
-                            // Save is the other half of — so a button that dismissed would
-                            // be a second spelling of a gesture the reader already has. This
-                            // puts every field back to what the sheet opened with and leaves
-                            // them on it, which is what someone who over-dragged the track
-                            // wants: the old value back, and to carry on.
-                            //
-                            // Reset to the *arguments*, not to a snapshot taken later, so it
-                            // restores exactly the values `dirty` compares against and the
-                            // row cannot survive its own press.
-                            onPressed: () => setState(() {
-                              status = currentStatus;
-                              start = startDate;
-                              finish = finishDate;
-                              position = progress;
-                              positionPage = progressPage;
-                              total = pageCount;
+                    if (status >= bookStatusReading) ...[
+                      const SizedBox(height: 16),
+                      DateFieldRow(
+                        label: l10n.startDate,
+                        date: start,
+                        onTap: () {
+                          showSelectDateBottomSheet(
+                            context,
+                            initialDate: start ?? DateTime.now(),
+                            title: l10n.selectStartDate,
+                            onDateSelected: (d) => setState(() {
+                              start = d;
+                              // Moving the start past the finish would leave the book
+                              // finished before it was started.
+                              if (finish != null && finish!.isBefore(d))
+                                finish = d;
                             }),
-                          ),
+                          );
+                        },
+                      ),
+                    ],
+                    // Set aside has a finish date too, and it is the day the book was
+                    // *closed* rather than completed. That is what keeps the read view's
+                    // month grouping and year rail working untouched: both read the date and
+                    // neither cares why the book ended.
+                    if (status == bookStatusFinished ||
+                        status == bookStatusSetAside) ...[
+                      const SizedBox(height: 8),
+                      DateFieldRow(
+                        label: l10n.finishDate,
+                        date: finish,
+                        onTap: () {
+                          showSelectDateBottomSheet(
+                            context,
+                            initialDate: finish ?? DateTime.now(),
+                            title: l10n.selectFinishDate,
+                            // A book can't be finished before it was started.
+                            minimumDate: start,
+                            onDateSelected: (d) => setState(() => finish = d),
+                          );
+                        },
+                      ),
+                    ],
+                    // **One text action, and which one depends on the status.** Nothing has
+                    // been started at Not started, and a finished book can be neither given up
+                    // on nor resumed, so those two states offer none.
+                    //
+                    // `secondaryText`, not `flame`, for both: neither giving up on a book nor
+                    // picking it back up is destructive, and neither must be the loudest thing
+                    // on the sheet. Stopping leaves the position exactly where it is, which is
+                    // the whole point of the status existing — the read-out keeps saying 46%.
+                    if (status == bookStatusReading) ...[
+                      const SizedBox(height: 16),
+                      _SheetTextAction(
+                        label: l10n.stopReadingThis,
+                        // **Confirmed, and the confirmation does not write.** See
+                        // `stop_reading_bottom_sheet.dart` for why an action this ordinary is
+                        // confirmed at all — it is the band's size, not the act's weight — and
+                        // for why committing straight from there was rejected.
+                        onTap: () => showStopReadingBottomSheet(
+                          context,
+                          onConfirmed: () => setState(() {
+                            status = bookStatusSetAside;
+                            finish ??= DateTime.now();
+                          }),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedActionButton(
-                            height: 44,
-                            buttonText: l10n.save,
-                            onPressed: () {
-                              Navigator.pop(context);
-                              onSave((
-                                status: status,
-                                // Only the dates the status has meaning for, so a book put
-                                // back to Not started does not keep the dates the form was
-                                // holding for its own benefit.
-                                startDate: status >= bookStatusReading
-                                    ? start
-                                    : null,
-                                finishDate:
-                                    status == bookStatusFinished ||
-                                        status == bookStatusSetAside
-                                    ? finish
-                                    : null,
-                                progress: position,
-                                progressPage: positionPage,
-                                // A position the reader erased, which is a different
-                                // instruction from one they did not touch. See the record.
-                                clearProgress:
-                                    position == null && progress != null,
-                                totalPages: total != pageCount ? total : null,
-                              ));
-                            },
+                      ),
+                    ] else if (status == bookStatusSetAside) ...[
+                      const SizedBox(height: 16),
+                      _SheetTextAction(
+                        label: l10n.startReadingAgain,
+                        // **This reverses a decision recorded three times in this file, and
+                        // the premise was wrong rather than the conclusion.** The claim was
+                        // that a set-aside book resumes by moving the thumb, so a link here
+                        // would be a second affordance for a gesture the sheet already has.
+                        // But the thumb resumes only by *changing the position* — a reader who
+                        // set a book aside at 46% and wants to carry on from 46% had no move
+                        // available at all, short of dragging away and back to land on the same
+                        // percent. The one status a position cannot imply is the one status
+                        // that therefore needs a control of its own.
+                        //
+                        // **No confirmation, unlike its opposite**, and the asymmetry is the
+                        // point: `showStopReadingBottomSheet` exists because a wide grey band
+                        // is easy to hit by accident, and an accidental *resume* costs a reader
+                        // nothing. Confirming both would make the pair look like a matched set
+                        // of consequential acts, which is exactly the judgement these strings
+                        // are written to avoid.
+                        onTap: () => setState(() {
+                          status = bookStatusReading;
+                          // The finish date is deliberately kept, not cleared. Save filters it
+                          // out for a reading book, so nothing wrong is written; keeping it
+                          // means a reader who resumes and stops again does not lose the day
+                          // they first closed the book. Same rule as `start` above — fill in
+                          // what the new status needs, never clear what it does not.
+                          start ??= DateTime.now();
+                        }),
+                      ),
+                    ],
+                    // **The commit row, at the foot of the sheet.**
+                    //
+                    // Save used to sit in the title row beside the heading, at 92×32. It was
+                    // asked for down here, and the move brings two things with it. `Reset`
+                    // becomes possible — a 92pt slot next to a title has room for one button,
+                    // a full-width row has room for a pair — and the sheet stops putting its
+                    // only write control in the corner furthest from the reader's thumb, on a
+                    // sheet whose whole argument for being a sheet was that the control is in
+                    // the thumb's arc.
+                    //
+                    // **Its arrival is still the dirty indicator**, which is why there is no
+                    // other unsaved marker on the sheet and no disabled Save to explain.
+                    // Arriving *below* the track rather than above it is also what let the
+                    // title row's pinned height go: [_kContentHeight] absorbs anything that
+                    // appears down here, where a taller title row pushed the track down.
+                    //
+                    // The delete sheet's geometry — two `Expanded` buttons at 44 with a 12pt
+                    // gap, recessive on the left — because that is the app's existing button
+                    // pair and a second arrangement would be a new thing to learn.
+                    // **The slack, and it goes here rather than at the end.** Everything above
+                    // keeps its place under the track; everything below is pinned to the foot.
+                    // A reader asked for the buttons "at the bottom of the sheet" and got them
+                    // 49pt up it, because the frame's spare room fell after the last child.
+                    //
+                    // Above the text action rather than below it: `Stop reading this` changes
+                    // the pending status, so it belongs with the form it edits, and the commit
+                    // row is the only thing that belongs to the sheet's edge. In a clean state
+                    // there is no commit row and this simply absorbs the tail, which is the
+                    // top-aligned behaviour it replaced.
+                    const Spacer(),
+                    if (dirty) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedActionButton(
+                              height: 44,
+                              buttonText: l10n.reset,
+                              backgroundColor: colors.surfaceVariant,
+                              textStyle: AppTextStyles.label,
+                              // **Not `Cancel`, and the difference is that this one stays.**
+                              // Dismissing the sheet already discards — that is the invariant
+                              // Save is the other half of — so a button that dismissed would
+                              // be a second spelling of a gesture the reader already has. This
+                              // puts every field back to what the sheet opened with and leaves
+                              // them on it, which is what someone who over-dragged the track
+                              // wants: the old value back, and to carry on.
+                              //
+                              // Reset to the *arguments*, not to a snapshot taken later, so it
+                              // restores exactly the values `dirty` compares against and the
+                              // row cannot survive its own press.
+                              onPressed: () => setState(() {
+                                status = currentStatus;
+                                start = startDate;
+                                finish = finishDate;
+                                position = progress;
+                                positionPage = progressPage;
+                                total = pageCount;
+                              }),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedActionButton(
+                              height: 44,
+                              buttonText: l10n.save,
+                              onPressed: () {
+                                Navigator.pop(context);
+                                onSave((
+                                  status: status,
+                                  // Only the dates the status has meaning for, so a book put
+                                  // back to Not started does not keep the dates the form was
+                                  // holding for its own benefit.
+                                  startDate: status >= bookStatusReading
+                                      ? start
+                                      : null,
+                                  finishDate:
+                                      status == bookStatusFinished ||
+                                          status == bookStatusSetAside
+                                      ? finish
+                                      : null,
+                                  progress: position,
+                                  progressPage: positionPage,
+                                  // A position the reader erased, which is a different
+                                  // instruction from one they did not touch. See the record.
+                                  clearProgress:
+                                      position == null && progress != null,
+                                  totalPages: total != pageCount ? total : null,
+                                ));
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

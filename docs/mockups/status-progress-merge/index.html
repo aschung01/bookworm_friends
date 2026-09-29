@@ -1945,7 +1945,17 @@
                 }${blocks(s.body)}${
                     /* The commit row, appended rather than authored into each body: it belongs
                        to every screen that carries a `head` block and to no other, so deriving
-                       it keeps the two from drifting apart across fifteen screens. */
+                       it keeps the two from drifting apart across fifteen screens.
+
+                       **This page cannot show where the row sits.** `.dev` has no height, so
+                       every crop is drawn at its content's natural height and there is no
+                       slack to distribute -- where the real sheet is framed to its tallest
+                       state, leaving 49pt spare on a Reading book and 214 at the origin. The
+                       shipped row is pinned to the foot by a `Spacer`, and the bug that
+                       prompted it (buttons 49pt up the sheet) was invisible here and visible
+                       in a photograph. Same blind spot the streak widget's review page has
+                       about WidgetKit: judge the frame in
+                       `build/status_sheet_preview/`. */
                     (s.body || []).some((b) => b.t === "head")
                         ? blocks([{ t: "gap", h: 16 }, { t: "cmt" }])
                         : ""
