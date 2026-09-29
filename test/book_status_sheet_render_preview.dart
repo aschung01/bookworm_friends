@@ -181,6 +181,22 @@ void main() {
     await _shoot(tester, 'setaside_light_en');
   });
 
+  // The confirmation behind `Stop reading this`, which is the one sheet in this feature
+  // that is drawn on top of another one.
+  testWidgets('Stop reading confirmation, light, en', (tester) async {
+    await _open(
+      tester,
+      theme: AppTheme.light,
+      locale: const Locale('en'),
+      currentStatus: bookStatusReading,
+      startDate: start,
+      progress: 0.71,
+    );
+    await tester.tap(find.text('Stop reading this'));
+    await tester.pumpAndSettle();
+    await _shoot(tester, 'stopconfirm_light_en');
+  });
+
   tearDownAll(() {
     stdout.writeln('wrote build/status_sheet_preview/*.png');
   });

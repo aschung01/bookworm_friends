@@ -1352,6 +1352,70 @@ before this.
 
 The vocabulary moved with it: _Interested_ → **Not started**, _Read_ → **Finished**.
 
+### The sheet is one height, 335, and that is a fix rather than a tidy-up
+
+`_kContentHeight` is **287**, the tallest state's content — a set-aside book with a dirty Save
+— plus `AppSheet`'s own 48. Every state renders at that, so the sheet never resizes.
+
+**A bottom sheet is anchored to the bottom of the screen**, so growing moves its _top_ edge up
+and every child with it. Both date rows sit **below** the track, so dragging off the origin
+added ~70pt and slid the control out from under the finger dragging it. The previous answer was
+an `AnimatedSize`, and the test that pinned it argued against itself: _"both happen on the same
+gesture, so without the animation the sheet would jump twice under the reader's thumb."_ Easing
+a defect is not fixing it.
+
+Four things not to undo:
+
+- **`_kTitleRowHeight` is 32, the Save button's height and not the title's ~21.** Without it
+  the title `Row` grew 11pt the instant the sheet went dirty and pushed everything below it
+  down — the same defect one level in. **An assertion about the sheet's height passes on that
+  bug**; the case measures `ReadingTrack`'s _rectangle_ for exactly this reason.
+- **`ConstrainedBox(minHeight:)`, never `SizedBox`.** A fixed height trades a moving control
+  for a clipped one at large accessibility text sizes. The `AnimatedSize` survives only for
+  that residual case.
+- **The 165pt void on Not started is the accepted cost, and it is pinned.** That state's content
+  is 122, so just under half of it is empty cream, on the state a reader meets first. The
+  alternative is a 115pt jump on the first drag of every new book. If it needs closing, the
+  drawn-but-not-taken option is to show the start-date row at the origin — it fills 60 of the
+  165 and closes a real gap, since today a start date cannot be set without first inventing a
+  position by dragging the thumb.
+- **`BottomSheet` dismisses on a drag past half its own height**, so any test that pans to
+  dismiss must measure the sheet rather than hard-code a distance. One case broke twice on
+  this — once when fonts were loaded, once when the frame went in — and its own comment had
+  recorded the first.
+
+### Stopping a book is confirmed; resuming it is not
+
+`showStopReadingBottomSheet` sits behind `Stop reading this`, and `Start reading again` takes
+the same slot once the book is set aside.
+
+**The confirmation is not about the act's weight.** Setting a book aside is reversible in one
+tap and every string in the flow is written to keep judgement out of it. It is about what the
+control is: a full-width opaque band of grey text with no fill and no border, directly under a
+tappable date row, made wide on purpose because a text-sized target for the least important
+label on the sheet is hard to land on. The cost of the width is that it is easy to hit by
+accident — and an accidental _resume_ costs nothing, which is the whole asymmetry. **Don't add
+a confirmation to `Start reading again` for symmetry**; a matched pair of confirmed actions is
+the judgement these strings avoid.
+
+**It hands an answer back and does not write.** Like `showSelectDateBottomSheet` and
+`showSelectPercentBottomSheet`, the status sheet holds the answer until Save. Committing
+straight from it is the obvious alternative — a confirmation that returns you to a form with a
+Save button looks like being asked twice — and it would need arguing against the reason the
+sheet exists, since `Save` being the only writer is the entire answer to _"a stray touch could
+silently rewrite your position."_ Tests go through `_stopReading`, which taps and confirms.
+
+**`Start reading again` reverses a decision recorded in five places** — this file's ancestor,
+the spec, the plan, the mockup caption and three comments in the sheet — all saying a set-aside
+book resumes by moving the thumb, so a link would be a second affordance. The premise was
+wrong: the thumb resumes only by _changing the position_, so a reader who stopped at 46% and
+wants to carry on from 46% had no move available. Set aside is the one status a position cannot
+imply, which makes it the one that needs a control of its own.
+
+**It does not clear `finish`.** Save filters the finish date out for a reading book, so nothing
+wrong is written, and keeping it means a reader who resumes and stops again does not silently
+restamp the closing with today. Same rule the sheet applies to `start`.
+
 ### Two small traps in the strings and one in the sheet's title
 
 **`U+2248` is not in the app's font subset.** The faces are Latin-1 plus Hangul, so `≈`
@@ -1407,7 +1471,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2011, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2020, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1420,7 +1484,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2011 cases). There is no expected-failure list any
+`flutter test` passes completely (2020 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

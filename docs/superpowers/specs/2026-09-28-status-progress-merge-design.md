@@ -256,7 +256,7 @@ and neither cares why the book ended.
 
 The overload is kept browsable as the `derived` version in the mockups.
 
-### One secondary action, grey, and only while Reading
+### One secondary action, grey, and which one is the status
 
 "Stop reading this" — the only text action on the sheet, **centred and full width**, in
 `secondaryText` grey rather than `flame`, because giving up on a book is ordinary rather than
@@ -268,16 +268,38 @@ it is**, which is the whole point: the row keeps saying 46%. Its label is a **ne
 both files** — nothing in the app says this today — so the Korean is written, not translated,
 like the rest of the sweep below.
 
-**It is drawn in the Reading state only**, which is what the mockups encode — `one-rest`,
-`one-armed` and `one-nopages` carry it; `one-finished`, `one-setaside` and `one-null` do
-not. The reasoning per state: nothing has been started at Not started; a finished book
-cannot be given up on; and a set-aside book **resumes by moving the thumb**, so a resume
-link would be a second affordance for a gesture the sheet already has.
+**It is drawn in the Reading state only**, and `Start reading again` takes the same slot once
+the book is set aside. Not started and Finished offer neither: nothing has been started at the
+origin, and a finished book can be neither given up on nor resumed.
 
-Rejected: **"Put back on the shelf"** and **"Start reading"**. "Start reading" names a
-transition the thumb already performs — drag off the origin — and the sheet's whole argument
-is that status is a read-out of position, so a button that sets a status is the old model
-smuggled back in.
+**The set-aside half reverses this section, which said a resume link would be a second
+affordance for a gesture the sheet already has** — a set-aside book resumes by moving the
+thumb. The premise was wrong rather than the conclusion. The thumb resumes only by _changing
+the position_, so a reader who set a book aside at 46% and wants to carry on from 46% had no
+move available at all, short of dragging away and back to land on the same percent. Set aside
+is the one status a position cannot imply, which makes it the one status that needs a control
+of its own. The related rejection of **"Start reading"** still stands, and is a different
+thing: that named a transition the thumb does perform, from the origin.
+
+**`Stop reading this` opens a confirmation sheet; `Start reading again` does not.** The
+asymmetry is not about which act is weightier — setting a book aside is reversible in one tap
+now, and every string here is written to keep judgement out of it. It is about what the control
+physically is: a full-width opaque band of grey text directly under a tappable date row, with
+no fill and no border, deliberately wide because a text-sized target for the least important
+label on the sheet is hard to land on. The cost of that width is that it is easy to hit without
+meaning to, and an accidental _resume_ costs a reader nothing.
+
+**The confirmation does not write**, which is what lets it exist here at all. Like
+`showSelectDateBottomSheet` and `showSelectPercentBottomSheet` it hands an answer back and the
+sheet holds it until Save. Committing straight from it was the obvious alternative — a
+confirmation that returns you to a form with a Save button looks like being asked twice — and
+was rejected on two grounds: `Save` is the only writer anywhere in this sheet, and that
+invariant is the entire answer to the objection that killed the drag control the first time it
+was drawn (_"a stray touch could silently rewrite your position"_); and the symmetry that
+matters is with the sheet's other sub-sheets rather than with the app's delete sheet, since
+answering the date sheet does not save a date either.
+
+Rejected: **"Put back on the shelf"**.
 
 "Put back on the shelf" is not drawn either, and the thumb covers it after all: **a drag
 back to the origin writes `null`, not `0`.** So the origin _is_ Not started, and Reading →
@@ -605,18 +627,53 @@ sheet, ~300pt for the read sheet's crop.
 **Measured after building**, at a real 375×667 with the app's own fonts registered (which is
 what made them measurable — under the test font every string is one em-square per glyph):
 
-| state                             | measured | estimated |
-| --------------------------------- | -------- | --------- |
-| Reading, clean                    | **275**  | 270       |
-| Reading, dirty                    | 286      | 292       |
-| Finished, clean (both date rows)  | 276      | 282       |
-| Set aside, dirty                  | **287**  | —         |
-| Not started, clean                | **170**  | 246       |
+| state                            | measured | estimated |
+| -------------------------------- | -------- | --------- |
+| Reading, clean                   | **275**  | 270       |
+| Reading, dirty                   | 286      | 292       |
+| Finished, clean (both date rows) | 276      | 282       |
+| Set aside, dirty                 | **287**  | —         |
+| Not started, clean               | **170**  | 246       |
 
 Three within 6pt, and the estimates were good. **Not started is 76pt out, and not by an
 arithmetic slip:** at the origin the read-out collapses to a single word — no percent, no page
 pair — and neither date row is drawn, which the row-sum did not model. The sheet is comfortably
 shorter than both it replaces (342 and 368) in every state.
+
+### And then the sheet was given one height, 335
+
+**Every figure above is a natural height, and the sheet no longer has one.** It is framed to
+its tallest state — set aside with a dirty Save, 287 of content plus `AppSheet`'s 48 — so every
+state renders at 335 and the sheet never resizes.
+
+The reason is not tidiness. A bottom sheet is anchored to the bottom of the screen, so growing
+moves its _top_ edge up and every child with it — and both date rows sit **below** the track.
+Dragging off the origin adds the start-date row and the Save button, about 70pt, which slid the
+control out from under the finger that was dragging it. The previous answer to this was an
+`AnimatedSize`, and the case that pinned it said why it mattered: _"both happen on the same
+gesture, so without the animation the sheet would jump twice under the reader's thumb."_ That
+diagnosis was right and the remedy treated the symptom; 220ms of easing still moves the track.
+
+Two details that only a rendered frame and a rectangle-level assertion would find:
+
+- **The title row is pinned to 32 as well**, which is the Save button's height and not the
+  title's ~21. Without that the row grew 11pt the instant the sheet went dirty and pushed
+  everything below it down — the same defect one level in, and invisible to any assertion about
+  the sheet's own height. The case measures `ReadingTrack`'s rectangle for this reason.
+- **It is a minimum height, not a fixed one.** A `SizedBox` would trade a moving control for a
+  clipped one at large accessibility text sizes; `ConstrainedBox(minHeight:)` lets a state that
+  genuinely needs more room grow, and the `AnimatedSize` is kept for that one residual case.
+
+**What it costs is a void on Not started: 165pt, just under half that state.** The sheet is
+sized for a book three taps away, and the state with the least in it is the state a reader
+meets first. That is the trade, and it is accepted rather than overlooked — the alternative is a
+115pt jump on the first drag of every new book, which is the most common interaction this sheet
+has. `book_status_bottom_sheet_test.dart` pins the 335 on Not started specifically so the cost
+is findable rather than implied.
+
+Not taken, and available: always drawing the start-date row at the origin would fill 60 of the
+165 and close a real gap — today a start date cannot be set without first inventing a position
+by dragging the thumb.
 
 **Verified by rendering the mockup:** the popover, hung under the title the way
 `showShelfPickerPopover` hangs its card, **occludes the year rail** — which is a second reason

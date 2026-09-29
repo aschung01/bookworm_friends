@@ -53,7 +53,23 @@
   },
   "stopReadingThis": "Stop reading this",
   "@stopReadingThis": {
-    "description": "The merged status sheet's only text action, shown while the book is being read. Drawn in secondaryText grey rather than flame: giving up on a book is ordinary rather than destructive. A verb phrase rather than the status noun, because it names what the tap does where the chip above names what the book becomes. There is no matching \"Start reading\" or \"Put back on the shelf\" \u2014 the track's thumb performs both."
+    "description": "The merged status sheet's text action while the book is being read. Drawn in secondaryText grey rather than flame: giving up on a book is ordinary rather than destructive. A verb phrase rather than the status noun, because it names what the tap does where the chip above names what the book becomes. It opens a confirmation sheet rather than flipping the status under the reader's finger \u2014 it is an opaque full-width grey band with no button furniture, which is easy to hit by accident. Paired with startReadingAgain, which reverses it and needs no confirmation."
+  },
+  "startReadingAgain": "Start reading again",
+  "@startReadingAgain": {
+    "description": "The set-aside book's text action, in the slot stopReadingThis occupies while the book is open, and its exact reverse. This reverses a documented decision: the sheet used to offer nothing here on the grounds that a set-aside book resumes by moving the thumb, so a link would be a second affordance for a gesture already present. Two things were wrong with that. Dragging resumes only by *changing the position*, so a reader who set a book aside at 46% and wants to carry on from 46% had no move available; and the thumb is not discoverable as a status control. No confirmation sheet, unlike its opposite: picking a book back up loses nothing."
+  },
+  "stopReadingConfirmTitle": "Stop reading this?",
+  "@stopReadingConfirmTitle": {
+    "description": "Title of the confirmation sheet behind stopReadingThis. A question, matching deleteConfirmTitle, and it repeats the action's own words so the reader can see which tap they are answering for."
+  },
+  "stopReadingConfirmBody": "Your place is kept, so you can start reading again any time. The book moves to Set aside.",
+  "@stopReadingConfirmBody": {
+    "description": "Body of the stop-reading confirmation. Leads with what is NOT lost, because that is the non-obvious half: setting a book aside keeps the recorded position, which is the whole reason the status exists rather than sending the book back to Not started. Names the destination status last so the word on the chip afterwards is not a surprise. Deliberately not a warning \u2014 nothing here is destructive and the tone must not suggest it is."
+  },
+  "stopReadingConfirmAction": "Stop reading",
+  "@stopReadingConfirmAction": {
+    "description": "The confirmation sheet's affirmative button. Shorter than stopReadingThis because the sheet's title has already said which book and which act; a button that restates the whole phrase reads as a second question. Not destructive-red, unlike the delete sheet's: this is reversible in one tap by startReadingAgain."
   },
   "addTotalPages": "Add total pages",
   "@addTotalPages": {

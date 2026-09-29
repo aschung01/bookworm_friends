@@ -2178,7 +2178,7 @@
                         [
                             "one-setaside",
                             "Set aside &middot; closed at 46%",
-                            "<b>Its own status, value 3 &mdash; and that reverses the derived scheme this page shipped with.</b> The reason: position alone cannot tell &ldquo;at 46% and still reading&rdquo; from &ldquo;closed at 46%&rdquo;, so a second bit was always needed. Once it is displayed as a first-class word, storing it as <code>status 2</code> makes the column say &ldquo;Read&rdquo; about a book nobody read. <code>finish_date</code> is the day it was closed. No resume link &mdash; moving the thumb resumes it. <b>One cost the drawing hides:</b> <code>BookStatusBadge</code>'s <code>switch</code> ends <code>_ =&gt; statusOther</code>, so without a fourth arm this chip reads <b>Other</b> &mdash; the same silent-wrong-label trap as <code>rej-four</code>'s <code>clamp</code>, and it fails soft, so nothing catches it. <b>276pt clean, measured</b> &mdash; the same rows as <code>one-finished</code>, to the point. Reached from Reading it is dirty and <b>287pt</b>, which is the tallest this sheet gets: read-out, track, both date rows and Save at once.",
+                            "<b>Its own status, value 3 &mdash; and that reverses the derived scheme this page shipped with.</b> The reason: position alone cannot tell &ldquo;at 46% and still reading&rdquo; from &ldquo;closed at 46%&rdquo;, so a second bit was always needed. Once it is displayed as a first-class word, storing it as <code>status 2</code> makes the column say &ldquo;Read&rdquo; about a book nobody read. <code>finish_date</code> is the day it was closed. <b>It does have a resume link now, and that reverses this caption:</b> it read &ldquo;no resume link &mdash; moving the thumb resumes it&rdquo;, and the premise was wrong. The thumb resumes only by <i>changing the position</i>, so a reader who stopped at 46% and wants to carry on from 46% had no move at all. Set aside is the one status a position cannot imply, so it is the one that needs a control. <code>Start reading again</code> takes the slot <code>Stop reading this</code> occupies while the book is open, and is <b>not confirmed</b>, unlike its opposite &mdash; picking a book back up loses nothing. <b>One cost the drawing hides:</b> <code>BookStatusBadge</code>'s <code>switch</code> ends <code>_ =&gt; statusOther</code>, so without a fourth arm this chip reads <b>Other</b> &mdash; the same silent-wrong-label trap as <code>rej-four</code>'s <code>clamp</code>, and it fails soft, so nothing catches it. <b>276pt clean, measured</b> &mdash; the same rows as <code>one-finished</code>, to the point. Reached from Reading it is dirty and <b>287pt</b>, which is the tallest this sheet gets: read-out, track, both date rows and Save at once.",
                             {
                                 pt: 276,
                                 body: [
@@ -2209,6 +2209,11 @@
                                         t: "fld",
                                         label: "Stopped on",
                                         v: "2026.09.28",
+                                    },
+                                    G16,
+                                    {
+                                        t: "lnk",
+                                        v: "Start reading again",
                                     },
                                 ],
                             },

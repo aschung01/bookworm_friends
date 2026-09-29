@@ -10,9 +10,38 @@ import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_date_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_percent_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_total_pages_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/stop_reading_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/date_field_row.dart';
 import 'app_sheet.dart';
+
+/// The sheet's content height, above [AppSheet]'s own 48pt of chrome.
+///
+/// **The tallest state the sheet has, so that no other state resizes it**: a set-aside book
+/// with a dirty Save, which draws the read-out, the track, *both* date rows, `Start reading
+/// again` and the Save button at once. Measured at 375×667 with the app's faces loaded, not
+/// summed from the widgets — `book_status_bottom_sheet_test.dart` pins it and will fail if a
+/// row is added that does not fit.
+///
+/// The other states, for the record: Not started 122, Reading 227, Finished 228, set aside
+/// clean 276.
+///
+/// **What this costs is a void on `Not started`** — 165pt of it, the sheet being sized for a
+/// state that book is three taps from. That is the deliberate trade, and the thing it buys is
+/// in [AnimatedSize]'s comment: the reader's first interaction with a new book is a drag off
+/// the origin, which is exactly the transition that used to move the track out from under
+/// their finger.
+const double _kContentHeight = 287;
+
+/// The title row's height, which is [ElevatedActionButton]'s and not the title's.
+///
+/// **Pinned because Save's arrival is what still moved the track after the frame went in.**
+/// [_kContentHeight] stopped the sheet resizing, and the case that checks it measures the
+/// track's rectangle rather than the sheet's height — which caught the residual: the title
+/// sets to about 21pt on its own and the Save button is 32, so a `Row` sized to its tallest
+/// child grew 11pt the instant the sheet went dirty and pushed everything below it down.
+/// Same defect as the sheet's, one level in, and invisible to any assertion about height.
+const double _kTitleRowHeight = 32;
 
 /// Everything one Save carries out of [showBookStatusBottomSheet].
 ///
@@ -161,215 +190,303 @@ Future<void> showBookStatusBottomSheet(
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
           child: AnimatedSize(
-            // Save arriving and the date rows appearing both change the sheet's height.
-            // Animating it keeps the sheet from snapping.
+            // **Almost nothing left to animate, and that is the point.** This used to be
+            // the answer to the sheet changing height: Save arriving and each date row
+            // appearing all resized it, and the case that pinned the animation said why it
+            // mattered — *"both happen on the same gesture, so without the animation the
+            // sheet would jump twice under the reader's thumb."*
+            //
+            // That was treating the symptom. A bottom sheet is anchored to the bottom of
+            // the screen, so growing moves its *top* edge up and every child with it —
+            // including the track, which is above both date rows. Dragging off the origin
+            // therefore slid the control out from under the finger that was dragging it,
+            // 220ms of easing or not. [_kContentHeight] below removes the resize instead of
+            // smoothing it.
+            //
+            // Kept for the one case the frame cannot absorb: at large accessibility text
+            // sizes, or in a locale that wraps a row, the content exceeds the frame and the
+            // sheet does grow. Rare, and better eased than snapped.
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             alignment: Alignment.topCenter,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    // **The sheet's own title, not the book's.** The book's title was tried
-                    // first, on the reasoning that the row should never re-centre; it read
-                    // as a page header rather than as a sheet title, and it told the reader
-                    // something they already knew — they arrived from that book's page, and
-                    // the book is still on screen behind this sheet. What a sheet title owes
-                    // them is what this sheet *does*.
-                    //
-                    // Expanded so the title holds the left edge whether or not Save is
-                    // drawn beside it.
-                    Expanded(
-                      child: Text(
-                        l10n.readingProgressTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.subtitle,
-                      ),
-                    ),
-                    // **Its arrival is the dirty indicator**, which is why there is no
-                    // other unsaved marker on the sheet and no disabled Save to explain.
-                    if (dirty)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 12),
-                        child: ElevatedActionButton(
-                          width: 92,
-                          height: 32,
-                          buttonText: l10n.save,
-                          onPressed: () {
-                            Navigator.pop(context);
-                            onSave((
-                              status: status,
-                              // Only the dates the status has meaning for, so a book put
-                              // back to Not started does not keep the dates the form was
-                              // holding for its own benefit.
-                              startDate: status >= bookStatusReading
-                                  ? start
-                                  : null,
-                              finishDate:
-                                  status == bookStatusFinished ||
-                                      status == bookStatusSetAside
-                                  ? finish
-                                  : null,
-                              progress: position,
-                              progressPage: positionPage,
-                              // A position the reader erased, which is a different
-                              // instruction from one they did not touch. See the record.
-                              clearProgress:
-                                  position == null && progress != null,
-                              totalPages: total != pageCount ? total : null,
-                            ));
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // The whole state in one line: the status word, the percent, and the page
-                // inside the total. Three of its parts are doors; the track below is for
-                // coarse work and these are for exact answers.
-                ReadingStateLine(
-                  statusLabel: chip.label,
-                  statusColor: chip.textColor,
-                  progress: position,
-                  progressPage: positionPage,
-                  pageCount: total,
-                  onPercentTap: () => showSelectPercentBottomSheet(
-                    context,
-                    initialProgress: position,
-                    initialPage: positionPage,
-                    pageCount: total,
-                    onProgressSelected: (answer) => setState(
-                      () =>
-                          takePercentAnswer(answer.progress, page: answer.page),
-                    ),
-                  ),
-                  // Only a book with a total has a page to edit. Opened straight into
-                  // Page mode, because tapping the page has already said "pages".
-                  onPageTap: total == null
-                      ? null
-                      : () => showSelectPercentBottomSheet(
-                          context,
-                          initialProgress: position,
-                          initialPage: positionPage,
-                          pageCount: total,
-                          openInPageMode: true,
-                          title: l10n.currentPageTitle,
-                          onProgressSelected: (answer) => setState(
-                            () => takePercentAnswer(
-                              answer.progress,
-                              page: answer.page,
-                            ),
+            child: ConstrainedBox(
+              // **A minimum, not a fixed height.** Every state the sheet has is shorter
+              // than this or equal to it, so in practice the frame is fixed and the sheet
+              // never resizes — while a state that genuinely needs more room still gets it
+              // rather than overflowing. A `SizedBox` here would trade a moving control for
+              // a clipped one.
+              constraints: const BoxConstraints(minHeight: _kContentHeight),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: _kTitleRowHeight,
+                    child: Row(
+                      children: [
+                        // **The sheet's own title, not the book's.** The book's title was tried
+                        // first, on the reasoning that the row should never re-centre; it read
+                        // as a page header rather than as a sheet title, and it told the reader
+                        // something they already knew — they arrived from that book's page, and
+                        // the book is still on screen behind this sheet. What a sheet title owes
+                        // them is what this sheet *does*.
+                        //
+                        // Expanded so the title holds the left edge whether or not Save is
+                        // drawn beside it.
+                        Expanded(
+                          child: Text(
+                            l10n.readingProgressTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.subtitle,
                           ),
                         ),
-                  // Present whether or not the book has a count: with one it edits the
-                  // total, without one it is the `Add total pages` offer, and that offer
-                  // is the largest single thing this sheet adds — about two books in
-                  // three have no count at all.
-                  onTotalTap: () => showSelectTotalPagesBottomSheet(
-                    context,
-                    initialTotalPages: total,
-                    onTotalPagesSelected: (value) =>
-                        setState(() => total = value),
+                        // **Its arrival is the dirty indicator**, which is why there is no
+                        // other unsaved marker on the sheet and no disabled Save to explain.
+                        if (dirty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: ElevatedActionButton(
+                              width: 92,
+                              height: _kTitleRowHeight,
+                              buttonText: l10n.save,
+                              onPressed: () {
+                                Navigator.pop(context);
+                                onSave((
+                                  status: status,
+                                  // Only the dates the status has meaning for, so a book put
+                                  // back to Not started does not keep the dates the form was
+                                  // holding for its own benefit.
+                                  startDate: status >= bookStatusReading
+                                      ? start
+                                      : null,
+                                  finishDate:
+                                      status == bookStatusFinished ||
+                                          status == bookStatusSetAside
+                                      ? finish
+                                      : null,
+                                  progress: position,
+                                  progressPage: positionPage,
+                                  // A position the reader erased, which is a different
+                                  // instruction from one they did not touch. See the record.
+                                  clearProgress:
+                                      position == null && progress != null,
+                                  totalPages: total != pageCount ? total : null,
+                                ));
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                // The control. Drag-only: a tap on it does nothing, deliberately.
-                ReadingTrack(
-                  progress: position,
-                  semanticsLabel: l10n.howFarIn,
-                  onChanged: (value) =>
-                      setState(() => takePercentAnswer(value)),
-                ),
-                if (status >= bookStatusReading) ...[
                   const SizedBox(height: 16),
-                  DateFieldRow(
-                    label: l10n.startDate,
-                    date: start,
-                    onTap: () {
-                      showSelectDateBottomSheet(
-                        context,
-                        initialDate: start ?? DateTime.now(),
-                        title: l10n.selectStartDate,
-                        onDateSelected: (d) => setState(() {
-                          start = d;
-                          // Moving the start past the finish would leave the book
-                          // finished before it was started.
-                          if (finish != null && finish!.isBefore(d)) finish = d;
-                        }),
-                      );
-                    },
-                  ),
-                ],
-                // Set aside has a finish date too, and it is the day the book was
-                // *closed* rather than completed. That is what keeps the read view's
-                // month grouping and year rail working untouched: both read the date and
-                // neither cares why the book ended.
-                if (status == bookStatusFinished ||
-                    status == bookStatusSetAside) ...[
-                  const SizedBox(height: 8),
-                  DateFieldRow(
-                    label: l10n.finishDate,
-                    date: finish,
-                    onTap: () {
-                      showSelectDateBottomSheet(
-                        context,
-                        initialDate: finish ?? DateTime.now(),
-                        title: l10n.selectFinishDate,
-                        // A book can't be finished before it was started.
-                        minimumDate: start,
-                        onDateSelected: (d) => setState(() => finish = d),
-                      );
-                    },
-                  ),
-                ],
-                // **The sheet's only text action, and only while the book is open.**
-                //
-                // Nothing has been started at Not started; a finished book cannot be
-                // given up on; and a set-aside book resumes by moving the thumb, so a
-                // resume link would be a second affordance for a gesture the sheet
-                // already has.
-                //
-                // `secondaryText`, not `flame`: giving up on a book is an ordinary thing
-                // to do and not a destructive one, and this must not be the loudest thing
-                // on the sheet. It leaves the position exactly where it is, which is the
-                // whole point of the status existing — the read-out keeps saying 46%.
-                if (status == bookStatusReading) ...[
-                  const SizedBox(height: 16),
-                  // **Centred, and full width.** Left-aligned it sat under the start-date
-                  // row's own left inset and read as a third field in the form rather than
-                  // as an action on the book. Centring is also what the app does with every
-                  // other standalone text action.
-                  //
-                  // The `GestureDetector` takes the whole width so the target is a band
-                  // rather than the glyphs: the label is short, grey and the least
-                  // important thing here, which is exactly the combination that makes a
-                  // text-sized hit box hard to land on.
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() {
-                      status = bookStatusSetAside;
-                      finish ??= DateTime.now();
-                    }),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        l10n.stopReadingThis,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.label.copyWith(
-                          color: colors.secondaryText,
+                  // The whole state in one line: the status word, the percent, and the page
+                  // inside the total. Three of its parts are doors; the track below is for
+                  // coarse work and these are for exact answers.
+                  ReadingStateLine(
+                    statusLabel: chip.label,
+                    statusColor: chip.textColor,
+                    progress: position,
+                    progressPage: positionPage,
+                    pageCount: total,
+                    onPercentTap: () => showSelectPercentBottomSheet(
+                      context,
+                      initialProgress: position,
+                      initialPage: positionPage,
+                      pageCount: total,
+                      onProgressSelected: (answer) => setState(
+                        () => takePercentAnswer(
+                          answer.progress,
+                          page: answer.page,
                         ),
                       ),
                     ),
+                    // Only a book with a total has a page to edit. Opened straight into
+                    // Page mode, because tapping the page has already said "pages".
+                    onPageTap: total == null
+                        ? null
+                        : () => showSelectPercentBottomSheet(
+                            context,
+                            initialProgress: position,
+                            initialPage: positionPage,
+                            pageCount: total,
+                            openInPageMode: true,
+                            title: l10n.currentPageTitle,
+                            onProgressSelected: (answer) => setState(
+                              () => takePercentAnswer(
+                                answer.progress,
+                                page: answer.page,
+                              ),
+                            ),
+                          ),
+                    // Present whether or not the book has a count: with one it edits the
+                    // total, without one it is the `Add total pages` offer, and that offer
+                    // is the largest single thing this sheet adds — about two books in
+                    // three have no count at all.
+                    onTotalTap: () => showSelectTotalPagesBottomSheet(
+                      context,
+                      initialTotalPages: total,
+                      onTotalPagesSelected: (value) =>
+                          setState(() => total = value),
+                    ),
                   ),
+                  const SizedBox(height: 12),
+                  // The control. Drag-only: a tap on it does nothing, deliberately.
+                  ReadingTrack(
+                    progress: position,
+                    semanticsLabel: l10n.howFarIn,
+                    onChanged: (value) =>
+                        setState(() => takePercentAnswer(value)),
+                  ),
+                  if (status >= bookStatusReading) ...[
+                    const SizedBox(height: 16),
+                    DateFieldRow(
+                      label: l10n.startDate,
+                      date: start,
+                      onTap: () {
+                        showSelectDateBottomSheet(
+                          context,
+                          initialDate: start ?? DateTime.now(),
+                          title: l10n.selectStartDate,
+                          onDateSelected: (d) => setState(() {
+                            start = d;
+                            // Moving the start past the finish would leave the book
+                            // finished before it was started.
+                            if (finish != null && finish!.isBefore(d))
+                              finish = d;
+                          }),
+                        );
+                      },
+                    ),
+                  ],
+                  // Set aside has a finish date too, and it is the day the book was
+                  // *closed* rather than completed. That is what keeps the read view's
+                  // month grouping and year rail working untouched: both read the date and
+                  // neither cares why the book ended.
+                  if (status == bookStatusFinished ||
+                      status == bookStatusSetAside) ...[
+                    const SizedBox(height: 8),
+                    DateFieldRow(
+                      label: l10n.finishDate,
+                      date: finish,
+                      onTap: () {
+                        showSelectDateBottomSheet(
+                          context,
+                          initialDate: finish ?? DateTime.now(),
+                          title: l10n.selectFinishDate,
+                          // A book can't be finished before it was started.
+                          minimumDate: start,
+                          onDateSelected: (d) => setState(() => finish = d),
+                        );
+                      },
+                    ),
+                  ],
+                  // **One text action, and which one depends on the status.** Nothing has
+                  // been started at Not started, and a finished book can be neither given up
+                  // on nor resumed, so those two states offer none.
+                  //
+                  // `secondaryText`, not `flame`, for both: neither giving up on a book nor
+                  // picking it back up is destructive, and neither must be the loudest thing
+                  // on the sheet. Stopping leaves the position exactly where it is, which is
+                  // the whole point of the status existing — the read-out keeps saying 46%.
+                  if (status == bookStatusReading) ...[
+                    const SizedBox(height: 16),
+                    _SheetTextAction(
+                      label: l10n.stopReadingThis,
+                      // **Confirmed, and the confirmation does not write.** See
+                      // `stop_reading_bottom_sheet.dart` for why an action this ordinary is
+                      // confirmed at all — it is the band's size, not the act's weight — and
+                      // for why committing straight from there was rejected.
+                      onTap: () => showStopReadingBottomSheet(
+                        context,
+                        onConfirmed: () => setState(() {
+                          status = bookStatusSetAside;
+                          finish ??= DateTime.now();
+                        }),
+                      ),
+                    ),
+                  ] else if (status == bookStatusSetAside) ...[
+                    const SizedBox(height: 16),
+                    _SheetTextAction(
+                      label: l10n.startReadingAgain,
+                      // **This reverses a decision recorded three times in this file, and
+                      // the premise was wrong rather than the conclusion.** The claim was
+                      // that a set-aside book resumes by moving the thumb, so a link here
+                      // would be a second affordance for a gesture the sheet already has.
+                      // But the thumb resumes only by *changing the position* — a reader who
+                      // set a book aside at 46% and wants to carry on from 46% had no move
+                      // available at all, short of dragging away and back to land on the same
+                      // percent. The one status a position cannot imply is the one status
+                      // that therefore needs a control of its own.
+                      //
+                      // **No confirmation, unlike its opposite**, and the asymmetry is the
+                      // point: `showStopReadingBottomSheet` exists because a wide grey band
+                      // is easy to hit by accident, and an accidental *resume* costs a reader
+                      // nothing. Confirming both would make the pair look like a matched set
+                      // of consequential acts, which is exactly the judgement these strings
+                      // are written to avoid.
+                      onTap: () => setState(() {
+                        status = bookStatusReading;
+                        // The finish date is deliberately kept, not cleared. Save filters it
+                        // out for a reading book, so nothing wrong is written; keeping it
+                        // means a reader who resumes and stops again does not lose the day
+                        // they first closed the book. Same rule as `start` above — fill in
+                        // what the new status needs, never clear what it does not.
+                        start ??= DateTime.now();
+                      }),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );
       },
     ),
   );
+}
+
+/// The sheet's one text action: `Stop reading this` while a book is open, `Start reading
+/// again` once it is set aside.
+///
+/// **Centred, and full width.** Left-aligned it sat under the start-date row's own left
+/// inset and read as a third field in the form rather than as an action on the book.
+/// Centring is also what the app does with every other standalone text action.
+///
+/// The [GestureDetector] takes the whole width so the target is a band rather than the
+/// glyphs: the label is short, grey and the least important thing on the sheet, which is
+/// exactly the combination that makes a text-sized hit box hard to land on. **That width is
+/// also why the destructive direction is confirmed** — see
+/// `showStopReadingBottomSheet`. An opaque band under a tappable date row is easy to hit
+/// without meaning to, and the two of these cannot be told apart by a stray thumb.
+///
+/// One widget rather than two call sites, because the pair must be the same object in
+/// different words. Drawn differently they would read as an action and a *correction*.
+class _SheetTextAction extends StatelessWidget {
+  const _SheetTextAction({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  /// The vertical padding, which is the target rather than decoration: 8 above and below a
+  /// 20pt line is a 36pt band across the sheet's full width.
+  static const double _padding = 8;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: _padding),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.label.copyWith(
+            color: context.colors.secondaryText,
+          ),
+        ),
+      ),
+    );
+  }
 }

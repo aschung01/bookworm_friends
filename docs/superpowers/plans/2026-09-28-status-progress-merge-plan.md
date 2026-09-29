@@ -99,6 +99,43 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   "Reading without one" stopped differing; `band_doors_test.dart`'s page assertion inverted
   to `findsNothing`; and the card's cases now search bare digit runs (`307`, `432`) rather
   than `p.307`, so bringing the numbers back under a different separator still fails.
+- **`Stop reading this` is confirmed, and `Start reading again` exists**, both on
+  instruction. The resume link reverses a decision this plan, the spec, the mockup caption
+  and three comments in the sheet all stated — that a set-aside book resumes by moving the
+  thumb, so a link would be a second affordance for a gesture already present. The premise
+  was wrong: the thumb resumes only by *changing the position*, so a reader who stopped at
+  46% and wants to carry on from 46% had no move at all. The confirmation is a sub-sheet that
+  hands an answer back, like the date and percent sheets, **not** a second commit path —
+  `Save` is still the only writer, and dismissing still discards. `Start reading again` is
+  deliberately *not* confirmed: the band is confirmed because it is wide and easy to hit, and
+  an accidental resume costs nothing.
+- **The sheet has one height, 335, and the case that used to defend the opposite is the
+  reason.** `and it grows rather than snapping when Save arrives` asserted the sheet grew
+  mid-drag and sampled the animation halfway to prove it was eased — and its own comment gave
+  the argument against itself: *"both happen on the same gesture, so without the animation the
+  sheet would jump twice under the reader's thumb."* A bottom sheet is bottom-anchored, so
+  growing moves its top edge and the track with it, because both date rows sit below the
+  track; easing does not stop the control sliding out from under the finger dragging it. The
+  case is now inverted and asserts `ReadingTrack`'s **rectangle** is unchanged.
+- **Which caught a second one the height alone could not.** With the frame in, the sheet
+  stopped resizing and the track still moved 11pt: the title `Row` was sized to its tallest
+  child, so Save arriving grew it from the title's ~21 to the button's 32 and pushed
+  everything below down. `_kTitleRowHeight` pins it. An assertion about the sheet's height
+  passes on that bug; only one about the track's rectangle fails.
+- **The cost is a 165pt void on Not started**, which is pinned rather than tolerated — the
+  sheet is framed to a set-aside book and the state with the least in it is the one a reader
+  meets first. Accepted because the alternative is a 115pt jump on the first drag of every new
+  book. Available and not taken: drawing the start-date row at the origin would fill 60 of it
+  and close a real gap, since a start date currently cannot be set without first inventing a
+  position.
+- **`ConstrainedBox(minHeight:)`, never `SizedBox`.** A fixed height trades a moving control
+  for a clipped one at large accessibility text sizes. The `AnimatedSize` is kept for exactly
+  that residual case and for nothing else.
+- **A third-party threshold moved with the height, and its case had already warned about
+  it.** `BottomSheet` dismisses on a drag past half its own height, so `the sheet takes a
+  decisive vertical pan` broke when 160pt fell from 0.58 of the sheet to 0.48. The comment
+  above it already recorded the same failure from the font loading. The drag is measured off
+  the sheet now rather than written as a literal.
 - **The render harness for that card lied in its first frame, in the way `AGENTS.md` already
   warns about one level down.** `test/reading_period_row_render_preview.dart` had no
   `Material` ancestor, so every inherited `Text` fell back to `MaterialApp`'s

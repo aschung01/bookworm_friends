@@ -49,6 +49,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
 import 'package:bookworm_friends/constants/app_text_styles.dart';
+import 'package:bookworm_friends/constants/constants.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/providers/library_provider.dart'
@@ -56,6 +57,7 @@ import 'package:bookworm_friends/providers/library_provider.dart'
 import 'package:bookworm_friends/ui/widgets/book/reading_state_line.dart';
 import 'package:bookworm_friends/ui/widgets/book/reading_track.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/book_status_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/date_field_row.dart';
 import 'package:bookworm_friends/ui/widgets/status_selector.dart';
 
@@ -161,6 +163,24 @@ Future<void> _openSheet(
   );
 
   await tester.tap(find.text('open'));
+  await tester.pumpAndSettle();
+}
+
+/// Taps `Stop reading this` **and answers the confirmation**, which is what setting a book
+/// aside now costs.
+///
+/// The action opens `showStopReadingBottomSheet` rather than flipping the status under the
+/// reader's finger — the label is an opaque full-width grey band directly under a tappable
+/// date row, so it is easy to hit by accident, and that is the reason rather than the act
+/// being weighty. Wrapped so the cases below keep saying *the reader set this book aside*
+/// in one line; the confirmation's own behaviour is asserted in its own group.
+///
+/// `find.text` is an exact match, so `Stop reading` finds the button and not the label that
+/// opened it, even though the status sheet is still in the tree underneath.
+Future<void> _stopReading(WidgetTester tester) async {
+  await tester.tap(find.text('Stop reading this'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Stop reading'));
   await tester.pumpAndSettle();
 }
 
@@ -517,9 +537,15 @@ void main() {
         // a track that swallowed the pan would trap its parent's own gesture. That the
         // sheet closes *is* the assertion.
         //
-        // **This case passed for a weaker reason before the fonts were loaded.** Under the
-        // test font the sheet was tall enough that 160pt fell short of the dismissal
-        // threshold, so it sprang back and the case only ever saw an unchanged read-out.
+        // **This case passed for a weaker reason before the fonts were loaded**, and then
+        // broke for the same reason again. `BottomSheet` dismisses on a drag past half its
+        // own height, so the distance is only meaningful relative to the sheet: under the
+        // test font 160pt fell short and the case saw an unchanged read-out rather than a
+        // dismissal, and when the sheet was framed to its tallest state — 275 to 335 — the
+        // same 160 fell from 0.58 of the height to 0.48 and stopped dismissing again.
+        //
+        // So the drag is **measured**, not a literal. 80% of the sheet clears the threshold
+        // by a margin no future height change can eat.
         final saved = <_Saved>[];
         await _openSheet(
           tester,
@@ -528,7 +554,8 @@ void main() {
           saved: saved,
         );
 
-        await tester.dragFrom(_onThumb(tester), const Offset(0, 160));
+        final sheetHeight = tester.getSize(find.byType(AnimatedSize)).height;
+        await tester.dragFrom(_onThumb(tester), Offset(0, sheetHeight * 0.8));
         await tester.pumpAndSettle();
 
         expect(find.byType(ReadingTrack), findsNothing);
@@ -830,8 +857,7 @@ void main() {
           saved: saved,
         );
 
-        await tester.tap(find.text('Stop reading this'));
-        await tester.pumpAndSettle();
+        await _stopReading(tester);
         expect(find.text('Set aside'), findsOneWidget);
 
         await _dismiss(tester, _sheet);
@@ -990,8 +1016,7 @@ void main() {
           saved: saved,
         );
 
-        await tester.tap(find.text('Stop reading this'));
-        await tester.pumpAndSettle();
+        await _stopReading(tester);
         await tester.tap(_save);
         await tester.pumpAndSettle();
 
@@ -1110,31 +1135,141 @@ void main() {
   // -------------------------------------------------------------------------
   // The one text action.
 
-  group('Stop reading this is offered only while the book is open', () {
+  group('the confirmation behind Stop reading this', () {
+    Future<void> _openReading(WidgetTester tester, List<_Saved> saved) =>
+        _openSheet(
+          tester,
+          currentStatus: bookStatusReading,
+          startDate: DateTime(2024, 3, 14),
+          progress: 0.46,
+          saved: saved,
+        );
+
+    testWidgets('Given a tap, Then it asks before anything changes', (
+      tester,
+    ) async {
+      // **The status does not move while the question is on screen.** A confirmation that
+      // flipped the state behind itself and then offered Cancel would be asking about
+      // something it had already done.
+      final saved = <_Saved>[];
+      await _openReading(tester, saved);
+
+      await tester.tap(find.text('Stop reading this'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stop reading this?'), findsOneWidget);
+      // Both sheets are in the tree, so the status sheet below still reads Reading.
+      expect(find.text('Reading'), findsOneWidget);
+      expect(find.text('Set aside'), findsNothing);
+      expect(_save, findsNothing);
+      expect(saved, isEmpty);
+    });
+
+    testWidgets('Given Cancel, Then the book is untouched and clean', (
+      tester,
+    ) async {
+      final saved = <_Saved>[];
+      await _openReading(tester, saved);
+
+      await tester.tap(find.text('Stop reading this'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stop reading this?'), findsNothing);
+      expect(find.text('Reading'), findsOneWidget);
+      // Clean, not merely unsaved: Cancel must not leave a Save behind offering to write a
+      // change the reader just declined.
+      expect(_save, findsNothing);
+      expect(saved, isEmpty);
+      expect(find.text('Stop reading this'), findsOneWidget);
+    });
+
+    testWidgets(
+      'Given it is confirmed, Then the status moves and still nothing is written',
+      (tester) async {
+        // **The confirmation is a question, not a second commit path.** This is the case
+        // that pins it: `Save` is the only writer in this sheet, and that invariant is the
+        // whole answer to the objection which killed the drag control the first time it was
+        // drawn — *"a stray touch could silently rewrite your position."* Committing straight
+        // from the confirmation was the obvious alternative and would have to be argued
+        // against the reason the sheet exists.
+        final saved = <_Saved>[];
+        await _openReading(tester, saved);
+
+        await _stopReading(tester);
+
+        expect(find.text('Set aside'), findsOneWidget);
+        expect(_save, findsOneWidget);
+        expect(saved, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'Given it is confirmed, When the status sheet is dismissed, Then it is discarded',
+      (tester) async {
+        // Dismissing discards, for this like for every other answer the form holds. The
+        // confirmation does not make the change durable; Save does.
+        final saved = <_Saved>[];
+        await _openReading(tester, saved);
+
+        await _stopReading(tester);
+        await _dismiss(tester, _sheet);
+
+        expect(saved, isEmpty);
+      },
+    );
+
+    testWidgets('and it is not dressed as a deletion', (tester) async {
+      // The delete sheet's affirmative is red because a deleted book is gone. This one moves
+      // a book between two shelves it can move back from in one tap, and `statusSetAside` is
+      // worded to keep judgement out of it — so a red button here would contradict every
+      // string in the flow.
+      await _openReading(tester, <_Saved>[]);
+
+      await tester.tap(find.text('Stop reading this'));
+      await tester.pumpAndSettle();
+
+      final action = tester.widget<ElevatedActionButton>(
+        find.widgetWithText(ElevatedActionButton, 'Stop reading'),
+      );
+      expect(action.isDestructive, isNot(true));
+      expect(action.backgroundColor, isNot(softRedColor));
+    });
+  });
+
+  group('the sheet offers one text action, and which one is the status', () {
+    // **`Set aside` used to be in this list, and taking it out is a reversal.** The sheet
+    // offered nothing there on the reasoning that a set-aside book resumes by moving the
+    // thumb, so a link would be a second affordance for a gesture already present. The
+    // premise was wrong: the thumb resumes only by *changing the position*, so a reader who
+    // set a book aside at 46% and wants to carry on from 46% had no move available at all.
+    // The one status a position cannot imply is the one that needs a control of its own.
     for (final (status, word) in const [
       (0, 'Not started'),
       (bookStatusFinished, 'Finished'),
-      (bookStatusSetAside, 'Set aside'),
     ]) {
-      testWidgets('Given $word, Then it is absent', (tester) async {
-        // Nothing has been started at Not started; a finished book cannot be given up on;
-        // and a set-aside book resumes by moving the thumb, so a resume link would be a
-        // second affordance for a gesture the sheet already has.
+      testWidgets('Given $word, Then neither action is present', (
+        tester,
+      ) async {
+        // Nothing has been started at Not started, and a finished book can be neither
+        // given up on nor resumed.
         await _openSheet(
           tester,
           currentStatus: status,
           startDate: status == 0 ? null : DateTime(2024, 3, 14),
           finishDate: status == 0 ? null : DateTime(2024, 4, 1),
-          progress: status == bookStatusFinished
-              ? 1
-              : (status == 0 ? null : 0.46),
+          progress: status == bookStatusFinished ? 1 : null,
         );
 
         expect(find.text('Stop reading this'), findsNothing);
+        expect(find.text('Start reading again'), findsNothing);
       });
     }
 
-    testWidgets('Given Reading, Then it is present', (tester) async {
+    testWidgets('Given Reading, Then it offers Stop reading this', (
+      tester,
+    ) async {
       await _openSheet(
         tester,
         currentStatus: bookStatusReading,
@@ -1143,6 +1278,103 @@ void main() {
       );
 
       expect(find.text('Stop reading this'), findsOneWidget);
+      expect(find.text('Start reading again'), findsNothing);
+    });
+
+    testWidgets('Given Set aside, Then it offers Start reading again', (
+      tester,
+    ) async {
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusSetAside,
+        startDate: DateTime(2024, 3, 14),
+        finishDate: DateTime(2024, 4, 1),
+        progress: 0.46,
+      );
+
+      expect(find.text('Start reading again'), findsOneWidget);
+      expect(find.text('Stop reading this'), findsNothing);
+    });
+
+    testWidgets(
+      'Given Start reading again is tapped, When saved, Then the book is reading at the same page',
+      (tester) async {
+        // The exact reverse of setting it aside, and it must move the position no more than
+        // stopping did: a reader picking a book back up carries on from where they left off.
+        final saved = <_Saved>[];
+        final start = DateTime(2024, 3, 14);
+        await _openSheet(
+          tester,
+          currentStatus: bookStatusSetAside,
+          startDate: start,
+          finishDate: DateTime(2024, 4, 1),
+          progress: 0.46,
+          pageCount: _kPageCount,
+          saved: saved,
+        );
+
+        await tester.tap(find.text('Start reading again'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Reading'), findsOneWidget);
+        expect(find.text('46%'), findsOneWidget);
+        // The finish date belonged to the closing, so its row goes with the status.
+        expect(find.text('Finish date'), findsNothing);
+
+        await tester.tap(_save);
+        await tester.pumpAndSettle();
+
+        expect(saved.single.status, bookStatusReading);
+        expect(saved.single.progress, 0.46);
+        expect(saved.single.clearProgress, isFalse);
+        expect(saved.single.startDate, start);
+        // Filtered out by status rather than cleared in the form — see the round trip below.
+        expect(saved.single.finishDate, isNull);
+      },
+    );
+
+    testWidgets(
+      'Given a round trip through Reading, Then the day the book was first closed survives',
+      (tester) async {
+        // `Start reading again` does **not** clear `finish`, deliberately: Save filters it
+        // out for a reading book, so nothing wrong is written, and keeping it means a reader
+        // who resumes and changes their mind does not silently restamp the closing with
+        // today. Same rule the sheet already applies to `start` — fill in what the new
+        // status needs, never clear what it does not.
+        await _openSheet(
+          tester,
+          currentStatus: bookStatusSetAside,
+          startDate: DateTime(2024, 3, 14),
+          finishDate: DateTime(2024, 4, 1),
+          progress: 0.46,
+        );
+
+        await tester.tap(find.text('Start reading again'));
+        await tester.pumpAndSettle();
+        await _stopReading(tester);
+
+        expect(_dateRowText(tester, 'Finish date'), '2024.04.01');
+      },
+    );
+
+    testWidgets('and Start reading again is not confirmed', (tester) async {
+      // The asymmetry is the point. `showStopReadingBottomSheet` exists because a wide grey
+      // band is easy to hit by accident, and an accidental *resume* costs a reader nothing.
+      // Confirming both would make the pair read as a matched set of consequential acts,
+      // which is what every string here is written to avoid.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusSetAside,
+        startDate: DateTime(2024, 3, 14),
+        finishDate: DateTime(2024, 4, 1),
+        progress: 0.46,
+      );
+
+      await tester.tap(find.text('Start reading again'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Reading'), findsOneWidget);
+      expect(find.text('Stop reading this?'), findsNothing);
     });
 
     testWidgets(
@@ -1170,6 +1402,13 @@ void main() {
         await tester.tapAt(Offset(label.left + 4, label.center.dy));
         await tester.pumpAndSettle();
 
+        // **What a tap on the band reaches is now the confirmation, not the status.** That
+        // is the same finding read forwards: a target this wide is easy to hit from 100pt
+        // away from the words, which is why it asks before it acts.
+        expect(find.text('Stop reading this?'), findsOneWidget);
+        await tester.tap(find.text('Stop reading'));
+        await tester.pumpAndSettle();
+
         expect(find.text('Set aside'), findsOneWidget);
         expect(find.text('Stop reading this'), findsNothing);
       },
@@ -1192,14 +1431,14 @@ void main() {
           saved: saved,
         );
 
-        await tester.tap(find.text('Stop reading this'));
-        await tester.pumpAndSettle();
+        await _stopReading(tester);
 
-        // The read-out keeps saying 46%, and the action withdraws itself — the book is no
-        // longer open, so there is nothing left to stop.
+        // The read-out keeps saying 46%, and the action is replaced by its reverse — the
+        // book is no longer open, so there is nothing left to stop and something to resume.
         expect(find.text('46%'), findsOneWidget);
         expect(find.text('Set aside'), findsOneWidget);
         expect(find.text('Stop reading this'), findsNothing);
+        expect(find.text('Start reading again'), findsOneWidget);
 
         await tester.tap(_save);
         await tester.pumpAndSettle();
@@ -1588,9 +1827,25 @@ void main() {
   group('the sheet fits the phones this app supports', () {
     // Heights here are the content box — the [AnimatedSize] — and the sheet adds its own
     // 24pt of padding above and below, so a figure comparable with the design record's is
-    // this plus 48. Asserted as windows rather than as exact pins because every one of them
-    // is a sum of text line boxes: a pin would be a promise about font metrics, and the one
-    // thing worth promising is the relationship to the sheets this replaced.
+    // this plus 48.
+    //
+    // **The sheet is one height now, and most of this group used to measure four.** It was
+    // sized to its content, and the figures below were windows rather than pins for a good
+    // reason: each is a sum of text line boxes, so a pin is a promise about font metrics.
+    // They are exact now because the number is a constant in the Dart rather than a
+    // consequence of the content — which is the change, not a tightening of the assertions.
+    //
+    // Why it changed is in the case that used to close this group, `and it grows rather than
+    // snapping when Save arrives`. It asserted the sheet grew mid-drag and defended an
+    // `AnimatedSize` for smoothing it, on the grounds that *"both happen on the same
+    // gesture, so without the animation the sheet would jump twice under the reader's
+    // thumb."* That diagnosis was right and the remedy treated the symptom: a bottom sheet
+    // is anchored to the bottom of the screen, so growing moves its top edge — and the track
+    // with it, since both date rows sit below the track. 220ms of easing still slides the
+    // control out from under the finger dragging it. The frame removes the resize instead.
+    //
+    // It is a *minimum* height, so the last case here is the valve: content that genuinely
+    // needs more room still gets it.
 
     for (final phone in const [_kSurface, Size(393, 852)]) {
       testWidgets(
@@ -1612,18 +1867,17 @@ void main() {
             surface: phone,
           );
 
-          await tester.tap(find.text('Stop reading this'));
-          await tester.pumpAndSettle();
+          await _stopReading(tester);
 
           expect(_save, findsOneWidget);
           expect(find.byType(DateFieldRow), findsNWidgets(2));
-          // 239 + 48, so it clears the shortest phone by nearly 400pt. The margin is the
-          // assertion: this sheet replaced two, and the one thing it must not have done is
-          // become a sheet that needs scrolling.
-          expect(
-            tester.getSize(find.byType(AnimatedSize)).height,
-            lessThan(320.0),
-          );
+          // **This is the state the frame is sized to**, so it is also the guard that the
+          // constant is still big enough: if a row were added here, the content would exceed
+          // 287, the sheet would start resizing between states again, and this is where it
+          // shows up. 287 + 48 = 335, clearing the shortest phone by over 300pt — this sheet
+          // replaced two, and the one thing it must not have done is become a sheet that
+          // needs scrolling.
+          expect(tester.getSize(find.byType(AnimatedSize)).height, 287.0);
           expect(
             tester.getRect(find.byType(AnimatedSize)).bottom,
             lessThanOrEqualTo(phone.height),
@@ -1633,7 +1887,7 @@ void main() {
     }
 
     testWidgets(
-      'Given the Reading state, Then the sheet is shorter than either it replaced',
+      'Given the Reading state, Then the sheet is still shorter than either it replaced',
       (tester) async {
         // **The merge's headline number, measured rather than estimated.** The design record
         // has 270pt clean from summing row heights in the Dart, against an exact 368 for the
@@ -1653,48 +1907,87 @@ void main() {
           pageCount: _kPageCount,
         );
 
+        // **335, not 275**, because the sheet is framed to its tallest state now — so the
+        // headline number is 60pt worse than it was and still comfortably beats both of the
+        // sheets this replaced. That margin is what made the frame affordable.
         final total = tester.getSize(find.byType(AnimatedSize)).height + 48;
-        expect(total, closeTo(275, 6));
+        expect(total, 335.0);
         expect(total, lessThan(342.0));
         expect(total, lessThan(368.0));
       },
     );
 
-    testWidgets('and the Not started state is shorter still', (tester) async {
-      // 122 + 48 = 170, where the record estimates 246 — the one figure in it that is not
-      // close, and the reason is the read-out rather than an arithmetic slip: at the origin
-      // the line collapses to a single word, with no percent, no page pair and no date row
-      // under it. Worth pinning because the estimate is what a reader of the record would
-      // budget against.
+    testWidgets('and the Not started state is no shorter, which is the cost', (
+      tester,
+    ) async {
+      // **This case used to assert 170 and now asserts 335, and the 165pt difference is the
+      // price of the frame rather than a regression.** At the origin the read-out collapses
+      // to a single word, there is no date row and no text action, so the content is 122 —
+      // and the sheet is sized for a set-aside book, which that book is three taps away
+      // from. Just under half of this state is empty cream.
+      //
+      // Pinned rather than merely tolerated, because it is the one figure someone reading
+      // the design record should be able to find: the alternative is a sheet that jumps
+      // 115pt on the first drag of every new book, which is the most common interaction
+      // there is here.
       await _openSheet(tester, currentStatus: 0);
 
       final total = tester.getSize(find.byType(AnimatedSize)).height + 48;
-      expect(total, closeTo(170, 6));
+      expect(total, 335.0);
       expect(find.byType(DateFieldRow), findsNothing);
     });
 
-    testWidgets('and it grows rather than snapping when Save arrives', (
+    testWidgets('and it does not move at all when Save and a date row arrive', (
       tester,
     ) async {
-      // Save arriving and the start-date row appearing both change the sheet's height, and
-      // both happen on the same gesture — so without the animation the sheet would jump
-      // twice under the reader's thumb.
+      // **The inversion of the case this replaced**, which asserted the sheet grew and
+      // sampled the animation halfway to prove the growth was eased rather than snapped.
+      //
+      // Save arriving and the start-date row appearing still both happen on the one gesture.
+      // What changed is that neither moves anything: the sheet is already the height it will
+      // be, so the track the reader is dragging stays exactly where their finger found it.
+      // Sampled mid-animation as well as at rest, because "eased to the same size" and
+      // "never resized" are different claims and only the second one is true.
       await _openSheet(tester, currentStatus: 0);
       final collapsed = tester.getSize(find.byType(AnimatedSize)).height;
+      final trackBefore = tester.getRect(find.byType(ReadingTrack));
 
-      // **Unsettled**, which is the whole case: the helper's own `pumpAndSettle` would run
-      // the animation to its end before anything could be sampled halfway through it.
       await _dragTrackTo(tester, 0.5, settle: false);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
-      final midway = tester.getSize(find.byType(AnimatedSize)).height;
+      expect(tester.getSize(find.byType(AnimatedSize)).height, collapsed);
 
       await tester.pumpAndSettle();
-      final expanded = tester.getSize(find.byType(AnimatedSize)).height;
+      expect(tester.getSize(find.byType(AnimatedSize)).height, collapsed);
+      // The point of the whole exercise, stated directly rather than through the height.
+      expect(tester.getRect(find.byType(ReadingTrack)), trackBefore);
+      // And the drag did what it was for, so this is not passing because nothing happened.
+      expect(_save, findsOneWidget);
+      expect(find.byType(DateFieldRow), findsOneWidget);
+    });
 
-      expect(expanded, greaterThan(collapsed));
-      expect(midway, greaterThan(collapsed));
-      expect(midway, lessThan(expanded));
+    testWidgets('and the frame is a floor rather than a cage', (tester) async {
+      // The valve. `ConstrainedBox(minHeight:)` rather than a `SizedBox`, so a state that
+      // genuinely needs more room than 287 — a large accessibility text size, or a locale
+      // that wraps a row — grows instead of clipping. Driven here by the text scale, which
+      // is the realistic cause.
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusSetAside,
+        startDate: DateTime(2024, 3, 14),
+        finishDate: DateTime(2024, 4, 1),
+        progress: 0.46,
+        pageCount: _kPageCount,
+        surface: const Size(393, 852),
+      );
+
+      expect(
+        tester.getSize(find.byType(AnimatedSize)).height,
+        greaterThan(287.0),
+      );
     });
   });
 }

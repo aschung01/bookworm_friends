@@ -514,10 +514,29 @@ ok(
   links.every((b) => !b.flame),
   "none of them use the flame tone",
 );
+/* **Two words in this slot now, not one.** This used to require every link to read
+   `Stop reading this`, on the rule that a set-aside book resumes by moving the thumb --
+   which is wrong, because the thumb resumes only by changing the position. So the slot is
+   one action whose word is the status, and what is still worth pinning is that there are
+   exactly two of them and no third: every earlier draft that grew a link grew a *verb for
+   a status*, which is the model this sheet exists to replace. */
+const linkWords = [...new Set(links.map((b) => b.v))].sort();
 ok(
-  links.every((b) => b.v === "Stop reading this"),
-  "and the only one left is Stop reading this",
+  linkWords.join(" | ") === "Start reading again | Stop reading this",
+  "the slot carries exactly those two words (" + linkWords.join(" | ") + ")",
 );
+/* And they are never both drawn at once: a sheet offering to stop and to resume the same
+   book is the sheet saying it does not know what the book's status is. */
+for (const [, l] of A.resolveView("track", "screens"))
+  for (const it of l) {
+    const words = (it[3].body || [])
+      .filter((b) => b.t === "lnk")
+      .map((b) => b.v);
+    ok(
+      words.length <= 1,
+      it[0] + " draws at most one text action (" + words.join(",") + ")",
+    );
+  }
 
 console.log("-- the read sheet: the title IS the filter read-out --");
 /* Mirrors the structural claim the drawing makes rather than re-deriving it:
