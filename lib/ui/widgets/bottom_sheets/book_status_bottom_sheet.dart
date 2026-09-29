@@ -10,7 +10,7 @@ import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_date_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_percent_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_total_pages_bottom_sheet.dart';
-import 'package:bookworm_friends/ui/widgets/bottom_sheets/stop_reading_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/reading_status_confirm_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/date_field_row.dart';
 import 'app_sheet.dart';
@@ -98,12 +98,28 @@ typedef BookStatusEdit = ({
 /// [bookStatusSetAside] exists as a status value and why this sheet has exactly one text
 /// action. Everything else is the track.
 ///
-/// **Save is the only writer.** The track does not persist on release, the three
-/// sub-sheets hand their answers back rather than writing them, and dismissing the sheet
-/// discards. That is what makes the drag safe to make live on first movement: an earlier
-/// design of the same control was rejected because *"a stray touch could silently rewrite
-/// your position"*, and the answer here is that nothing this sheet does is written until
-/// the reader says so.
+/// **Save is the only writer of a position, and no longer the only writer.** This said
+/// *"Save is the only writer"* flatly, and that was the file's loudest invariant. The two
+/// confirmed status transitions — `Stop reading this` and `Start reading again` — now commit
+/// the moment they are confirmed, on instruction. The reasoning for it was already written
+/// down here as the argument that lost: a confirmation that hands the reader back to a form
+/// with a Save button in it asks the same question twice.
+///
+/// **What survives is the part that was doing the work.** The old rule existed to make the
+/// drag safe to make live on first movement, because an earlier design of the same control
+/// was rejected with *"a stray touch could silently rewrite your position"*. A stray touch
+/// still cannot write anything: the track does not persist on release, the three sub-sheets
+/// hand their answers back, and dismissing discards all of it. What writes early is exactly
+/// the two acts guarded by a confirmation sheet, which is a stronger answer to *stray* than
+/// deferral ever was — and the reason `Start reading again` had to gain a confirmation it
+/// was explicitly denied before.
+///
+/// **The costs, stated.** Dismissing the sheet no longer guarantees that nothing happened;
+/// and a reader who confirms while a drag is pending has committed one of the two and not the
+/// other, so the sheet can sit there showing a saved status beside an unsaved position. That
+/// is why `editFor` sends the *opening* position with a confirmation rather than the pending
+/// one — the alternative is worse, since it would save a drag under a confirmation the reader
+/// gave for something else.
 ///
 /// **What this sheet no longer does, and the rule survives anyway:** it used to carry an
 /// "I read today" checkbox. Moving a position already stamps the day on the path readers
@@ -142,6 +158,22 @@ Future<void> showBookStatusBottomSheet(
   int? positionPage = progressPage;
   int? total = pageCount;
 
+  // **What has been committed, which is no longer the same as what the sheet opened with.**
+  //
+  // The two confirmed status changes write as soon as they are confirmed, so `dirty` cannot
+  // compare against the arguments any more: it would report a sheet as unsaved on account of
+  // a change that is already in the database, and `Discard changes` would offer to undo a
+  // write it cannot undo. These three move with each commit; the position and the total do
+  // not, because nothing commits them early.
+  //
+  // **They hold what the form holds, not what the write filtered.** `editFor` drops the
+  // finish date for a reading book, so the column can be null while `finish` is not — and
+  // baselining the written value instead would leave the sheet permanently dirty over a field
+  // the reader never touched.
+  int baseStatus = currentStatus;
+  DateTime? baseStart = startDate;
+  DateTime? baseFinish = finishDate;
+
   return AppSheet.show(
     context: context,
     isScrollControlled: true,
@@ -165,15 +197,18 @@ Future<void> showBookStatusBottomSheet(
         // live, which is the silent-resume this exists to prevent.
         final isSetAside = status == bookStatusSetAside;
 
-        // **Nothing is written until this is true and the reader presses Save**, so it is
-        // also the whole of the sheet's unsaved-changes model. Compared against the
-        // values the sheet opened with rather than tracked with a flag per field: a
+        // **What Save would write, and the whole of the sheet's unsaved-changes model.**
+        // Compared against the committed values rather than tracked with a flag per field: a
         // reader who drags the thumb away and back has changed nothing, and a Save button
         // that stayed behind would be claiming otherwise.
+        //
+        // It used to read *"nothing is written until this is true and the reader presses
+        // Save"*. A confirmed status change now writes on confirmation, so this is the model
+        // for everything **except** those two transitions — see `commitStatusChange`.
         final dirty =
-            status != currentStatus ||
-            start != startDate ||
-            finish != finishDate ||
+            status != baseStatus ||
+            start != baseStart ||
+            finish != baseFinish ||
             position != progress ||
             positionPage != progressPage ||
             total != pageCount;
@@ -209,6 +244,71 @@ Future<void> showBookStatusBottomSheet(
           // it away. What is *saved* is filtered by status below instead.
           if (status >= bookStatusReading) start ??= DateTime.now();
           if (status == bookStatusFinished) finish ??= start ?? DateTime.now();
+        }
+
+        // **One place builds the payload, because there are two ways out of this sheet now.**
+        //
+        // [withPendingAnswers] is what separates them. Save sends everything the reader has
+        // touched; a confirmed status change sends the status and the dates it implies and
+        // leaves the position and the total exactly as the sheet received them, so a drag
+        // waiting for Save is not smuggled out under a confirmation the reader gave for
+        // something else.
+        //
+        // **Sending the sheet's opening position rather than `null` is deliberate**, and the
+        // reason is in the caller rather than here: `null` means *do not write this column* to
+        // `updateBookStatus`, which is what we want — but `book_details_tab_view.dart` derives
+        // `movedPosition` from `edit.progress != book.progress`, so a null would read as a
+        // move, stamp a reading day and can raise the streak celebration. Confirming that you
+        // have stopped reading a book must not claim you read it today. Passing the value the
+        // sheet was opened with writes the column back unchanged and reports honestly.
+        BookStatusEdit editFor({required bool withPendingAnswers}) => (
+          status: status,
+          // Only the dates the status has meaning for, so a book put back to Not started
+          // does not keep the dates the form was holding for its own benefit.
+          startDate: status >= bookStatusReading ? start : null,
+          finishDate:
+              status == bookStatusFinished || status == bookStatusSetAside
+              ? finish
+              : null,
+          progress: withPendingAnswers ? position : progress,
+          progressPage: withPendingAnswers ? positionPage : progressPage,
+          // A position the reader erased, which is a different instruction from one they
+          // did not touch. See the record.
+          clearProgress:
+              withPendingAnswers && position == null && progress != null,
+          totalPages: withPendingAnswers && total != pageCount ? total : null,
+        );
+
+        // **A confirmed status change is applied at once, and this is the second writer.**
+        //
+        // Asked for in those words, and it overturns this file's loudest invariant — *Save is
+        // the only writer* — which is recorded in the class doc above and in
+        // `reading_status_confirm_bottom_sheet.dart`. The argument for the reversal was
+        // already written down as the one that lost: a confirmation that hands you back to a
+        // form with a Save button in it asks the same question twice.
+        //
+        // **What made the old invariant necessary is what makes the new behaviour safe.** It
+        // existed to stop a *stray touch* writing — the objection that killed the first drag
+        // control — and a confirmation sheet answers that better than deferral does, because
+        // nothing reaches the database without a deliberate second tap on a button that names
+        // the act. So both transitions are confirmed now; resuming was not, and could not stay
+        // that way once resuming began to write.
+        //
+        // The sheet stays open. Popping here would silently discard whatever else the reader
+        // had pending, and the frozen track plus the reversed action are the feedback that the
+        // change took effect.
+        void commitStatusChange(VoidCallback change) {
+          setState(() {
+            change();
+            // The baselines move with the write, or the sheet would come back dirty over a
+            // change that is already saved and offer to `Discard changes` on it.
+            baseStatus = status;
+            baseStart = start;
+            baseFinish = finish;
+          });
+          // Outside `setState`: this is a write, not a rebuild, and the caller's handler is
+          // async. Fire-and-forget exactly as the Save button does it.
+          onSave(editFor(withPendingAnswers: false));
         }
 
         return Padding(
@@ -422,14 +522,17 @@ Future<void> showBookStatusBottomSheet(
                       const SizedBox(height: 16),
                       _SheetTextAction(
                         label: l10n.stopReadingThis,
-                        // **Confirmed, and the confirmation does not write.** See
-                        // `stop_reading_bottom_sheet.dart` for why an action this ordinary is
-                        // confirmed at all — it is the band's size, not the act's weight — and
-                        // for why committing straight from there was rejected.
+                        // **Confirmed, and the confirmation writes.** See
+                        // `reading_status_confirm_bottom_sheet.dart` for why an action this
+                        // ordinary is confirmed at all — it is the band's size, not the act's
+                        // weight — and for the reversal that made the confirmation a commit.
                         onTap: () => showStopReadingBottomSheet(
                           context,
-                          onConfirmed: () => setState(() {
+                          onConfirmed: () => commitStatusChange(() {
                             status = bookStatusSetAside;
+                            // The day the book was closed, which is what the read view groups
+                            // a set-aside book by. `??=` because the reader may already have
+                            // set one by hand.
                             finish ??= DateTime.now();
                           }),
                         ),
@@ -448,21 +551,43 @@ Future<void> showBookStatusBottomSheet(
                         // percent. The one status a position cannot imply is the one status
                         // that therefore needs a control of its own.
                         //
-                        // **No confirmation, unlike its opposite**, and the asymmetry is the
-                        // point: `showStopReadingBottomSheet` exists because a wide grey band
-                        // is easy to hit by accident, and an accidental *resume* costs a reader
-                        // nothing. Confirming both would make the pair look like a matched set
-                        // of consequential acts, which is exactly the judgement these strings
-                        // are written to avoid.
-                        onTap: () => setState(() {
-                          status = bookStatusReading;
-                          // The finish date is deliberately kept, not cleared. Save filters it
-                          // out for a reading book, so nothing wrong is written; keeping it
-                          // means a reader who resumes and stops again does not lose the day
-                          // they first closed the book. Same rule as `start` above — fill in
-                          // what the new status needs, never clear what it does not.
-                          start ??= DateTime.now();
-                        }),
+                        // **Confirmed too now, and this file argued twice that it must not
+                        // be.** The claim was that `showStopReadingBottomSheet` exists because
+                        // a wide grey band is easy to hit by accident, that an accidental
+                        // *resume* costs a reader nothing, and that confirming both would make
+                        // the pair look like a matched set of consequential acts.
+                        //
+                        // The middle claim is what failed. An accidental resume cost nothing
+                        // while nothing was written until Save; it now writes immediately, and
+                        // the write clears the day the book was closed. The last claim is
+                        // answered by the confirmation being **one function in two sets of
+                        // words** rather than two sheets — the same answer `_SheetTextAction`
+                        // gives for the action itself.
+                        onTap: () => showStartReadingAgainBottomSheet(
+                          context,
+                          onConfirmed: () => commitStatusChange(() {
+                            status = bookStatusReading;
+                            start ??= DateTime.now();
+                            // **The finish date goes, and it used to be kept.** The old
+                            // comment read: *"Save filters it out for a reading book, so
+                            // nothing wrong is written; keeping it means a reader who resumes
+                            // and stops again does not lose the day they first closed the
+                            // book."* Both halves fall to the immediate write. `editFor` nulls
+                            // the column for a reading book and `updateBookStatus` treats a
+                            // null date as a real instruction, so the day *is* gone from the
+                            // record the moment this is confirmed — and a form still holding
+                            // it would disagree with the database about a field the reader
+                            // cannot see. Keeping them in step is also what lets the
+                            // confirmation say so out loud, which is the one thing that makes
+                            // it honest rather than ceremonial.
+                            //
+                            // The cost, stated: stopping again stamps today rather than
+                            // restoring the original closing day. That is the right answer
+                            // once resuming is a confirmed act — the book really was open
+                            // again in between.
+                            finish = null;
+                          }),
+                        ),
                       ),
                     ],
                     // **The commit row, at the foot of the sheet.**
@@ -521,13 +646,17 @@ Future<void> showBookStatusBottomSheet(
                               // them on it, which is what someone who over-dragged the track
                               // wants: the old value back, and to carry on.
                               //
-                              // Reset to the *arguments*, not to a snapshot taken later, so it
-                              // restores exactly the values `dirty` compares against and the
-                              // row cannot survive its own press.
+                              // Restores exactly the values `dirty` compares against, so the
+                              // row cannot survive its own press. **That is the committed
+                              // state, not the arguments**, and the distinction only appeared
+                              // when confirming began to write: a confirmed stop is saved, so
+                              // offering to discard it would be offering to undo something
+                              // this sheet no longer holds. The position and the total have no
+                              // early write, so for them the two are the same thing.
                               onPressed: () => setState(() {
-                                status = currentStatus;
-                                start = startDate;
-                                finish = finishDate;
+                                status = baseStatus;
+                                start = baseStart;
+                                finish = baseFinish;
                                 position = progress;
                                 positionPage = progressPage;
                                 total = pageCount;
@@ -541,27 +670,10 @@ Future<void> showBookStatusBottomSheet(
                               buttonText: l10n.save,
                               onPressed: () {
                                 Navigator.pop(context);
-                                onSave((
-                                  status: status,
-                                  // Only the dates the status has meaning for, so a book put
-                                  // back to Not started does not keep the dates the form was
-                                  // holding for its own benefit.
-                                  startDate: status >= bookStatusReading
-                                      ? start
-                                      : null,
-                                  finishDate:
-                                      status == bookStatusFinished ||
-                                          status == bookStatusSetAside
-                                      ? finish
-                                      : null,
-                                  progress: position,
-                                  progressPage: positionPage,
-                                  // A position the reader erased, which is a different
-                                  // instruction from one they did not touch. See the record.
-                                  clearProgress:
-                                      position == null && progress != null,
-                                  totalPages: total != pageCount ? total : null,
-                                ));
+                                // Everything the reader has touched. The confirmed status
+                                // changes use the same builder with the flag off; see
+                                // `editFor`.
+                                onSave(editFor(withPendingAnswers: true));
                               },
                             ),
                           ),

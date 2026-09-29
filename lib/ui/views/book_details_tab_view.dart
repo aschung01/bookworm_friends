@@ -1222,6 +1222,20 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     // That trades a wrong celebration for an unreachable form, which is the worse of the
     // two. The set is watched in `build` instead; see the note there.
     final wasRead = ref.read(readTodayProvider);
+
+    // **The status the book carried before the *next* write, which is not always
+    // `book.status`.** `onSave` used to fire at most once per sheet, so the captured value was
+    // always current. A confirmed `Stop reading this` or `Start reading again` now writes
+    // immediately, so this handler can run two or three times against one `book`, and
+    // `fromStatus` is what decides whether `updateBookStatus` recomputes
+    // `reading_shelf_index`.
+    //
+    // Left stale, a stop-then-resume inside one visit passes `fromStatus: 2` with `status: 2`
+    // on the second write — status-identical, so the reposition is skipped — and the book
+    // rejoins the Reading shelf carrying the `null` index the first write cleared. Tracked
+    // here rather than added to `BookStatusEdit`, which is a record of the reader's answers
+    // and has no business holding a provider's bookkeeping.
+    var priorStatus = book.status;
     showBookStatusBottomSheet(
       context,
       currentStatus: book.status,
@@ -1254,8 +1268,9 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
               // Without this, saving a position or a date on a book whose status did not
               // change would recompute `reading_shelf_index` and promote the book to the
               // head of the Reading shelf — silently reordering a row the reader arranged.
-              fromStatus: book.status,
+              fromStatus: priorStatus,
             );
+        priorStatus = edit.status;
 
         // A separate write because it is a separate kind of fact: a total is a property of
         // the object, not of the reader's progress through it, and `recordTotalPages`

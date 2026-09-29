@@ -258,6 +258,56 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   than not having it. It looked for `<u>213</u>` — and the numerals are still wrapped in `<u>`;
   what changed is the CSS that gives `<u>` a rule. Both checks now read the stylesheet, and
   `verify.js` grew a group for the frozen Set aside screen.
+- **A confirmed status change writes on confirmation, which overturns this sheet's loudest
+  invariant.** *Save is the only writer* was stated in the sheet's class doc, in the confirmation
+  sheet's, in the spec twice, in `AGENTS.md` twice and in four cases. On instruction — and the
+  argument for it was already written down here as the one that lost: a confirmation that hands
+  the reader back to a form with a Save button asks the same question twice.
+- **The reversal is safe for the reason the invariant existed.** That rule was there to stop a
+  *stray touch* writing, which is what killed the first drag control. A confirmation answers that
+  better than deferral: two deliberate taps, the second on a button that names the act. A drag
+  still writes nothing on release, the value sub-sheets still hand their answers back, and
+  dismissing still discards everything they hold. Do not re-derive the old rule from the old
+  objection.
+- **So `Start reading again` gained the confirmation it had twice been denied.** The denial rested
+  on *"an accidental resume costs a reader nothing"*, true only while nothing was written before
+  Save. The remaining objection — that confirming both makes the pair read as a matched set of
+  consequential acts — is answered by shape rather than argument: one function in two sets of
+  words, which is what `_SheetTextAction` already does for the action itself. The file moved to
+  `reading_status_confirm_bottom_sheet.dart` to say so.
+- **The baselines had to become mutable, and that is the whole mechanism.** `dirty` compared
+  against the sheet's *arguments*; with an early write it would report a sheet as unsaved over a
+  change already in the database, and `Discard changes` would offer to undo a write it cannot.
+  `baseStatus`/`baseStart`/`baseFinish` move with each commit. They hold what the **form** holds
+  rather than what the write filtered — `editFor` drops the finish date for a reading book, so
+  baselining the written value would leave the sheet permanently dirty over a field nobody
+  touched.
+- **`editFor(withPendingAnswers:)` is one payload builder with one switch, and the `false` branch
+  must send the opening position rather than `null`.** `null` is exactly right for
+  `updateBookStatus`, which reads it as *do not write this column* — and exactly wrong for
+  `book_details_tab_view.dart`, which derives `movedPosition` from
+  `edit.progress != book.progress`. A null reads as a move, stamps a reading day and can raise the
+  streak celebration, so confirming that you have **stopped** reading a book would claim you read
+  it today.
+- **Resuming now clears the finish date in the form too**, reversing the note that kept it (*"a
+  reader who resumes and stops again does not lose the day they first closed the book"*). Its
+  premise was that nothing had been written yet; the write nulls the column immediately, and a
+  form still holding the date would disagree with the database about a field the reader cannot
+  see. Keeping them in step is also what lets `startReadingAgainConfirmBody` say the day will be
+  cleared, which is the difference between an honest confirmation and ceremony. Cost: stopping
+  again stamps today.
+- **`priorStatus` in the caller, because `onSave` can now fire more than once per sheet.** Left as
+  the captured `book.status`, a stop-then-resume in one visit passes a status-identical
+  `fromStatus` on the second write, `updateBookStatus` skips the reposition, and the book rejoins
+  the Reading shelf carrying the `null` `reading_shelf_index` the first write cleared. Tracked in
+  the caller rather than added to `BookStatusEdit`, which is a record of the reader's answers and
+  has no business holding a provider's bookkeeping.
+- **Two things stopped being reachable the way they were, and both were silent.** The tallest
+  state, 336, was reached by confirming a stop from a Reading book — now clean at 276, so the case
+  opens a set-aside book and dirties its finish date instead; the constant did not change, the
+  route did. And the `readingdirty` render preview reached Reading-and-dirty by resuming a
+  set-aside book, which now draws the *clean* Reading state — so the shot about the commit row
+  would have quietly stopped containing a commit row. It drags instead.
 - **The tilde is gone from the derived page, and `progressApproxPage` with it**, on
   instruction. The mark distinguished a page the app computed from one the reader typed, and
   it was removed from **both** call sites rather than only the read-out that was pointed at:

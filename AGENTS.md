@@ -1280,7 +1280,8 @@ reached only from inside the merged sheet. **It still has its own caller on the 
 page**, in `_recordToday`'s pick-a-book-then-how-far flow, so it is not a private helper and
 its contract — hand the value out, let the caller write — has to keep holding for both. The
 merged sheet's hero is a reading track, the status **word is derived from the position**, and
-`Save` is the only writer.
+`Save` is the only writer **of a position** — the two confirmed status transitions write
+themselves; see below.
 
 The full record is `docs/superpowers/specs/2026-09-28-status-progress-merge-design.md` plus
 the plan's **Build log** beside it. What follows is the part that is expensive to
@@ -1514,12 +1515,45 @@ accident — and an accidental _resume_ costs nothing, which is the whole asymme
 a confirmation to `Start reading again` for symmetry**; a matched pair of confirmed actions is
 the judgement these strings avoid.
 
-**It hands an answer back and does not write.** Like `showSelectDateBottomSheet` and
-`showSelectPercentBottomSheet`, the status sheet holds the answer until Save. Committing
-straight from it is the obvious alternative — a confirmation that returns you to a form with a
-Save button looks like being asked twice — and it would need arguing against the reason the
-sheet exists, since `Save` being the only writer is the entire answer to _"a stray touch could
-silently rewrite your position."_ Tests go through `_stopReading`, which taps and confirms.
+**It writes, and for two rounds this said it must not.** The old note: _"it hands an answer
+back and does not write ... Committing straight from it is the obvious alternative — a
+confirmation that returns you to a form with a Save button looks like being asked twice — and it
+would need arguing against the reason the sheet exists, since `Save` being the only writer is the
+entire answer to 'a stray touch could silently rewrite your position'."_ The parenthetical
+argument is the instruction now.
+
+**Do not re-derive the old invariant from the stray-touch objection**, which is the trap here.
+That objection is about _stray_ touches, and a confirmation answers it better than deferral did:
+two deliberate taps, the second on a button naming the act. A drag still writes nothing on
+release, the value sub-sheets still hand their answers back, and dismissing still discards
+everything they hold. Only the two confirmed acts commit.
+
+**Three consequences that look like bugs and are not.** The sheet is **clean** the instant a
+confirmation lands — no Save, no `Discard changes` — because `baseStatus`/`baseStart`/`baseFinish`
+move with the write; offering to discard a committed change would be offering something this
+sheet cannot deliver. Dismissing no longer means nothing happened. And a confirmation sends the
+position the sheet **opened** with, not the pending one, so a reader who drags and then confirms
+has committed the status and still owes a Save for the drag — `editFor(withPendingAnswers:)` is
+that switch, and sending `null` instead would read as a move in `book_details_tab_view.dart`,
+stamping a reading day for someone who just stopped reading.
+
+**`book_details_tab_view.dart` tracks `priorStatus` because `onSave` can now fire more than once
+per sheet.** Left as the captured `book.status`, a stop-then-resume in one visit passes a
+status-identical `fromStatus` on the second write, `updateBookStatus` skips the reposition, and
+the book rejoins the Reading shelf carrying the `null` `reading_shelf_index` the first write
+cleared.
+
+Tests go through `_stopReading` and `_startReadingAgain`, which each tap and confirm.
+
+**`Start reading again` is confirmed too, and this file argued twice that it must not be.** The
+claim was that an accidental resume costs a reader nothing. It cost nothing while nothing was
+written before Save; it now writes at once, and the write **clears the day the book was closed**
+— so `startReadingAgainConfirmBody` says so, which is the whole difference between an honest
+confirmation and ceremony. The resume therefore sets `finish = null` in the form as well,
+reversing the note that kept it (_"a reader who resumes and stops again does not lose the day
+they first closed the book"_): the column is empty the moment the resume is confirmed, so a form
+still holding the date would disagree with the database about a field the reader cannot see. Cost:
+stopping again stamps today.
 
 **`Start reading again` reverses a decision recorded in five places** — this file's ancestor,
 the spec, the plan, the mockup caption and three comments in the sheet — all saying a set-aside
@@ -1625,7 +1659,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2053, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2055, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1638,7 +1672,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2053 cases). There is no expected-failure list any
+`flutter test` passes completely (2055 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

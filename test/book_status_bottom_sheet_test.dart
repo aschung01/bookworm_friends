@@ -184,6 +184,18 @@ Future<void> _stopReading(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// The reverse, which needed no confirming until confirming started to write.
+///
+/// `find.text` is exact, so `Start reading again` and `Start reading` are different finders
+/// and the order below is the action then its affirmative — the same shape as
+/// [_stopReading].
+Future<void> _startReadingAgain(WidgetTester tester) async {
+  await tester.tap(find.text('Start reading again'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Start reading'));
+  await tester.pumpAndSettle();
+}
+
 // ---------------------------------------------------------------------------
 // Driving the track.
 //
@@ -738,7 +750,7 @@ void main() {
   // -------------------------------------------------------------------------
   // The one that makes the drag safe.
 
-  group('nothing is written before Save', () {
+  group('a drag waits for Save; a confirmed status change does not', () {
     testWidgets(
       'Given a drag, When the sheet is dismissed, Then no edit is reported at all',
       (tester) async {
@@ -844,10 +856,18 @@ void main() {
     );
 
     testWidgets(
-      'Given Stop reading this, When the sheet is dismissed, Then nothing is reported',
+      'Given Stop reading this is confirmed, When the sheet is dismissed, Then it stands',
       (tester) async {
-        // The sheet's only text action is a text action, not a command. Grey and
-        // ordinary-looking, and it still goes through Save like everything else.
+        // **The exact inverse of what this case asserted for two rounds**, under the name
+        // *"Then nothing is reported"*, with the comment *"it still goes through Save like
+        // everything else."* It does not: a confirmed status change writes on confirmation,
+        // on instruction, because a confirmation that hands the reader back to a form with a
+        // Save button asks the same question twice.
+        //
+        // The case above still holds and is the reason this is safe: a *drag* writes nothing.
+        // What changed is that the two acts guarded by a confirmation sheet commit, and a
+        // confirmation is a stronger answer to "a stray touch could silently rewrite your
+        // position" than deferral was.
         final saved = <_Saved>[];
         await _openSheet(
           tester,
@@ -859,10 +879,17 @@ void main() {
 
         await _stopReading(tester);
         expect(find.text('Set aside'), findsOneWidget);
+        expect(saved, hasLength(1));
+        expect(saved.single.status, bookStatusSetAside);
+        // **And the sheet is clean**, which is the half a reader notices: no Save to press
+        // for something they have already been asked about.
+        expect(_save, findsNothing);
 
         await _dismiss(tester, _sheet);
 
-        expect(saved, isEmpty);
+        // Still one write. Dismissing no longer means nothing happened — the documented cost
+        // of the reversal.
+        expect(saved, hasLength(1));
       },
     );
   });
@@ -1004,6 +1031,14 @@ void main() {
         // opening this sheet to close a book must not have their bookmark rewritten as a
         // side effect. Carried over from the old file, where the dirtying act was a status
         // segment; here it is the one text action.
+        //
+        // **No Save tap any more** — the confirmation is the write. Which makes this case
+        // more valuable than it was, not less: the payload it checks is now assembled by
+        // `editFor(withPendingAnswers: false)`, the path that has to send the position the
+        // sheet was *opened* with. Sending null instead would read as a move in
+        // `book_details_tab_view.dart`, which derives `movedPosition` from
+        // `edit.progress != book.progress` — so confirming that you have stopped reading a
+        // book would stamp a reading day and could raise the streak celebration.
         final saved = <_Saved>[];
         final start = DateTime(2024, 3, 14);
         await _openSheet(
@@ -1017,8 +1052,6 @@ void main() {
         );
 
         await _stopReading(tester);
-        await tester.tap(_save);
-        await tester.pumpAndSettle();
 
         expect(saved, hasLength(1));
         expect(saved.single.progress, 0.46);
@@ -1262,8 +1295,13 @@ void main() {
 
     testWidgets('and it puts a status change back too', (tester) async {
       // The status is not a field the reader types, so it is the one most likely to be left
-      // out of a hand-written reset. Set aside is reached through the confirmation, which
-      // makes it the furthest thing from the buttons.
+      // out of a hand-written reset.
+      //
+      // **It used to reach Set aside through the confirmation, on the grounds that the
+      // furthest thing from the buttons is the best test of them.** That route is gone: a
+      // confirmed status change commits, so there is nothing for this button to put back. The
+      // status is still reachable by drag — it is a read-out of the position — so the drag is
+      // the route now, and the case it covers is unchanged.
       await _openSheet(
         tester,
         currentStatus: bookStatusReading,
@@ -1271,17 +1309,62 @@ void main() {
         progress: 0.46,
       );
 
-      await _stopReading(tester);
-      expect(find.text('Set aside'), findsOneWidget);
+      // **Two `Finished`s, and that is by design rather than a leak.** `ReadingTrack`'s end
+      // labels are deliberately the same strings as the status word, so a reader can see what
+      // the word is a read-out of — so the word makes it two and the label alone makes it one.
+      await _dragTrackTo(tester, 1);
+      expect(find.text('Finished'), findsNWidgets(2));
+      expect(find.text('Finish date'), findsOneWidget);
 
       await tester.tap(reset());
       await tester.pumpAndSettle();
 
       expect(find.text('Reading'), findsOneWidget);
-      expect(find.text('Set aside'), findsNothing);
-      // The finish date the confirmation filled in went with it.
+      expect(find.text('Finished'), findsOneWidget);
+      // The finish date the drag filled in went with it.
       expect(find.text('Finish date'), findsNothing);
       expect(find.text('Stop reading this'), findsOneWidget);
+    });
+
+    testWidgets('but it cannot put a confirmed status change back', (
+      tester,
+    ) async {
+      // **The boundary of what this button means, and it moved.** `Discard changes` discards
+      // what the *sheet* is holding; a confirmed stop is not held, it is written. Offering to
+      // undo it would be offering something this sheet cannot deliver — there is no reverse
+      // write here, only `Start reading again`, which is a different act with its own
+      // confirmation and its own consequences.
+      //
+      // The button is not merely inert afterwards: it is absent, because the baseline moved
+      // with the write and the sheet is clean.
+      final saved = <_Saved>[];
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+        saved: saved,
+      );
+
+      await _stopReading(tester);
+
+      expect(find.text('Set aside'), findsOneWidget);
+      expect(reset(), findsNothing);
+      expect(_save, findsNothing);
+      expect(saved, hasLength(1));
+
+      // And a later edit's Discard puts that edit back without touching the status.
+      await tester.tap(find.text('Finish date'));
+      await tester.pumpAndSettle();
+      await _scrollDateColumn(tester, 1, by: -340);
+      await _confirm(tester);
+      expect(reset(), findsOneWidget);
+
+      await tester.tap(reset());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set aside'), findsOneWidget);
+      expect(saved, hasLength(1));
     });
 
     testWidgets('and it is not Cancel — the sheet stays open', (tester) async {
@@ -1353,40 +1436,72 @@ void main() {
       expect(find.text('Stop reading this'), findsOneWidget);
     });
 
+    testWidgets('Given it is confirmed, Then the status moves and is written at once', (
+      tester,
+    ) async {
+      // **This case said the opposite**, as *"still nothing is written"*, and its comment
+      // called the confirmation *"a question, not a second commit path"* on the grounds that
+      // `Save` is the only writer here. Reversed on instruction. The objection the old
+      // invariant answered — *"a stray touch could silently rewrite your position"* — is
+      // answered better by a confirmation than by deferral, since nothing reaches the
+      // database without a deliberate second tap on a button that names the act.
+      final saved = <_Saved>[];
+      await _openReading(tester, saved);
+
+      await _stopReading(tester);
+
+      expect(find.text('Set aside'), findsOneWidget);
+      expect(saved, hasLength(1));
+      expect(saved.single.status, bookStatusSetAside);
+      expect(saved.single.finishDate, isNotNull);
+      // No commit row, because the sheet is no longer dirty: the baseline moved with the
+      // write. Without that, the reader would be offered `Save` and `Discard changes` for a
+      // change already in the database — and `Discard changes` would be a lie.
+      expect(_save, findsNothing);
+      expect(find.text('Discard changes'), findsNothing);
+    });
+
     testWidgets(
-      'Given it is confirmed, Then the status moves and still nothing is written',
+      'Given it is confirmed, When the status sheet is dismissed, Then it stays written',
       (tester) async {
-        // **The confirmation is a question, not a second commit path.** This is the case
-        // that pins it: `Save` is the only writer in this sheet, and that invariant is the
-        // whole answer to the objection which killed the drag control the first time it was
-        // drawn — *"a stray touch could silently rewrite your position."* Committing straight
-        // from the confirmation was the obvious alternative and would have to be argued
-        // against the reason the sheet exists.
-        final saved = <_Saved>[];
-        await _openReading(tester, saved);
-
-        await _stopReading(tester);
-
-        expect(find.text('Set aside'), findsOneWidget);
-        expect(_save, findsOneWidget);
-        expect(saved, isEmpty);
-      },
-    );
-
-    testWidgets(
-      'Given it is confirmed, When the status sheet is dismissed, Then it is discarded',
-      (tester) async {
-        // Dismissing discards, for this like for every other answer the form holds. The
-        // confirmation does not make the change durable; Save does.
+        // The old version of this asserted the change was *discarded* — "the confirmation does
+        // not make the change durable; Save does." It does now. Kept as its own case because
+        // "dismissing discards" is still true of everything else the form holds, so the
+        // exception needs pinning where a reader of this file will trip over it.
         final saved = <_Saved>[];
         await _openReading(tester, saved);
 
         await _stopReading(tester);
         await _dismiss(tester, _sheet);
 
-        expect(saved, isEmpty);
+        expect(saved, hasLength(1));
+        expect(saved.single.status, bookStatusSetAside);
       },
     );
+
+    testWidgets('and a pending drag does not ride out with it', (tester) async {
+      // **The cost of writing early, and the one thing that keeps it honest.** A reader who
+      // has dragged and not saved, then confirms, has confirmed a status change and not a
+      // position. So `editFor(withPendingAnswers: false)` sends the position the sheet was
+      // opened with, and the drag stays pending behind a Save that is still offered.
+      final saved = <_Saved>[];
+      await _openReading(tester, saved);
+
+      await _dragTrackTo(tester, 0.8);
+      await _stopReading(tester);
+
+      expect(saved, hasLength(1));
+      expect(saved.single.progress, 0.46);
+      // Still dirty, on account of the drag alone.
+      expect(_save, findsOneWidget);
+
+      await tester.tap(_save);
+      await tester.pumpAndSettle();
+
+      expect(saved, hasLength(2));
+      expect(saved.last.progress, closeTo(0.8, 0.02));
+      expect(saved.last.status, bookStatusSetAside);
+    });
 
     testWidgets('and it is not dressed as a deletion', (tester) async {
       // The delete sheet's affirmative is red because a deleted book is gone. This one moves
@@ -1534,10 +1649,11 @@ void main() {
     });
 
     testWidgets(
-      'Given Start reading again is tapped, When saved, Then the book is reading at the same page',
+      'Given Start reading again is confirmed, Then the book is reading at the same page',
       (tester) async {
         // The exact reverse of setting it aside, and it must move the position no more than
         // stopping did: a reader picking a book back up carries on from where they left off.
+        // Written on confirmation now, so there is no Save to press.
         final saved = <_Saved>[];
         final start = DateTime(2024, 3, 14);
         await _openSheet(
@@ -1550,34 +1666,39 @@ void main() {
           saved: saved,
         );
 
-        await tester.tap(find.text('Start reading again'));
-        await tester.pumpAndSettle();
+        await _startReadingAgain(tester);
 
         expect(find.text('Reading'), findsOneWidget);
         expect(find.text('46%'), findsOneWidget);
         // The finish date belonged to the closing, so its row goes with the status.
         expect(find.text('Finish date'), findsNothing);
+        expect(_save, findsNothing);
 
-        await tester.tap(_save);
-        await tester.pumpAndSettle();
-
+        expect(saved, hasLength(1));
         expect(saved.single.status, bookStatusReading);
         expect(saved.single.progress, 0.46);
         expect(saved.single.clearProgress, isFalse);
         expect(saved.single.startDate, start);
-        // Filtered out by status rather than cleared in the form — see the round trip below.
+        // Nulled, and for a date that is a real instruction to `updateBookStatus` rather than
+        // "leave it alone" — see the round trip below, which used to assert the opposite.
         expect(saved.single.finishDate, isNull);
       },
     );
 
     testWidgets(
-      'Given a round trip through Reading, Then the day the book was first closed survives',
+      'Given a round trip through Reading, Then the day the book was first closed is gone',
       (tester) async {
-        // `Start reading again` does **not** clear `finish`, deliberately: Save filters it
-        // out for a reading book, so nothing wrong is written, and keeping it means a reader
-        // who resumes and changes their mind does not silently restamp the closing with
-        // today. Same rule the sheet already applies to `start` — fill in what the new
-        // status needs, never clear what it does not.
+        // **Inverted, and the old reasoning is why.** It read: *"`Start reading again` does not
+        // clear `finish`, deliberately: Save filters it out for a reading book, so nothing
+        // wrong is written, and keeping it means a reader who resumes and changes their mind
+        // does not silently restamp the closing with today."*
+        //
+        // Both halves fall to the immediate write. "Nothing wrong is written" assumed the write
+        // had not happened yet; it has, and a null date is a real instruction, so the column is
+        // already empty while the form still held the old value — a form disagreeing with the
+        // database about a field the reader cannot see. And the restamp is no longer silent:
+        // `startReadingAgainConfirmBody` says the day will be cleared, which is most of what
+        // makes that confirmation honest rather than ceremonial.
         await _openSheet(
           tester,
           currentStatus: bookStatusSetAside,
@@ -1586,32 +1707,54 @@ void main() {
           progress: 0.46,
         );
 
-        await tester.tap(find.text('Start reading again'));
-        await tester.pumpAndSettle();
+        await _startReadingAgain(tester);
         await _stopReading(tester);
 
-        expect(_dateRowText(tester, 'Finish date'), '2024.04.01');
+        // Today, because the book really was open again in between.
+        expect(_dateRowText(tester, 'Finish date'), isNot('2024.04.01'));
+        expect(_dateRowText(tester, 'Finish date'), _today());
       },
     );
 
-    testWidgets('and Start reading again is not confirmed', (tester) async {
-      // The asymmetry is the point. `showStopReadingBottomSheet` exists because a wide grey
-      // band is easy to hit by accident, and an accidental *resume* costs a reader nothing.
-      // Confirming both would make the pair read as a matched set of consequential acts,
-      // which is what every string here is written to avoid.
+    testWidgets('and Start reading again is confirmed too, which it was not', (
+      tester,
+    ) async {
+      // **The asymmetry is gone, and it was argued for twice.** The claim: the stop is
+      // confirmed because a wide grey band is easy to hit by accident, *an accidental resume
+      // costs a reader nothing*, and confirming both would make the pair read as a matched set
+      // of consequential acts.
+      //
+      // The middle clause is what failed. It held while nothing was written until Save;
+      // resuming now writes immediately, and the write clears the day the book was closed. The
+      // last clause is answered by the confirmation being one function in two sets of words
+      // rather than two sheets — the same answer `_SheetTextAction` gives for the action.
+      final saved = <_Saved>[];
       await _openSheet(
         tester,
         currentStatus: bookStatusSetAside,
         startDate: DateTime(2024, 3, 14),
         finishDate: DateTime(2024, 4, 1),
         progress: 0.46,
+        saved: saved,
       );
 
       await tester.tap(find.text('Start reading again'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Reading'), findsOneWidget);
+      // Its own words, not the stop sheet's, and nothing has moved while the question stands.
+      expect(find.text('Start reading this again?'), findsOneWidget);
       expect(find.text('Stop reading this?'), findsNothing);
+      expect(find.text('Set aside'), findsOneWidget);
+      expect(find.text('Reading'), findsNothing);
+      expect(saved, isEmpty);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Cancel leaves the book closed and the sheet clean — not merely unsaved.
+      expect(find.text('Set aside'), findsOneWidget);
+      expect(_save, findsNothing);
+      expect(saved, isEmpty);
     });
 
     testWidgets(
@@ -1651,49 +1794,46 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given it is tapped, When saved, Then the book is set aside at the page it was on',
-      (tester) async {
-        // **The whole point of the status existing.** Position cannot tell "at 46% and
-        // still going" from "closed at 46%" — the number is identical — so this is the
-        // second bit, and it must not move the number it is a second bit *of*.
-        final saved = <_Saved>[];
-        final start = DateTime(2024, 3, 14);
-        await _openSheet(
-          tester,
-          currentStatus: bookStatusReading,
-          startDate: start,
-          progress: 0.46,
-          pageCount: _kPageCount,
-          saved: saved,
-        );
+    testWidgets('Given it is confirmed, Then the book is set aside at the page it was on', (
+      tester,
+    ) async {
+      // **The whole point of the status existing.** Position cannot tell "at 46% and
+      // still going" from "closed at 46%" — the number is identical — so this is the
+      // second bit, and it must not move the number it is a second bit *of*.
+      final saved = <_Saved>[];
+      final start = DateTime(2024, 3, 14);
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: start,
+        progress: 0.46,
+        pageCount: _kPageCount,
+        saved: saved,
+      );
 
-        await _stopReading(tester);
+      await _stopReading(tester);
 
-        // The read-out keeps saying 46%, and the action is replaced by its reverse — the
-        // book is no longer open, so there is nothing left to stop and something to resume.
-        expect(find.text('46%'), findsOneWidget);
-        expect(find.text('Set aside'), findsOneWidget);
-        expect(find.text('Stop reading this'), findsNothing);
-        expect(find.text('Start reading again'), findsOneWidget);
+      // The read-out keeps saying 46%, and the action is replaced by its reverse — the
+      // book is no longer open, so there is nothing left to stop and something to resume.
+      expect(find.text('46%'), findsOneWidget);
+      expect(find.text('Set aside'), findsOneWidget);
+      expect(find.text('Stop reading this'), findsNothing);
+      expect(find.text('Start reading again'), findsOneWidget);
 
-        await tester.tap(_save);
-        await tester.pumpAndSettle();
-
-        expect(saved.single.status, bookStatusSetAside);
-        expect(saved.single.progress, 0.46);
-        expect(saved.single.clearProgress, isFalse);
-        expect(saved.single.startDate, start);
-        // The day the book was *closed* rather than completed, which is what keeps the
-        // read view's month grouping and year rail working untouched: both read the date
-        // and neither cares why the book ended.
-        expect(saved.single.finishDate, isNotNull);
-        expect(
-          DateFormat('yyyy.MM.dd').format(saved.single.finishDate!),
-          _today(),
-        );
-      },
-    );
+      expect(saved, hasLength(1));
+      expect(saved.single.status, bookStatusSetAside);
+      expect(saved.single.progress, 0.46);
+      expect(saved.single.clearProgress, isFalse);
+      expect(saved.single.startDate, start);
+      // The day the book was *closed* rather than completed, which is what keeps the
+      // read view's month grouping and year rail working untouched: both read the date
+      // and neither cares why the book ended.
+      expect(saved.single.finishDate, isNotNull);
+      expect(
+        DateFormat('yyyy.MM.dd').format(saved.single.finishDate!),
+        _today(),
+      );
+    });
 
     testWidgets(
       'Given a set-aside book, When the thumb is moved, Then nothing happens at all',
@@ -1727,13 +1867,14 @@ void main() {
       },
     );
 
-    testWidgets('and resuming unfreezes it in the same frame, with nothing written', (
+    testWidgets('and resuming unfreezes the track in the same frame', (
       tester,
     ) async {
-      // **The controls follow the *pending* status, not the saved one.** Keyed on
-      // `currentStatus` instead, a reader who tapped `Start reading again` would face a
-      // dead track until they saved, closed the sheet and came back — so the resume link
-      // would look like it had not worked.
+      // **The controls follow the sheet's own status, not the argument.** Keyed on
+      // `currentStatus`, a reader who confirmed `Start reading again` would face a dead track
+      // until they saved, closed the sheet and came back — so the resume would look like it had
+      // not worked. True when the resume was unsaved, and still true now that it commits,
+      // because the sheet does not rebuild from its arguments.
       final saved = <_Saved>[];
       await _openSheet(
         tester,
@@ -1744,16 +1885,19 @@ void main() {
         saved: saved,
       );
 
-      await tester.tap(find.text('Start reading again'));
-      await tester.pumpAndSettle();
+      await _startReadingAgain(tester);
       await _dragTrackTo(tester, 0.6);
       await tester.tap(_save);
       await tester.pumpAndSettle();
 
-      expect(saved.single.status, bookStatusReading);
-      expect(saved.single.progress, closeTo(0.6, 0.02));
+      // Two writes now: the confirmed resume, then the drag through Save.
+      expect(saved, hasLength(2));
+      expect(saved.first.status, bookStatusReading);
+      expect(saved.first.progress, 0.46);
+      expect(saved.last.status, bookStatusReading);
+      expect(saved.last.progress, closeTo(0.6, 0.02));
       // A book being read has no finish date, whatever it was holding while closed.
-      expect(saved.single.finishDate, isNull);
+      expect(saved.last.finishDate, isNull);
     });
 
     testWidgets('and stopping freezes it just as immediately', (tester) async {
@@ -2184,16 +2328,30 @@ void main() {
           //
           // The tallest state: a set-aside book, which draws the read-out, the track, *both*
           // date rows and a dirty Save at once.
+          //
+          // **It used to be reached by confirming `Stop reading this` from a Reading book, and
+          // that no longer reaches it.** A confirmed status change commits and moves the
+          // baseline, so the sheet is *clean* the moment the book is set aside — 276, not 336.
+          // The tallest state still exists, because a set-aside book can be dirtied by the two
+          // things a confirmation does not write: its dates and its total. So the book opens
+          // set aside and the finish date is what dirties it.
+          //
+          // The constant is unchanged. What changed is the route, and the route mattering at
+          // all is the point of measuring a built sheet rather than adding up line boxes.
           await _openSheet(
             tester,
-            currentStatus: bookStatusReading,
+            currentStatus: bookStatusSetAside,
             startDate: DateTime(2024, 3, 14),
+            finishDate: DateTime(2024, 4, 1),
             progress: 0.46,
             pageCount: _kPageCount,
             surface: phone,
           );
 
-          await _stopReading(tester);
+          await tester.tap(find.text('Finish date'));
+          await tester.pumpAndSettle();
+          await _scrollDateColumn(tester, 1, by: -340);
+          await _confirm(tester);
 
           expect(_save, findsOneWidget);
           expect(find.byType(DateFieldRow), findsNWidgets(2));

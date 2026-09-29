@@ -71,6 +71,18 @@
   "@stopReadingConfirmBody": {
     "description": "Body of the stop-reading confirmation. Leads with what is NOT lost, because that is the non-obvious half: setting a book aside keeps the recorded position, which is the whole reason the status exists rather than sending the book back to Not started. Deliberately not a warning \u2014 nothing here is destructive and the tone must not suggest it is. One sentence, and it used to be two: it said progress was kept AND that 'The book moves to Set aside.', on the reasoning that naming the destination meant the chip afterwards would not surprise anyone. Removed on instruction, and the reasoning against it is that the sentence made the reader responsible for the app's own taxonomy in order to answer a yes-or-no question about their own book \u2014 the title already names the act and the chip names the result a tap later. Cost, stated: the destination is now learned after the fact rather than before. Also 'place' became 'progress', which is the word the sheet's own title uses (readingProgressTitle), so the two agree."
   },
+  "startReadingAgainConfirmTitle": "Start reading this again?",
+  "@startReadingAgainConfirmTitle": {
+    "description": "Title of the confirmation behind startReadingAgain. Mirrors stopReadingConfirmTitle word for word so the pair reads as one control in two directions rather than as an action and a correction. This confirmation did not exist at first: resuming was deliberately unconfirmed, on the reasoning that an accidental resume costs a reader nothing. That became false when confirming began to write immediately \u2014 an accidental resume now costs a write, and it clears the day the book was closed."
+  },
+  "startReadingAgainConfirmBody": "Your progress is kept. The day you stopped reading will be cleared.",
+  "@startReadingAgainConfirmBody": {
+    "description": "Body of the resume confirmation. Leads with what is NOT lost, like stopReadingConfirmBody, then names the one thing that is: finish_date is derived from the status, so a book that is being read again cannot carry the date it was closed on, and the column is nulled. Naming it is the whole reason this confirmation is honest rather than ceremonial \u2014 and note it is NOT the sentence removed from stopReadingConfirmBody, which named a status label the reader did not need in order to answer; this names a consequence to their own record."
+  },
+  "startReadingAgainConfirmAction": "Start reading",
+  "@startReadingAgainConfirmAction": {
+    "description": "The resume confirmation's affirmative button. Shorter than startReadingAgain for the reason stopReadingConfirmAction is shorter than stopReadingThis: the title has already said which act, so a button restating the whole phrase reads as a second question."
+  },
   "stopReadingConfirmAction": "Stop reading",
   "@stopReadingConfirmAction": {
     "description": "The confirmation sheet's affirmative button. Shorter than stopReadingThis because the sheet's title has already said which book and which act; a button that restates the whole phrase reads as a second question. Not destructive-red, unlike the delete sheet's: this is reversible in one tap by startReadingAgain."

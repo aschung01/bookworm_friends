@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/cupertino.dart' show CupertinoSlider;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -204,20 +205,31 @@ void main() {
 
   // **Reading and dirty**, which is the state a reader photographed to say the buttons were
   // not at the bottom of the sheet: 287 of content in a 336 frame, so 49pt of slack, and
-  // top-aligned it fell *under* the commit row. Reached by resuming a set-aside book, which
-  // leaves exactly that shape — Reading, one date row, the text action, and Save.
+  // top-aligned it fell *under* the commit row.
+  //
+  // **Reached by a drag, and it used to be reached by resuming a set-aside book** — that left
+  // exactly this shape for free. It no longer does: a confirmed status change commits and the
+  // sheet comes back clean, so resuming now draws the *clean* Reading state and this shot would
+  // have quietly stopped being about the commit row at all.
   testWidgets('Reading and dirty, light, en', (tester) async {
     await _open(
       tester,
       theme: AppTheme.light,
       locale: const Locale('en'),
-      currentStatus: bookStatusSetAside,
+      currentStatus: bookStatusReading,
       startDate: start,
-      finishDate: DateTime(2026, 9, 28),
       progress: 0.74,
       pageCount: _kPageCount,
     );
-    await tester.tap(find.text('Start reading again'));
+
+    // Relative dragging, so the gesture has to begin on the thumb: 22pt is
+    // `CupertinoThumbPainter.radius` plus the slider's own padding, and the travel between
+    // those insets is what the value maps over.
+    final rail = tester.getRect(find.byType(CupertinoSlider));
+    await tester.dragFrom(
+      Offset(rail.left + 22 + (rail.width - 44) * 0.74, rail.center.dy),
+      const Offset(-24, 0),
+    );
     await tester.pumpAndSettle();
     await _shoot(tester, 'readingdirty_light_en');
   });
@@ -236,6 +248,25 @@ void main() {
     await tester.tap(find.text('Stop reading this'));
     await tester.pumpAndSettle();
     await _shoot(tester, 'stopconfirm_light_en');
+  });
+
+  // Its twin, which did not exist while resuming was unconfirmed. Worth a shot of its own
+  // because the two are one function in two sets of words — if they ever stop looking like
+  // the same object, this pair of images is where it shows.
+  testWidgets('Start reading again confirmation, light, en', (tester) async {
+    await _open(
+      tester,
+      theme: AppTheme.light,
+      locale: const Locale('en'),
+      currentStatus: bookStatusSetAside,
+      startDate: start,
+      finishDate: DateTime(2026, 9, 28),
+      progress: 0.46,
+      pageCount: _kPageCount,
+    );
+    await tester.tap(find.text('Start reading again'));
+    await tester.pumpAndSettle();
+    await _shoot(tester, 'resumeconfirm_light_en');
   });
 
   tearDownAll(() {

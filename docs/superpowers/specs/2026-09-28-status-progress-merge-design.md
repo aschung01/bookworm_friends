@@ -349,15 +349,40 @@ names the result one tap later. The cost, stated: the destination is now learned
 title uses (`readingProgressTitle`), so the two agree instead of describing the same number
 twice.
 
-**The confirmation does not write**, which is what lets it exist here at all. Like
-`showSelectDateBottomSheet` and `showSelectPercentBottomSheet` it hands an answer back and the
-sheet holds it until Save. Committing straight from it was the obvious alternative — a
-confirmation that returns you to a form with a Save button looks like being asked twice — and
-was rejected on two grounds: `Save` is the only writer anywhere in this sheet, and that
-invariant is the entire answer to the objection that killed the drag control the first time it
-was drawn (_"a stray touch could silently rewrite your position"_); and the symmetry that
-matters is with the sheet's other sub-sheets rather than with the app's delete sheet, since
-answering the date sheet does not save a date either.
+**The confirmation writes, and both directions are confirmed.** This section said the
+opposite, at length: _"The confirmation does not write, which is what lets it exist here at all
+... Committing straight from it was the obvious alternative — a confirmation that returns you to
+a form with a Save button looks like being asked twice — and was rejected on two grounds:
+`Save` is the only writer anywhere in this sheet, and that invariant is the entire answer to the
+objection that killed the drag control the first time it was drawn ('a stray touch could
+silently rewrite your position'); and the symmetry that matters is with the sheet's other
+sub-sheets rather than with the app's delete sheet, since answering the date sheet does not save
+a date either."_
+
+Reversed on instruction, and **the argument for it is the one that sentence recorded as having
+lost**: a confirmation that hands the reader back to a form with a Save button asks the same
+question twice.
+
+**What makes the reversal safe is the thing being reversed.** The old invariant existed to stop
+a _stray touch_ writing. A confirmation is a different and stronger answer to exactly that: two
+deliberate taps, the second on a button that names the act. So the protection moved rather than
+went — from "nothing writes until Save" to "this writes because you were asked". The other
+sub-sheets still hand their answers back, and the distinction is not arbitrary: a date and a
+percent are values the reader is _composing_, where these two are acts they are _committing_.
+
+**Which is why `Start reading again` gained the confirmation it was explicitly denied.** The
+asymmetry above rested on _"an accidental resume costs a reader nothing"_, which was true only
+while nothing was written before Save. It now costs a write, and that write clears the day the
+book was closed. The remaining half of the objection — that confirming both makes the pair read
+as a matched set of consequential acts — is answered by shape: it is **one function in two sets
+of words**, the same answer `_SheetTextAction` gives for the action itself.
+
+**Three costs, stated.** Dismissing the sheet no longer guarantees nothing happened. A reader
+who confirms with a drag pending has committed one and not the other, so the sheet can show a
+saved status beside an unsaved position — deliberate, because sending the pending position
+would save a drag under a confirmation given for something else. And `Discard changes` can no
+longer put a status change back, which is why the sheet is _clean_ the moment a confirmation
+lands: offering the button would be offering something this sheet cannot deliver.
 
 Rejected: **"Put back on the shelf"**.
 
@@ -393,11 +418,15 @@ callers — this row, and the `kDebugMode`-gated footer in `reading_streak_page.
 this there is **no shipped way to un-record a reading day** — to delete a `reading_days` row
 once it exists. See _Open questions_ #1.
 
-### Save commits, and nothing else writes
+### Save commits a position; a confirmed status change commits itself
 
-**Save is the only writer on this sheet.** The drag does not persist on release, the three
-sub-sheets' Confirm buttons do not write, and dismissing discards everything. One sheet, one
-write.
+**Save is the only writer of a position, and it is no longer the only writer.** This read
+_"Save is the only writer on this sheet ... One sheet, one write."_ The two confirmed status
+transitions now commit on confirmation; see the reversal recorded under the secondary action
+above, including why a confirmation is a better answer to "a stray touch" than deferral was.
+
+What survives is every claim that was doing work: the drag does not persist on release, the
+three value sub-sheets do not write, and dismissing discards everything they hold.
 
 This makes the sheet coherent in a way the alternative could not be: "dismissing discards"
 was already the answer to the objection that killed `band-scrubber`, and a drag that wrote on
