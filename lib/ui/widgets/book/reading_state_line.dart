@@ -244,41 +244,82 @@ class ReadingStateLine extends StatelessWidget {
     final colors = context.colors;
     final value = progress;
 
+    // **Two groups, so the page pair can sit at the right edge.**
+    //
+    // The line was one flat run packed left — `Reading  71%  ~ p.307 / 432` — and the page
+    // pair was asked for at the rightmost. That needs a free-space distribution, and
+    // `WrapAlignment.spaceBetween` over the *flat* list is not it: with four children it
+    // would spread all four evenly and float the percent somewhere in the middle. Over two
+    // it does exactly the right thing, because `spaceBetween` puts the first child at the
+    // leading edge and the last at the trailing one.
+    //
+    // **Nested `Wrap`s rather than a `Row` with a `Spacer`**, which is the obvious spelling
+    // and throws away the degradation this widget exists for. See the class doc: a `Row`'s
+    // children have no run to drop to, so its only failures are overflow and ellipsis, and a
+    // clipped status word is the one failure that makes the line lie about the book. Nested,
+    // each group is handed the outer `Wrap`'s own `maxWidth`, so a group too wide for the
+    // line soft-wraps inside itself and `Add total pages` stays safe at 2× scale on a 375pt
+    // phone.
+    //
+    // When the two groups will not fit side by side the pair drops to a second run and lands
+    // **left**, because `spaceBetween` leaves a lone child in a run at the start. That is the
+    // right answer for the wrapped case — a dropped run reads as a continuation, and
+    // right-aligning it would open a ragged gutter mid-read-out.
+    //
+    // `WrapCrossAlignment.end` is on the outer Wrap as well as the inner ones, so the 13pt
+    // group's descender line still sits on the 20pt group's. The class doc explains why that
+    // is the substitute for a baseline alignment `Wrap` does not have.
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.end,
+      alignment: WrapAlignment.spaceBetween,
       spacing: _gap,
       runSpacing: _runGap,
       children: [
-        Text(
-          statusLabel,
-          // `decoration: none` is not redundant, and a render is what proved it.
-          // `Text` merges its style **onto** the ambient `DefaultTextStyle`, so a
-          // property this widget leaves unset is whatever the ancestor says -- and
-          // `MaterialApp`'s own fallback default, the one in force whenever there is
-          // no `Material` or `Scaffold` above (`_errorTextStyle` in
-          // `material/app.dart`), carries `TextDecoration.underline`. A preview
-          // harness without a `Scaffold` drew this word underlined for exactly that
-          // reason. On a line whose entire contract is *which two of three parts are
-          // marked*, inheriting an underline is not a risk worth leaving open.
-          style: _wordStyle.copyWith(
-            color: statusColor,
-            decoration: TextDecoration.none,
-          ),
-        ),
-        if (value != null) ...[
-          _Door(
-            onTap: onPercentTap,
-            // No underline, in either state. See the class doc — this is the part
-            // that keeps getting marked and must not be.
-            child: Text(
-              // Not localized: a numeral and a percent sign, which sit the same way
-              // round in both supported locales. Rounded the way the band rounds it.
-              '${(value * 100).round()}%',
-              style: _percentStyle.copyWith(color: colors.primaryText),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.end,
+          spacing: _gap,
+          runSpacing: _runGap,
+          children: [
+            Text(
+              statusLabel,
+              // `decoration: none` is not redundant, and a render is what proved it.
+              // `Text` merges its style **onto** the ambient `DefaultTextStyle`, so a
+              // property this widget leaves unset is whatever the ancestor says -- and
+              // `MaterialApp`'s own fallback default, the one in force whenever there is
+              // no `Material` or `Scaffold` above (`_errorTextStyle` in
+              // `material/app.dart`), carries `TextDecoration.underline`. A preview
+              // harness without a `Scaffold` drew this word underlined for exactly that
+              // reason. On a line whose entire contract is *which two of three parts are
+              // marked*, inheriting an underline is not a risk worth leaving open.
+              style: _wordStyle.copyWith(
+                color: statusColor,
+                decoration: TextDecoration.none,
+              ),
             ),
+            if (value != null)
+              _Door(
+                onTap: onPercentTap,
+                // No underline, in either state. See the class doc — this is the part
+                // that keeps getting marked and must not be.
+                child: Text(
+                  // Not localized: a numeral and a percent sign, which sit the same way
+                  // round in both supported locales. Rounded the way the band rounds it.
+                  '${(value * 100).round()}%',
+                  style: _percentStyle.copyWith(color: colors.primaryText),
+                ),
+              ),
+          ],
+        ),
+        // The trailing group. Absent entirely at the origin, which is why the status word
+        // stays left there rather than being pushed anywhere by a `spaceBetween` with
+        // nothing to space against: one child in a run sits at the start.
+        if (value != null)
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: _gap,
+            runSpacing: _runGap,
+            children: _pagePair(context, l10n, value),
           ),
-          ..._pagePair(context, l10n, value),
-        ],
       ],
     );
   }

@@ -1135,6 +1135,134 @@ void main() {
   // -------------------------------------------------------------------------
   // The one text action.
 
+  group('the commit row at the foot', () {
+    Finder reset() => find.text('Reset');
+
+    testWidgets('Given a clean sheet, Then neither button is drawn', (
+      tester,
+    ) async {
+      // Save's arrival is still the whole dirty indicator, and Reset arrives with it: there is
+      // nothing to put back on a sheet nobody has changed.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+      );
+
+      expect(_save, findsNothing);
+      expect(reset(), findsNothing);
+    });
+
+    testWidgets('Given a drag, Then both arrive below the track', (
+      tester,
+    ) async {
+      // **The position is the case.** Save sat in the title row at 92×32, above the read-out
+      // and the track; it was asked for at the foot. Asserted as geometry rather than by
+      // finding a parent widget, because "at the foot" is the claim and a `Column` index is
+      // not — and because the *reason* the move was free is geometric: anything that appears
+      // below the track cannot push the track, which is what let the title row's pinned
+      // height go.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+      );
+
+      final trackBefore = tester.getRect(find.byType(ReadingTrack));
+      await _dragTrackTo(tester, 0.8);
+
+      expect(_save, findsOneWidget);
+      expect(reset(), findsOneWidget);
+      expect(
+        tester.getRect(_save).top,
+        greaterThan(tester.getRect(find.byType(ReadingTrack)).bottom),
+      );
+      expect(
+        tester.getRect(reset()).center.dx,
+        lessThan(tester.getRect(_save).center.dx),
+      );
+      // And the arrival moved nothing, which is the property the frame exists for.
+      expect(tester.getRect(find.byType(ReadingTrack)), trackBefore);
+    });
+
+    testWidgets('Given Reset, Then every field goes back and the row withdraws', (
+      tester,
+    ) async {
+      // Reset restores the sheet's *arguments*, which is the same set `dirty` compares
+      // against — so a reset sheet is clean by construction and the row cannot survive its
+      // own press. A snapshot taken any later would leave the buttons on screen.
+      final saved = <_Saved>[];
+      final start = DateTime(2024, 3, 14);
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: start,
+        progress: 0.46,
+        progressPage: 200,
+        pageCount: _kPageCount,
+        saved: saved,
+      );
+
+      await _dragTrackTo(tester, 0.8);
+      expect(find.text('46%'), findsNothing);
+
+      await tester.tap(reset());
+      await tester.pumpAndSettle();
+
+      expect(find.text('46%'), findsOneWidget);
+      expect(_dateRowText(tester, 'Start date'), '2024.03.14');
+      expect(_save, findsNothing);
+      expect(reset(), findsNothing);
+      expect(saved, isEmpty);
+    });
+
+    testWidgets('and Reset puts a status change back too', (tester) async {
+      // The status is not a field the reader types, so it is the one most likely to be left
+      // out of a hand-written reset. Set aside is reached through the confirmation, which
+      // makes it the furthest thing from the buttons.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+      );
+
+      await _stopReading(tester);
+      expect(find.text('Set aside'), findsOneWidget);
+
+      await tester.tap(reset());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Reading'), findsOneWidget);
+      expect(find.text('Set aside'), findsNothing);
+      // The finish date the confirmation filled in went with it.
+      expect(find.text('Finish date'), findsNothing);
+      expect(find.text('Stop reading this'), findsOneWidget);
+    });
+
+    testWidgets('and Reset is not Cancel — the sheet stays open', (
+      tester,
+    ) async {
+      // Dismissing already discards, so a button that dismissed would be a second spelling of
+      // a gesture the reader has. This one is for someone who over-dragged the track and wants
+      // the old value back *and* to carry on.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        startDate: DateTime(2024, 3, 14),
+        progress: 0.46,
+      );
+
+      await _dragTrackTo(tester, 0.8);
+      await tester.tap(reset());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReadingTrack), findsOneWidget);
+    });
+  });
+
   group('the confirmation behind Stop reading this', () {
     Future<void> _openReading(WidgetTester tester, List<_Saved> saved) =>
         _openSheet(
@@ -1873,11 +2001,14 @@ void main() {
           expect(find.byType(DateFieldRow), findsNWidgets(2));
           // **This is the state the frame is sized to**, so it is also the guard that the
           // constant is still big enough: if a row were added here, the content would exceed
-          // 287, the sheet would start resizing between states again, and this is where it
-          // shows up. 287 + 48 = 335, clearing the shortest phone by over 300pt — this sheet
-          // replaced two, and the one thing it must not have done is become a sheet that
-          // needs scrolling.
-          expect(tester.getSize(find.byType(AnimatedSize)).height, 287.0);
+          // 336, the sheet would start resizing between states again, and this is where it
+          // shows up.
+          //
+          // **287 → 336 when Save moved to the foot.** The title row gave back 11 — it no
+          // longer holds a 32pt button next to a ~21pt heading — and the commit row costs 60,
+          // 44 plus its gap. 336 + 48 = 384, which still clears the shortest phone by nearly
+          // 300pt, and this sheet must never become one that needs scrolling.
+          expect(tester.getSize(find.byType(AnimatedSize)).height, 336.0);
           expect(
             tester.getRect(find.byType(AnimatedSize)).bottom,
             lessThanOrEqualTo(phone.height),
@@ -1887,7 +2018,7 @@ void main() {
     }
 
     testWidgets(
-      'Given the Reading state, Then the sheet is still shorter than either it replaced',
+      'Given the Reading state, Then the sheet is now taller than both it replaced',
       (tester) async {
         // **The merge's headline number, measured rather than estimated.** The design record
         // has 270pt clean from summing row heights in the Dart, against an exact 368 for the
@@ -1907,33 +2038,43 @@ void main() {
           pageCount: _kPageCount,
         );
 
-        // **335, not 275**, because the sheet is framed to its tallest state now — so the
-        // headline number is 60pt worse than it was and still comfortably beats both of the
-        // sheets this replaced. That margin is what made the frame affordable.
+        // **384, and the merge's headline claim is now false** — this is the case that used
+        // to assert `lessThan(342)` and `lessThan(368)`, the old status sheet and the percent
+        // wheel, and it asserted 275 before the sheet was framed at all.
+        //
+        // Two deliberate decisions spent that margin, in order: framing the sheet to its
+        // tallest state so the track stops moving under a drag (275 → 335), and moving Save
+        // to the foot, which added a 60pt commit row to the tallest state and so to every
+        // state (335 → 384). Neither is reversible by tightening a gap, and the second is
+        // what crossed the line.
+        //
+        // Pinned against the two old figures anyway, as an upper bound rather than a lower
+        // one, so the size is a number someone has to look at rather than a claim that
+        // quietly stopped being true.
         final total = tester.getSize(find.byType(AnimatedSize)).height + 48;
-        expect(total, 335.0);
-        expect(total, lessThan(342.0));
-        expect(total, lessThan(368.0));
+        expect(total, 384.0);
+        expect(total, greaterThan(342.0));
+        expect(total, greaterThan(368.0));
       },
     );
 
     testWidgets('and the Not started state is no shorter, which is the cost', (
       tester,
     ) async {
-      // **This case used to assert 170 and now asserts 335, and the 165pt difference is the
-      // price of the frame rather than a regression.** At the origin the read-out collapses
-      // to a single word, there is no date row and no text action, so the content is 122 —
-      // and the sheet is sized for a set-aside book, which that book is three taps away
-      // from. Just under half of this state is empty cream.
+      // **170 → 335 → 384, and this state's content is still 122**, so 214pt of it — over
+      // half — is empty cream, on the state a reader meets first. At the origin the read-out
+      // collapses to a single word, there is no date row, no text action and nothing to
+      // commit.
       //
-      // Pinned rather than merely tolerated, because it is the one figure someone reading
-      // the design record should be able to find: the alternative is a sheet that jumps
-      // 115pt on the first drag of every new book, which is the most common interaction
-      // there is here.
+      // Pinned rather than merely tolerated, because it is the figure that decides whether
+      // the frame is worth keeping. What it buys is a sheet that does not jump on the first
+      // drag of every new book — and that jump grew from 115pt to 165 when the commit row
+      // moved to the foot, so both sides of this trade got worse at once.
       await _openSheet(tester, currentStatus: 0);
 
       final total = tester.getSize(find.byType(AnimatedSize)).height + 48;
-      expect(total, 335.0);
+      expect(total, 384.0);
+      expect(total - 48 - 122, 214.0, reason: 'the void, stated as a number');
       expect(find.byType(DateFieldRow), findsNothing);
     });
 
@@ -1968,7 +2109,7 @@ void main() {
 
     testWidgets('and the frame is a floor rather than a cage', (tester) async {
       // The valve. `ConstrainedBox(minHeight:)` rather than a `SizedBox`, so a state that
-      // genuinely needs more room than 287 — a large accessibility text size, or a locale
+      // genuinely needs more room than 336 — a large accessibility text size, or a locale
       // that wraps a row — grows instead of clipping. Driven here by the text scale, which
       // is the realistic cause.
       tester.platformDispatcher.textScaleFactorTestValue = 2;
@@ -1986,7 +2127,7 @@ void main() {
 
       expect(
         tester.getSize(find.byType(AnimatedSize)).height,
-        greaterThan(287.0),
+        greaterThan(336.0),
       );
     });
   });

@@ -488,6 +488,115 @@ void main() {
     );
   });
 
+  group('the page pair sits at the trailing edge', () {
+    /// The line at a **tight** width, which is the one thing `_pump` cannot give it.
+    ///
+    /// `_pump` wraps the line in `Align(alignment: topLeft)`, so it is handed *loose*
+    /// constraints and the `Wrap` shrink-wraps its content — which leaves no free space, and
+    /// `WrapAlignment.spaceBetween` distributes free space. In the sheet the line sits in a
+    /// `Column` with `CrossAxisAlignment.stretch`, so it gets the full width tight. Every
+    /// case about the trailing edge therefore needs its own harness; every case about
+    /// *wrapping* is fine in `_pump`, because `RenderWrap` decides runs from `maxWidth`
+    /// either way.
+    ///
+    /// **500, not the sheet's 327, and the number is about the font rather than the design.**
+    /// This file draws in `flutter_test`'s own face, where every glyph is a one-em square, so
+    /// `Reading` sets to 151pt against about 75 on a phone and the two groups measure 396
+    /// together. At 327 they do not fit, the pair drops to a second run, and the case would be
+    /// measuring the wrap instead of the alignment. The real widths are in
+    /// `book_status_bottom_sheet_test.dart`, which loads the app's faces, and in
+    /// `book_status_sheet_render_preview.dart`.
+    Future<void> pumpTight(WidgetTester tester, {double width = 500}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: width,
+                  child: ReadingStateLine(
+                    statusLabel: 'Reading',
+                    statusColor: context.colors.brandText,
+                    progress: 0.46,
+                    pageCount: 462,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('Given room, Then the total ends flush with the line', (
+      tester,
+    ) async {
+      // The ask was "the page index and count on the rightmost", and this is it stated as a
+      // geometry rather than as an alignment enum: the last part's right edge is the line's.
+      await pumpTight(tester);
+
+      final line = tester.getRect(find.byType(ReadingStateLine));
+      final total = tester.getRect(find.text('/ 462'));
+      expect(total.right, moreOrLessEquals(line.right, epsilon: 0.5));
+      // On one run, so this is the alignment and not a wrap that happens to end flush.
+      expect(total.top, moreOrLessEquals(line.top, epsilon: 12));
+    });
+
+    testWidgets('and the percent stays beside the status word', (tester) async {
+      // **The reason the two groups are nested rather than flat.** `spaceBetween` over the
+      // flat list of four parts would spread all four and float the percent into the middle
+      // of the line; over two groups it pins one to each edge. So this case is what rules out
+      // the one-line version of the change.
+      await pumpTight(tester);
+
+      final word = tester.getRect(find.text('Reading'));
+      final percent = tester.getRect(find.text('46%'));
+      final page = tester.getRect(find.text(_derivedPage));
+
+      expect(percent.left - word.right, moreOrLessEquals(8, epsilon: 0.5));
+      // And a real gutter opened up before the page pair, which is what "rightmost" means.
+      expect(page.left - percent.right, greaterThan(40));
+    });
+
+    testWidgets('Given no position, Then the status word is not pushed anywhere', (
+      tester,
+    ) async {
+      // One child in a run sits at the start under `spaceBetween`, so the origin state needs
+      // no special casing — but it is worth pinning, because a `spaceBetween` that centred or
+      // stretched a lone child would put `Not started` somewhere absurd.
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 500,
+                  child: ReadingStateLine(
+                    statusLabel: 'Not started',
+                    statusColor: context.colors.secondaryText,
+                    progress: null,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final line = tester.getRect(find.byType(ReadingStateLine));
+      final word = tester.getRect(find.text('Not started'));
+      expect(word.left, moreOrLessEquals(line.left, epsilon: 0.5));
+    });
+  });
+
   group('type pressure', () {
     testWidgets('Given the longest case at 2x text on the smallest phone, When the line is '
         'drawn, Then the page pair wraps and nothing leaves the measure', (tester) async {

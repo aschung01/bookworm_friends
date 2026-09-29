@@ -23,25 +23,26 @@ import 'app_sheet.dart';
 /// summed from the widgets — `book_status_bottom_sheet_test.dart` pins it and will fail if a
 /// row is added that does not fit.
 ///
-/// The other states, for the record: Not started 122, Reading 227, Finished 228, set aside
-/// clean 276.
+/// The other states, for the record: Not started 122, Reading clean 227, Reading dirty 287,
+/// set aside clean 276.
 ///
-/// **What this costs is a void on `Not started`** — 165pt of it, the sheet being sized for a
-/// state that book is three taps from. That is the deliberate trade, and the thing it buys is
-/// in [AnimatedSize]'s comment: the reader's first interaction with a new book is a drag off
-/// the origin, which is exactly the transition that used to move the track out from under
-/// their finger.
-const double _kContentHeight = 287;
-
-/// The title row's height, which is [ElevatedActionButton]'s and not the title's.
+/// **287 → 336 when Save moved to the foot**, which is the cost of that move and is worth
+/// having in one place. The title row gave back 11 (it no longer holds a 32pt button beside a
+/// ~21pt heading) and the commit row costs 60 (44 plus its 16pt gap), and the frame follows the
+/// tallest state, so every state pays the 60 whether or not it draws the buttons.
 ///
-/// **Pinned because Save's arrival is what still moved the track after the frame went in.**
-/// [_kContentHeight] stopped the sheet resizing, and the case that checks it measures the
-/// track's rectangle rather than the sheet's height — which caught the residual: the title
-/// sets to about 21pt on its own and the Save button is 32, so a `Row` sized to its tallest
-/// child grew 11pt the instant the sheet went dirty and pushed everything below it down.
-/// Same defect as the sheet's, one level in, and invisible to any assertion about height.
-const double _kTitleRowHeight = 32;
+/// **What this costs is a void on `Not started`** — 214pt of it, on a state whose content is
+/// 122. Over half that sheet is empty cream, and it is the state a reader meets first. The
+/// trade it buys is in [AnimatedSize]'s comment: the reader's first interaction with a new book
+/// is a drag off the origin, which is exactly the transition that moved the track out from
+/// under their finger. It was 165 before the commit row moved down here.
+///
+/// Two ways to close it, neither taken yet: draw the start-date row at the origin, which fills
+/// 60 and closes a real gap — a start date cannot currently be set without first inventing a
+/// position by dragging the thumb — or frame only the states a *drag* moves between (Not
+/// started → Reading → Finished, 288) and let the confirmed set-aside transition resize the
+/// sheet, which halves the void and costs a resize on two deliberate taps.
+const double _kContentHeight = 336;
 
 /// Everything one Save carries out of [showBookStatusBottomSheet].
 ///
@@ -220,64 +221,24 @@ Future<void> showBookStatusBottomSheet(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: _kTitleRowHeight,
-                    child: Row(
-                      children: [
-                        // **The sheet's own title, not the book's.** The book's title was tried
-                        // first, on the reasoning that the row should never re-centre; it read
-                        // as a page header rather than as a sheet title, and it told the reader
-                        // something they already knew — they arrived from that book's page, and
-                        // the book is still on screen behind this sheet. What a sheet title owes
-                        // them is what this sheet *does*.
-                        //
-                        // Expanded so the title holds the left edge whether or not Save is
-                        // drawn beside it.
-                        Expanded(
-                          child: Text(
-                            l10n.readingProgressTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.subtitle,
-                          ),
-                        ),
-                        // **Its arrival is the dirty indicator**, which is why there is no
-                        // other unsaved marker on the sheet and no disabled Save to explain.
-                        if (dirty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: ElevatedActionButton(
-                              width: 92,
-                              height: _kTitleRowHeight,
-                              buttonText: l10n.save,
-                              onPressed: () {
-                                Navigator.pop(context);
-                                onSave((
-                                  status: status,
-                                  // Only the dates the status has meaning for, so a book put
-                                  // back to Not started does not keep the dates the form was
-                                  // holding for its own benefit.
-                                  startDate: status >= bookStatusReading
-                                      ? start
-                                      : null,
-                                  finishDate:
-                                      status == bookStatusFinished ||
-                                          status == bookStatusSetAside
-                                      ? finish
-                                      : null,
-                                  progress: position,
-                                  progressPage: positionPage,
-                                  // A position the reader erased, which is a different
-                                  // instruction from one they did not touch. See the record.
-                                  clearProgress:
-                                      position == null && progress != null,
-                                  totalPages: total != pageCount ? total : null,
-                                ));
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
+                  // **The sheet's own title, not the book's.** The book's title was tried
+                  // first, on the reasoning that the row should never re-centre; it read as a
+                  // page header rather than as a sheet title, and it told the reader something
+                  // they already knew — they arrived from that book's page, and the book is
+                  // still on screen behind this sheet. What a sheet title owes them is what
+                  // this sheet *does*.
+                  //
+                  // **It was a `Row` holding the title and Save, inside a `SizedBox` pinned to
+                  // 32.** Both are gone because Save moved to the foot: the `Row` had one child
+                  // left, and the pin existed only because Save is 32 where the title is ~21, so
+                  // the row grew 11pt the instant the sheet went dirty and pushed the track
+                  // down. The cause moved rather than the rule changing — the commit buttons now
+                  // arrive *below* the track, where [_kContentHeight] absorbs them.
+                  Text(
+                    l10n.readingProgressTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.subtitle,
                   ),
                   const SizedBox(height: 16),
                   // The whole state in one line: the status word, the percent, and the page
@@ -434,6 +395,90 @@ Future<void> showBookStatusBottomSheet(
                         // what the new status needs, never clear what it does not.
                         start ??= DateTime.now();
                       }),
+                    ),
+                  ],
+                  // **The commit row, at the foot of the sheet.**
+                  //
+                  // Save used to sit in the title row beside the heading, at 92×32. It was
+                  // asked for down here, and the move brings two things with it. `Reset`
+                  // becomes possible — a 92pt slot next to a title has room for one button,
+                  // a full-width row has room for a pair — and the sheet stops putting its
+                  // only write control in the corner furthest from the reader's thumb, on a
+                  // sheet whose whole argument for being a sheet was that the control is in
+                  // the thumb's arc.
+                  //
+                  // **Its arrival is still the dirty indicator**, which is why there is no
+                  // other unsaved marker on the sheet and no disabled Save to explain.
+                  // Arriving *below* the track rather than above it is also what let the
+                  // title row's pinned height go: [_kContentHeight] absorbs anything that
+                  // appears down here, where a taller title row pushed the track down.
+                  //
+                  // The delete sheet's geometry — two `Expanded` buttons at 44 with a 12pt
+                  // gap, recessive on the left — because that is the app's existing button
+                  // pair and a second arrangement would be a new thing to learn.
+                  if (dirty) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedActionButton(
+                            height: 44,
+                            buttonText: l10n.reset,
+                            backgroundColor: colors.surfaceVariant,
+                            textStyle: AppTextStyles.label,
+                            // **Not `Cancel`, and the difference is that this one stays.**
+                            // Dismissing the sheet already discards — that is the invariant
+                            // Save is the other half of — so a button that dismissed would
+                            // be a second spelling of a gesture the reader already has. This
+                            // puts every field back to what the sheet opened with and leaves
+                            // them on it, which is what someone who over-dragged the track
+                            // wants: the old value back, and to carry on.
+                            //
+                            // Reset to the *arguments*, not to a snapshot taken later, so it
+                            // restores exactly the values `dirty` compares against and the
+                            // row cannot survive its own press.
+                            onPressed: () => setState(() {
+                              status = currentStatus;
+                              start = startDate;
+                              finish = finishDate;
+                              position = progress;
+                              positionPage = progressPage;
+                              total = pageCount;
+                            }),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedActionButton(
+                            height: 44,
+                            buttonText: l10n.save,
+                            onPressed: () {
+                              Navigator.pop(context);
+                              onSave((
+                                status: status,
+                                // Only the dates the status has meaning for, so a book put
+                                // back to Not started does not keep the dates the form was
+                                // holding for its own benefit.
+                                startDate: status >= bookStatusReading
+                                    ? start
+                                    : null,
+                                finishDate:
+                                    status == bookStatusFinished ||
+                                        status == bookStatusSetAside
+                                    ? finish
+                                    : null,
+                                progress: position,
+                                progressPage: positionPage,
+                                // A position the reader erased, which is a different
+                                // instruction from one they did not touch. See the record.
+                                clearProgress:
+                                    position == null && progress != null,
+                                totalPages: total != pageCount ? total : null,
+                              ));
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],

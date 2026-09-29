@@ -640,7 +640,42 @@ arithmetic slip:** at the origin the read-out collapses to a single word — no 
 pair — and neither date row is drawn, which the row-sum did not model. The sheet is comfortably
 shorter than both it replaces (342 and 368) in every state.
 
-### And then the sheet was given one height, 335
+### Save and Reset sit at the foot, and the read-out ends at the right edge
+
+Save was in the title row beside the heading, at 92×32. It was asked for at the foot, and the
+move brings two things with it: `Reset` becomes possible — a 92pt slot next to a title has room
+for one button, a full-width row has room for a pair — and the sheet stops putting its only
+write control in the corner furthest from the thumb, on a sheet whose whole argument for being a
+sheet is that the control sits in the thumb's arc. The delete sheet's geometry: two `Expanded`
+buttons at 44 with a 12pt gap, recessive on the left.
+
+**Its arrival is still the dirty indicator**, so there is no other unsaved marker and no
+disabled Save to explain. Arriving _below_ the track is also what let the title row's pinned
+height go — anything appearing down there cannot push the track, which is what the pin was for.
+
+**`Reset` is not `Cancel`, and the difference is that it stays.** Dismissing already discards,
+so a button that dismissed would be a second spelling of a gesture the reader has. This one puts
+every field back to what the sheet opened with and leaves them on it, which is what someone who
+over-dragged the track wants: the old value back, and to carry on. It restores the _arguments_,
+which is the same set `dirty` compares against, so a reset sheet is clean by construction and the
+row cannot survive its own press.
+
+**The page pair moved to the trailing edge.** `Reading 71%` holds the left, `~ p.307 / 432` ends
+flush with the line. Two things about how, both of which a simpler spelling gets wrong:
+
+- **`WrapAlignment.spaceBetween` over two nested groups, not over the flat list of four parts.**
+  Flat, it spreads all four evenly and floats the percent into the middle of the line.
+- **Nested `Wrap`s, not a `Row` with a `Spacer`.** A `Row`'s children have no run to drop to, so
+  its only degradations are overflow and ellipsis — and a clipped status word is the one failure
+  that makes the line lie about the book. Nested, each group is handed the outer `Wrap`'s own
+  `maxWidth`, so a group too wide for the line soft-wraps inside itself.
+
+When the two groups will not fit the pair drops to a second run and lands **left**, because
+`spaceBetween` leaves a lone child in a run at the start. Right for a continuation; right-aligning
+it would open a ragged gutter mid-read-out. The same rule is why the origin state needs no special
+casing: one child, at the start.
+
+### And then the sheet was given one height, 335 — now 384
 
 **Every figure above is a natural height, and the sheet no longer has one.** It is framed to
 its tallest state — set aside with a dirty Save, 287 of content plus `AppSheet`'s 48 — so every
@@ -664,16 +699,36 @@ Two details that only a rendered frame and a rectangle-level assertion would fin
   clipped one at large accessibility text sizes; `ConstrainedBox(minHeight:)` lets a state that
   genuinely needs more room grow, and the `AnimatedSize` is kept for that one residual case.
 
-**What it costs is a void on Not started: 165pt, just under half that state.** The sheet is
-sized for a book three taps away, and the state with the least in it is the state a reader
-meets first. That is the trade, and it is accepted rather than overlooked — the alternative is a
-115pt jump on the first drag of every new book, which is the most common interaction this sheet
-has. `book_status_bottom_sheet_test.dart` pins the 335 on Not started specifically so the cost
-is findable rather than implied.
+**287 → 336 of content when Save moved to the foot**, so 384 in total. The title row gave back
+11 and the commit row costs 60, and the frame follows the tallest state, so every state pays the
+60 whether or not it draws the buttons.
 
-Not taken, and available: always drawing the start-date row at the origin would fill 60 of the
-165 and close a real gap — today a start date cannot be set without first inventing a position
-by dragging the thumb.
+**Which makes the sheet taller than both it replaced, and that headline claim is now false.**
+342 for the old status sheet, 368 for the percent wheel. Two deliberate decisions spent the
+margin, in order: framing the sheet so the track stops moving under a drag (275 → 335), and
+moving Save to the foot (335 → 384). Neither is reversible by tightening a gap, and the second is
+what crossed the line. The case that used to assert `lessThan(342)` now asserts `greaterThan` both,
+so the size is a number someone has to look at rather than a claim that quietly stopped being true.
+
+**And what it costs is a void on Not started: 214pt, over half that state.** Its content is 122 —
+a single word in the read-out, no date row, no text action, nothing to commit — and the sheet is
+sized for a set-aside book, which that book is three taps away from. It was 165 before the commit
+row moved down.
+
+**Both sides of the trade got worse at once**, which is the thing to weigh: the jump the frame
+prevents also grew, from 115pt to 165, because the commit row arrives below the track. So the
+frame is worth more than it was and costs more than it did.
+`book_status_bottom_sheet_test.dart` pins the 214 as a number for exactly this reason.
+
+Three ways out, none taken:
+
+- **Draw the start-date row at the origin.** Fills 60 of the 214 and closes a real gap — a start
+  date cannot currently be set without first inventing a position by dragging the thumb. The only
+  option that costs the no-jump property nothing.
+- **Frame only the states a drag moves between** — Not started → Reading → Finished, 288 — and let
+  the two confirmed status transitions resize the sheet by 48. Halves the void; a tap's target
+  moving after the tap has completed is a milder defect than a drag's target moving mid-gesture.
+- **Give the frame up.** The void goes and the 165pt jump comes back.
 
 **Verified by rendering the mockup:** the popover, hung under the title the way
 `showShelfPickerPopover` hangs its card, **occludes the year rail** — which is a second reason

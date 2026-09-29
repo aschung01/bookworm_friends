@@ -1002,6 +1002,25 @@
                 flex: 1;
                 text-align: left;
             }
+            /* The commit row at the foot: the delete sheet's geometry, two equal buttons at 44
+               with a 12pt gap and the recessive one on the left. */
+            .dev .cmt {
+                display: flex;
+                gap: calc(12 * var(--pt));
+            }
+            .dev .cmt .cfm,
+            .dev .cmt .rst {
+                flex: 1;
+                text-align: center;
+                padding: calc(13 * var(--pt)) 0;
+                border-radius: calc(22 * var(--pt));
+            }
+            .dev .cmt .rst {
+                background: var(--surfaceVariant);
+                color: var(--brandText);
+                font-size: calc(13 * var(--pt));
+                font-weight: 700;
+            }
             .dev .cfm {
                 background: var(--brandFill);
                 color: #fff;
@@ -1111,7 +1130,13 @@
                 color: var(--text);
                 font-variant-numeric: tabular-nums;
             }
+            /* The trailing group: the page inside the total, pushed to the line's right edge.
+               `margin-left: auto` is CSS's spelling of the `WrapAlignment.spaceBetween` the
+               Dart uses over two nested groups -- and for the same reason it is on the *sub*
+               span rather than `justify-content: space-between` on `.sl`: spreading all three
+               spans would float the percent into the middle of the line. */
             .dev .sl .sub {
+                margin-left: auto;
                 margin-left: auto;
                 font-size: calc(12 * var(--pt));
                 color: var(--text2);
@@ -1787,7 +1812,15 @@
                     case "title":
                         return `<div class="ttl">${b.v}</div>`;
                     case "head":
-                        return `<div class="hrow"><span class="ttl">${b.v}</span><span class="cfm">${b.btn}</span></div>`;
+                        /* **The button used to be in this row and now is not.** `head` still
+                           means "this screen is dirty" -- it is what `H_SHEET` marks and what
+                           verify.js reads to tell a dirty screen from a clean one -- but the
+                           pair it implies is appended at the foot by `frame`, because Save
+                           moved down there and `Reset` came with it. Rendering it here would
+                           put the buttons above the read-out again. */
+                        return `<div class="ttl">${b.v}</div>`;
+                    case "cmt":
+                        return `<div class="cmt"><span class="rst">Reset</span><span class="cfm">${b.btn || "Save"}</span></div>`;
                     case "seg":
                         return `<div class="seg${b.items.length > 3 ? " four" : ""}">${b.items
                             .map(
@@ -1909,7 +1942,14 @@
                     s.pt
                         ? `<span class="ptl${s.over ? " bad" : ""}">${s.pt}pt</span>`
                         : ""
-                }${blocks(s.body)}</div>`;
+                }${blocks(s.body)}${
+                    /* The commit row, appended rather than authored into each body: it belongs
+                       to every screen that carries a `head` block and to no other, so deriving
+                       it keeps the two from drifting apart across fifteen screens. */
+                    (s.body || []).some((b) => b.t === "head")
+                        ? blocks([{ t: "gap", h: 16 }, { t: "cmt" }])
+                        : ""
+                }</div>`;
             }
 
             /* ==================================================================

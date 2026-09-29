@@ -5,6 +5,10 @@
   "continueWithGoogle": "Continue with Google",
   "save": "Save",
   "cancel": "Cancel",
+  "reset": "Reset",
+  "@reset": {
+    "description": "Discards the merged status sheet's unsaved answers and puts every field back to what the sheet opened with, without closing it. Distinct from cancel, which the app uses for a button that dismisses: this one stays on the sheet, which is the point \u2014 a reader who over-dragged the track wants the old value back and to carry on, not to start the whole visit again. Paired with save at the foot of that sheet and drawn in the recessive surfaceVariant beside it."
+  },
   "delete": "Delete",
   "edit": "Edit",
   "done": "Done",

@@ -1354,8 +1354,14 @@ The vocabulary moved with it: _Interested_ → **Not started**, _Read_ → **Fin
 
 ### The sheet is one height, 335, and that is a fix rather than a tidy-up
 
-`_kContentHeight` is **287**, the tallest state's content — a set-aside book with a dirty Save
-— plus `AppSheet`'s own 48. Every state renders at that, so the sheet never resizes.
+`_kContentHeight` is **336**, the tallest state's content — a set-aside book with a dirty Save —
+plus `AppSheet`'s own 48, so **384**. Every state renders at that, so the sheet never resizes.
+
+**384 is taller than both sheets this replaced** (342 for the old status sheet, 368 for the
+percent wheel), so the merge's headline claim is false now. Two decisions spent the margin: the
+frame itself (275 → 335) and moving Save to the foot, which adds a 60pt commit row to the tallest
+state and therefore to every state (335 → 384). The test asserts `greaterThan` both figures, so
+the size is something someone has to look at rather than a claim that quietly rotted.
 
 **A bottom sheet is anchored to the bottom of the screen**, so growing moves its _top_ edge up
 and every child with it. Both date rows sit **below** the track, so dragging off the origin
@@ -1373,16 +1379,39 @@ Four things not to undo:
 - **`ConstrainedBox(minHeight:)`, never `SizedBox`.** A fixed height trades a moving control
   for a clipped one at large accessibility text sizes. The `AnimatedSize` survives only for
   that residual case.
-- **The 165pt void on Not started is the accepted cost, and it is pinned.** That state's content
-  is 122, so just under half of it is empty cream, on the state a reader meets first. The
-  alternative is a 115pt jump on the first drag of every new book. If it needs closing, the
-  drawn-but-not-taken option is to show the start-date row at the origin — it fills 60 of the
-  165 and closes a real gap, since today a start date cannot be set without first inventing a
-  position by dragging the thumb.
+- **The 214pt void on Not started is the accepted cost, and it is pinned as a number.** That
+  state's content is 122, so **over half** of it is empty cream, on the state a reader meets
+  first. It was 165 before the commit row moved to the foot — and the jump the frame prevents
+  grew from 115 to 165 in the same move, so both sides of the trade got worse at once. Three
+  ways out, written up in the spec and none taken: draw the start-date row at the origin (fills
+  60, closes a real gap, costs the no-jump property nothing); frame only the drag range, 288,
+  and let the two confirmed status transitions resize; or give the frame up.
 - **`BottomSheet` dismisses on a drag past half its own height**, so any test that pans to
   dismiss must measure the sheet rather than hard-code a distance. One case broke twice on
   this — once when fonts were loaded, once when the frame went in — and its own comment had
   recorded the first.
+
+### Save and Reset are at the foot, and the read-out ends flush right
+
+Save left the title row on instruction. Two things not to undo:
+
+- **`Reset` restores the sheet's arguments, not a later snapshot.** Those are the same values
+  `dirty` compares against, so a reset sheet is clean by construction and the commit row cannot
+  survive its own press. It is **not** `Cancel`: dismissing already discards, so a button that
+  dismissed would be a second spelling of a gesture the reader has. Reset stays on the sheet,
+  which is the point — someone who over-dragged the track wants the old value back and to carry
+  on.
+- **The page pair is right-aligned by `WrapAlignment.spaceBetween` over _two nested groups_.**
+  Over the flat list of four parts it spreads all four and floats the percent into the middle;
+  and a `Row` with a `Spacer` — the obvious spelling — throws away the reason
+  `ReadingStateLine` is a `Wrap` at all, since a `Row`'s children have no run to drop to and a
+  clipped status word is the one failure that makes the line lie about the book.
+
+**A test for the trailing edge needs a wider box than the sheet's 327.**
+`reading_state_line_test.dart` loads no fonts, so every glyph is a one-em square, `Reading` sets
+to 151pt against about 75 on a phone, and the two groups do not fit — the pair drops to a second
+run and the case measures the wrap instead of the alignment. It uses 500. Real widths live in
+`book_status_bottom_sheet_test.dart`, which loads the app's faces.
 
 ### Stopping a book is confirmed; resuming it is not
 
@@ -1471,7 +1500,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2020, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2028, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1484,7 +1513,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2020 cases). There is no expected-failure list any
+`flutter test` passes completely (2028 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

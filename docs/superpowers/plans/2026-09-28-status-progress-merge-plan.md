@@ -128,6 +128,25 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   book. Available and not taken: drawing the start-date row at the origin would fill 60 of it
   and close a real gap, since a start date currently cannot be set without first inventing a
   position.
+- **Save and Reset moved to the foot, and the read-out's page pair to the right edge**, both on
+  instruction. The first is what made `Reset` possible at all — a 92pt slot beside a title holds
+  one button, a full-width row holds a pair — and it let the title row's pinned height go, since
+  anything arriving below the track cannot push the track. `Reset` restores the sheet's
+  *arguments*, the same set `dirty` compares against, so a reset sheet is clean by construction
+  and the row cannot survive its own press.
+- **The right edge needed `spaceBetween` over two nested groups, not over the flat list.** Flat it
+  spreads all four parts and floats the percent into the middle; and a `Row` with a `Spacer` — the
+  obvious spelling — throws away the wrap degradation `ReadingStateLine` exists for, since a Row's
+  children have no run to drop to. The case that pins it needs a **500pt** box rather than the
+  sheet's 327, because `reading_state_line_test.dart` draws in the test font where `Reading` sets
+  to 151pt and the two groups do not fit; at 327 it would measure the wrap instead of the
+  alignment.
+- **And the sheet went 335 → 384, past both sheets it replaced (342, 368).** The commit row costs
+  60 and the frame follows the tallest state, so every state pays it. The case that asserted
+  `lessThan` both now asserts `greaterThan` both — the claim is false and is recorded as false
+  rather than deleted. The void on Not started went 165 → **214**, over half that sheet; the jump
+  the frame prevents went 115 → 165 in the same move, so both sides of the trade got worse at
+  once. Three ways out are written into the spec and none is taken.
 - **`ConstrainedBox(minHeight:)`, never `SizedBox`.** A fixed height trades a moving control
   for a clipped one at large accessibility text sizes. The `AnimatedSize` is kept for exactly
   that residual case and for nothing else.

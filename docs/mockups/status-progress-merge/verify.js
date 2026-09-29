@@ -295,6 +295,48 @@ ok(hasSave("one-null") === false, "one-null (clean) has no Save");
 ok(hasSave("one-nopages") === false, "one-nopages (clean) has no Save");
 ok(hasSave("one-armed") === true, "one-armed (dirty) has Save");
 
+console.log("-- and it is at the foot, with Reset beside it --");
+/* Save sat in the title row at 92x32 and was asked for at the foot, which is what made
+   `Reset` possible: a slot beside a title holds one button, a full-width row holds a pair.
+   Checked as *order within the rendered frame* rather than by looking for a block, because
+   "at the foot" is the claim -- the buttons must come after the track, not before it. */
+/* Its own lookup: `specOf` is declared further down, and hoisting a `const` is not a thing. */
+const frameOf = (id) => {
+  for (const [, l] of A.resolveView("track", "screens"))
+    for (const it of l) if (it[0] === id) return A.frame(it[3]);
+  return "";
+};
+const dirtyFrame = frameOf("one-armed");
+ok(dirtyFrame.includes('class="rst"'), "one-armed draws Reset");
+ok(
+  dirtyFrame.indexOf('class="cfm"') > dirtyFrame.indexOf('class="trk"') &&
+    dirtyFrame.indexOf('class="rst"') > dirtyFrame.indexOf('class="trk"'),
+  "both sit below the track, which is why their arrival cannot push it",
+);
+ok(
+  dirtyFrame.indexOf('class="rst"') < dirtyFrame.indexOf('class="cfm"'),
+  "Reset is the leading, recessive one",
+);
+ok(
+  !frameOf("one-rest").includes('class="rst"'),
+  "and a clean screen draws neither",
+);
+
+console.log("-- the read-out's page pair ends at the right edge --");
+/* The Dart uses `WrapAlignment.spaceBetween` over two nested groups. The page is that the
+   free space goes in *one* place -- before the trailing group -- and not spread across all
+   three spans, which would float the percent into the middle of the line. `margin-left: auto`
+   on the trailing span is the CSS with that same property; `justify-content: space-between`
+   on the row is the spelling that gets it wrong. */
+ok(
+  /\.dev \.sl \.sub \{[^}]*margin-left: auto/.test(src),
+  "the trailing group is pushed right",
+);
+ok(
+  !/\.dev \.sl \{[^}]*justify-content/.test(src),
+  "and the row does not spread every span instead",
+);
+
 console.log("-- Interested keeps a bar, undotted, thumb at the origin --");
 const specOf = (id) =>
   A.resolveView("track", "screens")

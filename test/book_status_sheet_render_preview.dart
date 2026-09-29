@@ -30,7 +30,7 @@ import 'package:bookworm_friends/providers/library_provider.dart'
     show bookStatusFinished, bookStatusReading, bookStatusSetAside;
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/book_status_bottom_sheet.dart';
 
-/// The shortest phone the app supports. The sheet's tallest state measures 287 of this, so
+/// The shortest phone the app supports. The sheet's tallest state measures 336 of this, so
 /// a frame that fits here fits everywhere.
 const Size _kSurface = Size(375, 667);
 
@@ -179,6 +179,27 @@ void main() {
       pageCount: _kPageCount,
     );
     await _shoot(tester, 'setaside_light_en');
+  });
+
+  // **Dirty**, which is the only state that draws the commit row — and the state the frame
+  // is sized to, so it is also the only one with no slack in it. Reached the way a reader
+  // reaches it rather than by passing a flag, since `dirty` is a comparison against the
+  // opening values and cannot be faked from outside.
+  testWidgets('Set aside and dirty, light, en', (tester) async {
+    await _open(
+      tester,
+      theme: AppTheme.light,
+      locale: const Locale('en'),
+      currentStatus: bookStatusReading,
+      startDate: start,
+      progress: 0.71,
+      pageCount: _kPageCount,
+    );
+    await tester.tap(find.text('Stop reading this'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stop reading'));
+    await tester.pumpAndSettle();
+    await _shoot(tester, 'dirty_light_en');
   });
 
   // The confirmation behind `Stop reading this`, which is the one sheet in this feature
