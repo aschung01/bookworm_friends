@@ -48,7 +48,8 @@ drawing; build it as drawn and raise it at review.
 
 All three phases were built in one pass, in the worktree `.worktrees/status-progress` on
 `feat/status-progress-merge`. **`flutter test`: 2013 pass, 0 fail** (baseline before the work
-was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test/`.
+was 1903; **2058** after the review rounds below). `flutter analyze` is clean of errors and
+warnings in `lib/` and `test/`.
 
 ### Corrections to this plan and to the spec, made while building
 
@@ -370,6 +371,29 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   title it wrapped; a bare chevron announces the platform's generic "Show menu", which says
   that a menu exists and nothing about what it is for. It is the `tooltip` on the fallback and
   a `Semantics` label on the native button, as `AdaptiveIconButton` does it.
+- **The collapsed header's chevron cost the title four characters, and the suite could not see
+  it.** Rendered at 390pt the row read `Books fini... 12 v`: the collapsed header is
+  `Row(spaceBetween)[Expanded(title), Flexible(year)]` with both at flex 1, so the title half
+  is half the width, and the count plus a 30pt control take the fixed end of it. Every
+  assertion passed — `library_clearance_test.dart` watches for *overflow*, and an ellipsis is
+  the widget doing exactly what it was told. Found by looking at
+  `read_set_filter_render_preview.dart`, which the same file's own header calls the only way to
+  judge this control. Fixed by weighting the title `flex: 2`, which narrows rather than
+  contradicts the reason both halves were made flexible: the danger was the year label starving
+  the title, so the answer is to weight the title, not to unweight it.
+- **The height cost was measured by removing the control and re-measuring**, rather than
+  estimated: title row 21 → 30, clearance 324 → 315. Worth the detour, because the estimate
+  in the first draft of the comment was "~20pt title line" and the two numbers that matter
+  (what the row was, what the library keeps) are both now pinned as equalities in
+  `library_clearance_test.dart` rather than bounds — a cost accepted at a size should be
+  re-argued rather than allowed to creep.
+- **`LibrarySheetTitle.onTap` has had no caller in `lib/` since the platform menu landed**, and
+  no test either, so it went dead in the commit before this one without anything noticing.
+  Kept with a doc note saying so: it is the only spelling of *this row is a button* the app
+  has, and the Friends sheet and the Card are plausibly next. Recorded there that it is **not**
+  a route back to the whole-row target, since restoring that means stretching a label-less
+  `CNPopupMenuButton` behind the title, where the platform owns the tap and this callback would
+  still have nothing to do.
 
 ### Second review round — the control was rebuilt
 
@@ -789,14 +813,25 @@ because the label row overflowed, which the `Flexible` restoration made live aga
       button label.
 - [x] **Step 3: Two checkable rows** — _Show finished only_ (default) and _Show all read_.
 - [x] **Step 4: The year rail stays directly under the title row.** `expandedHeader` is
-      `Column[title, ReadFilter(expanded: true)]` (`finished_books_sheet.dart:308`) and that
+      `Column[title, ReadFilter(expanded: true)]` (`finished_books_sheet.dart:338`) and that
       is structure. Drawn to scale the popover **occludes the rail**, which is recorded rather
       than designed away — if it is judged worse than the occlusion, drop the card below the
       rail instead of moving the rail.
 - [x] **Step 5: The filter applies in both sheet states; only the chevron is expanded-only.**
       A filter honoured in one state and not the other makes the count jump on collapse.
       Collapsed, the header row already has the year popover competing for it
-      (`finished_books_sheet.dart:281`).
+      (`finished_books_sheet.dart:306`).
+
+      **The second half is reversed: the chevron is on both headers now, on instruction.** The
+      reason it was expanded-only was a claim about *width*, and width is not the constraint —
+      both halves of the collapsed row are flexible and the title ellipsizes, so a control
+      there takes room from the title's characters and not from the row's edge. It had to move
+      because collapsed is where this sheet *opens*: the filter was honoured there from the
+      start, so the pile was already obeying an answer the reader had to expand the sheet to
+      give. Cost, measured: the title row goes 21 → 30 and the visible library 324 → 315 on
+      the smallest phone, off iOS 26 only (native, the year popover beside it is already a
+      36pt `CNPopupMenuButton`) and at default text scale only (at 2x the title's line is
+      43pt). And the row's flex became **2:1** — see the build log.
 - [x] **Step 6: A set-aside provider, merged inside the sheet**, so nothing else in the app
       changes. `userFinishedBooksProvider` (`library_provider.dart:535`) needs the same
       sibling, because **a friend's library shows the filter too** — which means a friend can

@@ -394,6 +394,102 @@ void main() {
       expect(row.left, greaterThanOrEqualTo(sheet.left));
       expect(row.right, lessThanOrEqualTo(sheet.right));
     });
+
+    testWidgets('Given the collapsed sheet, When the filter chevron joins the year popover, '
+        'Then the row holds and the library pays 9pt for it', (tester) async {
+      // **The row that actually pays for the collapsed chevron, and the reason it is
+      // measured here rather than asserted in the sheet's own file.** The collapsed
+      // sheet's height is its header plus `ReadPile.extent`, so a taller header is a
+      // shorter library — and this is the only file that watches that number.
+      //
+      // Measured on the smallest phone: the title row goes **21 -> 30** and the clearance
+      // **324 -> 315**. The 30 is the control's box, so the cost is the box minus the
+      // line it sits on.
+      //
+      // **It is the fallback that pays, and the fallback is not what ships.** On iOS 26
+      // the year popover beside it is a 36pt `CNPopupMenuButton`, so this row is already
+      // 36 tall and the 30pt box is free; `flutter test` reports Android, so what is
+      // measured here is the strict case. At 2x text it is free on both paths — the title
+      // is 43pt by itself, which is the case the two above cover.
+      await _pump(
+        tester,
+        surfaceSize: _smallPhone,
+        readBooks: _manyReadBooks(),
+      );
+
+      final title = find.byType(LibrarySheetTitle);
+      expect(
+        find.descendant(
+          of: title,
+          matching: find.byIcon(Icons.keyboard_arrow_down),
+        ),
+        findsOneWidget,
+        reason:
+            'without the chevron this measures the row it was written to replace',
+      );
+      expect(
+        tester.getRect(title).height,
+        closeTo(30, 0.5),
+        reason:
+            'the control is a 30pt box around an 18pt glyph, and it sets the row '
+            'height because the 17pt title line is 21',
+      );
+      expect(
+        _clearance(tester),
+        closeTo(315, 1),
+        reason:
+            'so the library keeps 315 of the 324 it had. A number rather than a '
+            'bound, because this is a cost that was accepted at a size and should '
+            'be re-argued rather than allowed to creep',
+      );
+      expect(tester.takeException(), isNull);
+
+      // Two flexible halves and one fixed control between them: the title ellipsizes,
+      // and the end of the row stays inside the card.
+      final sheet = tester.getRect(find.byType(LibrarySheet));
+      final row = tester.getRect(title);
+      expect(row.left, greaterThanOrEqualTo(sheet.left));
+      expect(row.right, lessThanOrEqualTo(sheet.right));
+    });
+
+    testWidgets(
+      'Given the largest text scale on the smallest phone, When collapsed with the '
+      'chevron, Then it costs nothing and nothing overflows',
+      (tester) async {
+        // The half of the claim above that says the cost is scale-dependent: at 2x the
+        // title's own line is 43pt, so the 30pt box disappears inside it and the
+        // collapsed header is the height it always was. This is also the row where the
+        // year popover's label is widest, which is what made both halves flexible.
+        await _pump(
+          tester,
+          surfaceSize: _smallPhone,
+          textScaler: const TextScaler.linear(2),
+          readBooks: _manyReadBooks(),
+        );
+
+        final title = find.byType(LibrarySheetTitle);
+        expect(
+          tester.getRect(title).height,
+          closeTo(43, 0.5),
+          reason: 'the text sets the row height here, not the control',
+        );
+        expect(
+          tester.widget<LibrarySheetTitle>(title).count,
+          greaterThanOrEqualTo(10),
+          reason: 'and a two-digit count, the wider of the two cases',
+        );
+        expect(tester.takeException(), isNull);
+
+        final sheet = tester.getRect(find.byType(LibrarySheet));
+        expect(
+          tester.getRect(title).right,
+          lessThanOrEqualTo(sheet.right),
+          reason:
+              'the test font draws every glyph one em wide, so this is a strict '
+              'upper bound on how much room the title wants',
+        );
+      },
+    );
   });
 
   // Phase 3 measures a third case, and the measurement changed the design. The

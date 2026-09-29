@@ -173,8 +173,8 @@ const all = (v, k) =>
 
 console.log("-- inventory --");
 ok(
-  all("track", "screens").length === 23,
-  "23 screens (" + all("track", "screens").length + ")",
+  all("track", "screens").length === 24,
+  "24 screens (" + all("track", "screens").length + ")",
 );
 ok(all("track", "flows").length === 4, "4 flows");
 ok(
@@ -227,7 +227,7 @@ for (const id of ["sub-percent", "sub-page", "sub-total"])
 
 console.log("-- version patch: inherit / override / remove --");
 const dv = all("derived", "screens");
-ok(dv.length === 23, "derived overrides without adding or removing screens");
+ok(dv.length === 24, "derived overrides without adding or removing screens");
 const setAside = (v) =>
   A.resolveView(v, "screens")
     .flatMap(([, l]) => l)
@@ -663,8 +663,44 @@ for (const id of ["sheet-read", "sheet-popover", "sheet-all"]) {
     specOf(id).body.find((b) => b.t === "caps").items[0] === "All time",
     id + ": the year rail is the real one",
   );
-  ok(shdOf(id).chev === true, id + ": the title row carries the chevron");
 }
+/* The chevron is on EVERY read-sheet header now, collapsed included, which reverses
+   `sheet-popover`'s own caption -- see `sheet-collapsed`. Checked across all four
+   rather than in the rail loop, because the collapsed screen deliberately has no
+   rail: collapsed the years ARE a popover, so capsules would cost the whole card. */
+const readHeaders = ["sheet-read", "sheet-popover", "sheet-all", "sheet-collapsed"];
+for (const id of readHeaders)
+  ok(shdOf(id).chev === true, id + ": the title row carries the chevron");
+
+/* The collapsed row, which is the one this screen was added for. Two chevrons live in
+   it -- the completion filter's attached to the count, the year filter's flush right --
+   and the drawing has to hold both or it is not the row that pays the cost. */
+const coll = specOf("sheet-collapsed");
+ok(
+  rowsOf(coll)[0] === "shd" && rowsOf(coll).length === 2,
+  "sheet-collapsed: a title row and a pile, and no rail between them (" +
+    rowsOf(coll).join(">") +
+    ")",
+);
+ok(
+  shdOf("sheet-collapsed").yr === "All time",
+  "sheet-collapsed: the year filter is in the title row, not under it",
+);
+ok(
+  A.frame(coll).split("&#8250;").length - 1 === 2,
+  "sheet-collapsed: both chevrons are actually drawn",
+);
+const collCap = A.resolveView("track", "screens")
+  .flatMap(([, l]) => l)
+  .find((i) => i[0] === "sheet-collapsed")[2];
+ok(
+  collCap.includes("324") && collCap.includes("315"),
+  "sheet-collapsed: the caption states what the library pays",
+);
+ok(
+  collCap.includes("2:1") && collCap.includes("Books&nbsp;fini..."),
+  "and the flex, with the ellipsis that forced it",
+);
 
 /* The superseded `Finished` / `All` segment. Checked as a block KEY across every
    version, not as a substring of the page -- the word "filter" is all over the
@@ -815,7 +851,7 @@ for (const v of A.VERSIONS.map((x) => x[0])) {
   for (const [, l] of A.resolveView(v, "flows"))
     for (const it of l) for (const st of it[3]) (A.frame(st[2]), n++);
 }
-ok(n === 96, `${n} specs rendered without throwing`);
+ok(n === 99, `${n} specs rendered without throwing`);
 
 console.log("-- pt badges --");
 let withPt = 0,
@@ -825,7 +861,7 @@ for (const [, l] of A.resolveView("track", "screens"))
     if (it[3].pt) withPt++;
     if (it[3].over) over++;
   }
-ok(withPt === 23, "every screen carries a measured height (" + withPt + ")");
+ok(withPt === 24, "every screen carries a measured height (" + withPt + ")");
 ok(over === 6, "6 screens flagged as rejected / overflowing (" + over + ")");
 
 console.log("-- search resolves words visible on the page --");

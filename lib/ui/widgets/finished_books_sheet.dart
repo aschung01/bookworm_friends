@@ -222,6 +222,17 @@ class _FinishedBooksSheetState extends State<FinishedBooksSheet> {
         .indexOf(widget.filterYear)
         .clamp(0, years.length - 1);
 
+    // **Built for both headers**, because the completion filter is now reachable from
+    // either. A closure rather than one instance: only one header is in the tree at a
+    // time — `LibrarySheet` picks between them with a ternary — but a `ModalCoverBuilder`
+    // that appeared twice would be two subscriptions to the same route, and the cost of
+    // a second construction is nothing.
+    //
+    // Inert while the library is being edited, the same gate the rail takes.
+    ReadSetFilterMenuButton? filterMenu() => widget.isEditMode
+        ? null
+        : ReadSetFilterMenuButton(current: _filter, onSelected: _takeFilter);
+
     // What the *content* may occupy: the sheet keeps the tab bar's band and the home
     // indicator below the collapsible area, so both come off the top.
     final available =
@@ -267,17 +278,41 @@ class _FinishedBooksSheetState extends State<FinishedBooksSheet> {
       // `library_clearance_test.dart` catches it at 2x with a two-digit count.
       // `spaceBetween` is what keeps the filter flush right once it is flexible.
       //
-      // **No chevron on this title, and that is the one thing about the completion
-      // filter that is state-dependent.** The set on show is not: a filter honoured
-      // expanded and ignored collapsed would make the count jump as the sheet was put
-      // away. What the collapsed row has no room for is a *second* control — the year
-      // popover is already competing with the title for it, which is what the
-      // clearance test measures.
+      // **The chevron is on this title too, which reverses what this comment said.** It
+      // used to argue that the chevron was "the one thing about the completion filter
+      // that is state-dependent", because the collapsed row had no room for a *second*
+      // control with the year popover already competing with the title for it. Reaching
+      // the filter here is what matters: collapsed is where this sheet *opens*, so asking
+      // for set-aside books meant expanding it first, while the pile in front of the
+      // reader was already obeying the answer.
+      //
+      // **The old argument was right about there being a cost and wrong about which one.**
+      // It costs height, not width: the collapsed sheet is `header + ReadPile.extent`, so a
+      // taller header is a shorter library, and the control's box is 30 against a 21pt
+      // title line. Measured on the smallest phone, the library keeps 315 of the 324 it
+      // had. Off iOS 26 only — native, the year popover beside it is already a 36pt
+      // `CNPopupMenuButton`, so the row is 36 tall either way and the chevron is **free**.
+      // `flutter test` reports Android, so `library_clearance_test.dart` measures the
+      // strict case.
+      //
+      // **The flex is 2:1, and an even split cost the title its last four characters.**
+      // With both halves at flex 1 this row read `Books fini... 12 v` on a 390pt phone —
+      // the title ellipsized because the count and the chevron take the fixed end of a
+      // half-width box. That is the one thing this header cannot spend: the title *is* the
+      // filter's read-out, so truncating it is truncating the state. The year label is
+      // what gives way instead, and it can afford to: it repeats inside its own menu, its
+      // chevron says as much, and `All time` reads from `All ti...` where `Books fini...`
+      // does not distinguish two modes.
       header: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: LibrarySheetTitle(title: titleText, count: visible.length),
+            flex: 2,
+            child: LibrarySheetTitle(
+              title: titleText,
+              count: visible.length,
+              menu: filterMenu(),
+            ),
           ),
           Flexible(
             child: ReadFilter(
@@ -303,23 +338,14 @@ class _FinishedBooksSheetState extends State<FinishedBooksSheet> {
       expandedHeader: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // **A widget rather than a callback**, because the menu is the platform's and
+          // UIKit presents it from the button's own tap. The title and count are no
+          // longer part of the target; the cost is argued in
+          // `read_set_filter_popover.dart`.
           LibrarySheetTitle(
             title: titleText,
             count: visible.length,
-            // Inert while the library is being edited, the same gate the rail below
-            // takes. The chevron goes with it, which is invisible: the sheet has been
-            // slid off the bottom of the screen by then.
-            //
-            // **A widget rather than a callback**, because the menu is the platform's
-            // and UIKit presents it from the button's own tap. The title and count are
-            // no longer part of the target; the cost is argued in
-            // `read_set_filter_popover.dart`.
-            menu: widget.isEditMode
-                ? null
-                : ReadSetFilterMenuButton(
-                    current: _filter,
-                    onSelected: _takeFilter,
-                  ),
+            menu: filterMenu(),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 8),

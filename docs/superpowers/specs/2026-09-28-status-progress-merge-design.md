@@ -493,8 +493,8 @@ happened yet and there is no position to derive from.
 ### Where a set-aside book lives: the read sheet, and the title is the filter
 
 `FinishedBooksSheet` gains a two-state completion filter, and **the sheet's own title is its
-read-out**. A chevron-down sits to the right of the title, and tapping it opens the platform's
-own menu with two checkable rows.
+read-out**. A chevron-down sits to the right of the title in **both** of the sheet's headers,
+and tapping it opens the platform's own menu with two checkable rows.
 
 **This said _"title, count and chevron are one tap target"_, on the grounds that "three
 separately tappable things in a row this size would be three ways to miss". That is reversed,
@@ -571,12 +571,36 @@ ReadFilter(expanded: true)]` — and that is structure, not preference. It is al
 filter could not live on the rail's row: drawn to scale, a card hung under the title
 **occludes the rail**, so the two would have collided in geometry as well as in wording.
 
-**The filter applies in both sheet states; only the chevron is expanded-only.** An earlier
-draft scoped the whole thing to the expanded sheet and left "the spine pile completed-only",
-which is inconsistent once the filter is a persisted view mode — the count would jump on
-collapse. Collapsed, the header's row already has the year popover competing for it, and
-`library_clearance_test.dart` exists because that row overflows at 2× text with a two-digit
-count.
+**The filter applies in both sheet states, and so does the chevron.** An earlier draft scoped
+the whole thing to the expanded sheet and left "the spine pile completed-only", which is
+inconsistent once the filter is a persisted view mode — the count would jump on collapse.
+
+**Then the chevron alone stayed expanded-only for a round, and that is reversed too.** The
+reason given was that "collapsed, the header's row already has the year popover competing for
+it, and `library_clearance_test.dart` exists because that row overflows at 2× text with a
+two-digit count" — a claim about **width**, and width is not the constraint. Both halves of
+that row are flexible and the title ellipsizes, so a control there takes room from the title's
+_characters_ rather than from the row's edge.
+
+It had to move because **collapsed is where this sheet opens.** The filter was honoured in both
+states from the first draft, so the pile in front of the reader was already obeying an answer
+they had to expand the sheet to give — the control was the only expanded-only part of it.
+
+**What it costs is height, and only off iOS 26.** The collapsed sheet is its header plus
+`ReadPile.extent`, so a taller header is a shorter library. Measured on the smallest phone: the
+title row goes **21 → 30** and the visible library **324 → 315**, the 30 being the control's own
+box. Native it is free — the year popover beside it is a 36pt `CNPopupMenuButton`, so the row
+is 36 tall either way — and at 2× text it is free on both paths, because the title's line is
+43pt by itself. `flutter test` reports Android, so the suite measures the strict case.
+
+**And the row's flex is 2:1, because an even split cost the title its last four characters.**
+Rendered at 390pt with both halves at flex 1 it read `Books fini... 12 ⌄`: the count and the
+chevron take the fixed end of a half-width box, so the title is what gave way. That is the one
+thing this header cannot spend — the title _is_ the read-out, so truncating it truncates the
+state, and `Books fini...` does not tell the two modes apart. The **year label** gives way
+instead and can afford to: it repeats inside its own menu, its chevron says it is one, and
+`All ti...` still reads. Note this narrows the original reason both halves were made flexible,
+which was the popover starving the title; the fix is to weight the title, not to unweight it.
 
 **A friend's library shows it too.** `FinishedBooksSheet` also serves friends through
 `userFinishedBooksProvider`, which needs a set-aside sibling. The consequence, stated rather

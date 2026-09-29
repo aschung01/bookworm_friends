@@ -1504,6 +1504,60 @@ still with the original defect, and now one idiom further behind, since a picker
 the same `UIMenu` candidate. Still deliberately left until this one has been looked at on a
 device.
 
+### The completion filter is on both of the read sheet's headers, and it costs 9pt of library
+
+`FinishedBooksSheet` passes `ReadSetFilterMenuButton` to **both** `header` and
+`expandedHeader`. It was expanded-only for several rounds, and the reason recorded in the code,
+the spec, the plan and the mockup was that _"the collapsed row already has the year popover
+competing with the title for it"_.
+
+**That was a claim about width, and width is not the constraint.** The collapsed header is
+`Row(spaceBetween)[Expanded(title), Flexible(year)]` — both halves flexible, title
+`maxLines: 1` with an ellipsis — so a control there takes room from the title's _characters_,
+never from the row's edge. The row cannot overflow, which is also why
+`library_clearance_test.dart` never objected.
+
+**It moved because collapsed is where this sheet opens.** The filter itself was honoured in
+both states from the first draft, so the reader's pile was already obeying an answer they had
+to expand the sheet to give. The control was the only expanded-only part of it.
+
+**The real cost is height, and it is paid on one path only.** The collapsed sheet is its header
+plus `ReadPile.extent`, so a taller header is a shorter library. Measured on the smallest
+phone, by removing the control and re-measuring rather than by estimating:
+
+| | title row | visible library |
+| --- | --- | --- |
+| without the chevron | 21 | 324 |
+| with it | 30 | 315 |
+
+The 30 is the control's own box. **Native it is free**: the year popover beside it is a 36pt
+`CNPopupMenuButton`, so the row is 36 tall either way — and at 2× text it is free on both
+paths, because the title's own line is 43pt. `flutter test` reports Android, so the suite
+measures the strict case. Both numbers are pinned as **equalities** in
+`library_clearance_test.dart`, not bounds: a cost accepted at a size should be re-argued
+rather than allowed to creep.
+
+### The collapsed row's flex is 2:1, and an even split ellipsized the title
+
+With both halves at flex 1 that row rendered `Books fini... 12 ⌄` on a 390pt phone. **The one
+thing this header cannot spend**, because the title _is_ the filter's read-out — truncating it
+truncates the state, and `Books fini...` does not tell `Books finished` from `Books read`. The
+**year label** gives way instead and can afford to: it repeats inside its own menu, its chevron
+says it is one, and `All ti...` still reads.
+
+This **narrows** the reason both halves were made flexible in the first place, rather than
+contradicting it. That reason was the year popover's accessibility-sized label starving the
+title of the room its count needs — so the fix is to weight the title, not to unweight it.
+
+**No assertion could have caught this, and that is the general lesson.**
+`library_clearance_test.dart` watches for overflow, and an ellipsis is the widget doing exactly
+what it was told; every case passed on the defect. It was found by looking at
+`build/read_filter_preview/`, which that renderer's own header already says is the only way to
+judge this control — the preview now writes the collapsed state and the collapsed menu in both
+themes. `docs/mockups/status-progress-merge/index.html`'s `sheet-collapsed` draws the row,
+because two chevrons in it — the completion filter's attached to the count, the year filter's
+flush right, same glyph, same size, same ink — is a thing only looking settles.
+
 ### Erasing a position needed a new flag, because `null` was already taken
 
 `updateBookStatus`'s `progress` parameter uses `null` to mean **do not write**, so "the
@@ -1796,7 +1850,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2055, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2058, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1809,7 +1863,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2055 cases). There is no expected-failure list any
+`flutter test` passes completely (2058 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

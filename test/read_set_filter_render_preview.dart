@@ -130,6 +130,16 @@ class _HostState extends State<_Host> {
   }
 }
 
+/// The completion filter's chevron, scoped to the title.
+///
+/// **Unscoped this finds two collapsed**, because the year filter's own popover draws the
+/// same glyph at the same size in the same row — which is the whole reason the collapsed
+/// chevron needs looking at rather than asserting.
+final _chevron = find.descendant(
+  of: find.byType(LibrarySheetTitle),
+  matching: find.byIcon(Icons.keyboard_arrow_down),
+);
+
 Future<void> _shoot(WidgetTester tester, Directory dir, String name) async {
   final boundary = tester.renderObject<RenderRepaintBoundary>(
     find.byKey(const ValueKey('shot')),
@@ -216,7 +226,21 @@ void main() {
       await tester.pumpWidget(_host(theme.value));
       await tester.pumpAndSettle();
 
-      // The sheet opens on its pile; the chevron and the grid are both expanded-only.
+      // **The sheet opens on its pile, and the chevron is now there too** — which is a
+      // fourth thing only looking can settle. Two chevrons sit in this one row, the
+      // completion filter's beside the title and the year filter's at the far right, and
+      // whether that reads as two controls or as one control drawn twice is not something
+      // an assertion can answer. The grid is still expanded-only.
+      await _shoot(tester, dir, '${theme.key}-collapsed');
+
+      // And the menu over the pile rather than over the grid: collapsed there is no year
+      // rail under the anchor to occlude, so what it covers is the reader's own spines.
+      await tester.tap(_chevron);
+      await tester.pumpAndSettle();
+      await _shoot(tester, dir, '${theme.key}-collapsed-menu');
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+
       await tester.drag(find.text('Books finished'), const Offset(0, -700));
       await tester.pumpAndSettle();
       await _shoot(tester, dir, '${theme.key}-finished');
@@ -225,12 +249,7 @@ void main() {
       // count and chevron were one tap target until the menu became the platform's, and
       // UIKit presents a `UIMenu` from the button's own tap. See
       // `read_set_filter_popover.dart`.
-      await tester.tap(
-        find.descendant(
-          of: find.byType(LibrarySheetTitle),
-          matching: find.byIcon(Icons.keyboard_arrow_down),
-        ),
-      );
+      await tester.tap(_chevron);
       await tester.pumpAndSettle();
       await _shoot(tester, dir, '${theme.key}-popover');
 

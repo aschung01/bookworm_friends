@@ -1926,13 +1926,17 @@ class LibrarySheetTitle extends StatelessWidget {
   /// reader has to find by accident; neither half is useful alone, so neither is
   /// separately settable.
   ///
-  /// Null by default, so the callers that only state a title and a count — the
-  /// Friends sheet, the Card, and the read sheet's own *collapsed* header — are
-  /// unaffected.
+  /// **Unread in `lib/` as of the read filter becoming a platform menu.** The read
+  /// sheet was its only caller: the title was the read-out of its completion filter and
+  /// this was the whole-row target that opened it. A `UIMenu` is presented by the button
+  /// the reader touched, so that target could not survive — see [menu], and
+  /// `read_set_filter_popover.dart` for the argument.
   ///
-  /// The read sheet passes it expanded, where the title is the read-out of its
-  /// completion filter and tapping it opens the menu that changes which set the sheet
-  /// is showing. See `ReadSetFilter`.
+  /// Kept rather than deleted because it is the only spelling of *this row is a button*
+  /// the app has, and the Friends sheet and the Card are both plausibly next. **Not a
+  /// route back to the whole-row target**, though: restoring that means stretching a
+  /// label-less `CNPopupMenuButton` behind the Flutter title, where the platform owns the
+  /// tap and this callback would still have nothing to do.
   final VoidCallback? onTap;
 
   /// A control drawn where the chevron would be, which supplies its own chevron.
@@ -1942,6 +1946,11 @@ class LibrarySheetTitle extends StatelessWidget {
   /// [onTap] on this row has nothing to call. The read sheet passes
   /// `ReadSetFilterMenuButton` here and no [onTap]; see that file for the cost, which is
   /// that the title and count stop being part of the target.
+  ///
+  /// Passed by **both** of that sheet's headers. Collapsed it lands beside the year
+  /// popover, which is the row `library_clearance_test.dart` exists to measure: the width
+  /// holds because the title ellipsizes, and what the control costs there is *height*,
+  /// since the collapsed sheet is its header plus the pile.
   ///
   /// Mutually exclusive with [onTap] by assertion rather than by type: both draw the
   /// chevron, and a row with two of them would be two affordances for one menu.

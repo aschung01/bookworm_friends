@@ -515,24 +515,57 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given the sheet collapsed and expanded, When compared, Then only the chevron '
-      'is expanded-only',
-      (tester) async {
-        await _pump(tester, books: finished(), setAside: setAside());
+    testWidgets('Given the sheet collapsed and expanded, When compared, Then the chevron is on '
+        'both titles', (tester) async {
+      // **This asserted the opposite**, as *"only the chevron is expanded-only"*, on
+      // the reason *"the collapsed row already has the year popover competing with the
+      // title for it"*. That was a claim about **width**, and width was never the
+      // constraint: both halves of the collapsed row are flexible and the title
+      // ellipsizes, so the chevron takes room from the title's *characters* rather
+      // than from the row's edge. What it costs collapsed is **height** — 21pt of
+      // title row becomes the control's 30 — and that is measured in
+      // `library_clearance_test.dart` rather than asserted here.
+      //
+      // The chevron is scoped to `LibrarySheetTitle` for a reason that matters more
+      // now than it did: collapsed, the *year* filter draws the same glyph at the same
+      // size in the same row, so an unscoped finder would find two.
+      await _pump(tester, books: finished(), setAside: setAside());
 
-        expect(
-          chevron,
-          findsNothing,
-          reason:
-              'the collapsed row already has the year popover competing with the '
-              'title for it',
-        );
+      expect(chevron, findsOneWidget);
 
-        await _dragToTop(tester);
-        expect(chevron, findsOneWidget);
-      },
-    );
+      await _dragToTop(tester);
+      expect(chevron, findsOneWidget);
+    });
+
+    testWidgets('Given the collapsed sheet, When the filter is switched there, Then the pile '
+        'follows and the sheet stays shut', (tester) async {
+      // **Why the chevron is drawn collapsed at all.** Collapsed is where this sheet
+      // opens, so asking for set-aside books meant expanding it first — while the pile
+      // in front of the reader was already obeying the answer, since the filter was
+      // honoured in both states from the start. The control was the only part of it
+      // that was expanded-only.
+      await _pump(tester, books: finished(), setAside: setAside());
+      expect(find.byType(ReadPile), findsOneWidget);
+      expect(find.byType(BookVertical), findsNWidgets(3));
+
+      await choose(tester, 'Show all read');
+
+      expect(
+        find.byType(ReadPile),
+        findsOneWidget,
+        reason:
+            'the menu is a route over the sheet, so choosing a row must not move '
+            'the sheet itself',
+      );
+      expect(find.byType(ReadMonthGrid), findsNothing);
+      expect(headerTitle(tester), _allReadTitle);
+      expect(headerCount(tester), 5);
+      expect(
+        find.byType(BookVertical),
+        findsNWidgets(5),
+        reason: 'and the pile is drawing the wider set, not only counting it',
+      );
+    });
 
     testWidgets(
       'Given the inclusive filter, When the sheet is collapsed, Then the count does '
