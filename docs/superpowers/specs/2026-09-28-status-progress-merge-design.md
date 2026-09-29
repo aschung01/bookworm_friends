@@ -643,9 +643,10 @@ shorter than both it replaces (342 and 368) in every state.
 ### The track ticks every 5%, where the wheel ticks every stop
 
 Asked for: _"similar haptics when moving the linear progress bar's thumb with when we scroll
-the custom wheel."_ The wheel is a `CupertinoPicker`, whose `_handleHapticFeedback` calls
-`HapticFeedback.selectionClick()` on each change of selected item. That call is copied
-exactly. Two things about it are not.
+the custom wheel."_ The wheel is a `CupertinoPicker`, whose `_handleHapticFeedback` makes
+**two** calls on each change of selected item — `HapticFeedback.selectionClick()` and
+`SystemSound.play(SystemSoundType.tick)`. Both are copied exactly. Two things about them are
+not.
 
 **The step is 5%, not 1%, and the arithmetic is the whole argument.** The picker's
 `_kItemExtent` is 34, so one tick costs 34pt of finger travel. `CupertinoSlider` maps its value
@@ -675,9 +676,30 @@ iOS to reach the haptic also flipped the glass branch, built a `CNSlider`, and l
 holding a platform view it could not drag — _"Found 0 widgets with type CupertinoSlider"_. The
 two switches look independent and are not.
 
-**No `SystemSound.play(SystemSoundType.tick)`**, which the picker plays alongside the haptic.
-iOS's own sliders are silent, the audible click is a picker affordance, and the request was
-about haptics.
+**The audible tick is half of it, and this shipped once without it.** The first round read
+"similar haptics" as naming a channel and refused `SystemSound.play(SystemSoundType.tick)`,
+reasoning that iOS's own sliders are silent and the audible click is a picker affordance. The
+reply was _"i still don't hear the tick tick sound ... which i hear when scrolling thru the
+wheel"_ — so the brief was the whole sensation, the wheel was the specification, and a
+defensible argument had answered a question nobody asked. **Recorded rather than deleted
+because the reasoning was sound and the premise was wrong**: whether a stock iOS slider clicks
+is not the question when the request names the control to imitate.
+
+**The sound is the wheel's specifically, and the near miss is the neighbouring constant.**
+`SystemSoundType.tick` reaches `AudioServicesPlaySystemSound(1157)` — `kWheelsOfTimeSoundId` in
+the engine, the picker's own scroll sound and the only thing the framework uses it for.
+`SystemSoundType.click` is id 1306, the keypress. Both are "a tick" in prose; one sounds like a
+wheel and one like a keyboard, which is why the case asserts the argument by name.
+
+**The sound needs no platform gate, unlike the haptic.** The framework documents `.tick` as
+_"ignored on all platforms except iOS"_ and the engine bears it out — `playSystemSound:`
+compares the string and matches nothing off iOS. So the audible half is iOS-only for free, and
+the divergence from the wheel above is confined to the channel that can carry it.
+
+**Silent mode mutes the sound and not the haptic, which is a reason to keep both.** Those ids
+go through iOS's UI-sound path, the one the ringer switch governs. On a silenced phone the
+haptic is the entire signal; on a simulator, which has no haptics, the sound is. Neither
+channel is sufficient alone, so "I can't hear it" has a second cause that is not a defect.
 
 ### The derived page lost its tilde
 

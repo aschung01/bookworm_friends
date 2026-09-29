@@ -76,10 +76,10 @@ import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 ///
 /// Asked for: _"similar haptics when moving the linear progress bar's thumb with when we
 /// scroll the custom wheel."_ The wheel is a `CupertinoPicker`, whose
-/// `_handleHapticFeedback` fires `HapticFeedback.selectionClick()` on every change of
-/// selected item, so that call is copied exactly. Two things about it are not: the step, and
-/// the platform gate — see [_ReadingTrackState._kHapticStep] and
-/// [_ReadingTrackState._tick].
+/// `_handleHapticFeedback` fires **two** calls on every change of selected item —
+/// `HapticFeedback.selectionClick()` and `SystemSound.play(SystemSoundType.tick)` — and both
+/// are copied exactly. Two things about them are not: the step, and the platform gate — see
+/// [_ReadingTrackState._kTickStep] and [_ReadingTrackState._tick].
 ///
 /// **A tick per whole percent would be a buzz rather than a click, and the arithmetic is the
 /// whole argument.** The picker's `_kItemExtent` is 34, so one tick costs 34pt of finger
@@ -98,9 +98,24 @@ import 'package:bookworm_friends/ui/widgets/native_glass.dart';
 /// haptics did not ask for — the track would express less than the wheel it is meant to
 /// agree with.
 ///
-/// **No `SystemSound.play(SystemSoundType.tick)`, which the picker does play** alongside the
-/// haptic. iOS's own sliders are silent; the audible click is a picker affordance, and the
-/// request was about haptics.
+/// **The audible tick is half of it, and this shipped once without it.** The first round read
+/// "similar haptics" as naming a channel, and refused `SystemSound.play(SystemSoundType.tick)`
+/// on the grounds that iOS's own sliders are silent and the audible click is a picker
+/// affordance. The reply was _"i still don't hear the tick tick sound ... which i hear when
+/// scrolling thru the wheel"_ — so the brief was the whole sensation, the wheel was the
+/// specification, and a defensible argument was answering a question nobody had asked. Both
+/// calls now fire together, in the picker's order.
+///
+/// **That sound is the wheel's, specifically, and the near miss is a different one.**
+/// `SystemSoundType.tick` reaches `AudioServicesPlaySystemSound(1157)`, which the engine names
+/// `kWheelsOfTimeSoundId` — the picker's own scroll sound, and the only thing the framework
+/// uses it for. `SystemSoundType.click` is id 1306, the keypress, so the obvious-looking
+/// constant would have made the track sound like a keyboard beside a wheel that did not.
+///
+/// **Silent mode mutes the sound and not the haptic, which is a reason to keep both rather
+/// than a defect to fix.** Those ids go through iOS's UI-sound path, the one the ringer switch
+/// governs, so on a silenced phone the haptic is the entire signal — and in a pocket, or on a
+/// simulator, which has no haptics at all, the sound is.
 class ReadingTrack extends StatefulWidget {
   const ReadingTrack({
     super.key,
@@ -140,7 +155,10 @@ class ReadingTrack extends StatefulWidget {
 class _ReadingTrackState extends State<ReadingTrack> {
   /// How far the thumb travels between ticks, in percent. See the class doc for why it is
   /// not 1.
-  static const int _kHapticStep = 5;
+  ///
+  /// Gates both channels from one number, so the click and the vibration cannot drift into
+  /// being two events at similar rates. It was `_kHapticStep` while there was one to gate.
+  static const int _kTickStep = 5;
 
   /// Which 5% band the thumb was last felt in, or null at the origin.
   ///
@@ -154,7 +172,7 @@ class _ReadingTrackState extends State<ReadingTrack> {
   /// origin is a state rather than a number here — it means "never asked" — and it is worth
   /// a tick for the same reason the wheel ticks: the word above the track changes.
   static int? _detentOf(double? progress) =>
-      progress == null ? null : (progress * 100).round() ~/ _kHapticStep;
+      progress == null ? null : (progress * 100).round() ~/ _kTickStep;
 
   @override
   void initState() {
@@ -170,7 +188,7 @@ class _ReadingTrackState extends State<ReadingTrack> {
     _lastDetent = _detentOf(widget.progress);
   }
 
-  /// The wheel's own call, `HapticFeedback.selectionClick()`.
+  /// The wheel's own two calls, in the wheel's own order.
   ///
   /// **Not the wheel's platform gate, though, and that is deliberate.**
   /// `CupertinoPicker._handleHapticFeedback` switches on `defaultTargetPlatform` and returns
@@ -180,6 +198,12 @@ class _ReadingTrackState extends State<ReadingTrack> {
   /// and Android has a perfectly good selection haptic. So this follows the app rather than
   /// the framework, and the consequence is stated: on Android the track ticks where the
   /// wheel does not.
+  ///
+  /// **The sound needs no gate at all, and that is the tidy half.** The framework documents
+  /// `SystemSoundType.tick` as *"ignored on all platforms except iOS"*, and the engine bears
+  /// it out — `playSystemSound:` compares the string and simply matches nothing off iOS. So
+  /// the audible half is iOS-only without a line of Dart spent on it, and the divergence from
+  /// the wheel is confined to the channel that can carry it.
   ///
   /// It is also what keeps this testable. Gating on `defaultTargetPlatform` would mean every
   /// case had to set `debugDefaultTargetPlatformOverride = TargetPlatform.iOS` — which flips
@@ -191,6 +215,8 @@ class _ReadingTrackState extends State<ReadingTrack> {
     if (detent == _lastDetent) return;
     _lastDetent = detent;
     HapticFeedback.selectionClick();
+    // Second, as in the picker: `_handleHapticFeedback` vibrates and then plays.
+    SystemSound.play(SystemSoundType.tick);
   }
 
   @override

@@ -1311,18 +1311,39 @@ actually differs.
 mid-track reaches nothing and **passes vacuously**, which is not hypothetical: it silently
 disabled the celebrate-on-the-transition assertion in `book_details_streak_test.dart`.
 
-**The track ticks every 5%, and 1% would be a buzz.** `HapticFeedback.selectionClick()` is
-copied verbatim from `CupertinoPicker._handleHapticFeedback`, which is what the percent wheel
-is. The step is not: the picker's `_kItemExtent` is 34, so one of its ticks costs 34pt of
+**The track ticks every 5%, and 1% would be a buzz.** `HapticFeedback.selectionClick()` **and
+`SystemSound.play(SystemSoundType.tick)`**, both copied verbatim from
+`CupertinoPicker._handleHapticFeedback`, which is what the percent wheel is. The step is not: the picker's `_kItemExtent` is 34, so one of its ticks costs 34pt of
 finger travel, while `CupertinoSlider` maps its value over `width - 44` — 283pt of travel on
 this sheet's 327 — so a 1% tick costs **2.83pt**. One twelfth of the wheel's, at every speed,
 because the ratio is scale-free. **The value is not quantised to match**, so the ticks are
 landmarks rather than detents and 73% stays reachable by dragging.
 
+**The sound is half of it, and it shipped once without — the tick is a pair, not a haptic.**
+The first round read "similar haptics" as naming a channel and left the sound out, arguing that
+iOS's own sliders are silent. The answer was _"i still don't hear the tick tick sound"_: the
+wheel was the specification, not the word. **Don't re-derive that argument** — whether a stock
+slider clicks is not the question when the request names the control to copy.
+
+**`SystemSoundType.tick` is the wheel's sound and `.click` is the keyboard's.** `.tick` reaches
+`AudioServicesPlaySystemSound(1157)`, `kWheelsOfTimeSoundId` in the engine, which the framework
+uses for nothing else; `.click` is id 1306, the keypress. The test asserts the argument **by
+name** for that reason, since both are "a tick" in prose.
+
+**Silent mode mutes the sound and not the haptic, and the simulator has no haptics at all.** So
+_neither_ channel is sufficient alone, and a report of "I can't hear it" has a cause that is not
+a defect — check the ringer switch and check it is a device. This is the reason the pair is not
+reduced to whichever one seems to be doing the work.
+
 **It ticks on every platform, and `CupertinoPicker` does not — that is deliberate.** The
 picker's switch returns for everything but iOS, but the app's own three selection haptics
 (`read_filter.dart`, `friends_sheet.dart`, `library_sheet.dart`) are all unconditional. This
-follows the app, not the framework.
+follows the app, not the framework. **The sound needs no such decision**: the framework
+documents `.tick` as ignored off iOS and the engine matches nothing there, so it is iOS-only for
+free. A `Platform.isIOS` around it would be dead code — and the case
+`and the sound is asked for unconditionally too, gate-free` fails if anyone adds one, so read
+its comment first: the mock sits in front of the engine, so it records the call on the Android
+test platform and proves the absence of a Dart gate rather than anything about audibility.
 
 **Copying the picker's iOS gate breaks every test in a way that looks unrelated, so don't.**
 `useNativeGlass` reads `defaultTargetPlatform` too, so
@@ -1551,7 +1572,7 @@ track can only be judged on an iOS 26 device. Everything else in the sheet is se
 
 **Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
 does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
-why `AGENTS.md` always names them by path. Adding one does not move the 2036, and a preview
+why `AGENTS.md` always names them by path. Adding one does not move the 2042, and a preview
 that has rotted is therefore invisible until someone runs it. Its first frame came back
 with red text and yellow double underlines everywhere, which reads exactly like a defect in
 the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
@@ -1564,7 +1585,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2036 cases). There is no expected-failure list any
+`flutter test` passes completely (2042 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3

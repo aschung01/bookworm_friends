@@ -221,13 +221,38 @@ Future<void> _assist(WidgetTester tester, SemanticsAction action) async {
 /// means that exact method and not merely some vibration.
 final List<String> haptics = <String>[];
 
-void _captureHaptics(WidgetTester tester) {
+/// Every `SystemSound.play` argument, in order, beside [haptics].
+///
+/// **The wheel plays as well as vibrates**, and reading "similar haptics" as naming only the
+/// vibration is what shipped a silent track the first time. `CupertinoPicker` fires
+/// `SystemSound.play(SystemSoundType.tick)` on the line after `selectionClick()`, and the
+/// argument is worth asserting by name rather than by count: `.tick` is
+/// `AudioServicesPlaySystemSound(1157)`, the picker's own scroll sound, where the
+/// neighbouring `.click` is 1306, the keypress. Both are "a tick" in prose and only one
+/// sounds like the wheel.
+final List<String> sounds = <String>[];
+
+/// The two above interleaved, as bare method names, in arrival order.
+///
+/// Kept because neither list above can show *pairing*: two lists of equal length say the
+/// track vibrated as often as it played, not that it did both for one crossing. This is the
+/// only witness that a tick is one event on two channels.
+final List<String> feedback = <String>[];
+
+void _captureTicks(WidgetTester tester) {
   haptics.clear();
+  sounds.clear();
+  feedback.clear();
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
     SystemChannels.platform,
     (call) async {
       if (call.method == 'HapticFeedback.vibrate') {
         haptics.add(call.arguments as String? ?? 'default');
+        feedback.add(call.method);
+      }
+      if (call.method == 'SystemSound.play') {
+        sounds.add(call.arguments as String? ?? 'default');
+        feedback.add(call.method);
       }
       return null;
     },
@@ -259,7 +284,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, progress: 0.46);
-      _captureHaptics(tester);
+      _captureTicks(tester);
 
       // 331pt of travel for the full range in this 375pt box, so 5% is ~16.5pt. 20 clears
       // one band boundary (46% -> ~52%) and no more.
@@ -275,7 +300,7 @@ void main() {
         // read-out changes — and does *not* tick. That is the whole cost of the 5% step,
         // stated as a case: the tick is a landmark rather than a confirmation of the number.
         await _pump(tester, progress: 0.46);
-        _captureHaptics(tester);
+        _captureTicks(tester);
 
         // ~2%: enough to report, not enough to leave the 45-49 band.
         await _slide(tester, from: 0.46, dx: 7);
@@ -294,7 +319,7 @@ void main() {
       // value, useless for one about density. Forty small moves over half the track is
       // ~1.25% each: enough reports to count against the ticks.
       await _pump(tester, progress: 0);
-      _captureHaptics(tester);
+      _captureTicks(tester);
 
       final gesture = await tester.startGesture(_onThumb(tester, 0));
       for (var i = 0; i < 40; i++) {
@@ -319,7 +344,7 @@ void main() {
       // The tap is the property this control was designed around, and a haptic would
       // undo the reassurance: something that buzzes has done something.
       await _pump(tester, progress: 0.46);
-      _captureHaptics(tester);
+      _captureTicks(tester);
 
       await tester.tapAt(_onThumb(tester, 0.46));
       await tester.pumpAndSettle();
@@ -335,7 +360,7 @@ void main() {
       // and arriving at it turns the word above the track to `Not started`, which is the
       // same kind of event the wheel ticks for.
       await _pump(tester, progress: 0.02);
-      _captureHaptics(tester);
+      _captureTicks(tester);
 
       await _slide(tester, from: 0.02, dx: -30);
 
@@ -351,7 +376,7 @@ void main() {
         // tick for ground the thumb had already been moved across by someone else.
         await _pump(tester, progress: 0.46);
         await _slide(tester, from: 0.46, dx: 100);
-        _captureHaptics(tester);
+        _captureTicks(tester);
 
         // A move too small to leave the band the thumb is now in.
         final landed = reports.last!;
@@ -373,12 +398,117 @@ void main() {
       // than this app's. The cost, stated: on Android the track ticks where the wheel does
       // not.
       await _pump(tester, progress: 0.46);
-      _captureHaptics(tester);
+      _captureTicks(tester);
 
       await _slide(tester, from: 0.46, dx: 60);
 
       expect(reports, isNotEmpty);
       expect(haptics, isNotEmpty);
+    });
+
+    testWidgets('and the sound is asked for unconditionally too, gate-free', (
+      tester,
+    ) async {
+      // **This pins the absence of a Dart-side gate, and proves nothing about audibility.**
+      // The mock intercepts `SystemChannels.platform` in front of the engine, so it records
+      // the call on this Android test platform exactly as it would on iOS — where the engine
+      // is the thing that diverges, matching `SystemSoundType.tick` on iOS and nothing
+      // anywhere else. So the widget stays free of `Platform.isIOS`, the framework keeps its
+      // documented promise that `.tick` is "ignored on all platforms except iOS", and this
+      // case fails if anyone adds the wrapper back believing it was missing.
+      await _pump(tester, progress: 0.46);
+      _captureTicks(tester);
+
+      await _slide(tester, from: 0.46, dx: 60);
+
+      expect(sounds, isNotEmpty);
+    });
+  });
+
+  group("and the tick is audible, like the wheel's", () {
+    testWidgets(
+      "Given a drag across a 5% band, Then it plays the wheel's sound",
+      (tester) async {
+        await _pump(tester, progress: 0.46);
+        _captureTicks(tester);
+
+        await _slide(tester, from: 0.46, dx: 20);
+
+        // By name, not by count: `.click` would also be "a sound on every band" and would be
+        // the keypress id rather than the wheel's.
+        expect(sounds, ['SystemSoundType.tick']);
+      },
+    );
+
+    testWidgets('and the haptic comes first, as it does in the picker', (
+      tester,
+    ) async {
+      // `_handleHapticFeedback` vibrates and then plays. Kept in that order so the two
+      // controls cannot feel subtly unlike each other for a reason nobody would look for.
+      await _pump(tester, progress: 0.46);
+      _captureTicks(tester);
+
+      await _slide(tester, from: 0.46, dx: 20);
+
+      expect(feedback, ['HapticFeedback.vibrate', 'SystemSound.play']);
+    });
+
+    testWidgets('and a long drag pairs one sound to every haptic', (
+      tester,
+    ) async {
+      // The step gates both channels from one constant, so this is really a case about
+      // `_kTickStep` having exactly one reader. Forty small moves, as in the density case.
+      await _pump(tester, progress: 0);
+      _captureTicks(tester);
+
+      final gesture = await tester.startGesture(_onThumb(tester, 0));
+      for (var i = 0; i < 40; i++) {
+        await gesture.moveBy(const Offset(165 / 40, 0));
+        await tester.pump();
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(sounds.length, haptics.length);
+      expect(sounds.length, greaterThan(6));
+      expect(sounds.every((s) => s == 'SystemSoundType.tick'), isTrue);
+      // Strictly alternating, so the pairs are pairs rather than two runs that happen to
+      // match in length.
+      expect(
+        feedback,
+        List<String>.generate(
+          sounds.length * 2,
+          (i) => i.isEven ? 'HapticFeedback.vibrate' : 'SystemSound.play',
+        ),
+      );
+    });
+
+    testWidgets('and a drag inside one band is silent as well as unfelt', (
+      tester,
+    ) async {
+      // The cost of the 5% step, on the audible channel: the read-out changes and nothing
+      // clicks. Same trade as the haptic, and worth a case of its own because a sound is the
+      // more noticeable absence.
+      await _pump(tester, progress: 0.46);
+      _captureTicks(tester);
+
+      await _slide(tester, from: 0.46, dx: 7);
+
+      expect(reports, isNotEmpty);
+      expect(sounds, isEmpty);
+    });
+
+    testWidgets('and an inert tap is silent', (tester) async {
+      // The tap does nothing, so it must sound like nothing — louder version of the haptic
+      // case, since a click would be a claim that the tap landed.
+      await _pump(tester, progress: 0.46);
+      _captureTicks(tester);
+
+      await tester.tapAt(_onThumb(tester, 0.46));
+      await tester.pumpAndSettle();
+
+      expect(reports, isEmpty);
+      expect(sounds, isEmpty);
     });
   });
 

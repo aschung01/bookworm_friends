@@ -182,6 +182,30 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
 - **`_slide` reports exactly once however far it travels**, because it makes a single `moveBy`
   on purpose — so the density case had to drive forty small moves by hand. A case written
   against `_slide` measured one report and looked like the haptics were firing per report.
+- **The tick was silent for a round, because "haptics" was read as the channel rather than as
+  the sensation.** `CupertinoPicker._handleHapticFeedback` plays
+  `SystemSound.play(SystemSoundType.tick)` on the line after `selectionClick()`, and the first
+  pass deliberately left it out — iOS's own sliders are silent, so an audible slider looked like
+  a picker affordance misapplied. The answer was *"i still don't hear the tick tick sound ...
+  which i hear when scrolling thru the wheel"*. The reasoning is kept in the spec rather than
+  deleted, because it was sound and its premise was wrong: the request named the control to
+  imitate, which settles the question that argument was re-litigating.
+- **`SystemSoundType.tick` is the wheel's sound and `.click` is not**, so the case asserts the
+  argument by name. `.tick` reaches `AudioServicesPlaySystemSound(1157)` —
+  `kWheelsOfTimeSoundId`, the picker's own scroll sound, used for nothing else in the framework
+  — where `.click` is 1306, the keypress. Both read as "a tick" in prose.
+- **The sound needed no platform gate, which resolves the asymmetry above rather than repeating
+  it.** The framework documents `.tick` as ignored off iOS and `playSystemSound:` matches
+  nothing there, so the audible half is iOS-only for free while the haptic stays unconditional
+  by decision. One case pins the absence of a Dart-side gate and says in its comment that it
+  proves nothing about audibility — the mock sits in front of the engine.
+- **Neither channel is sufficient alone, and that is why the pair stays a pair.** Silent mode
+  mutes the sound through iOS's UI-sound path and leaves the haptic; the simulator has no
+  haptics and leaves the sound. So a report of "I can't hear it" has a cause that is not a
+  defect, and the third list in the test file — `feedback`, the two interleaved — exists because
+  two equal-length lists show matching rates rather than pairing.
+- **`_kHapticStep` became `_kTickStep`** once it gated two channels, so one constant still keeps
+  the click and the vibration from becoming two events at similar rates.
 - **The tilde is gone from the derived page, and `progressApproxPage` with it**, on
   instruction. The mark distinguished a page the app computed from one the reader typed, and
   it was removed from **both** call sites rather than only the read-out that was pointed at:
