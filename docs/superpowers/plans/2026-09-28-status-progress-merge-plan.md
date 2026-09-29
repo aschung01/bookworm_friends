@@ -460,9 +460,19 @@ because the label row overflowed, which the `Flexible` restoration made live aga
       platform view is composited onto comes out flat, with no rim and no shadow. The working
       idiom is a contentless `CNButton(style: glass)` stretched behind the content, whose
       material comes from the button configuration. See `AGENTS.md`, which now carries the
-      whole thing, including the three details that are easy to get wrong — a non-null no-op
-      `onPressed`, an `IgnorePointer`, and **not** clipping a material whose rim and shadow
-      are drawn outside its own box.
+      whole thing, including the four details that are easy to get wrong — a non-null no-op
+      `onPressed`, `interaction: false`, **not** clipping a material whose rim and shadow are
+      drawn outside its own box, and a `glassEffectId` without which `borderRadius` is a
+      silent no-op.
+
+      **Round two of the same report: "too round", and a row's tint overflowing the card.**
+      One cause, two symptoms. `CupertinoButtonPlatformView.swift`'s UIKit branch sets
+      `config.cornerStyle = round ? .capsule : .dynamic` and never reads `borderRadius`, so
+      the 216×97 material drew a stadium; only `GlassButtonSwiftUI.shapeForStyle` honours the
+      radius, and that view is selected only when `glassEffectUnionId` or `glassEffectId` is
+      non-null. The rows were clipped to the intended 14 all along, which is why the tint
+      looked square and sat outside the glass at each corner — the clip was right and the
+      material was wrong.
 - [x] **Step 5: Real `Slider` semantics, and this is not optional.** A drag-only scalar is
       unusable under VoiceOver. Wrap in `Semantics` with `slider: true` and implement
       `onIncrease`/`onDecrease`; the accessible path is allowed to do what the touch path

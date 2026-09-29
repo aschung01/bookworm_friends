@@ -329,13 +329,31 @@ class _ReadSetFilterCard extends StatelessWidget {
     // **`onPressed` is a no-op rather than null, and that is not sloppiness.** `CNButton`
     // sends `'enabled': (widget.enabled && widget.onPressed != null)`, so a null callback
     // disables the platform button and UIKit draws a *dimmed* material — the failure this
-    // change is fixing, arrived at from the other direction. The [IgnorePointer] is what
-    // makes it inert: `CNButton` hangs a `Listener` off the platform view to push
-    // `isHighlighted` on pointer down, and its own tap recognizer otherwise joins the arena
-    // and usually beats the row's. Neither is wanted on a menu — the whole card would flash
-    // under a finger aimed at one row, and the wrong row might answer. This is the opposite
+    // change is fixing, arrived at from the other direction.
+    //
+    // **`interaction: false` is what makes it inert, and it is the package's own mechanism.**
+    // It gates the `Listener` that pushes `isHighlighted` on pointer down, wraps the whole
+    // thing in an `IgnorePointer` itself, and on the Swift side becomes
+    // `.allowsHitTesting(false)`. Both halves are needed on a menu: otherwise the card
+    // flashes under a finger aimed at one row, and the button's own tap recognizer joins the
+    // arena and usually beats the row's, so the wrong row can answer. This is the opposite
     // choice from `_Capsule`, which leaves its button interactive on purpose so a selected
     // pill presses like the glass button it is.
+    //
+    // **`glassEffectId` is here to pick a code path, which is the ugly part and is load
+    // bearing.** A reader's second verdict was that the card looked "too round", and the
+    // cause is in `CupertinoButtonPlatformView.swift`: the UIKit branch sets
+    // `config.cornerStyle = round ? .capsule : .dynamic` and **never reads `borderRadius`**,
+    // so a 216×97 button came out a stadium. `borderRadius` is honoured only by
+    // `GlassButtonSwiftUI.shapeForStyle`, and that view is built only when
+    // `glassEffectUnionId != nil || glassEffectId != nil` — so setting an id is the one
+    // available way to ask for a 14pt glass rectangle. The id itself does nothing here:
+    // morphing needs a glass container to morph within, and there is none.
+    //
+    // That also fixed the second half of the same report — a row's tint spilling past the
+    // card's corners as a square-ish rectangle. One cause, two symptoms: the rows are
+    // clipped to [_kRadius] and the material was drawing a capsule, so at each corner the
+    // ink sat outside the glass. Both are 14 now, and the clip matches the material.
     final glass = useNativeGlass
         ? Stack(
             // **Not clipped, which is the second half of the fix.** A glass button's shadow
@@ -347,25 +365,27 @@ class _ReadSetFilterCard extends StatelessWidget {
             fit: StackFit.passthrough,
             children: [
               Positioned.fill(
-                child: IgnorePointer(
-                  child: CNButton(
-                    // No content. The rows above are Flutter's; this is here for the
-                    // material alone.
-                    label: '',
-                    onPressed: () {},
-                    config: const CNButtonConfig(
-                      style: CNButtonStyle.glass,
-                      // Null would mean a capsule, which on a 216×97 card is a 48pt arc
-                      // instead of the drawing's 14.
-                      borderRadius: _kRadius,
-                      padding: EdgeInsets.zero,
-                    ),
-                    // **Off.** The default destroys the platform view whenever a modal is
-                    // above this widget's host route, and this card *is* that modal —
-                    // nothing above this route can ever need our glass gone, so the
-                    // question is better not asked.
-                    autoHideOnModal: false,
+                child: CNButton(
+                  // No content. The rows above are Flutter's; this is here for the
+                  // material alone.
+                  label: '',
+                  onPressed: () {},
+                  config: const CNButtonConfig(
+                    style: CNButtonStyle.glass,
+                    // Null means a capsule, and so does the UIKit branch whatever this
+                    // says — see above for why `glassEffectId` has to come with it.
+                    borderRadius: _kRadius,
+                    padding: EdgeInsets.zero,
+                    glassEffectId: 'readSetFilterCard',
+                    // Material, not a control: no wobble under a touch it cannot receive.
+                    glassEffectInteractive: false,
+                    interaction: false,
                   ),
+                  // **Off.** The default destroys the platform view whenever a modal is
+                  // above this widget's host route, and this card *is* that modal —
+                  // nothing above this route can ever need our glass gone, so the
+                  // question is better not asked.
+                  autoHideOnModal: false,
                 ),
               ),
               ClipRRect(

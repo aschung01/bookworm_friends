@@ -1398,16 +1398,33 @@ Three details that are easy to get wrong and are all load-bearing:
   `'enabled': (widget.enabled && widget.onPressed != null)`, so a null callback disables the
   platform button and UIKit draws a **dimmed** material — the same flat result, reached from
   the other direction.
-- **Wrap it in `IgnorePointer` when it is material rather than a control.** `CNButton` hangs
-  a `Listener` off the platform view to push `isHighlighted` on pointer down, and its own tap
-  recognizer joins the arena and usually beats the row's. On a menu that means the whole card
-  flashes under a finger aimed at one row, and the wrong row can answer. `_Capsule` leaves it
-  interactive on purpose, which is the opposite case, not a contradiction.
+- **`interaction: false` when it is material rather than a control**, which is the package's
+  own mechanism and does three things: it gates the `Listener` that pushes `isHighlighted` on
+  pointer down, wraps the widget in an `IgnorePointer` itself, and becomes
+  `.allowsHitTesting(false)` on the Swift side. Without it the card flashes under a finger
+  aimed at one row, and the button's tap recognizer joins the arena and usually beats the
+  row's, so the wrong row answers. `_Capsule` leaves its button interactive on purpose, which
+  is the opposite case rather than a contradiction. Pair it with
+  `glassEffectInteractive: false`: no wobble under a touch it cannot receive.
 - **Do not clip it.** A glass button draws its rim and shadow **outside** its own box —
   `_Capsule`'s row reserves 3pt for exactly that — so a `ClipRRect` around the material cuts
   off the two things that make it read as glass. Clip the content instead, which needs it
-  anyway so row ink cannot splash past the corner arcs. And set `config.borderRadius`: null
-  means a capsule, which on a 216×97 card is a 48pt arc rather than 14.
+  anyway so row ink cannot splash past the corner arcs.
+- **`config.borderRadius` alone does nothing, and this is the expensive one.** A reader's
+  follow-up was that the card looked "too round", and the cause is
+  `CupertinoButtonPlatformView.swift`: its **UIKit branch sets
+  `config.cornerStyle = round ? .capsule : .dynamic` and never reads `borderRadius` at all**,
+  so a 216×97 glass button comes out a stadium. The radius is honoured only by
+  `GlassButtonSwiftUI.shapeForStyle`, and that view is built only when
+  `glassEffectUnionId != nil || glassEffectId != nil`. So **setting a `glassEffectId` is how
+  you ask for a rectangular glass shape** — the id does nothing else here, since morphing
+  needs a glass container to morph within. Passing `borderRadius` without one is a silent
+  no-op.
+- **A capsule material makes the content's clip look like the bug.** The same report had a
+  second half: a row's tint spilling past the card's corners "as a rectangle with zero
+  radius". That was one cause with two symptoms — the rows are clipped to the intended 14
+  while the material drew a capsule, so at every corner the ink sat outside the glass. If ink
+  ever overflows a glass surface again, suspect the material's shape before the clip's.
 
 **None of this is verifiable from here.** `useNativeGlass` needs an Apple target _and_ iOS
 26, and `flutter test` reports Android — so every test and every render preview draws the
