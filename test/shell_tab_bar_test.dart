@@ -176,7 +176,7 @@ void main() {
 
         await _selectTab(tester, 'Library');
         expect(find.byType(FinishedBooksSheet), findsOneWidget);
-        expect(find.text('Books read'), findsOneWidget);
+        expect(find.text('Books finished'), findsOneWidget);
       },
     );
 
@@ -333,7 +333,10 @@ void main() {
         // card behind a translucent bar is what an iOS sheet does not look like.
         // What keeps such a body's last row reachable is its own scroll padding;
         // see `ReadMonthGrid.bottomPadding`.
-        for (final content in [find.text('Books read'), find.text('Dune')]) {
+        for (final content in [
+          find.text('Books finished'),
+          find.text('Dune'),
+        ]) {
           expect(
             tester.getRect(content).bottom,
             lessThanOrEqualTo(bar.top),

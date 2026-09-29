@@ -51,6 +51,14 @@ Book _read(
   createdAt: DateTime(2024),
 );
 
+/// A book closed short of the end — status 3, `bookStatusSetAside`, inlined for the same
+/// reason 2 is above.
+///
+/// `finish_date` on one of these is the day it was **closed**, which is what lets it
+/// group and sort beside a finished book untouched.
+Book _setAside(String id, DateTime? closed) =>
+    _read(id, closed).copyWith(status: 3);
+
 /// Four groups with four *different* counts, so every count in the rendered
 /// headers is unambiguous: March 2026 has 3, February 2026 has 2, November 2025
 /// has 1, and 4 are undated.
@@ -71,6 +79,7 @@ Future<void> _pump(
   WidgetTester tester,
   List<Book> books, {
   int filterYear = 0,
+  bool finishedOnly = false,
 }) async {
   tester.view.physicalSize = _surface * tester.view.devicePixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
@@ -83,6 +92,7 @@ Future<void> _pump(
         body: ReadMonthGrid(
           months: ReadMonthGrid.group(books),
           filterYear: filterYear,
+          finishedOnly: finishedOnly,
         ),
       ),
     ),
@@ -231,6 +241,23 @@ void main() {
     );
 
     testWidgets(
+      'Given the finished-only filter, When there is nothing to show, Then the empty '
+      'state says so in the mode\'s own words',
+      (tester) async {
+        // Otherwise the sheet says "No books read yet" under a `Books finished` title,
+        // which is one sentence contradicting the heading directly above it. The
+        // year-specific line needs no mode: it is already the narrower claim.
+        await _pump(tester, const [], finishedOnly: true);
+
+        expect(find.text('No books finished yet 🥲'), findsOneWidget);
+        expect(find.text('No books read yet 🥲'), findsNothing);
+
+        await _pump(tester, const [], filterYear: 2023, finishedOnly: true);
+        expect(find.text('No books recorded for 2023'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'Given a year with nothing in it, When rendered, Then the empty state names '
       'the year instead of claiming nothing was ever read',
       (tester) async {
@@ -287,6 +314,100 @@ void main() {
           closeTo(2 / 3, 0.02),
           reason: 'covers are portrait at the ratio the drawings use',
         );
+      },
+    );
+  });
+
+  group('the dog-ear', () {
+    testWidgets(
+      'Given a set-aside book beside a finished one, When rendered, Then only the '
+      'set-aside cover is folded',
+      (tester) async {
+        // The mark that stops `Books read 29` being read as 29 completions. It is
+        // **not** the bookmark ribbon: that means *actively reading* on the shelf, the
+        // Library Card and the home-screen widget, so reusing it here would say the
+        // opposite of what it says everywhere else.
+        await _pump(tester, [
+          _read('finished', DateTime(2026, 3, 4)),
+          _setAside('closed', DateTime(2026, 3, 5)),
+        ]);
+
+        expect(find.byType(BookWidget), findsNWidgets(2));
+        expect(find.byType(ReadDogEar), findsOneWidget);
+
+        // On the right book, not merely on one of them. The grid is ordered by the list
+        // it was handed, so the fold has to be on the second cover.
+        final ear = tester.getRect(find.byType(ReadDogEar));
+        final covers = find
+            .byType(BookWidget)
+            .evaluate()
+            .map((e) => tester.getRect(find.byWidget(e.widget)))
+            .toList();
+        expect(ear, covers[1]);
+        expect(
+          ear.overlaps(covers[0]),
+          isFalse,
+          reason:
+              'a fold on the finished cover is the whole defect this guards',
+        );
+      },
+    );
+
+    testWidgets(
+      'Given a grid of set-aside books, When rendered, Then each one is folded',
+      (tester) async {
+        await _pump(tester, [
+          for (var i = 0; i < 3; i++) _setAside('$i', DateTime(2026, 3, 1 + i)),
+        ]);
+
+        expect(find.byType(ReadDogEar), findsNWidgets(3));
+      },
+    );
+
+    testWidgets(
+      'Given a folded cover, When tapped on the fold, Then the book opens rather '
+      'than the fold swallowing it',
+      (tester) async {
+        // A `CustomPainter` answers a hit test true by default, so the fold would
+        // otherwise absorb every tap aimed at the corner of the cover it sits on — and
+        // opening the book is the cover's whole job here.
+        final pushed = <String?>[];
+        tester.view.physicalSize = _surface * tester.view.devicePixelRatio;
+        addTearDown(tester.view.resetPhysicalSize);
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            // The grid pushes a named route; this stands in for the details page so the
+            // tap has somewhere to land and the test can name where it went.
+            onGenerateRoute: (settings) {
+              pushed.add(settings.name);
+              return MaterialPageRoute<void>(
+                builder: (_) => const Scaffold(),
+                settings: settings,
+              );
+            },
+            home: Scaffold(
+              body: ReadMonthGrid(
+                months: ReadMonthGrid.group([
+                  _setAside('closed', DateTime(2026, 3, 5)),
+                ]),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        pushed.clear();
+
+        final cover = tester.getRect(find.byType(BookWidget));
+        await tester.tapAt(
+          // Inside the fold: a few points in from the head-and-fore-edge corner.
+          Offset(cover.right - 4, cover.top + 4),
+        );
+        await tester.pumpAndSettle();
+
+        expect(pushed, ['/details']);
       },
     );
   });

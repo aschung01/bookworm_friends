@@ -56,7 +56,7 @@ void main() {
         // duration are one class of fact, and the badge does more work than the
         // label did, so this removed a string rather than adding one.
         expect(find.byType(BookStatusBadge), findsOneWidget);
-        expect(find.text('Read'), findsOneWidget);
+        expect(find.text('Finished'), findsOneWidget);
         expect(find.text('Reading period'), findsNothing);
         expect(find.text('2022.11.13 ~ 2022.11.15'), findsOneWidget);
         expect(find.text('2 days'), findsOneWidget);
@@ -106,14 +106,14 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Interested'), findsOneWidget);
+      expect(find.text('Not started'), findsOneWidget);
       // Wrapping a lone chip in a full-width white card was drawn at real scale
       // and looked worse than the corner it replaced, so the card is skipped
       // entirely and the badge shrink-wraps.
       //
       // Compared against the 255pt it is offered rather than against an absolute
       // figure: `flutter_test` draws every glyph as a square of the font size, so
-      // "Interested" measures 144pt here against roughly 87pt on device. This is
+      // "Not started" measures 158pt here against roughly 96pt on device. This is
       // the assertion that caught the badge stretching edge to edge when the
       // parent passed tight constraints — which the band does not, so nothing
       // else would have.

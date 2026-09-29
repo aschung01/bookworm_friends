@@ -29,6 +29,46 @@ const int bookStatusReading = 1;
 /// The status a book carries once its owner has finished reading it.
 const int bookStatusFinished = 2;
 
+/// The status a book carries once its owner has stopped reading it short of the end.
+///
+/// **A fourth value rather than `bookStatusFinished` plus `progress < 1`, and the reason
+/// is the blast radius.** [finishedBooksProvider] is `.eq('status', bookStatusFinished)`
+/// and `home_page.dart` hands that one list to `FinishedBooksSheet`, `ReadPile` *and*
+/// `LibraryCardSheet`. Overloading status 2 would therefore have enrolled an abandoned
+/// book in the Library Card hero, `libraryCardStats` (pace, most-read author), the card's
+/// cover row and — through `groupFriendReading` — a friend's read count: six figures
+/// needing a predicate they do not need today. With a value of its own, every one of them
+/// keeps its exact current meaning untouched.
+///
+/// The other reason is plainer: stored as status 2 the column would say "read" about a
+/// book nobody read, which every future reader of it has to remember not to believe.
+///
+/// **`finish_date` on one of these rows is the day it was closed**, not the day it was
+/// finished. That is what keeps `ReadMonthGrid.group` and `readFilterYears` working
+/// untouched — both read `finishDate` and neither cares why the book ended.
+///
+/// Every earlier objection to a fourth status was an objection to a fourth *segment* of
+/// `BookStatusSelector` — its width, its lack of auto-shrink, a terminal outcome placed
+/// on a progress axis. The merged status sheet has no segmented control, so none of them
+/// survive.
+const int bookStatusSetAside = 3;
+
+/// The fewest pages a book may be recorded as having.
+///
+/// One, not zero: a book with no pages is not a book, and the position wheel already
+/// treats page 1 as the floor rather than page 0 (`kProgressPageFloor`) for the matching
+/// reason — "the start" is a page, not the absence of one.
+const int kMinTotalPages = 1;
+
+/// The most pages a book may be recorded as having.
+///
+/// A typo guard rather than a bibliographic claim. The longest single volumes in print run
+/// to a few thousand pages, so this leaves an order of magnitude of headroom and still
+/// catches the reader who meant 462 and typed it twice. Clamping rather than rejecting,
+/// which is how the wheel handles a page past the end: there is then no invalid state to
+/// report.
+const int kMaxTotalPages = 20000;
+
 /// [shelves] with the finished books left out.
 ///
 /// A finished book is represented by the "Books read" pile at the bottom of the
@@ -44,11 +84,20 @@ const int bookStatusFinished = 2;
 /// [withoutReadingBooks] — so the qualification no longer applies. Filtering here still
 /// writes nothing either way: the qualification belonged to the drag, not to this
 /// function.
+///
+/// **Set-aside books are left out too**, for exactly the same reason rather than as an
+/// afterthought: they are drawn in that same pile once the reader asks for them, so a
+/// cover left on the plank as well would list the book twice. The name still says
+/// "finished" because the pile still does.
 List<Shelf> withoutFinishedBooks(List<Shelf> shelves) => [
   for (final shelf in shelves)
     shelf.copyWith(
       books: shelf.books
-          .where((book) => book.status != bookStatusFinished)
+          .where(
+            (book) =>
+                book.status != bookStatusFinished &&
+                book.status != bookStatusSetAside,
+          )
           .toList(),
     ),
 ];
@@ -151,7 +200,9 @@ List<Book> readingBooksOf(List<Shelf> shelves) {
 int shelvedBookCount(Shelf shelf) => shelf.books
     .where(
       (book) =>
-          book.status != bookStatusFinished && book.status != bookStatusReading,
+          book.status != bookStatusFinished &&
+          book.status != bookStatusReading &&
+          book.status != bookStatusSetAside,
     )
     .length;
 
@@ -544,6 +595,48 @@ final userFinishedBooksProvider = FutureProvider.autoDispose
       return data.map((b) => Book.fromJson(b)).toList();
     });
 
+/// The books the reader stopped reading short of the end.
+///
+/// A sibling query to [finishedBooksProvider] rather than a widening of it, which is the
+/// whole argument for [bookStatusSetAside] having its own value: everything that counts
+/// *finished* books keeps asking the same question and getting the same answer, and the
+/// one surface that wants both merges them itself. `FinishedBooksSheet` is that surface.
+///
+/// Ordered by `finish_date` like its sibling, which here is the day the book was closed.
+final setAsideBooksProvider = FutureProvider.autoDispose<List<Book>>((
+  ref,
+) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return [];
+
+  final data = await supabase
+      .from('books')
+      .select()
+      .eq('user_id', userId)
+      .eq('status', bookStatusSetAside)
+      .order('finish_date', ascending: false);
+  return data.map((b) => Book.fromJson(b)).toList();
+});
+
+/// The same, for someone else's library, and kept alive for the same reason
+/// [userFinishedBooksProvider] is.
+///
+/// **A friend's read sheet offers the same filter as your own**, so this is reachable for
+/// any reader you can visit — which means a friend can see which books you gave up on.
+/// That is a deliberate visibility decision and not an oversight: the sheet defaults to
+/// finished-only, so it is per-view rather than published.
+final userSetAsideBooksProvider = FutureProvider.autoDispose
+    .family<List<Book>, String>((ref, userId) async {
+      ref.keepAlive();
+      final data = await supabase
+          .from('books')
+          .select()
+          .eq('user_id', userId)
+          .eq('status', bookStatusSetAside)
+          .order('finish_date', ascending: false);
+      return data.map((b) => Book.fromJson(b)).toList();
+    });
+
 final libraryActionsProvider = Provider((ref) => LibraryActions(ref));
 
 /// Enforces the reading-date invariant on the way to the database: a book can
@@ -595,8 +688,13 @@ class LibraryActions {
   /// otherwise a book that just left the shelves wouldn't show up in the pile
   /// until the next pull-to-refresh. Every year/month filter is invalidated,
   /// because the caller doesn't know which one is on screen.
+  /// Both piles, because the read sheet can be showing either and this class does not
+  /// know which. A status change between 2 and 3 moves a book from one query to the
+  /// other, so invalidating only one would leave the sheet drawing the book twice or
+  /// not at all depending on which way it went.
   void _invalidateFinishedBooks() {
     ref.invalidate(finishedBooksProvider);
+    ref.invalidate(setAsideBooksProvider);
   }
 
   Future<void> addShelf(String name) async {
@@ -767,6 +865,41 @@ class LibraryActions {
     }
   }
 
+  /// Records the book's total page count, which nothing else writes after insert.
+  ///
+  /// `page_count` arrives once from [addBook]'s metadata and is never touched again, and
+  /// **about two books in three have none at all** because Kakao supplies no count. That
+  /// is why the position wheel stores a fraction and hides Page mode: without a total
+  /// there is no page to offer. So this is the write that turns those books into ones
+  /// with a page read-out, a Page mode and a derived page on the home-screen widget.
+  ///
+  /// **It must not move [Book.progress], and that is the whole contract.** The fraction
+  /// *is* the position; the page is derived from it. Correcting a total therefore
+  /// re-derives the page and leaves the position alone — a reader who says "this book is
+  /// 462 pages, not 500" has said nothing about where they are in it.
+  ///
+  /// `progress_page` is left alone too, even though the page it names now resolves
+  /// differently. It records what the reader *said*, and they did not say it again.
+  ///
+  /// Clamped to [kMinTotalPages]–[kMaxTotalPages] here as well as in the sheet, because
+  /// this is the boundary the database is behind and a floor that only exists in a widget
+  /// is a floor one future caller can walk around.
+  Future<void> recordTotalPages(String bookId, int totalPages) async {
+    final total = totalPages.clamp(kMinTotalPages, kMaxTotalPages);
+    try {
+      await supabase
+          .from('books')
+          .update({'page_count': total})
+          .eq('id', bookId);
+      ref.invalidate(libraryProvider);
+      _invalidateFinishedBooks();
+    } catch (e) {
+      EasyLoading.showError(
+        AppLocalizations.of(navigatorKey.currentContext!).statusChangeFailed,
+      );
+    }
+  }
+
   /// Fills in `books.cover_color` from a cover that has just been decoded.
   ///
   /// The backfill for rows written before the column existed, and for every row
@@ -923,6 +1056,37 @@ class LibraryActions {
     /// the reader said p.200. Outside the branch the column is not mentioned, so a
     /// date edit leaves the page alone exactly as it leaves the fraction alone.
     int? progressPage,
+
+    /// Clears `progress` and `progress_page` outright.
+    ///
+    /// **The one way to erase a position, and it is a flag rather than a null because
+    /// null already means something else here.** [progress]'s own doc explains why null
+    /// has to mean "do not write": the dates beside it *are* derived from the status, so
+    /// null is a real instruction for them, and a reader changing a date must not lose
+    /// their bookmark as a side effect.
+    ///
+    /// That left no way to say "erase", which was fine while the lowest thing the reader
+    /// could express was 0% — an answer, not an erasure. The reading track changes that:
+    /// its origin means *Not started*, which is `null`, because a track cannot have a
+    /// leftmost pixel that means two different things. So the instruction now exists and
+    /// is spelled out instead of smuggled through the value.
+    ///
+    /// Takes precedence over [progress]; passing both is a caller bug, not a merge.
+    bool clearProgress = false,
+
+    /// The status the book carried *before* this call, when the caller knows it.
+    ///
+    /// **Supplied so that a status-identical call leaves `reading_shelf_index` alone.**
+    /// Without it this method recomputes the book's place on the Reading shelf on every
+    /// invocation, which was harmless only while the sheet's Save was rare: the merged
+    /// status sheet can be saved for a position or a date with the status untouched, and
+    /// `_readingHeadIndex` would then promote the book to the head of the Reading shelf —
+    /// silently reordering a row the reader arranged by dragging, potentially dozens of
+    /// times per book.
+    ///
+    /// Null keeps the old behaviour, which is what every caller that genuinely changes a
+    /// status wants and what the add-book path needs.
+    int? fromStatus,
   }) async {
     final dates = clampReadingDates(
       startDate: startDate,
@@ -934,6 +1098,10 @@ class LibraryActions {
       // A place on the Reading shelf exists only while the book is in progress, so this
       // is cleared on the way out. The local `Book` keeps its stale value, which is
       // deliberate and harmless — see [Book.readingShelfIndex].
+      //
+      // Skipped entirely when the status did not change: where the book sits on the
+      // Reading shelf is then nobody's business but the reader's. See [fromStatus].
+      final repositions = fromStatus == null || fromStatus != status;
       final readingShelfIndex = status == bookStatusReading
           ? await _readingHeadIndex(excluding: bookId)
           : null;
@@ -942,7 +1110,7 @@ class LibraryActions {
           .from('books')
           .update({
             'status': status,
-            'reading_shelf_index': readingShelfIndex,
+            if (repositions) 'reading_shelf_index': readingShelfIndex,
             'start_date': dates.startDate != null
                 ? DateFormat('yyyy-MM-dd').format(dates.startDate!)
                 : null,
@@ -953,7 +1121,10 @@ class LibraryActions {
             // when there is nothing to write — see [progress]. The page rides in
             // the same branch so the two can never disagree about which unit the
             // stored fraction came from.
-            if (progress != null) ...{
+            if (clearProgress) ...{
+              'progress': null,
+              'progress_page': null,
+            } else if (progress != null) ...{
               'progress': progress,
               'progress_page': progressPage,
             },

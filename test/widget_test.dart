@@ -54,7 +54,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Read'), findsOneWidget);
+        expect(find.text('Finished'), findsOneWidget);
       },
     );
 

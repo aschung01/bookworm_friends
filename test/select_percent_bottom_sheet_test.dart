@@ -384,7 +384,7 @@ void main() {
         await _openWheel(tester, initialProgress: 0.46, pageCount: 320);
         // Approximate on purpose: a stop is 3.2 pages here, so p.148 cannot be
         // aimed at. The tilde is where that cost is admitted.
-        expect(find.text('≈ p.147'), findsOneWidget);
+        expect(find.text('~ p.147'), findsOneWidget);
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -397,7 +397,7 @@ void main() {
         try {
           await _openWheel(tester, initialProgress: 0.46);
           expect(find.textContaining('p.'), findsNothing);
-          expect(find.textContaining('≈'), findsNothing);
+          expect(find.textContaining('~'), findsNothing);
         } finally {
           debugDefaultTargetPlatformOverride = null;
         }
@@ -430,7 +430,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       try {
         await _openWheel(tester, initialProgress: 0.46, pageCount: 320);
-        expect(find.text('≈ p.147'), findsOneWidget);
+        expect(find.text('~ p.147'), findsOneWidget);
 
         // Down one stop. The rider is the only thing in the sheet that has to
         // react, which is the whole reason this sheet carries state and its date
@@ -438,8 +438,8 @@ void main() {
         await tester.drag(find.byType(CupertinoPicker), const Offset(0, 34));
         await tester.pumpAndSettle();
 
-        expect(find.text('≈ p.147'), findsNothing);
-        expect(find.text('≈ p.144'), findsOneWidget);
+        expect(find.text('~ p.147'), findsNothing);
+        expect(find.text('~ p.144'), findsOneWidget);
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -511,7 +511,7 @@ void main() {
 
         expect(find.text('200'), findsOneWidget);
         expect(find.text('46%'), findsOneWidget); // now the rider, no tilde
-        expect(find.textContaining('≈'), findsNothing);
+        expect(find.textContaining('~'), findsNothing);
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -525,7 +525,7 @@ void main() {
           // A reader crossing over for the first time lands where they already were,
           // rather than at p.1.
           await _openWheel(tester, initialProgress: 0.46, pageCount: 432);
-          expect(find.text('≈ p.199'), findsOneWidget);
+          expect(find.text('~ p.199'), findsOneWidget);
 
           await _tapPageMode(tester);
 
@@ -1114,7 +1114,7 @@ void main() {
 
           expect(find.byType(CupertinoPicker), findsOneWidget);
           expect(_selectedValue(tester), '73');
-          expect(find.text('≈ p.315'), findsOneWidget);
+          expect(find.text('~ p.315'), findsOneWidget);
         } finally {
           debugDefaultTargetPlatformOverride = null;
         }

@@ -202,7 +202,7 @@ void main() {
         // badge to sit in. It must not vanish with the card: the badge is the
         // only thing naming the state.
         expect(find.byType(BookStatusBadge), findsOneWidget);
-        expect(find.text('Interested'), findsOneWidget);
+        expect(find.text('Not started'), findsOneWidget);
         expect(find.text('React'), findsNothing);
       },
     );

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/ui/widgets/band_progress_row.dart';
+import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 
 /// Minimum height of the card once it is a door. The card draws 42, so reaching the
@@ -23,24 +23,29 @@ const double _kChevronColumnPull = 10;
 
 /// How far the status-0 line's tap target reaches below its own ink.
 ///
-/// The same 14 as [kBandProgressRowSpill], taken out of the band's 16pt bottom
-/// padding in the same way and for the same reason: the band's height is unchanged
-/// by making the line tappable. The figure is shared rather than restated because
-/// there is only one bottom padding to take it out of.
+/// 14, taken out of the band's 16pt bottom padding rather than added to the layout, so
+/// the band's height is unchanged by making the line tappable.
 ///
-/// **Only one of the two rows can ever spend it, and that is provable rather than
-/// arranged.** This line spills only when there is no start date; [BandProgressRow]
-/// exists only at `bookStatusReading`, which the status sheet cannot leave without
-/// defaulting a start date. The `spillsIntoBandPadding` flag is what settles the
-/// legacy row that manages to be both — a status-1 book with a null start — by
-/// handing the padding to the progress row, which is the lower of the two.
+/// **This used to read `= kBandProgressRowSpill`, and the contention it arbitrated is
+/// gone.** There were two rows below the cover that could reach past their own ink — this
+/// line and `BandProgressRow` — competing for one bottom padding, and a `spillsBelow`
+/// predicate existed to prove only one of them ever spent it. The band is one card now:
+/// the period row carries the position as well, so there is one row, no contention, and
+/// the figure belongs to this file.
 ///
 /// The target this buys is **40pt rather than 44**, and that is the one deliberate
 /// shortfall in the band. The alternative was 18pt of permanent band height on every
-/// Interested book to seat a 26pt line in a 44pt box, on the one screen whose last
+/// Not-started book to seat a 26pt line in a 44pt box, on the one screen whose last
 /// redesign was about lifting content above the tab strip. 40×110 is not a glyph
 /// button in a corner; it is a labelled row two thirds the width of the band.
-const double kStatusVerbSpill = kBandProgressRowSpill;
+const double kStatusVerbSpill = 14;
+
+/// What is left of the band's 16pt bottom padding once [kStatusVerbSpill] is taken out of
+/// it. 16 − 14.
+///
+/// Lives here rather than in the deleted `band_progress_row.dart`, which owned it while
+/// that row was the one reaching below its own ink.
+const double kBandResidualPadding = 2;
 
 /// The reading facts about a book: its status, the dates, and the elapsed day
 /// count.
@@ -103,8 +108,8 @@ const double kStatusVerbSpill = kBandProgressRowSpill;
 /// **And note what does not apply here.** Putting the progress row on a white card
 /// failed partly because a white card on this band already meant "read-only" — and
 /// this card was that read-only card. Once it is itself a door there is no read-only
-/// white card left in the band to be confused with. The two doors are told apart by
-/// what they say, not by their grounds.
+/// white card left in the band to be confused with — and since the merge there is no
+/// second row either, so the band has one ground and one door.
 ///
 /// Laid out as a [Wrap] so a long range (or a longer localized label) moves to
 /// the next line instead of overflowing or truncating — every value stays
@@ -117,6 +122,8 @@ class ReadingPeriodRow extends StatefulWidget {
     this.startDate,
     this.finishDate,
     this.onTap,
+    this.progress,
+    this.pageCount,
     this.spillsIntoBandPadding = false,
   });
 
@@ -134,12 +141,30 @@ class ReadingPeriodRow extends StatefulWidget {
   /// `Change status` verb at all, for the same reason.
   final VoidCallback? onTap;
 
+  /// The book's stored position, or null when nothing has been recorded.
+  ///
+  /// **Drawn here because the band is one card now.** It used to live in a second row
+  /// below this one, `BandProgressRow`, which was also a second door — it opened the
+  /// percent wheel directly while this card opened the status sheet. The merge deleted the
+  /// row, and deleting the row without moving its numerals would have left the band
+  /// silent about the one fact that changes most often.
+  ///
+  /// Null draws nothing rather than `0%`: "never asked" and "at the very start" are
+  /// different states, and a band that printed `0%` for every unread book would be
+  /// claiming the reader had opened all of them.
+  final double? progress;
+
+  /// Enables the page half of the position read-out. Null for about two reading books in
+  /// three, which then read as a bare percent.
+  final int? pageCount;
+
   /// Whether the caller has taken [kStatusVerbSpill] out of the band's bottom
   /// padding for this row, so the status-0 verb may reach below its own ink.
   ///
   /// False by default, which is the safe answer: the target is then the line's own
-  /// height and nothing overhangs a neighbour. The band passes `!showsProgressRow`,
-  /// because there is one bottom padding and [BandProgressRow] has first claim on it.
+  /// height and nothing overhangs a neighbour. The band passes a literal `true`; it used
+  /// to pass `!showsProgressRow`, because a second row below this one had first claim on
+  /// the single bottom padding. That row is deleted, so there is one claimant.
   final bool spillsIntoBandPadding;
 
   /// Whether a row with these inputs wants the band's bottom padding.
@@ -251,8 +276,43 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
     final range =
         '${ReadingPeriodRow._formatDate(start)} ~ ${finish != null ? ReadingPeriodRow._formatDate(finish) : ''}';
 
+    final position = widget.progress;
+    final total = widget.pageCount;
+
     final values = [
       Text(range, style: AppTextStyles.label),
+      // The position, between the dates and the duration: all three are facts about this
+      // reading, and the row is one wrap so a narrow band reflows them together rather
+      // than clipping the last one.
+      //
+      // Two spans when there is a total, so it can sit back at 60% — the page is the
+      // answer and the count is only context. That treatment came from the deleted row and
+      // is kept rather than re-derived.
+      if (position != null)
+        RichText(
+          text: TextSpan(
+            style: AppTextStyles.label.copyWith(
+              color: context.colors.brandText,
+            ),
+            children: [
+              // Not localized: a numeral and a percent sign, which sit the same way round
+              // in both supported locales.
+              TextSpan(text: '${(position * 100).round()}%'),
+              if (total != null) ...[
+                TextSpan(
+                  text:
+                      ' · ${l10n.progressPage(bookProgressPage(position, total)!)}',
+                ),
+                TextSpan(
+                  text: ' ${l10n.progressOfPages(total)}',
+                  style: TextStyle(
+                    color: context.colors.brandText.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       Text(
         l10n.daysCount((finish ?? DateTime.now()).difference(start).inDays),
         // Same token as the range beside it: `brandText` is what marks the
@@ -365,9 +425,8 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
 /// The status-0 line's door: `Change status ›`.
 ///
 /// Styled as the band's own prompt rather than as a button. [AppTextStyles.label] in
-/// `brandText` with the same `chevron_right` at 20 that the period card and
-/// [BandProgressRow] carry — there is no fill, no border and no second ground, because
-/// the band already has two doors and a third with furniture on it would be the
+/// `brandText` with the same `chevron_right` at 20 the period card carries — there is no
+/// fill, no border and no second ground, because furniture on it would make it the
 /// loudest thing on the page.
 ///
 /// **`brandText` rather than `secondaryText`, unlike `How far in?`.** That row's

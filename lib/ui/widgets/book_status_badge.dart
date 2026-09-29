@@ -3,6 +3,19 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
+/// What [BookStatusBadge] draws for one status, and what the merged status sheet
+/// borrows the first two fields of.
+///
+/// A named record rather than four positional returns for the reason `BookStatusEdit`
+/// is one: three of the four are a `Color`, so a caller transposing any pair would
+/// compile and the mistake would be a wrong-coloured chip rather than an error.
+typedef BookStatusPresentation = ({
+  String label,
+  Color textColor,
+  Color fillColor,
+  Color borderColor,
+});
+
 /// The reading status of a book, as a small chip.
 ///
 /// The three statuses read as a **progression of weight** — an empty outline for
@@ -49,46 +62,87 @@ class BookStatusBadge extends StatelessWidget {
   /// border has to clear 3:1 on its own.
   static const double unfilledBorderAlpha = 0.55;
 
+  /// The word for a status and the ink it is drawn in, without the chip around it.
+  ///
+  /// **Exposed so the merged status sheet can borrow it.** That sheet prints the status
+  /// as running text in a one-line read-out rather than as a chip, and the two must not
+  /// be able to disagree about either the word or the colour. The app has already paid
+  /// for that mistake once, with two different flame drawings for one streak; a second
+  /// status vocabulary would be the same defect in words.
+  ///
+  /// The caller takes `label` and `textColor` and ignores the two fills.
+  static BookStatusPresentation presentation(
+    AppLocalizations l10n,
+    AppColors colors,
+    int status,
+  ) => switch (status) {
+    0 => (
+      label: l10n.statusInterested,
+      textColor: colors.primaryText,
+      fillColor: Colors.transparent,
+      borderColor: colors.primaryText.withValues(alpha: unfilledBorderAlpha),
+    ),
+    1 => (
+      label: l10n.statusReading,
+      textColor: colors.brandText,
+      fillColor: colors.brandText.withValues(alpha: 0.1),
+      borderColor: colors.brandText.withValues(alpha: 0.4),
+    ),
+    2 => (
+      label: l10n.statusFinished,
+      textColor: colors.primaryText,
+      fillColor: colors.primaryText.withValues(alpha: 0.1),
+      borderColor: colors.primaryText.withValues(alpha: 0.4),
+    ),
+    // Set aside: closed short of the end.
+    //
+    // **Not green, and not status 0's treatment either**, which are the two ways this
+    // arm could have gone wrong. Green means *reading* across the whole app and a test
+    // pins that; and an unfilled chip with a `primaryText` rim is exactly what status 0
+    // draws two arms up, which would have made "Not started" and "Set aside" one chip.
+    // So it takes status 2's filled shape — the book is over — in `secondaryText`,
+    // which is this app's tone for something finished with that is not an achievement.
+    3 => (
+      label: l10n.statusSetAside,
+      textColor: colors.secondaryText,
+      fillColor: colors.secondaryText.withValues(alpha: 0.1),
+      borderColor: colors.secondaryText.withValues(alpha: 0.4),
+    ),
+    // **Unreachable, and kept as a guard rather than as a label.**
+    //
+    // Until status 3 existed this arm caught it and drew "Other", which is the failure
+    // mode worth naming: it fails *soft*. A set-aside book wore a chip reading "Other"
+    // while nothing threw, nothing logged and no test went red — the same class of
+    // defect as `selectedIndex: status.clamp(...)` silently showing "Read". If a fifth
+    // status is ever added, this `switch` is the thing to fix, and the symptom will
+    // again be a correct-looking chip with the wrong word in it.
+    _ => (
+      label: l10n.statusOther,
+      textColor: colors.primaryText,
+      fillColor: Colors.transparent,
+      borderColor: colors.primaryText.withValues(alpha: unfilledBorderAlpha),
+    ),
+  };
+
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final colors = context.colors;
-
-    final (label, textColor, fillColor, borderColor) = switch (status) {
-      0 => (
-        l10n.statusInterested,
-        colors.primaryText,
-        Colors.transparent,
-        colors.primaryText.withValues(alpha: unfilledBorderAlpha),
-      ),
-      1 => (
-        l10n.statusReading,
-        colors.brandText,
-        colors.brandText.withValues(alpha: 0.1),
-        colors.brandText.withValues(alpha: 0.4),
-      ),
-      2 => (
-        l10n.statusFinished,
-        colors.primaryText,
-        colors.primaryText.withValues(alpha: 0.1),
-        colors.primaryText.withValues(alpha: 0.4),
-      ),
-      _ => (
-        l10n.statusOther,
-        colors.primaryText,
-        Colors.transparent,
-        colors.primaryText.withValues(alpha: unfilledBorderAlpha),
-      ),
-    };
+    final p = presentation(
+      AppLocalizations.of(context),
+      context.colors,
+      status,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: fillColor,
+        color: p.fillColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: p.borderColor),
       ),
-      child: Text(label, style: AppTextStyles.label.copyWith(color: textColor)),
+      child: Text(
+        p.label,
+        style: AppTextStyles.label.copyWith(color: p.textColor),
+      ),
     );
   }
 }

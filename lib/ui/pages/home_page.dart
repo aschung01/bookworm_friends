@@ -153,10 +153,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (friend == null) {
       ref.invalidate(libraryProvider);
       ref.invalidate(finishedBooksProvider);
+      // The read sheet merges two queries, so re-reading one of them would leave the
+      // inclusive filter showing a stale half of its own list.
+      ref.invalidate(setAsideBooksProvider);
       return;
     }
     ref.invalidate(userLibraryProvider(friend.id));
     ref.invalidate(userFinishedBooksProvider(friend.id));
+    ref.invalidate(userSetAsideBooksProvider(friend.id));
   }
 
   /// The sheet the selected tab puts above the library.
@@ -177,6 +181,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     LibraryTab tab, {
     required LibraryMode mode,
     required List<Book> finishedBooks,
+
+    /// The books closed short of the end, belonging to the same library as
+    /// [finishedBooks]. Read by one sheet of the three: `FinishedBooksSheet` merges the
+    /// two sets behind its own filter, and nothing else in the app shows them.
+    required List<Book> setAsideBooks,
     required int filterYear,
     required int friendFilterYear,
     required int cardFilterYear,
@@ -199,6 +208,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         return FinishedBooksSheet(
           sheetKey: _sheetKey,
           books: finishedBooks,
+          setAsideBooks: setAsideBooks,
           isEditMode: isEditMode,
           filterYear: filterYear,
           maxExtent: maxExtent,
@@ -231,6 +241,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           return FinishedBooksSheet(
             sheetKey: _sheetKey,
             books: finishedBooks,
+            setAsideBooks: setAsideBooks,
             isEditMode: isEditMode,
             filterYear: friendFilterYear,
             maxExtent: maxExtent,
@@ -532,6 +543,14 @@ class _HomePageState extends ConsumerState<HomePage> {
         ? ownReadsAsync
         : ref.watch(userFinishedBooksProvider(selectedFriend.id));
 
+    // **Watched for whoever is on screen only, unlike the finished set above.** That one
+    // is kept warm on every screen because the Card sheet draws from it; nothing outside
+    // the read sheet reads these, so there is nothing to keep warm for and a visit
+    // should not also be paying for a query about your own abandoned books.
+    final setAsideAsync = isSelf
+        ? ref.watch(setAsideBooksProvider)
+        : ref.watch(userSetAsideBooksProvider(selectedFriend.id));
+
     final shelves = shelvesAsync.valueOrNull;
     // A failed read query is treated as an empty pile rather than allowed to hold the
     // pane on the outgoing library forever. The shelves are what gate the pane, as
@@ -545,6 +564,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     // The switch has landed but its queries have not. Drawn as the held library,
     // faded, plus a named chip — never as a blank pane.
     final inFlight = shelves == null || reads == null;
+
+    // **Not part of [inFlight], and not held across a switch.** The sheet's default mode
+    // does not show these books at all, so a set-aside query still in flight — or failed
+    // outright — costs the reader nothing but a filter with less in it for a moment.
+    // Gating the pane on it would mean an abandoned-books query could hold the whole
+    // library off the screen.
+    final setAsideBooks = setAsideAsync.valueOrNull ?? const <Book>[];
 
     // If the friend on screen is no longer a friend — after a removal from
     // `ManageFriendPage`, say — fall back to your own library. Nothing else can: the
@@ -618,6 +644,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     tab,
                     mode: mode,
                     finishedBooks: books,
+                    setAsideBooks: setAsideBooks,
                     filterYear: filterYear,
                     friendFilterYear: friendFilterYear,
                     cardFilterYear: cardFilterYear,

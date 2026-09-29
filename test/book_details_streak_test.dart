@@ -3,16 +3,25 @@
 // **The gap this closes.** The streak page was the only door that wrote a `reading_days`
 // row and the only place the celebration could appear, so the reader most likely to have a
 // run going — the one who keeps it by nudging a bookmark on the book in their hand — had
-// their run grow silently and never saw the screen built for the moment. The band's percent
-// wheel now stamps the night, and both of the details page's write paths raise the
-// celebration when a write is what made today count.
+// their run grow silently and never saw the screen built for the moment. Moving the
+// bookmark from the band's own door now stamps the night, and both of the details page's
+// write paths raise the celebration when a write is what made today count.
+//
+// **The route changed under this file and the premise did not.** The band used to have a
+// second door straight to the percent wheel, and `onProgressSelected` was where the night
+// was stamped. The band is one card now: it opens the merged status sheet, the reader moves
+// the position there (by dragging the track or through the read-out's own numerals), and
+// **Save** is the single writer. So the stamp hangs on `movedPosition` — the position
+// changed or was cleared — computed against the book as it was. Same assertion, one door
+// further in.
 //
 // **The rule under test is a transition, never a state.** `readToday` is true for the rest
 // of the day once a night is in, so celebrating on the state would raise the screen again on
 // every subsequent nudge. What earns it is `false` becoming `true`.
 
+// Cupertino rather than Material: the only framework widget named here is the percent
+// wheel's [CupertinoPicker], and importing both makes the Material one unnecessary.
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,7 +29,9 @@ import 'package:bookworm_friends/models/reading_date.dart';
 import 'package:bookworm_friends/providers/library_provider.dart'
     show LibraryActions;
 import 'package:bookworm_friends/providers/reading_days_provider.dart';
-import 'package:bookworm_friends/ui/widgets/band_progress_row.dart';
+import 'package:bookworm_friends/ui/widgets/book/reading_state_line.dart';
+import 'package:bookworm_friends/ui/widgets/book/reading_track.dart';
+import 'package:bookworm_friends/ui/widgets/reading_period_row.dart';
 import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
 
 import 'still_streak_flame.dart';
@@ -63,6 +74,11 @@ class _FakeReadingDays extends ReadingDaysNotifier {
 
 /// Swallows the column write. The position is `book_progress`'s business and is covered in
 /// `book_progress_test.dart`; what this file is about is the *second* write beside it.
+///
+/// **The signature is the merged sheet's, and it has to be exact.** `clearProgress` and
+/// `fromStatus` are the two parameters that arrived with the merge, and a `Fake` that is
+/// missing either is not an override at all — the analyzer says so, which is how this file
+/// found out the sheet had grown a way to *erase* a position.
 class _FakeActions extends Fake implements LibraryActions {
   @override
   Future<void> updateBookStatus(
@@ -72,6 +88,8 @@ class _FakeActions extends Fake implements LibraryActions {
     DateTime? finishDate,
     double? progress,
     int? progressPage,
+    bool clearProgress = false,
+    int? fromStatus,
   }) async {}
 }
 
@@ -81,18 +99,40 @@ Set<DateTime> _run(int length, {required DateTime endingOn}) => {
     DateTime(endingOn.year, endingOn.month, endingOn.day - back),
 };
 
-/// Opens the band's wheel, moves it off the value it opened at, and confirms.
+/// Opens the band's one door — the period card — and waits for the sheet.
+Future<void> _openTheSheet(WidgetTester tester) async {
+  await tester.tap(find.byType(ReadingPeriodRow));
+  await tester.pumpAndSettle();
+  expect(
+    find.byType(ReadingTrack),
+    findsOneWidget,
+    reason: 'the band has one door, and it is the merged status sheet',
+  );
+}
+
+/// Opens the sheet, drags the track off the position it opened at, and saves.
 ///
-/// The move matters: `onProgressSelected` is gated on the sheet's own `_touched`, so
-/// confirming a pre-filled position writes neither the column nor the day. That gate is
-/// also what makes stamping a night here defensible — the callback firing *is* the reader
-/// saying where they now are.
+/// **The drag is the move, and the move is what the day-stamp hangs on.** Save computes
+/// `movedPosition` against the book as it was, so a Save that changed nothing writes
+/// neither the column nor the day — which is the same gate the wheel's `_touched` used to
+/// be, one level up. It is also why Save is only *drawn* once the sheet is dirty: the
+/// button's arrival is the sheet's whole unsaved-changes model.
+///
+/// Dragged from inside the thumb row rather than from the widget's centre: the control is
+/// 48pt tall and only its top 24 take touches, so a gesture aimed at its centre lands in
+/// the gap above the end labels and reaches no recognizer at all — a move that would look
+/// like it happened and report nothing.
 Future<void> _nudgeTheBookmark(WidgetTester tester) async {
-  await tester.tap(find.byType(BandProgressRow));
+  await _openTheSheet(tester);
+
+  final track = tester.getRect(find.byType(ReadingTrack));
+  await tester.dragFrom(
+    Offset(track.left + track.width / 2, track.top + 12),
+    const Offset(60, 0),
+  );
   await tester.pumpAndSettle();
-  await tester.drag(find.byType(CupertinoPicker), const Offset(0, -120));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Confirm'));
+
+  await tester.tap(find.text('Save'));
   await tester.pumpAndSettle();
 }
 
@@ -135,7 +175,8 @@ void main() {
     expect(
       _FakeReadingDays.calls,
       [(today, true, 'b1')],
-      reason: 'the wheel is the shortest "I read some of this" in the app',
+      reason:
+          'moving the bookmark is the shortest "I read some of this" in the app',
     );
     expect(find.byType(StreakCelebration), findsOneWidget);
     expect(find.text('12'), findsWidgets);
@@ -160,17 +201,40 @@ void main() {
   });
 
   testWidgets(
-    'Given the wheel is confirmed untouched, Then no night is stamped',
+    'Given the sheet is saved with the position untouched, Then no night is stamped',
     (tester) async {
-      // The other half of the `_touched` gate, from this side: agreeing with the position
-      // the sheet opened at is not a claim about today.
+      // The other half of the gate, from this side: agreeing with the position the sheet
+      // opened at is not a claim about today.
+      //
+      // **There are two gates now and this exercises both.** The wheel's own `_touched`
+      // still refuses to hand an answer back when the reader confirms a pre-filled value,
+      // and above it the sheet only *draws* Save once something differs from what it
+      // opened with — so an untouched Confirm leaves no button to press and there is
+      // nothing that could write. Asserting the button's absence is asserting the write's.
       await pump(tester, days: const {});
 
-      await tester.tap(find.byType(BandProgressRow));
+      await _openTheSheet(tester);
+      expect(
+        find.text('Save'),
+        findsNothing,
+        reason: 'a sheet that has changed nothing has nothing to save',
+      );
+
+      // Through the read-out's percent numeral, which is where the wheel lives now that
+      // the band has no second door to it. The book is at 0.2.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ReadingStateLine),
+          matching: find.text('20%'),
+        ),
+      );
       await tester.pumpAndSettle();
+      expect(find.byType(CupertinoPicker), findsOneWidget);
+
       await tester.tap(find.text('Confirm'));
       await tester.pumpAndSettle();
 
+      expect(find.text('Save'), findsNothing);
       expect(_FakeReadingDays.calls, isEmpty);
       expect(find.byType(StreakCelebration), findsNothing);
     },

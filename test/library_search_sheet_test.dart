@@ -223,9 +223,9 @@ void main() {
     // The screen that settles where this feature lives: no per-status surface in
     // the shell could have hosted this list.
     expect(find.byType(BookStatusBadge), findsNWidgets(3));
-    expect(find.text('Interested'), findsOneWidget);
+    expect(find.text('Not started'), findsOneWidget);
     expect(find.text('Reading'), findsOneWidget);
-    expect(find.text('Read'), findsOneWidget);
+    expect(find.text('Finished'), findsOneWidget);
     // In-progress first.
     final titles = tester
         .widgetList<BookStatusBadge>(find.byType(BookStatusBadge))

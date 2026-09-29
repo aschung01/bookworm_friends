@@ -511,15 +511,38 @@ Estimated, summed from row heights in the Dart and labelled as such on every moc
 270pt clean, 292pt dirty, 246pt not-started, 282pt terminal, ~342pt for today's status
 sheet, ~300pt for the read sheet's crop.
 
+**Measured after building**, at a real 375×667 with the app's own fonts registered (which is
+what made them measurable — under the test font every string is one em-square per glyph):
+
+| state                             | measured | estimated |
+| --------------------------------- | -------- | --------- |
+| Reading, clean                    | **275**  | 270       |
+| Reading, dirty                    | 286      | 292       |
+| Finished, clean (both date rows)  | 276      | 282       |
+| Set aside, dirty                  | **287**  | —         |
+| Not started, clean                | **170**  | 246       |
+
+Three within 6pt, and the estimates were good. **Not started is 76pt out, and not by an
+arithmetic slip:** at the origin the read-out collapses to a single word — no percent, no page
+pair — and neither date row is drawn, which the row-sum did not model. The sheet is comfortably
+shorter than both it replaces (342 and 368) in every state.
+
 **Verified by rendering the mockup:** the popover, hung under the title the way
 `showShelfPickerPopover` hangs its card, **occludes the year rail** — which is a second reason
 the filter could not have gone on the rail's row, this one geometric. Recorded rather than
 designed away; sliding the card below the rail is available if it is judged worse than the
 occlusion.
 
-**Still not verified: how the sheet itself looks.** The mockups are CSS standing in for Liquid
-Glass and for a Flutter layout. The glass treatment and the one-line read-out at
-`Set aside 46% p.213 of 462` — longer in Korean — need eyes before implementation.
+**Still not verified: how the sheet looks on a device.** The mockups are CSS standing in for
+Liquid Glass, and a widget test reports Android, so every automated check of the track has
+exercised the `BackdropFilter` fallback rather than the real material. The read-out's longest
+case is confirmed to wrap rather than clip at 2× text in both locales, but it has been *measured*
+rather than looked at.
+
+Two things the build found by rendering that no green suite could see: the track's thumb sat
+above its groove (the row had been sized to the bookmark asset's box rather than to the visible
+ribbon), and the read-out inherited an underline from `MaterialApp`'s fallback text style — on
+the one widget whose whole contract is which parts are underlined.
 
 **One correction worth recording about the mockup itself**, because it is the cost of writing
 a page without opening it: the committed version carried a stray `</div>` in its lead

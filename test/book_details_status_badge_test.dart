@@ -104,7 +104,7 @@ void main() {
         // `status >= 1 && startDate != null`, which would have done exactly that
         // on 133 of 472 books.
         expect(find.byType(BookStatusBadge), findsOneWidget);
-        expect(find.text('Interested'), findsOneWidget);
+        expect(find.text('Not started'), findsOneWidget);
 
         final badge = tester.getRect(find.byType(BookStatusBadge));
         expect(

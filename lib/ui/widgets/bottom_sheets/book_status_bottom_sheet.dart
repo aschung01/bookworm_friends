@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 
 import 'package:bookworm_friends/constants/app_text_styles.dart';
+import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
+import 'package:bookworm_friends/providers/library_provider.dart';
+import 'package:bookworm_friends/ui/widgets/book/reading_state_line.dart';
+import 'package:bookworm_friends/ui/widgets/book/reading_track.dart';
+import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_date_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_percent_bottom_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_total_pages_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/buttons/buttons.dart';
 import 'package:bookworm_friends/ui/widgets/date_field_row.dart';
-import 'package:bookworm_friends/ui/widgets/progress_field_row.dart';
-import 'package:bookworm_friends/ui/widgets/read_today_field_row.dart';
-import 'package:bookworm_friends/ui/widgets/status_selector.dart';
 import 'app_sheet.dart';
 
 /// Everything one Save carries out of [showBookStatusBottomSheet].
 ///
-/// **A record rather than five positional arguments**, which is what it was on the
-/// way to becoming. Two of these fields are nullable dates and two more are a
-/// `double?` and a `bool`, so a caller transposing any pair would compile — and the
-/// one thing this sheet must never do is smear one of these facts into another.
+/// **A record rather than a handful of positional arguments**, which is what it was on
+/// the way to becoming. Two of these fields are nullable dates and three more are a
+/// `double?`, an `int?` and a `bool`, so a caller transposing any pair would compile —
+/// and the one thing this sheet must never do is smear one of these facts into another.
 typedef BookStatusEdit = ({
   int status,
   DateTime? startDate,
@@ -24,61 +27,85 @@ typedef BookStatusEdit = ({
   double? progress,
 
   /// Which unit [progress] was given in: a page number when the reader typed one,
-  /// null when they answered in percent.
+  /// null when they answered in percent or by dragging the track.
   ///
   /// **Only meaningful when [progress] is non-null**, and read only there. It rides
   /// alongside rather than inside it because a record cannot express "these two move
   /// together"; the provider is where that is enforced.
   int? progressPage,
 
-  /// Whether today should have a `reading_days` row when this returns.
+  /// Whether the position should be erased rather than written.
   ///
-  /// **Independent of every other field here.** It is in the same record because it
-  /// leaves through the same Save, not because it is connected: saving a position
-  /// does not stamp a day and stamping a day does not move a bookmark.
-  bool readToday,
+  /// Set by a drag to the track's origin, which means *Not started*. Separate from a
+  /// null [progress] because null already means "leave the column alone" — see
+  /// `LibraryActions.updateBookStatus`, which documents why that asymmetry exists and
+  /// why erasing had to become its own instruction.
+  bool clearProgress,
+
+  /// A new total page count, or null when the reader did not change it.
+  ///
+  /// **Rides out with the rest but is written by a different method.** `page_count` is
+  /// not part of a book's reading state — it is a fact about the object — so it goes
+  /// through `recordTotalPages`, which exists to write it without touching `progress`.
+  /// It is in this record only because it leaves through the same Save.
+  int? totalPages,
 });
 
-/// Edits the reading status (and reading dates, and the reading position) of a
-/// book already in the library.
+/// Edits everything about a book's reading state: where the reader is, what that makes
+/// the book's status, and the dates either side.
 ///
-/// Intentionally the same form as the add-book sheet — [BookStatusSelector] for
-/// the status and [DateFieldRow] for the dates — minus the book header and shelf
-/// picker, which aren't being changed here. Editing a status should feel like the
-/// step the user already went through when adding the book.
+/// **One sheet with one control, replacing a status picker and a position field.** The
+/// status used to be chosen from a three-segment selector while the position was a
+/// separate row that opened a second sheet on top of this one. Those were two controls
+/// for one fact: a book with no position is *Not started*, one part-way through is
+/// *Reading*, and one at the end is *Finished*. So the position is now the only thing
+/// the reader sets, the status is a **read-out** of it, and the sheet is shorter than
+/// either of the two it replaces.
 ///
-/// **This sheet is the home of the reading position**, added as a
-/// [ProgressFieldRow] beside the dates rather than as a control of its own
-/// somewhere else. Nine drawn versions put it on the cover, in the band, or behind a
-/// long press; all of them lost to the observation that this sheet already *is*
-/// "update this book's state", so a position is one more field in a form the reader
-/// has already filled in once.
+/// **Status is largely a function of position, and `Set aside` is where "largely" bites.**
+/// Nothing in a position can distinguish "at 46% and still going" from "closed at 46%" —
+/// the number is identical — so that one state needs a second bit, which is why
+/// [bookStatusSetAside] exists as a status value and why this sheet has exactly one text
+/// action. Everything else is the track.
 ///
-/// **What this sheet does not do, and it is the load-bearing half:** saving a
-/// position does not stamp a reading day, and stamping a day does not move the
-/// position. The two facts share a screen and are constantly confused for each
-/// other; keeping them apart is the single rule the whole design rests on.
+/// **Save is the only writer.** The track does not persist on release, the three
+/// sub-sheets hand their answers back rather than writing them, and dismissing the sheet
+/// discards. That is what makes the drag safe to make live on first movement: an earlier
+/// design of the same control was rejected because *"a stray touch could silently rewrite
+/// your position"*, and the answer here is that nothing this sheet does is written until
+/// the reader says so.
+///
+/// **What this sheet no longer does, and the rule survives anyway:** it used to carry an
+/// "I read today" checkbox. Moving a position already stamps the day on the path readers
+/// actually use, so the row restated an act the reader had just performed. The rule it
+/// implemented — *saving a position does not stamp a reading day by accident, and
+/// stamping a day does not move a position* — is about the two writes not triggering each
+/// other **unintentionally**; moving a position is a deliberate assertion that the reader
+/// read today, and the caller is where that is turned into a `reading_days` row. The cost
+/// is that nothing in the app can now un-record a day; that is accepted, and the reason is
+/// in `AGENTS.md` under the undo footer.
 Future<void> showBookStatusBottomSheet(
   BuildContext context, {
+
+  /// Drawn as the sheet's heading, and **always left-aligned** so the row does not
+  /// re-centre when Save appears beside it.
+  required String bookTitle,
   required int currentStatus,
   required DateTime? startDate,
   required DateTime? finishDate,
 
-  /// The book's stored position, or null when nothing has been recorded. Passed in
-  /// and handed back untouched unless the reader spins the wheel, so opening this
-  /// sheet to change a date cannot silently rewrite a position.
+  /// The book's stored position, or null when nothing has been recorded. Handed back
+  /// untouched unless the reader moves the track or answers a sub-sheet, so opening this
+  /// sheet to change a date cannot rewrite a position.
   double? progress,
 
   /// The page the reader typed last time, or null if they answered in percent.
   /// Handed back untouched for the reason [progress] is.
   int? progressPage,
 
-  /// Enables the wheel's Page mode and its derived-page rider, and lets the row
-  /// print a page at all. Never written.
+  /// The book's total, which the read-out needs to print a page at all — and which this
+  /// sheet can now *change*, unlike every previous version of it.
   int? pageCount,
-
-  /// Whether today already has a `reading_days` row.
-  bool readToday = false,
   required void Function(BookStatusEdit edit) onSave,
 }) {
   int status = currentStatus;
@@ -86,7 +113,7 @@ Future<void> showBookStatusBottomSheet(
   DateTime? finish = finishDate;
   double? position = progress;
   int? positionPage = progressPage;
-  bool readTonight = readToday;
+  int? total = pageCount;
 
   return AppSheet.show(
     context: context,
@@ -94,6 +121,41 @@ Future<void> showBookStatusBottomSheet(
     builder: (_) => StatefulBuilder(
       builder: (context, setState) {
         final l10n = AppLocalizations.of(context);
+        final colors = context.colors;
+        final chip = BookStatusBadge.presentation(l10n, colors, status);
+
+        // **Nothing is written until this is true and the reader presses Save**, so it is
+        // also the whole of the sheet's unsaved-changes model. Compared against the
+        // values the sheet opened with rather than tracked with a flag per field: a
+        // reader who drags the thumb away and back has changed nothing, and a Save button
+        // that stayed behind would be claiming otherwise.
+        final dirty =
+            status != currentStatus ||
+            start != startDate ||
+            finish != finishDate ||
+            position != progress ||
+            positionPage != progressPage ||
+            total != pageCount;
+
+        // The reader answered in percent, by dragging or by the wheel. Clearing the page
+        // is news rather than an omission: a book last set to p.200 and then dragged to
+        // 46% must stop claiming the reader said p.200.
+        void takePercentAnswer(double? value, {int? page}) {
+          position = value;
+          positionPage = page;
+          // Set aside is the one status a position cannot imply, so it is the one status
+          // a drag has to be able to leave. Moving the thumb resumes the book, which is
+          // why there is no "start reading again" link anywhere on this sheet.
+          status = value == null
+              ? 0
+              : (value >= 1 ? bookStatusFinished : bookStatusReading);
+          // Fill in the dates the new status needs, never clear the ones it does not:
+          // the book may already have a real start date and a stray drag must not throw
+          // it away. What is *saved* is filtered by status below instead.
+          if (status >= bookStatusReading) start ??= DateTime.now();
+          if (status == bookStatusFinished) finish ??= start ?? DateTime.now();
+        }
+
         return Padding(
           padding: EdgeInsets.only(
             left: 24,
@@ -102,36 +164,122 @@ Future<void> showBookStatusBottomSheet(
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
           child: AnimatedSize(
-            // Picking a status shows/hides the date rows, which changes the
-            // sheet's height. Animating it keeps the sheet from snapping.
+            // Save arriving and the date rows appearing both change the sheet's height.
+            // Animating it keeps the sheet from snapping.
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             alignment: Alignment.topCenter,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(l10n.changeReadingStatus, style: AppTextStyles.subtitle),
-                const SizedBox(height: 20),
-                BookStatusSelector(
-                  labels: [
-                    l10n.statusInterested,
-                    l10n.statusReading,
-                    l10n.statusFinished,
+                Row(
+                  children: [
+                    // Expanded rather than a bare Text so the title holds the left edge
+                    // whether or not Save is drawn next to it.
+                    Expanded(
+                      child: Text(
+                        bookTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.subtitle,
+                      ),
+                    ),
+                    // **Its arrival is the dirty indicator**, which is why there is no
+                    // other unsaved marker on the sheet and no disabled Save to explain.
+                    if (dirty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: ElevatedActionButton(
+                          width: 92,
+                          height: 32,
+                          buttonText: l10n.save,
+                          onPressed: () {
+                            Navigator.pop(context);
+                            onSave((
+                              status: status,
+                              // Only the dates the status has meaning for, so a book put
+                              // back to Not started does not keep the dates the form was
+                              // holding for its own benefit.
+                              startDate: status >= bookStatusReading
+                                  ? start
+                                  : null,
+                              finishDate:
+                                  status == bookStatusFinished ||
+                                      status == bookStatusSetAside
+                                  ? finish
+                                  : null,
+                              progress: position,
+                              progressPage: positionPage,
+                              // A position the reader erased, which is a different
+                              // instruction from one they did not touch. See the record.
+                              clearProgress:
+                                  position == null && progress != null,
+                              totalPages: total != pageCount ? total : null,
+                            ));
+                          },
+                        ),
+                      ),
                   ],
-                  status: status,
-                  onChanged: (value) => setState(() {
-                    status = value;
-                    // Default the dates a status needs so the user isn't left
-                    // with an empty field they have to discover. Dates are only
-                    // filled in, never cleared: the book may already have a real
-                    // start date, and a stray tap on another status shouldn't
-                    // throw it away. What gets saved is derived from the status
-                    // below instead.
-                    if (value >= 1) start ??= DateTime.now();
-                    if (value == 2) finish ??= start ?? DateTime.now();
-                  }),
                 ),
-                if (status >= 1) ...[
+                const SizedBox(height: 16),
+                // The whole state in one line: the status word, the percent, and the page
+                // inside the total. Three of its parts are doors; the track below is for
+                // coarse work and these are for exact answers.
+                ReadingStateLine(
+                  statusLabel: chip.label,
+                  statusColor: chip.textColor,
+                  progress: position,
+                  progressPage: positionPage,
+                  pageCount: total,
+                  onPercentTap: () => showSelectPercentBottomSheet(
+                    context,
+                    initialProgress: position,
+                    initialPage: positionPage,
+                    pageCount: total,
+                    onProgressSelected: (answer) => setState(
+                      () =>
+                          takePercentAnswer(answer.progress, page: answer.page),
+                    ),
+                  ),
+                  // Only a book with a total has a page to edit. Opened straight into
+                  // Page mode, because tapping the page has already said "pages".
+                  onPageTap: total == null
+                      ? null
+                      : () => showSelectPercentBottomSheet(
+                          context,
+                          initialProgress: position,
+                          initialPage: positionPage,
+                          pageCount: total,
+                          openInPageMode: true,
+                          title: l10n.currentPageTitle,
+                          onProgressSelected: (answer) => setState(
+                            () => takePercentAnswer(
+                              answer.progress,
+                              page: answer.page,
+                            ),
+                          ),
+                        ),
+                  // Present whether or not the book has a count: with one it edits the
+                  // total, without one it is the `Add total pages` offer, and that offer
+                  // is the largest single thing this sheet adds — about two books in
+                  // three have no count at all.
+                  onTotalTap: () => showSelectTotalPagesBottomSheet(
+                    context,
+                    initialTotalPages: total,
+                    onTotalPagesSelected: (value) =>
+                        setState(() => total = value),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // The control. Drag-only: a tap on it does nothing, deliberately.
+                ReadingTrack(
+                  progress: position,
+                  semanticsLabel: l10n.howFarIn,
+                  onChanged: (value) =>
+                      setState(() => takePercentAnswer(value)),
+                ),
+                if (status >= bookStatusReading) ...[
                   const SizedBox(height: 16),
                   DateFieldRow(
                     label: l10n.startDate,
@@ -143,15 +291,20 @@ Future<void> showBookStatusBottomSheet(
                         title: l10n.selectStartDate,
                         onDateSelected: (d) => setState(() {
                           start = d;
-                          // Moving the start past the finish would leave the
-                          // book finished before it was started.
+                          // Moving the start past the finish would leave the book
+                          // finished before it was started.
                           if (finish != null && finish!.isBefore(d)) finish = d;
                         }),
                       );
                     },
                   ),
                 ],
-                if (status == 2) ...[
+                // Set aside has a finish date too, and it is the day the book was
+                // *closed* rather than completed. That is what keeps the read view's
+                // month grouping and year rail working untouched: both read the date and
+                // neither cares why the book ended.
+                if (status == bookStatusFinished ||
+                    status == bookStatusSetAside) ...[
                   const SizedBox(height: 8),
                   DateFieldRow(
                     label: l10n.finishDate,
@@ -168,82 +321,39 @@ Future<void> showBookStatusBottomSheet(
                     },
                   ),
                 ],
-                // Only while the book is open. A finished book's position is 100%
-                // by definition and an interested one has none, so on both of
-                // those the row would be a field with one legal answer.
+                // **The sheet's only text action, and only while the book is open.**
                 //
-                // Inside the same `AnimatedSize` as the date rows above, which is
-                // why there is nothing to do here for the reveal: this is one more
-                // field of the kind the sheet already grows and shrinks by.
-                if (status == 1) ...[
-                  const SizedBox(height: 8),
-                  ProgressFieldRow(
-                    progress: position,
-                    progressPage: positionPage,
-                    pageCount: pageCount,
-                    onTap: () {
-                      showSelectPercentBottomSheet(
-                        context,
-                        initialProgress: position,
-                        // Only to resume Page mode where the reader left it. The
-                        // wheel still opens on Percent either way.
-                        initialPage: positionPage,
-                        // A book with no count still gets the wheel; it just gets no
-                        // page under it and no mode segment above it.
-                        pageCount: pageCount,
-                        onProgressSelected: (answer) => setState(() {
-                          // Both halves of one answer, always assigned together: a
-                          // position kept with the previous answer's unit would print
-                          // a page the reader never gave.
-                          position = answer.progress;
-                          positionPage = answer.page;
-                        }),
-                      );
-                    },
-                  ),
-                  // Under the position row, and only while the book is open: a day
-                  // is recorded against reading, and a finished or unstarted book
-                  // has no tonight to record. Inside the same `AnimatedSize`, so it
-                  // arrives the way the rows above it do.
-                  const SizedBox(height: 8),
-                  ReadTodayFieldRow(
-                    read: readTonight,
-                    onChanged: (value) => setState(() => readTonight = value),
+                // Nothing has been started at Not started; a finished book cannot be
+                // given up on; and a set-aside book resumes by moving the thumb, so a
+                // resume link would be a second affordance for a gesture the sheet
+                // already has.
+                //
+                // `secondaryText`, not `flame`: giving up on a book is an ordinary thing
+                // to do and not a destructive one, and this must not be the loudest thing
+                // on the sheet. It leaves the position exactly where it is, which is the
+                // whole point of the status existing — the read-out keeps saying 46%.
+                if (status == bookStatusReading) ...[
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() {
+                        status = bookStatusSetAside;
+                        finish ??= DateTime.now();
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          l10n.stopReadingThis,
+                          style: AppTextStyles.label.copyWith(
+                            color: colors.secondaryText,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedActionButton(
-                    height: 44,
-                    buttonText: l10n.save,
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // Only the dates the status actually has meaning for are
-                      // persisted, so an interested book never keeps the dates
-                      // that were kept around for the form's benefit.
-                      //
-                      // The position is passed through **unchanged** when the
-                      // reader did not touch the wheel, including when it is null.
-                      // It is deliberately *not* zeroed at status 0 or filled to
-                      // 100% at status 2 the way the dates are derived: a position
-                      // is a fact about the text, not about the status, and a book
-                      // put back on the shelf and reopened should be where the
-                      // reader left it.
-                      onSave((
-                        status: status,
-                        startDate: status >= 1 ? start : null,
-                        finishDate: status == 2 ? finish : null,
-                        progress: position,
-                        progressPage: positionPage,
-                        // Passed through when the book is no longer open, for the
-                        // reason the position is: a day the reader recorded is not
-                        // the status's to withdraw. Unticking is how it is undone.
-                        readToday: readTonight,
-                      ));
-                    },
-                  ),
-                ),
               ],
             ),
           ),

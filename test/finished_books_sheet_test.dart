@@ -34,9 +34,29 @@ import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/read_month_grid.dart';
 import 'package:bookworm_friends/ui/widgets/read_pile.dart';
+import 'package:bookworm_friends/ui/widgets/read_set_filter_popover.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 
 const _libraryKey = Key('library');
+
+/// The two titles the sheet takes, which are the read-out of its completion filter.
+/// Named because half this file drags the sheet by its title, so the default one is a
+/// handle as well as an assertion.
+const _finishedTitle = 'Books finished';
+const _allReadTitle = 'Books read';
+
+/// Routes pushed over the sheet, newest last.
+///
+/// The completion filter is presented as a route rather than drawn into the header, and
+/// that route's *type* carries a promise the rest of the app depends on — see the test
+/// that inspects it.
+final List<Route<dynamic>> _pushed = [];
+
+class _RouteSpy extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _pushed.add(route);
+}
 
 /// Surface tall enough that the expanded cap leaves the pile's height behind it,
 /// so collapsed and expanded are clearly different numbers.
@@ -60,6 +80,11 @@ Book _read(String id, String title, DateTime? finished) => Book(
   createdAt: DateTime(2024),
 );
 
+/// A book closed short of the end: status 3, with `finish_date` as the day it was
+/// closed rather than the day it was finished.
+Book _setAside(String id, String title, DateTime? closed) =>
+    _read(id, title, closed).copyWith(status: 3);
+
 /// Two months in 2026, one in 2025, and one undated — enough for grouping, the
 /// year capsules and the undated group all to be visible at once.
 List<Book> _books() => [
@@ -82,6 +107,7 @@ List<Book> _manyBooks() => [
 
 class _Host extends StatefulWidget {
   final List<Book> books;
+  final List<Book> setAside;
   final ValueNotifier<bool>? editMode;
   final double bottomReserve;
 
@@ -92,6 +118,7 @@ class _Host extends StatefulWidget {
 
   const _Host({
     required this.books,
+    this.setAside = const [],
     this.editMode,
     this.bottomReserve = 0,
     this.initialYear = 0,
@@ -116,6 +143,7 @@ class _HostState extends State<_Host> {
           valueListenable: widget.editMode ?? ValueNotifier(false),
           builder: (context, isEditMode, _) => FinishedBooksSheet(
             books: widget.books,
+            setAsideBooks: widget.setAside,
             isEditMode: isEditMode,
             filterYear: _year,
             maxExtent: _surface.height,
@@ -131,12 +159,14 @@ class _HostState extends State<_Host> {
 Future<void> _pump(
   WidgetTester tester, {
   List<Book>? books,
+  List<Book> setAside = const [],
   ValueNotifier<bool>? editMode,
   double bottomReserve = 0,
   int initialYear = 0,
 }) async {
   tester.view.physicalSize = _surface * tester.view.devicePixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
+  _pushed.clear();
   await tester.pumpWidget(
     // The grid reports each decoded cover's colour back to `books.cover_color`,
     // so it reads `libraryActionsProvider` — which needs a scope to read from.
@@ -146,11 +176,13 @@ Future<void> _pump(
     ProviderScope(
       child: MaterialApp(
         locale: const Locale('en'),
+        navigatorObservers: [_RouteSpy()],
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: _Host(
             books: books ?? _books(),
+            setAside: setAside,
             editMode: editMode,
             initialYear: initialYear,
             bottomReserve: bottomReserve,
@@ -174,7 +206,7 @@ Offset _handleCenter(WidgetTester tester) {
 }
 
 Future<void> _drag(WidgetTester tester, double dy) async {
-  await tester.drag(find.text('Books read'), Offset(0, dy));
+  await tester.drag(find.text(_finishedTitle), Offset(0, dy));
   await tester.pumpAndSettle();
 }
 
@@ -244,6 +276,364 @@ double _shelfGapFromBottom(WidgetTester tester) =>
         .bottom;
 
 void main() {
+  group('Read view, the completion filter', () {
+    // The sheet shows two sets — status 2 and status 3 — merged behind a filter whose
+    // read-out is the sheet's own title. These fixtures are shaped so that every number
+    // the filter changes is a different number: 3 finished against 5 read, and a month
+    // that exists in one mode only.
+    List<Book> finished() => [
+      _read('f1', 'Dune', DateTime(2026, 3, 4)),
+      _read('f2', 'Circe', DateTime(2026, 3, 19)),
+      _read('f3', 'Beloved', DateTime(2025, 11, 2)),
+    ];
+    List<Book> setAside() => [
+      _setAside('s1', 'Ulysses', DateTime(2026, 3, 10)),
+      _setAside('s2', 'Wolf Hall', DateTime(2024, 6, 1)),
+    ];
+
+    /// The chevron, scoped to the title.
+    ///
+    /// Unscoped this would also find the **year** filter's own collapsed popover, which
+    /// draws the same glyph at the same size in the same row — so an unscoped finder
+    /// would report a chevron on the collapsed sheet and the expanded-only assertion
+    /// would pass on nothing.
+    final chevron = find.descendant(
+      of: find.byType(LibrarySheetTitle),
+      matching: find.byIcon(Icons.keyboard_arrow_down),
+    );
+
+    /// The count in the sheet's own header. Scoped to the title: a month group prints a
+    /// count too.
+    int headerCount(WidgetTester tester) =>
+        tester.widget<LibrarySheetTitle>(find.byType(LibrarySheetTitle)).count!;
+
+    String headerTitle(WidgetTester tester) =>
+        tester.widget<LibrarySheetTitle>(find.byType(LibrarySheetTitle)).title;
+
+    /// What the month headers add up to.
+    ///
+    /// Read off the grouped list the headers are built from rather than by scraping the
+    /// rendered numbers, because several months can hold the same count — `find.text('1')`
+    /// cannot be attributed to a month. `ReadMonthGrid.group` is the only thing between
+    /// this list and the text, and it is one `length` per row.
+    int monthTotal(WidgetTester tester) => tester
+        .widget<ReadMonthGrid>(find.byType(ReadMonthGrid))
+        .months
+        .fold(0, (sum, month) => sum + month.books.length);
+
+    /// Opens the menu by tapping the **title itself**.
+    ///
+    /// Not `tester.tap(find.byType(LibrarySheetTitle))`, which taps the centre of that
+    /// widget's box — and the box is the sheet's full width while the target is only the
+    /// title, its count and the chevron. With the real font the centre of the row lands
+    /// past the end of the chevron and nothing happens, which is the behaviour the last
+    /// test in this group pins.
+    Future<void> openMenu(WidgetTester tester) async {
+      await tester.tap(find.text(headerTitle(tester)));
+      await tester.pumpAndSettle();
+    }
+
+    /// Opens the menu and chooses [row].
+    Future<void> choose(WidgetTester tester, String row) async {
+      await openMenu(tester);
+      await tester.tap(find.text(row));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'Given finished and set-aside books, When the filter is switched, Then the '
+      'title and the count both change',
+      (tester) async {
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+
+        expect(headerTitle(tester), _finishedTitle);
+        expect(headerCount(tester), 3);
+        expect(
+          find.text('3'),
+          findsWidgets,
+          reason: 'and the count is drawn, not merely held',
+        );
+
+        await choose(tester, 'Show all read');
+
+        expect(headerTitle(tester), _allReadTitle);
+        expect(
+          headerCount(tester),
+          5,
+          reason:
+              'the only state that reads higher than the Library Card is the one '
+              'whose title says why',
+        );
+        expect(find.text(_allReadTitle), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given either filter, When the grid is grouped, Then the month counts sum to '
+      'the header count',
+      (tester) async {
+        // The reason the header count has to track the *visible* list rather than the
+        // achievement: a reader can add the months up.
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+
+        expect(monthTotal(tester), headerCount(tester));
+        expect(monthTotal(tester), 3, reason: 'March 2026 x2, November 2025');
+
+        await choose(tester, 'Show all read');
+
+        expect(monthTotal(tester), headerCount(tester));
+        expect(
+          monthTotal(tester),
+          5,
+          reason: 'and June 2024 is a month that exists in this mode only',
+        );
+      },
+    );
+
+    testWidgets(
+      'Given the title is tapped, When the menu opens, Then it offers exactly two '
+      'rows with exactly one checked',
+      (tester) async {
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+        expect(
+          find.byIcon(Icons.check),
+          findsNothing,
+          reason: 'nothing on the sheet itself draws a check',
+        );
+
+        await tester.tap(find.text(_finishedTitle));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Show finished only'), findsOneWidget);
+        expect(find.text('Show all read'), findsOneWidget);
+        expect(
+          find.byIcon(Icons.check),
+          findsOneWidget,
+          reason:
+              'a two-state filter with two checks or none is not reporting a state',
+        );
+
+        // The check moves with the choice rather than the row keeping it.
+        await tester.tap(find.text('Show all read'));
+        await tester.pumpAndSettle();
+        await openMenu(tester);
+        expect(find.byIcon(Icons.check), findsOneWidget);
+        expect(
+          tester.getRect(find.byIcon(Icons.check)).center.dy,
+          greaterThan(
+            tester.getRect(find.text('Show finished only')).center.dy,
+          ),
+          reason: 'the check is on the second row now',
+        );
+      },
+    );
+
+    testWidgets(
+      'Given the count rather than the title is tapped, When it is, Then the same '
+      'menu opens',
+      (tester) async {
+        // Title, count and chevron are **one** tap target. Three separately tappable
+        // things in a row this size would be three ways to miss.
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+
+        await tester.tap(find.text('3'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Show all read'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given the chevron rather than the title is tapped, When it is, Then the same '
+      'menu opens',
+      (tester) async {
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+
+        await tester.tap(chevron);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Show all read'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given the menu, When it is presented, Then it is a PopupRoute and its type '
+      'name says so',
+      (tester) async {
+        // Both halves are load-bearing and neither is visible on screen.
+        // `ShellRouteObserver._isAnyModal` answers true for any `PopupRoute` before it
+        // starts matching type names, which is what makes native glass controls on the
+        // route below stand down while this is up — and the year rail's selected
+        // capsule, directly under the anchor, is one of them. The package's own
+        // predicate matches on the substring `Popup` instead, so a rename to something
+        // without it would silently stop that happening.
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+        await openMenu(tester);
+
+        expect(_pushed.last, isA<ReadSetFilterPopupRoute>());
+        expect(_pushed.last, isA<PopupRoute<ReadSetFilter>>());
+        expect(_pushed.last.runtimeType.toString(), contains('Popup'));
+      },
+    );
+
+    testWidgets(
+      'Given the menu is open, When the barrier is tapped, Then it dismisses and the '
+      'filter is left alone',
+      (tester) async {
+        // A menu anchored to the thing that opened it is dismissed by tapping away from
+        // it, and dismissing is not a choice: the route returns null and the sheet has
+        // to tell that apart from the reader choosing the row that was already checked.
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+        await openMenu(tester);
+
+        await tester.tapAt(Offset(_surface.width - 8, _surface.height - 8));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Show all read'), findsNothing);
+        expect(headerTitle(tester), _finishedTitle);
+        expect(headerCount(tester), 3);
+      },
+    );
+
+    testWidgets(
+      'Given the sheet collapsed and expanded, When compared, Then only the chevron '
+      'is expanded-only',
+      (tester) async {
+        await _pump(tester, books: finished(), setAside: setAside());
+
+        expect(
+          chevron,
+          findsNothing,
+          reason:
+              'the collapsed row already has the year popover competing with the '
+              'title for it',
+        );
+
+        await _dragToTop(tester);
+        expect(chevron, findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Given the inclusive filter, When the sheet is collapsed, Then the count does '
+      'not jump and the pile shows the same books',
+      (tester) async {
+        // A filter honoured in one state and ignored in the other is a count that
+        // changes when the reader puts the sheet away, which reads as a bug in the
+        // number rather than as a property of the state.
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+        await choose(tester, 'Show all read');
+        expect(headerCount(tester), 5);
+
+        await tester.tapAt(_handleCenter(tester));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ReadPile), findsOneWidget);
+        expect(headerCount(tester), 5);
+        expect(headerTitle(tester), _allReadTitle);
+        expect(
+          find.byType(BookVertical),
+          findsNWidgets(5),
+          reason: 'and the pile is drawing them, not only counting them',
+        );
+      },
+    );
+
+    testWidgets(
+      'Given nothing finished but something set aside, When the filter is switched, '
+      'Then the empty state follows the mode',
+      (tester) async {
+        await _pump(tester, books: const [], setAside: setAside());
+        await _dragToTop(tester);
+
+        expect(find.text('No books finished yet 🥲'), findsOneWidget);
+        expect(headerCount(tester), 0);
+
+        await choose(tester, 'Show all read');
+
+        expect(
+          find.text('No books finished yet 🥲'),
+          findsNothing,
+          reason: 'there are two books here — they were just not finished',
+        );
+        expect(headerCount(tester), 2);
+      },
+    );
+
+    testWidgets(
+      'Given an empty library, When the inclusive filter is chosen, Then the empty '
+      'state is the inclusive wording',
+      (tester) async {
+        // The pairing the ARB keys exist for: without it the sheet says "No books read
+        // yet" under a `Books finished` title, which is one sentence contradicting the
+        // heading directly above it.
+        await _pump(tester, books: const [], setAside: const []);
+        await _dragToTop(tester);
+        expect(find.text('No books finished yet 🥲'), findsOneWidget);
+
+        await choose(tester, 'Show all read');
+
+        expect(find.text('No books read yet 🥲'), findsOneWidget);
+        expect(find.text('No books finished yet 🥲'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Given a set-aside book closed between two finished ones, When merged, Then it '
+      'sorts by date rather than by which query it came from',
+      (tester) async {
+        // Both providers order by `finish_date` descending, so concatenating them draws
+        // every finished book and then starts the dates again. Within a month that is
+        // visible: the set-aside book would collect at the end of the row.
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+        await choose(tester, 'Show all read');
+
+        final march = tester
+            .widget<ReadMonthGrid>(find.byType(ReadMonthGrid))
+            .months
+            .first;
+        expect(
+          [for (final book in march.books) book.title],
+          ['Circe', 'Ulysses', 'Dune'],
+          reason: '19th, 10th, 4th — one order, whatever the status',
+        );
+      },
+    );
+
+    testWidgets(
+      'Given the empty end of the title row, When tapped, Then nothing opens',
+      (tester) async {
+        // The tap target is the title, the count and the chevron — not the row's box,
+        // which both call sites lay out at the sheet's full width. A control whose edges
+        // the reader cannot see is worse than a smaller one, and this is also what keeps
+        // the widget safe for a caller that puts something else on the row.
+        await _pump(tester, books: finished(), setAside: setAside());
+        await _dragToTop(tester);
+
+        final row = tester.getRect(find.byType(LibrarySheetTitle));
+        expect(
+          tester.getRect(chevron).right,
+          lessThan(row.right - 40),
+          reason: 'otherwise this taps the chevron and proves nothing',
+        );
+
+        await tester.tapAt(Offset(row.right - 8, row.center.dy));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Show all read'), findsNothing);
+      },
+    );
+  });
+
   group('Read view, collapsed', () {
     testWidgets(
       'Given read books, When first laid out, Then the pile is the resting state '
@@ -255,7 +645,7 @@ void main() {
         final sheet = _sheetRect(tester);
 
         expect(sheet.bottom, moreOrLessEquals(body.bottom));
-        expect(find.text('Books read'), findsOneWidget);
+        expect(find.text(_finishedTitle), findsOneWidget);
         expect(find.text('5'), findsOneWidget);
 
         // The pile, not the grid.
@@ -999,7 +1389,7 @@ void main() {
         await _pump(tester, editMode: editMode);
         final before = headerCount(tester);
 
-        await tester.drag(find.text('Books read'), const Offset(-swipe, 0));
+        await tester.drag(find.text(_finishedTitle), const Offset(-swipe, 0));
         await tester.pumpAndSettle();
 
         expect(headerCount(tester), before);
@@ -1014,7 +1404,7 @@ void main() {
       (tester) async {
         await _pump(tester, books: const []);
 
-        expect(find.text('No books read yet 🥲'), findsOneWidget);
+        expect(find.text('No books finished yet 🥲'), findsOneWidget);
         expect(find.text('0'), findsOneWidget);
       },
     );

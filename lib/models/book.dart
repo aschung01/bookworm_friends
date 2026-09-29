@@ -196,7 +196,7 @@ class Book {
   ///
   /// **Provenance, not position.** [progress] is the position, and a page stored as
   /// `page / pageCount` round-trips exactly, so this field is not how the app knows
-  /// where the reader is. It exists so `ProgressFieldRow` can print `p.200` to a
+  /// where the reader is. It exists so the read-out can print `p.200` to a
   /// reader who said p.200 and `46%` to one who said 46% — their own answer in their
   /// own unit.
   ///

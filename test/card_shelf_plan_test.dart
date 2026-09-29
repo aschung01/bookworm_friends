@@ -285,7 +285,8 @@ void main() {
         expect(
           plan.items.where((i) => i.reading).length,
           math.min(open, kCardReadingMax),
-          reason: 'a reader with $open open books is a case to survive, not serve',
+          reason:
+              'a reader with $open open books is a case to survive, not serve',
         );
 
         // **The guarantee itself, and it is the whole reason for the rule.** The top board

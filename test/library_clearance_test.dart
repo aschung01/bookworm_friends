@@ -90,6 +90,7 @@ Future<void> _pump(
   TextScaler? textScaler,
   Size? surfaceSize,
   List<Book>? readBooks,
+  List<Book>? setAsideBooks,
 }) => pumpHome(
   tester,
   textScaler: textScaler,
@@ -100,6 +101,16 @@ Future<void> _pump(
     ),
     userFinishedBooksProvider.overrideWith(
       (ref, userId) async => readBooks ?? _readBooks(),
+    ),
+    // The read sheet's second query, on both paths. Empty by default: what these
+    // tests measure is the row the *chevron* is in, and a set-aside book changes the
+    // count rather than the chrome — `setAsideBooks` below is the seam for a case
+    // that wants one.
+    setAsideBooksProvider.overrideWith(
+      (ref) async => setAsideBooks ?? const <Book>[],
+    ),
+    userSetAsideBooksProvider.overrideWith(
+      (ref, userId) async => setAsideBooks ?? const <Book>[],
     ),
     userLibraryProvider.overrideWith((ref, id) async => singleBookLibrary()),
     friendsProvider.overrideWith((ref) async => [_friend('f1', 'jisoo')]),
@@ -330,6 +341,59 @@ void main() {
         );
       },
     );
+
+    testWidgets('Given the largest text scale, a two-digit count and the filter chevron, When '
+        'expanded, Then the title row does not overflow', (tester) async {
+      // **The row this file exists for, with one more fixed thing in it.** The
+      // collapsed header's two halves were both made flexible because the year
+      // popover's label starved the title of the room its own count needed; the
+      // expanded header now adds a chevron beside that count, and the chevron does
+      // not shrink. 40 read books make the count two digits, which is the case that
+      // costs the most — and the test font draws every glyph one em wide, so
+      // `Books finished` measures far wider here than on a device.
+      await _pump(
+        tester,
+        surfaceSize: _smallPhone,
+        textScaler: const TextScaler.linear(2),
+        readBooks: _manyReadBooks(),
+      );
+      await _expand(tester);
+
+      final title = find.byType(LibrarySheetTitle);
+      expect(
+        find.descendant(
+          of: title,
+          matching: find.byIcon(Icons.keyboard_arrow_down),
+        ),
+        findsOneWidget,
+        reason:
+            'if the chevron is not there this measures the row without the thing '
+            'it was written for',
+      );
+      expect(
+        tester.widget<LibrarySheetTitle>(title).count,
+        greaterThanOrEqualTo(10),
+        reason:
+            'and a two-digit count, which is the wider of the two cases. The '
+            'fixture spreads 40 books over three years and the sheet opens on the '
+            'current one, so this is the dozen in it rather than all forty',
+      );
+      expect(
+        tester.takeException(),
+        isNull,
+        reason:
+            'the title ellipsizes and the row holds; an overflow here is the '
+            'chevron having taken the room the count needed',
+      );
+
+      // The whole row, chevron included, has to be inside the sheet's gutters — an
+      // overflow is not the only way to lose the end of it, as a label drawn past
+      // the right edge of the card would be clipped rather than reported.
+      final sheet = tester.getRect(find.byType(LibrarySheet));
+      final row = tester.getRect(title);
+      expect(row.left, greaterThanOrEqualTo(sheet.left));
+      expect(row.right, lessThanOrEqualTo(sheet.right));
+    });
   });
 
   // Phase 3 measures a third case, and the measurement changed the design. The
