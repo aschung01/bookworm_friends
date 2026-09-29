@@ -27,7 +27,7 @@ import 'package:bookworm_friends/ui/widgets/read_set_filter_popover.dart';
 ///
 /// Which set is showing is [ReadSetFilter], and **the title is its read-out** rather
 /// than there being a filter label anywhere — see that enum for why, and
-/// [_openFilter] for what opens it.
+/// [_takeFilter] for what answers it.
 class FinishedBooksSheet extends StatefulWidget {
   /// Every finished book, unfiltered. The year filter is applied here rather than
   /// in the query, because the year capsules are derived from this same list.
@@ -123,7 +123,6 @@ class _FinishedBooksSheetState extends State<FinishedBooksSheet> {
   /// expanded header carries a tappable title — so only that one takes the key. Sharing
   /// one key with the collapsed title would be a duplicate-key crash on any frame that
   /// held both.
-  final GlobalKey _titleKey = GlobalKey();
 
   /// Every book the current mode shows, before the year filter.
   ///
@@ -177,23 +176,19 @@ class _FinishedBooksSheetState extends State<FinishedBooksSheet> {
     return [for (final entry in ranked) entry.book];
   }
 
-  /// Opens the completion filter under the title that reads it out.
+  /// Takes the completion filter's answer.
   ///
-  /// The menu is app-drawn — see [showReadSetFilterPopover], which records why the
-  /// native `CNPopupMenuButton` that looks like an exact fit cannot be used for a
-  /// label this size.
+  /// **The menu is the platform's now, and it was app-drawn.** This used to open a
+  /// hand-built card from the title's [RenderBox]; `read_set_filter_popover.dart` records
+  /// the three failed attempts at building its material and why a `UIMenu` replaced them.
+  /// The anchoring, the entrance and the dismissal all went with it, which is most of
+  /// what this method used to be.
   ///
-  /// Returning the mode it was already on is a legal answer and is compared here rather
-  /// than refused there: a menu that ignores the row it has checked reads as broken.
-  Future<void> _openFilter() async {
-    final anchor = _titleKey.currentContext?.findRenderObject() as RenderBox?;
-    if (anchor == null) return;
-    final chosen = await showReadSetFilterPopover(
-      context,
-      anchor: anchor,
-      current: _filter,
-    );
-    if (chosen == null || chosen == _filter || !mounted) return;
+  /// Choosing the mode it was already on is a legal answer and is compared here rather
+  /// than refused in the menu: a menu that ignores the row it has checked reads as
+  /// broken.
+  void _takeFilter(ReadSetFilter chosen) {
+    if (chosen == _filter || !mounted) return;
     setState(() => _filter = chosen);
   }
 
@@ -309,13 +304,22 @@ class _FinishedBooksSheetState extends State<FinishedBooksSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           LibrarySheetTitle(
-            key: _titleKey,
             title: titleText,
             count: visible.length,
             // Inert while the library is being edited, the same gate the rail below
             // takes. The chevron goes with it, which is invisible: the sheet has been
             // slid off the bottom of the screen by then.
-            onTap: widget.isEditMode ? null : _openFilter,
+            //
+            // **A widget rather than a callback**, because the menu is the platform's
+            // and UIKit presents it from the button's own tap. The title and count are
+            // no longer part of the target; the cost is argued in
+            // `read_set_filter_popover.dart`.
+            menu: widget.isEditMode
+                ? null
+                : ReadSetFilterMenuButton(
+                    current: _filter,
+                    onSelected: _takeFilter,
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 8),

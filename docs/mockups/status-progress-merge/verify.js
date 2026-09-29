@@ -699,14 +699,14 @@ ok(
 ok(
   shdOf("sheet-popover").t2 === shdOf("sheet-read").t2 &&
     shdOf("sheet-popover").n === shdOf("sheet-read").n,
-  "the popover opens over the default state, not a third mode",
+  "the menu opens over the default state, not a third mode",
 );
 const pop = specOf("sheet-popover").body.find((b) => b.t === "pop");
 ok(
   !!pop &&
     pop.items.map((x) => x.v).join(" / ") ===
       "Show finished only / Show all read",
-  "the popover offers exactly the two modes, in that order",
+  "the menu offers exactly the two modes, in that order",
 );
 ok(
   !!pop &&
@@ -717,6 +717,30 @@ ok(
 ok(
   A.frame(specOf("sheet-popover")).includes("&#10003;"),
   "and the check is actually drawn",
+);
+/* The material under those rows is NOT what shipped: three rounds of hand-built glass
+   ended in the platform's own `UIMenu`, so the card is drawn as superseded work. The
+   rows are still the design -- the labels, their order and the single check are what a
+   `CNPopupMenuItem` renders -- which is why the four checks above survive the reversal
+   and only the caption changes. Asserted as substrings so the caption cannot quietly go
+   back to presenting this card as the mechanism. */
+const popCap = A.resolveView("track", "screens")
+  .flatMap(([, l]) => l)
+  .find((i) => i[0] === "sheet-popover")[2];
+ok(
+  popCap.includes("UIMenu"),
+  "the caption records that the platform menu superseded this card",
+);
+ok(
+  popCap.includes("labelled</i> constructor only"),
+  "and keeps the half-right argument that chose the card",
+);
+/* The one thing the DRAWING now gets wrong, which no block check can see: it shows the
+   whole title row as the target and the shipped target is the chevron. Stated in words
+   because redrawing it would cost the occlusion this screen exists to show. */
+ok(
+  popCap.includes("30pt chevron"),
+  "and states the tap target the drawing no longer matches",
 );
 
 /* The flow walks through the same drawing, which is the thing that goes stale. */

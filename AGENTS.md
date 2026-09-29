@@ -1392,7 +1392,13 @@ does not work. **`shelf_picker_popover.dart` still uses `LiquidGlassContainer` a
 same defect**; it is deliberately left until the popover's fix has been looked at on a
 device, so that two twins are not changed on one unverified diagnosis.
 
-Three details that are easy to get wrong and are all load-bearing:
+**That fix is no longer in the app.** The card was deleted and the read sheet's filter is
+the platform's `UIMenu` now — see the end of this section. What follows is kept because it is
+the record of the chain that decision came out of, and because every item still holds for
+`read_filter._Capsule` and `AdaptiveContentButton`, which are controls _with_ a material
+rather than surfaces pretending to be one.
+
+Five details that are easy to get wrong and are all load-bearing:
 
 - **`onPressed` must be a non-null no-op, not null.** `CNButton` sends
   `'enabled': (widget.enabled && widget.onPressed != null)`, so a null callback disables the
@@ -1438,7 +1444,65 @@ carried entirely by a 0.5pt hairline and its shadow. Where covers sit behind it 
 something to work with and it reads properly. This is the same trap `shelf_picker_popover`
 records from the other end (*"a blur of something uniform is that thing"*) and it is **not**
 fixed: it is a separate judgement about the non-glass path, and retuning the fill is a change
-nobody has asked for yet.
+nobody has asked for yet. **Moot for the read filter**, whose fallback is now Material's menu
+on `colors.surface`; kept because `shelf_picker_popover` still draws that card, and because
+the measurement is about the idiom rather than about any one widget.
+
+### And then the card was deleted: the read filter is the platform's `UIMenu`
+
+`ReadSetFilterMenuButton` in `read_set_filter_popover.dart` is a `CNPopupMenuButton.icon`
+behind `useNativeGlass`, and a `PopupMenuButton` off it. About 250 lines went with the card
+it replaced: its own `PopupRoute`, the anchor's `RenderBox` maths, the scale-and-fade
+entrance, two `InkWell` rows with a check slot, and the glass material the section above is
+about.
+
+**The decision is about the shape of the chain rather than any one link in it.** Three
+fixes, each correct about the thing it fixed and each uncovering the next, is what a
+hand-built material costs when **none of it can be checked from here** — `useNativeGlass`
+wants an Apple target _and_ iOS 26, and `flutter test` reports Android, so all three rounds
+were reasoning about Swift nobody could watch run. A `UIMenu` brings the material, the corner
+radius, the entrance, the dismissal, the checkmarks and the VoiceOver behaviour from the
+platform, and none of them can drift from iOS because none of them is ours.
+
+**The rejection that sent this down the hand-built road in the first place was half right.**
+`read_set_filter_popover.dart` used to say the platform menu was "the wrong mechanism here"
+because `buttonLabel` is rendered **by the platform** — pointing at `read_filter.dart`'s
+record of a label arriving at the system's 17pt, wrapped onto two lines inside a view sized
+for 13pt. True, and it rules out the **labelled** constructor only. `.icon` renders one SF
+Symbol and no text, so the Flutter title beside it stays Flutter's 22pt with its count in
+`brandText`. `home_page.dart`'s `_VisitMenuButton` — the friend's-library chevron with
+`Remove friend` under it — has been shipping that exact arrangement all along, and is what a
+reader pointed at.
+
+**What it costs: the title and count are no longer part of the tap target**, which reverses a
+documented decision (_"title, count and chevron are one tap target; three separately tappable
+things in a row this size would be three ways to miss"_) and inverted the case that asserted
+tapping the count opens the filter. It is not a preference. UIKit presents from
+`button.showsMenuAsPrimaryAction` and the plugin exposes no programmatic open, so the tapped
+thing has to **be** the native button; a Flutter gesture on the row has nothing to call.
+Stretching a label-less `.plain` `CNPopupMenuButton` across the whole row — the way
+`_Capsule` stretches a plain `CNButton` — is the one way back, and was not taken: after three
+unverifiable attempts at hand-built glass, copying a control known to work on a device beat
+inventing a fourth. **`CNPopupGesture` is not the escape either**: long-press only, and it
+draws a Flutter overlay rather than a native menu.
+
+Three things to copy rather than rediscover, all from `_VisitMenuButton._fallback`:
+
+- **The `PopupMenuButton` needs `color:` and `shape:`**, or Material's default draws a heavy
+  dark outline with near-square corners over the sheet. That is what the first render showed,
+  and it looks like a rendering fault rather than a missing argument.
+- **The glyph goes in `child:` wrapped in a `Center`, not `icon:`**, whose `IconButton`
+  padding does not fit a small box.
+- **The box is 30, not `_VisitMenuButton`'s 44.** That one punctuates a 56pt row; this
+  punctuates a title row sized by a 22pt line, and `library_clearance_test.dart` measures that
+  row at 2× text with a two-digit count, so 44 would push everything under it down. Below the
+  platform's floor and accepted, for the reason the read-out's numerals accept it: this is the
+  coarse control's neighbour, not the only way to the state.
+
+**`shelf_picker_popover.dart` is still the untouched twin** — still `LiquidGlassContainer`,
+still with the original defect, and now one idiom further behind, since a picker of shelves is
+the same `UIMenu` candidate. Still deliberately left until this one has been looked at on a
+device.
 
 ### Erasing a position needed a new flag, because `null` was already taken
 

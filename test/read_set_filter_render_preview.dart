@@ -36,6 +36,7 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
 import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
+import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 
 /// The narrowest phone the app supports, at a height that leaves the sheet its real
 /// band — the point is the sheet's own proportions, not a tall frame.
@@ -220,10 +221,16 @@ void main() {
       await tester.pumpAndSettle();
       await _shoot(tester, dir, '${theme.key}-finished');
 
-      // The title itself, not the centre of its row: the tap target is the title, its
-      // count and the chevron, and with the real font the row's centre is past the end
-      // of all three.
-      await tester.tap(find.text('Books finished'));
+      // **The chevron, which is the whole target now.** It used to be the title: title,
+      // count and chevron were one tap target until the menu became the platform's, and
+      // UIKit presents a `UIMenu` from the button's own tap. See
+      // `read_set_filter_popover.dart`.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(LibrarySheetTitle),
+          matching: find.byIcon(Icons.keyboard_arrow_down),
+        ),
+      );
       await tester.pumpAndSettle();
       await _shoot(tester, dir, '${theme.key}-popover');
 

@@ -34,7 +34,6 @@ import 'package:bookworm_friends/ui/widgets/finished_books_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/library_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/read_month_grid.dart';
 import 'package:bookworm_friends/ui/widgets/read_pile.dart';
-import 'package:bookworm_friends/ui/widgets/read_set_filter_popover.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 
 const _libraryKey = Key('library');
@@ -321,15 +320,17 @@ void main() {
         .months
         .fold(0, (sum, month) => sum + month.books.length);
 
-    /// Opens the menu by tapping the **title itself**.
+    /// Opens the menu by tapping the **chevron**, which is the whole target now.
     ///
-    /// Not `tester.tap(find.byType(LibrarySheetTitle))`, which taps the centre of that
-    /// widget's box — and the box is the sheet's full width while the target is only the
-    /// title, its count and the chevron. With the real font the centre of the row lands
-    /// past the end of the chevron and nothing happens, which is the behaviour the last
-    /// test in this group pins.
+    /// It used to tap the title, because title, count and chevron were one target. The
+    /// menu is the platform's since, and UIKit presents a `UIMenu` from the button's own
+    /// tap — so the chevron *is* the button and the title beside it is inert. The case
+    /// below pins that, and `read_set_filter_popover.dart` argues the cost.
+    ///
+    /// Still not `tester.tap(find.byType(LibrarySheetTitle))`: that taps the centre of a
+    /// box which is the sheet's full width, and lands on the title's glyphs or past them.
     Future<void> openMenu(WidgetTester tester) async {
-      await tester.tap(find.text(headerTitle(tester)));
+      await tester.tap(chevron);
       await tester.pumpAndSettle();
     }
 
@@ -393,7 +394,7 @@ void main() {
     );
 
     testWidgets(
-      'Given the title is tapped, When the menu opens, Then it offers exactly two '
+      'Given the chevron is tapped, When the menu opens, Then it offers exactly two '
       'rows with exactly one checked',
       (tester) async {
         await _pump(tester, books: finished(), setAside: setAside());
@@ -404,8 +405,7 @@ void main() {
           reason: 'nothing on the sheet itself draws a check',
         );
 
-        await tester.tap(find.text(_finishedTitle));
-        await tester.pumpAndSettle();
+        await openMenu(tester);
 
         expect(find.text('Show finished only'), findsOneWidget);
         expect(find.text('Show all read'), findsOneWidget);
@@ -432,18 +432,27 @@ void main() {
     );
 
     testWidgets(
-      'Given the count rather than the title is tapped, When it is, Then the same '
-      'menu opens',
+      'Given the count rather than the chevron is tapped, When it is, Then nothing opens',
       (tester) async {
-        // Title, count and chevron are **one** tap target. Three separately tappable
-        // things in a row this size would be three ways to miss.
+        // **This asserted the opposite**, as *"Then the same menu opens"*, with the
+        // comment *"title, count and chevron are one tap target; three separately
+        // tappable things in a row this size would be three ways to miss"*. The target
+        // shrank to the chevron when the menu became the platform's, and it is not a
+        // choice that was available: UIKit presents a `UIMenu` from
+        // `showsMenuAsPrimaryAction`, so the thing tapped has to *be* the native button,
+        // and the plugin exposes no way to present one programmatically — a Flutter
+        // gesture on the row would have nothing to call.
+        //
+        // The friend's library has the same chevron-only target, so the app agrees with
+        // itself. Kept as a case, inverted, because it is the visible cost of the swap
+        // and someone will otherwise "fix" the row back and find they cannot.
         await _pump(tester, books: finished(), setAside: setAside());
         await _dragToTop(tester);
 
         await tester.tap(find.text('3'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Show all read'), findsOneWidget);
+        expect(find.text('Show all read'), findsNothing);
       },
     );
 
@@ -461,26 +470,30 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given the menu, When it is presented, Then it is a PopupRoute and its type '
-      'name says so',
-      (tester) async {
-        // Both halves are load-bearing and neither is visible on screen.
-        // `ShellRouteObserver._isAnyModal` answers true for any `PopupRoute` before it
-        // starts matching type names, which is what makes native glass controls on the
-        // route below stand down while this is up — and the year rail's selected
-        // capsule, directly under the anchor, is one of them. The package's own
-        // predicate matches on the substring `Popup` instead, so a rename to something
-        // without it would silently stop that happening.
-        await _pump(tester, books: finished(), setAside: setAside());
-        await _dragToTop(tester);
-        await openMenu(tester);
+    testWidgets('Given the menu, When it is presented, Then it is a PopupRoute and its type '
+        'name says so', (tester) async {
+      // Both halves are load-bearing and neither is visible on screen.
+      // `ShellRouteObserver._isAnyModal` answers true for any `PopupRoute` before it
+      // starts matching type names, which is what makes native glass controls on the
+      // route below stand down while this is up — and the year rail's selected
+      // capsule, directly under the anchor, is one of them. The package's own
+      // predicate matches on the substring `Popup` instead, so a rename to something
+      // without it would silently stop that happening.
+      await _pump(tester, books: finished(), setAside: setAside());
+      await _dragToTop(tester);
+      await openMenu(tester);
 
-        expect(_pushed.last, isA<ReadSetFilterPopupRoute>());
-        expect(_pushed.last, isA<PopupRoute<ReadSetFilter>>());
-        expect(_pushed.last.runtimeType.toString(), contains('Popup'));
-      },
-    );
+      // **The route is Material's now, and the property survives unchanged.** This
+      // used to name `ReadSetFilterPopupRoute`, a `PopupRoute<ReadSetFilter>` this app
+      // owned; the menu is a `CNPopupMenuButton` on iOS 26 and a `PopupMenuButton`
+      // everywhere else, so what a test can see is `_PopupMenuRoute` — which satisfies
+      // both predicates for free, being a `PopupRoute` whose type name contains
+      // `Popup`. Worth keeping rather than deleting: the property was never about our
+      // class, it was about the two observers, and now nothing we control guarantees
+      // it.
+      expect(_pushed.last, isA<PopupRoute<Object?>>());
+      expect(_pushed.last.runtimeType.toString(), contains('Popup'));
+    });
 
     testWidgets(
       'Given the menu is open, When the barrier is tapped, Then it dismisses and the '

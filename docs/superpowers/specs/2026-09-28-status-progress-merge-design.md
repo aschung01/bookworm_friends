@@ -493,8 +493,17 @@ happened yet and there is no position to derive from.
 ### Where a set-aside book lives: the read sheet, and the title is the filter
 
 `FinishedBooksSheet` gains a two-state completion filter, and **the sheet's own title is its
-read-out**. A chevron-down sits to the right of the title; title, count and chevron are one
-tap target; tapping opens a glass popover with two checkable rows.
+read-out**. A chevron-down sits to the right of the title, and tapping it opens the platform's
+own menu with two checkable rows.
+
+**This said _"title, count and chevron are one tap target"_, on the grounds that "three
+separately tappable things in a row this size would be three ways to miss". That is reversed,
+and not by preference.** The menu is a `UIMenu` now — see _The mechanism_ below — and UIKit
+presents one from `button.showsMenuAsPrimaryAction`, so there is no programmatic open and the
+thing tapped has to **be** the native button. A Flutter gesture wrapping the whole row would
+have nothing to call. The cost is a 30pt target where there was a full-width one, paid because
+the friend's library already spends it: `_VisitMenuButton` is the same chevron beside the same
+kind of Flutter-drawn title.
 
 | mode      | title            | count | rows                                     |
 | --------- | ---------------- | ----- | ---------------------------------------- |
@@ -518,20 +527,44 @@ while the Library Card read 23 a tab away, both correct, with the clash written 
 23` and matches the Card exactly, and the only state that reads 29 is the one whose title
 says why. The `AGENTS.md` note shrinks to a sentence.
 
-**The mechanism exists twice and the obvious one is wrong.** `read_filter.dart`'s collapsed
-popover is `CNPopupMenuButton` with `CNButtonStyle.glass` and `CNPopupMenuItem(checked:)` — an
-apparently exact fit, including the check marks. But its `buttonLabel` is rendered **by the
-platform**, and that file's own record documents the label arriving at "the system's 17pt in
-the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for 13pt".
-The title is the largest text on the sheet and `LibrarySheetTitle` draws its count in the
-brand colour, so it cannot become a platform-styled button label.
+**The mechanism is the platform's menu, after three rounds of building the card by hand.**
 
-The right precedent is `shelf_picker_popover.dart`'s `showShelfPickerPopover` — an app-drawn
-card hung from an anchor's `RenderBox` rect, `LiquidGlassContainer` on iOS 26 and
-`BackdropFilter` as the fallback, where _"Flutter draws every pixel of content, the platform
-supplies the material behind it."_ Its doc also notes the app-drawn path _"is the only path a
-widget test ever takes, because `flutter test` reports Android"_, which is what makes this
-testable at all.
+This section argued the opposite, and the argument is kept because it is exactly half right.
+It said `read_filter.dart`'s collapsed popover — `CNPopupMenuButton` with
+`CNButtonStyle.glass` and `CNPopupMenuItem(checked:)`, an apparently exact fit including the
+check marks — was the obvious choice and the wrong one, because its `buttonLabel` is rendered
+**by the platform**, and that file's own record documents a label arriving at "the system's
+17pt in the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for
+13pt". The title is the largest text on the sheet and `LibrarySheetTitle` draws its count in
+the brand colour, so it cannot become a platform-styled button label. **All of that is true,
+and it rules out the _labelled_ constructor only.** `CNPopupMenuButton.icon` renders one SF
+Symbol and no text, so the title beside it stays Flutter's, and `home_page.dart`'s
+`_VisitMenuButton` has been shipping that arrangement next to a Flutter-drawn title all along.
+
+It also named the precedent, and **that exemplar is what cost three rounds**:
+`shelf_picker_popover.dart`'s `showShelfPickerPopover` — an app-drawn card hung from an
+anchor's `RenderBox` rect, `LiquidGlassContainer` on iOS 26 and `BackdropFilter` as the
+fallback, where _"Flutter draws every pixel of content, the platform supplies the material
+behind it."_ A reader said the resulting popover "isn't glassy". `LiquidGlassContainer` is a
+bare `glassEffect` with no material of its own, so over an opaque sheet it draws flat. A
+stretched contentless glass `CNButton` fixed the flatness and came out a **capsule**, because
+the plugin's UIKit branch sets `cornerStyle = round ? .capsule : .dynamic` and never reads
+`borderRadius`. A `glassEffectId` to reach the SwiftUI branch that _does_ honour the radius
+then sized the glass to the button's **content** — an empty label — collapsing it to a pill in
+the middle of the card. Each fix was right about the thing it fixed and uncovered the next.
+
+**What ended it is that none of it is checkable from here.** `useNativeGlass` needs an Apple
+target _and_ iOS 26 while `flutter test` reports Android, so three rounds of material work were
+three rounds of reasoning about Swift nobody could watch run. A `UIMenu` brings the material,
+the radius, the entrance, the dismissal, the checkmarks and the VoiceOver behaviour from the
+platform, and none of them can drift from iOS because none of them is ours. About 250 lines
+went with the card: the `PopupRoute`, the anchor maths, the entrance, the two rows and the
+check slot.
+
+The old note's last clause survives intact and now describes the fallback instead. Material's
+menu **is the only path a widget test ever takes, because `flutter test` reports Android** —
+which is what makes the labels, the order of the two rows and the check following the choice
+testable at all, and what leaves the native path judged only on a device.
 
 **The year rail stays directly under the title row** — `expandedHeader` is `Column[title,
 ReadFilter(expanded: true)]` — and that is structure, not preference. It is also why the
@@ -623,7 +656,8 @@ question · the derived-set-aside inference · the −/+ steppers that were draw
 ## Open questions
 
 Five of the six are decided and have moved into _Decisions_: Save commits the drag, the
-filter is the title plus a glass popover, a friend's library shows it, a drag to the origin
+filter is the title plus the platform's menu (a glass popover first — reversed in _Where a
+set-aside book lives_), a friend's library shows it, a drag to the origin
 writes `null`, and un-recording a reading day is **accepted as lost**. One remains.
 
 1. **This inverts `ss-finished`**, which removed the position row at status 2 because _"a
@@ -937,6 +971,12 @@ Three ways out, none taken:
 the filter could not have gone on the rail's row, this one geometric. Recorded rather than
 designed away; sliding the card below the rail is available if it is judged worse than the
 occlusion.
+
+**The card is gone and only half of that survives.** The geometric argument against putting
+the filter on the rail's row still holds, because the menu hangs from the same anchor. The
+lever does not: a `UIMenu` places itself, and iOS decides whether it opens above or below the
+chevron given the room, so "slide the card below the rail" is no longer ours to do. What
+replaces it, if the occlusion is judged wrong, is moving the **anchor**.
 
 **Still not verified: how the sheet looks on a device.** The mockups are CSS standing in for
 Liquid Glass, and a widget test reports Android, so every automated check of the track has

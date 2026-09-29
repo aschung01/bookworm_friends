@@ -116,6 +116,10 @@
   "@noBooksFinished": {
     "description": "Empty state for the read sheet's completed-only mode. Paired with noFinishedBooks, which serves the inclusive mode: without the pair the sheet says \"No books read yet\" under a \"Books finished\" title."
   },
+  "readSetFilterMenu": "Change which books are shown",
+  "@readSetFilterMenu": {
+    "description": "Accessible name for the chevron that opens the read sheet's completion filter. The chevron alone says only that a menu exists, not what it is about, and the platform's own fallback announces a generic 'Show menu'. Needed because the menu became a native CNPopupMenuButton: the title beside it is no longer part of the tap target, so the title's own words are no longer the button's name."
+  },
   "showFinishedOnly": "Show finished only",
   "@showFinishedOnly": {
     "description": "First row of the popover the read sheet's title opens, and the default. Phrased as an instruction rather than a noun label because the popover's rows are commands with a check mark, following the year popover in read_filter.dart."

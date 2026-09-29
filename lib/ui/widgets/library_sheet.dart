@@ -1935,12 +1935,28 @@ class LibrarySheetTitle extends StatelessWidget {
   /// is showing. See `ReadSetFilter`.
   final VoidCallback? onTap;
 
+  /// A control drawn where the chevron would be, which supplies its own chevron.
+  ///
+  /// **For a menu the platform presents.** `CNPopupMenuButton` hangs a `UIMenu` off
+  /// `showsMenuAsPrimaryAction`, so the thing tapped has to *be* the native button and a
+  /// [onTap] on this row has nothing to call. The read sheet passes
+  /// `ReadSetFilterMenuButton` here and no [onTap]; see that file for the cost, which is
+  /// that the title and count stop being part of the target.
+  ///
+  /// Mutually exclusive with [onTap] by assertion rather than by type: both draw the
+  /// chevron, and a row with two of them would be two affordances for one menu.
+  final Widget? menu;
+
   const LibrarySheetTitle({
     super.key,
     required this.title,
     this.count,
     this.onTap,
-  });
+    this.menu,
+  }) : assert(
+         onTap == null || menu == null,
+         'onTap and menu both draw the chevron; pass one',
+       );
 
   @override
   Widget build(BuildContext context) {
@@ -1983,7 +1999,10 @@ class LibrarySheetTitle extends StatelessWidget {
             size: 18,
             color: context.colors.secondaryText,
           ),
-        ],
+        ] else if (menu != null)
+          // No gap of its own: the control is a 30pt box around an 18pt glyph, so it
+          // brings 6pt of side bearing with it — adding the 4 above would read as 10.
+          menu!,
       ],
     );
 

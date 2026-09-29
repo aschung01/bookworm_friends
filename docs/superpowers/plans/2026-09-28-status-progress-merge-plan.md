@@ -354,6 +354,22 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   `SKIP` set. Fixed.
 - **The "reading-day set still in flight" case did not exist.** `AGENTS.md` says
   `band_doors_test.dart` caught that regression; the case was never committed. Written now.
+- **The read filter's tap target shrank from the whole title row to a 30pt chevron**, which
+  reverses the spec's *"title, count and chevron are one tap target; three separately tappable
+  things in a row this size would be three ways to miss"* and inverted the case that asserted
+  tapping the count opens the filter — it now asserts the count opens **nothing**. Forced
+  rather than chosen: UIKit presents a `UIMenu` from `button.showsMenuAsPrimaryAction`, the
+  plugin exposes no programmatic open, so the tapped thing has to *be* the native button.
+  Stretching a label-less `.plain` `CNPopupMenuButton` behind the Flutter title is the one way
+  back and was not taken — see Task 1's Step 4.
+- **`LibrarySheetTitle` gained a `menu` slot rather than the filter reaching around it.** It
+  already had `onTap`, which is what the whole-row target used; the two are mutually exclusive
+  and asserted so, because a title row that is both a button and the host of a button is two
+  targets stacked. No gap before the menu: the 30pt box brings its own bearing.
+- **A new ARB key for a glyph, `readSetFilterMenu`.** The whole-row target was named by the
+  title it wrapped; a bare chevron announces the platform's generic "Show menu", which says
+  that a menu exists and nothing about what it is for. It is the `tooltip` on the fallback and
+  a `Semantics` label on the native button, as `AdaptiveIconButton` does it.
 
 ### Second review round — the control was rebuilt
 
@@ -473,6 +489,28 @@ because the label row overflowed, which the `Flexible` restoration made live aga
       non-null. The rows were clipped to the intended 14 all along, which is why the tint
       looked square and sat outside the glass at each corner — the clip was right and the
       material was wrong.
+
+      **Round three ended the card instead of fixing it, on instruction.** Setting the
+      `glassEffectId` reached the SwiftUI branch and the glass then sized itself to the
+      button's *content* — an empty label — so it collapsed to a pill floating in the middle
+      of the card. Three fixes, each correct about the thing it fixed and each uncovering the
+      next, is what this step's instruction cost: not because any link was wrong, but because
+      **none of the chain is checkable from here.** `useNativeGlass` wants an Apple target
+      *and* iOS 26 and `flutter test` reports Android, so every round was reasoning about
+      Swift nobody could watch run. The read sheet's filter is now
+      `CNPopupMenuButton.icon` — the platform's own `UIMenu` — and ~250 lines of card went
+      with it. **This step's instruction survives, narrowed:** do not introduce a third glass
+      idiom, *and* do not hand-build a material where the platform ships the whole control.
+      `ReadingTrack` is the former (a control that needs a material, so `CNSlider`); the
+      filter was the latter.
+
+      **The rejection that sent this down the hand-built road was half right**, and is worth
+      keeping for the shape of the mistake. `read_set_filter_popover.dart` ruled out
+      `CNPopupMenuButton` because its `buttonLabel` is rendered *by the platform* — true, and
+      it rules out only the **labelled** constructor. `.icon` renders one SF Symbol and no
+      text, so the Flutter title beside it stays Flutter's, which is what
+      `home_page.dart`'s `_VisitMenuButton` had been doing all along. A blanket rejection of a
+      widget for one of its constructors is the general trap.
 - [x] **Step 5: Real `Slider` semantics, and this is not optional.** A drag-only scalar is
       unusable under VoiceOver. Wrap in `Semantics` with `slider: true` and implement
       `onIncrease`/`onDecrease`; the accessible path is allowed to do what the touch path

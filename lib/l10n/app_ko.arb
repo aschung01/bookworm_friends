@@ -43,6 +43,7 @@
   "totalPagesTitle": "전체 쪽수",
   "finishedOnlyTitle": "완독한 책",
   "noBooksFinished": "완독한 책이 없어요 \ud83e\udd72",
+  "readSetFilterMenu": "보여줄 책 바꾸기",
   "showFinishedOnly": "완독한 책만 보기",
   "showAllRead": "읽은 책 모두 보기",
   "statusOther": "기타",
