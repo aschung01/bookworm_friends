@@ -1367,11 +1367,27 @@ plan's build log lists which.
 
 ### The band card has two slots, and it had four values for one round
 
-See `ReadingPeriodRow`'s own doc for the rule and the reversal it records. The short
-version: _where or when_ (the position, else the finish date, else nothing), then *how
-long* (the day count, always), with exactly one of the two in `brandText`. **The start date
+See `ReadingPeriodRow`'s own doc for the rule and the two reversals it records. The short
+version: _where or when_ (the position, else the finish date, else nothing), then _how
+long_ (the day count, always), with exactly one of the two in `brandText`. **The start date
 is gone from the card** — `15 days` is what it was there to say — and both dates are still
 editable in the sheet the card opens.
+
+**`ReadingPeriodRow` has no `pageCount`, and it is not an oversight.** The card read
+`71% · p.307 / 432`; the page and the total were withdrawn on instruction, so the position
+is a bare percent and the widget cannot draw a page at all. Both numbers are derived from
+the percent and the total, so that was the card's widest value restating its first third
+more precisely than a glance wants. **Don't add the parameter back to make the band more
+informative** — the sheet behind the card draws `ReadingStateLine`, whose page and total are
+each a tappable span onto the wheel, so the numerals are one tap away and _editable_ there
+rather than merely displayed.
+
+Two knock-on facts that look like bugs and are not: the render preview has **five** states
+rather than six, because "Reading with a page count" and "Reading without one" stopped
+differing; and `band_doors_test.dart` asserts the page numeral is **absent** from the band,
+which is the opposite of what it asserted when `BandProgressRow` was deleted. The card's
+cases search bare digit runs (`307`, `432`) rather than `p.307`, so bringing the numbers
+back under a different separator still fails.
 
 **A `Wrap` that opens at the default text size on the widest phone is not a valve
 opening.** That is how this was caught, and it is the check to apply to the rest of the

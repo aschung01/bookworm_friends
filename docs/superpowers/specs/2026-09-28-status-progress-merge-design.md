@@ -71,12 +71,25 @@ the position nor the sheet behind the card states. Exactly one of the two is `br
 the other recedes to `secondaryText`, since two green values beside a green badge was the
 other half of "messy".
 
-| state                    | where / when        | how long  |
-| ------------------------ | ------------------- | --------- |
-| Reading, with a position | `71% · p.307 / 432` | `15 days` |
-| Reading, no position yet | —                   | `15 days` |
-| Set aside, with one      | `46% · p.199 / 432` | `15 days` |
-| Finished                 | `2026.09.28`        | `15 days` |
+| state                    | where / when | how long  |
+| ------------------------ | ------------ | --------- |
+| Reading, with a position | `71%`        | `15 days` |
+| Reading, no position yet | —            | `15 days` |
+| Set aside, with one      | `46%`        | `15 days` |
+| Finished                 | `2026.09.28` | `15 days` |
+
+**And the position is a bare percent, because the page pair was withdrawn next.** The card
+read `71% · p.307 / 432` — about 120pt of its 333 — and both page numbers are derived from
+the percent and the total, so the widest value on the card was restating its first third
+with more precision than a glance wants. `pageCount` left `ReadingPeriodRow` with them, and
+the widget now has no way to draw a page at all.
+
+Nothing is lost, because the precision moved to where it is asked for rather than being
+deleted. The sheet this card opens draws `ReadingStateLine`, whose page and total are each a
+tappable span onto the wheel — so a reader who wants the page number is one tap from
+_editing_ it, and a reader glancing at the band gets `71%`. This is also what finally made
+the first slot narrow: the two-slot rule fixed the _count_ of values, and this fixed the
+width of the one that remained.
 
 **The start date is gone from the card, and the finish date is not.** `15 days` is what the
 start date was there to say, in the form a reader wants it; nobody subtracts dates to learn

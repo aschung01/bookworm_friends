@@ -622,11 +622,13 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                   onTap: isSelf
                                       ? () => _onEditStatusPressed(book)
                                       : null,
-                                  // The position the deleted second row used to print.
+                                  // The position the deleted second row used to print, as
+                                  // a bare percent: the page and the total were withdrawn
+                                  // from the card on instruction, and live on in the
+                                  // sheet's read-out where each is a tappable span.
                                   // Withheld on a friend's book only when there is nothing
                                   // to read: a friend's real position is theirs to show.
                                   progress: book.progress,
-                                  pageCount: book.pageCount,
                                   // There is one row under the cover now, so the band's
                                   // bottom padding is unambiguously this one's to spend.
                                   spillsIntoBandPadding: true,

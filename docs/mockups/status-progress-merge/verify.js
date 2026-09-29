@@ -457,6 +457,13 @@ ok(
     bothSlots.map(([id]) => id).join() +
     ")",
 );
+/* And no page numeral on any card: the page and the total were withdrawn from it, and
+   the sheet's read-out is where they live. Asserted as bare digit runs rather than as
+   `p.213`, so a card that brought them back under a different separator still fails. */
+ok(
+  cards.every(([, b]) => !/p\.\d|\bof \d|\/\s*\d/.test(b.dates)),
+  "no card prints a page or a total, only a percent or a date",
+);
 const positional = cards.filter(([, b]) => /%/.test(b.dates));
 ok(
   positional.length >= 3 && positional.every(([, b]) => b.pos === true),

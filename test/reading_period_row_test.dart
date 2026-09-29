@@ -16,6 +16,12 @@
 //   * slot 2, *how long*: the day count, always.
 //   * exactly one of the two is `brandText`; the other recedes.
 //
+// **And the position is a bare percent: the page and the total were withdrawn next.** The
+// card read `71% · p.307 / 432`, which is 120pt of its 333 spent stating the percent again
+// with more precision than a glance wants, and `pageCount` left the widget with them. The
+// page is still one tap away and still editable, in the read-out of the sheet this card
+// opens — so the cases below assert the numerals are *absent here*, not gone from the app.
+//
 // So the four width cases below no longer expect a range, and that is a reversal rather
 // than a drift. `reading_period_row_render_preview.dart` is the frame that judged it.
 
@@ -24,7 +30,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 import 'package:bookworm_friends/ui/widgets/reading_period_row.dart';
@@ -152,19 +157,18 @@ void main() {
               status: bookStatusReading,
               startDate: DateTime.now().subtract(const Duration(days: 15)),
               progress: 0.71,
-              pageCount: 432,
             ),
             width: 333,
           ),
         );
 
         expect(tester.takeException(), isNull);
-        // One rounding site, shared with the wheel's rider and the sheet's read-out.
-        expect(bookProgressPage(0.71, 432), 307);
-        expect(
-          find.textContaining('71% · p.307', findRichText: true),
-          findsOneWidget,
-        );
+        expect(find.text('71%'), findsOneWidget);
+        // The page pair is not on the card. Searched as bare numerals rather than as the
+        // formatted `p.307`, so this also fails if the separator or the abbreviation
+        // changes and the numbers come back in some other shape.
+        expect(find.textContaining('307', findRichText: true), findsNothing);
+        expect(find.textContaining('432', findRichText: true), findsNothing);
         // And no date, which is the reversal: a start date is `15 days` stated in the
         // form nobody wants it, and the sheet this card opens still holds both dates.
         expect(find.textContaining('~'), findsNothing);
@@ -212,7 +216,6 @@ void main() {
               startDate: DateTime(2022, 11, 13),
               finishDate: DateTime(2022, 11, 15),
               progress: 1,
-              pageCount: 432,
             ),
             width: 333,
           ),
@@ -220,11 +223,9 @@ void main() {
 
         expect(tester.takeException(), isNull);
         // A finished book's position is non-null and exactly 1, so `progress != null`
-        // alone would print `100% · p.432 / 432` next to a badge already reading
-        // *Finished* — three ways of saying the end. The date is what that slot has left
-        // to say.
+        // alone would print `100%` next to a badge already reading *Finished* — two ways
+        // of saying the end. The date is what that slot has left to say.
         expect(find.textContaining('100%', findRichText: true), findsNothing);
-        expect(find.textContaining('p.432', findRichText: true), findsNothing);
         expect(find.text('2022.11.15'), findsOneWidget);
         expect(_colorOf(tester, '2022.11.15'), colors.brandText);
         expect(_colorOf(tester, '2 days'), colors.secondaryText);
@@ -242,7 +243,6 @@ void main() {
               startDate: DateTime(2022, 11, 13),
               finishDate: DateTime(2022, 11, 15),
               progress: 0.46,
-              pageCount: 432,
             ),
             width: 333,
           ),
@@ -251,10 +251,8 @@ void main() {
         expect(tester.takeException(), isNull);
         // How far this one got is the news about it, which a date cannot carry — and
         // unlike a finished book the badge does not already imply the number.
-        expect(
-          find.textContaining('46% · p.199', findRichText: true),
-          findsOneWidget,
-        );
+        expect(find.text('46%'), findsOneWidget);
+        expect(find.textContaining('199', findRichText: true), findsNothing);
         expect(find.textContaining('2022.11.15'), findsNothing);
         expect(_greenValues(tester, colors), 1);
       },

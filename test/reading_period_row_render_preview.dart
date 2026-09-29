@@ -5,6 +5,10 @@
 // cut one of each redundant pair (start date vs elapsed days; percent vs page) and leave one
 // green value, and the only way to judge that is to look at the states side by side.
 //
+// Then the page pair went entirely -- the card is a glance, and `p.307 / 432` is a number you
+// want when you are editing it rather than when you are passing it -- so the first slot is a
+// bare percent and the widest thing the card can draw is a finished book's date.
+//
 //     flutter test test/reading_period_row_render_preview.dart
 //     open build/period_row_preview
 import 'dart:io';
@@ -115,44 +119,39 @@ void main() {
 
     final start = DateTime(2026, 9, 13);
     final rows = <Widget>[
-      // Reading, with a page count: the state in the screenshot that was called messy.
+      // Reading, with a position. **This and the next row used to be two states**, one
+      // with a page count and one without, because the card read `71% · p.307 / 432` when
+      // it had a total and a bare percent when it did not. The page pair was withdrawn
+      // from the card, so those two collapsed into this one and about two reading books in
+      // three stopped being a distinct case here.
       ReadingPeriodRow(
         status: bookStatusReading,
         startDate: start,
         progress: 0.71,
-        pageCount: 432,
         onTap: () {},
       ),
-      // Reading, no count -- about two books in three. The percent stands alone.
-      ReadingPeriodRow(
-        status: bookStatusReading,
-        startDate: start,
-        progress: 0.71,
-        onTap: () {},
-      ),
-      // Reading, no position yet: the range is back, because there is no position to
-      // replace it with.
+      // Reading, no position yet: nothing in the first slot, so the day count is the whole
+      // value. The sparsest state the card has, and worth looking at for that reason.
       ReadingPeriodRow(
         status: bookStatusReading,
         startDate: start,
         onTap: () {},
       ),
-      // Finished: no position worth printing, so the range is the whole record.
+      // Finished: no position worth printing beside the badge, so the finish date takes
+      // the slot.
       ReadingPeriodRow(
         status: bookStatusFinished,
         startDate: start,
         finishDate: DateTime(2026, 9, 28),
         progress: 1,
-        pageCount: 432,
         onTap: () {},
       ),
-      // Set aside: the position is the news about this book, so it wins over the range.
+      // Set aside: the position is the news about this book, so it wins over the date.
       ReadingPeriodRow(
         status: bookStatusSetAside,
         startDate: start,
         finishDate: DateTime(2026, 9, 28),
         progress: 0.46,
-        pageCount: 432,
         onTap: () {},
       ),
       // A friend's book: reads, draws no handle.
@@ -160,7 +159,6 @@ void main() {
         status: bookStatusReading,
         startDate: start,
         progress: 0.71,
-        pageCount: 432,
       ),
     ];
 

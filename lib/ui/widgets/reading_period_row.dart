@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/models/book.dart';
 import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 
@@ -130,7 +129,6 @@ class ReadingPeriodRow extends StatefulWidget {
     this.finishDate,
     this.onTap,
     this.progress,
-    this.pageCount,
     this.spillsIntoBandPadding = false,
   });
 
@@ -161,9 +159,21 @@ class ReadingPeriodRow extends StatefulWidget {
   /// claiming the reader had opened all of them.
   final double? progress;
 
-  /// Enables the page half of the position read-out. Null for about two reading books in
-  /// three, which then read as a bare percent.
-  final int? pageCount;
+  // There is no `pageCount` here, and there was for two rounds.
+  //
+  // The card printed `71% · p.307 / 432`, and the page pair was withdrawn on instruction:
+  // *"no need to show total page count or current page index from the tappable row."* Both
+  // numbers are derived from the percent and the total, so the card was spending two thirds
+  // of its widest value restating its first third with more precision than a glance wants.
+  //
+  // The precision is not lost, it moved to where it is asked for: the sheet this card opens
+  // draws `ReadingStateLine`, whose page and total are each a tappable span onto the wheel.
+  // A reader who wants the page number is one tap from editing it; a reader glancing at the
+  // band gets `71%`.
+  //
+  // This is also what finally made the first slot narrow. The two-slot rule below fixed the
+  // *count* of values; `71% · p.307 / 432` was still 120pt of the card's 333, and it is the
+  // reason a finished book's closed range would not fit beside it.
 
   /// Whether the caller has taken [kStatusVerbSpill] out of the band's bottom
   /// padding for this row, so the status-0 verb may reach below its own ink.
@@ -281,7 +291,6 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
 
     final finish = widget.finishDate;
     final position = widget.progress;
-    final total = widget.pageCount;
 
     // **Two slots, and no date the day count already implies.**
     //
@@ -289,7 +298,9 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
     // beside the badge — and a reader called it messy, correctly. The count was not the
     // whole of it. Two of the four said the same thing twice:
     //
-    //  * `71%` and `p.307 / 432` are one fact, given the total.
+    //  * `71%` and `p.307 / 432` are one fact, given the total. The page pair has since
+    //    been withdrawn from the card altogether — see the headstone where `pageCount`
+    //    used to be — so the first slot is now a bare percent.
     //  * the **start** date and the elapsed day count are one fact. `15 days` *is*
     //    `2026.09.13 ~` measured from today, and it is the half that keeps moving.
     //
@@ -298,12 +309,12 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
     // this card states. The first is *where or when*, and it takes the most specific fact
     // available:
     //
-    // | state                     | where / when         | how long  |
-    // | ------------------------- | -------------------- | --------- |
-    // | Reading, with a position  | `71% · p.307 / 432`  | `15 days` |
-    // | Reading, no position yet  | —                    | `15 days` |
-    // | Set aside, with one       | `46% · p.199 / 432`  | `15 days` |
-    // | Finished                  | `2026.09.28`         | `15 days` |
+    // | state                     | where / when   | how long  |
+    // | ------------------------- | -------------- | --------- |
+    // | Reading, with a position  | `71%`          | `15 days` |
+    // | Reading, no position yet  | —              | `15 days` |
+    // | Set aside, with one       | `46%`          | `15 days` |
+    // | Finished                  | `2026.09.28`   | `15 days` |
     //
     // **The start date is gone from the card, and that is the reversal here.** The card
     // used to lead with `2026.09.13 ~`, which is the fact the day count already carries in
@@ -323,8 +334,8 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
     //
     // **Finished is excluded from the position explicitly, and the first version of this
     // forgot to**: a finished book has a non-null position of exactly 1, so `position !=
-    // null` alone let it print `100% · p.432 / 432` beside a badge already reading
-    // *Finished*. Three ways of saying "the end".
+    // null` alone let it print `100%` beside a badge already reading *Finished*. Two ways
+    // of saying "the end", where the date is the thing that slot has left to say.
     final hasPosition = position != null && widget.status != bookStatusFinished;
 
     // **One green thing, and it is whichever slot holds the answer.** Two `brandText`
@@ -335,31 +346,9 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
     );
 
     final Widget? anchor = hasPosition
-        // Two spans when there is a total, so the count can sit back at 60%: the page is
-        // the answer and the total is only context. That treatment came from the row this
-        // card absorbed, and is kept rather than re-derived.
-        ? RichText(
-            text: TextSpan(
-              style: answerStyle,
-              children: [
-                // Not localized: a numeral and a percent sign, which sit the same way
-                // round in both supported locales.
-                TextSpan(text: '${(position * 100).round()}%'),
-                if (total != null) ...[
-                  TextSpan(
-                    text:
-                        ' · ${l10n.progressPage(bookProgressPage(position, total)!)}',
-                  ),
-                  TextSpan(
-                    text: ' ${l10n.progressOfPages(total)}',
-                    style: TextStyle(
-                      color: context.colors.brandText.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          )
+        // Not localized: a numeral and a percent sign, which sit the same way round in
+        // both supported locales.
+        ? Text('${(position * 100).round()}%', style: answerStyle)
         : finish != null
         ? Text(ReadingPeriodRow._formatDate(finish), style: answerStyle)
         : null;

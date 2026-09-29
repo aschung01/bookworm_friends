@@ -87,6 +87,18 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
   detail worth keeping: the one book whose reading period is *complete* is the one that
   cannot print it, because a closed range is twice as wide as an open one. It shows its
   finish date and drops the start.
+- **Then the page pair was withdrawn from the card as well**, on instruction: *"no need to
+  show total page count or current page index from the tappable row."* `71% · p.307 / 432`
+  was about 120pt of the card's 333 spent restating the percent more precisely than a glance
+  wants, and it is why a finished book's closed range would not fit beside it. `pageCount`
+  left `ReadingPeriodRow` entirely — the widget can no longer draw a page — and
+  `book_details_tab_view.dart` stopped passing `book.pageCount`. The numerals live on in the
+  sheet's `ReadingStateLine`, where each is a tappable span onto the wheel, so this moved the
+  precision to where it is asked for rather than deleting it. Three consequences worth
+  expecting: the preview's six states collapsed to five, because "Reading with a count" and
+  "Reading without one" stopped differing; `band_doors_test.dart`'s page assertion inverted
+  to `findsNothing`; and the card's cases now search bare digit runs (`307`, `432`) rather
+  than `p.307`, so bringing the numbers back under a different separator still fails.
 - **The render harness for that card lied in its first frame, in the way `AGENTS.md` already
   warns about one level down.** `test/reading_period_row_render_preview.dart` had no
   `Material` ancestor, so every inherited `Text` fell back to `MaterialApp`'s
@@ -258,9 +270,9 @@ because the label row overflowed, which the `Flexible` restoration made live aga
       state — that is what makes it the control rather than a field.
 - [x] **Step 3: Delete `ReadTodayFieldRow` from this sheet** (`book_status_bottom_sheet.dart:209`)
       and `readToday` from the `BookStatusEdit` record. Moving a position already stamps the
-      day. **`_onEditStatusPressed` must still stamp it** — `book_details_tab_view.dart:1277`
+      day. **`_onEditStatusPressed` must still stamp it** — `book_details_tab_view.dart:1288`
       currently passes `edit.readToday`; it becomes `read: true`, conditional on the position
-      having moved, and `wasRead` at `book_details_tab_view.dart:1247` still feeds
+      having moved, and `wasRead` at `book_details_tab_view.dart:1224` still feeds
       `_celebrateIfTonightIsNew`.
 - [x] **Step 4: Derive the status from the position, and keep the date defaulting.** `null` →
       Not started, `0 ≤ p < 1` → Reading, `p == 1` → Finished. The start/finish date rows keep
@@ -315,13 +327,13 @@ because the label row overflowed, which the `Flexible` restoration made live aga
       is the second door and the only immediate position writer; removing it is what makes
       Save-commits true everywhere.
 - [x] **Step 3: Move `kBandProgressRowSpill` before deleting its file.**
-      `reading_period_row.dart:42` defines `kStatusVerbSpill = kBandProgressRowSpill`, so the
+      `reading_period_row.dart:41` defines `kStatusVerbSpill = kBandProgressRowSpill`, so the
       deletion breaks that file unless the constant moves into it. Its sibling
       `kBandProgressRowResidualPadding` (16 − 14 = 2) exists only for the deleted row and
       goes; the band's bottom padding returns to a plain 16.
 - [x] **Step 4: `spillsIntoBandPadding` simplifies to `true`.** The band passed
       `!showsProgressRow` because the two rows contended for one padding
-      (`reading_period_row.dart:181`). With one row there is no contention, and the comment
+      (`reading_period_row.dart:191`). With one row there is no contention, and the comment
       explaining the contention should go rather than be left describing an absent widget.
 - [x] **Step 5: On a friend's book the chevron and the tap target drop and the read-out
       stays** — the existing rule that _"a door nobody can open must not draw a handle."_

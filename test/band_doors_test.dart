@@ -94,6 +94,12 @@ void main() {
       // wrapped onto two lines; the card has two slots now and the position takes the one
       // the start date had. See `reading_period_row_test.dart` for the rule — this case
       // only cares that the band states the position exactly once.
+      //
+      // **And the position on the card is now a bare percent**, so the page numeral this
+      // case used to require is asserted absent instead. That is not the numerals leaving
+      // the band the way they did when `BandProgressRow` was deleted: the case below opens
+      // the door and finds `p.147` in the sheet's read-out, where it is tappable. The band
+      // is a glance; the page belongs where it can be edited.
       await pumpBookDetails(
         tester,
         book: readingBook(ownerId: meId, progress: 0.46, pageCount: 320),
@@ -116,9 +122,14 @@ void main() {
         reason: 'the percent, printed once in the band',
       );
       expect(
-        find.textContaining('p.147', findRichText: true),
-        findsOneWidget,
-        reason: 'the derived page, from the shared rounding site',
+        find.textContaining('147', findRichText: true),
+        findsNothing,
+        reason: 'the derived page is not on the card, only behind its door',
+      );
+      expect(
+        find.textContaining('320', findRichText: true),
+        findsNothing,
+        reason: 'and neither is the total',
       );
       // The prompt is gone, which is the deleted row seen from its other state — see
       // the group below for where the first set is reached from now.
