@@ -24,6 +24,13 @@
 // three times over because *"a stray touch could silently rewrite your position"*. So they are
 // asserted directly, on the payload, rather than inferred from the absence of a button.
 //
+// **All three survived `ReadingTrack` being reimplemented around a platform slider, and only
+// the gestures beneath them were rewritten.** That is the shape of the repair: the sheet's
+// contract is unchanged, so the cases are unchanged, but every drag in the file had to be
+// re-grounded on a relative control that accepts a touch only near its thumb — and the drags
+// it replaced were reaching no recognizer at all, which means the no-change cases among them
+// had stopped testing anything. See _Driving the track_ below.
+//
 // The sheet reports rather than writes, so `saved` being empty *is* "nothing was written":
 // `book_details_tab_view.dart`'s `onSave` is the only writer downstream of it.
 //
@@ -53,8 +60,6 @@ import 'package:bookworm_friends/ui/widgets/date_field_row.dart';
 import 'package:bookworm_friends/ui/widgets/status_selector.dart';
 
 typedef _Saved = BookStatusEdit;
-
-const String _kTitle = 'The Left Hand of Darkness';
 
 /// A book whose derived page and typed page disagree, which is what tells the read-out's
 /// two paths apart: 46% of 432 rounds to 199, so a case that means "the stored page" and a
@@ -115,7 +120,6 @@ const Size _kSurface = Size(375, 667);
 /// says: nothing was reported, so nothing was written.
 Future<void> _openSheet(
   WidgetTester tester, {
-  String bookTitle = _kTitle,
   int currentStatus = 0,
   DateTime? startDate,
   DateTime? finishDate,
@@ -140,7 +144,6 @@ Future<void> _openSheet(
             child: ElevatedButton(
               onPressed: () => showBookStatusBottomSheet(
                 context,
-                bookTitle: bookTitle,
                 currentStatus: currentStatus,
                 startDate: startDate,
                 finishDate: finishDate,
@@ -163,55 +166,124 @@ Future<void> _openSheet(
 
 // ---------------------------------------------------------------------------
 // Driving the track.
+//
+// **`ReadingTrack` is a platform slider now, and the two facts that matter here are that it
+// is *relative* and that it almost nowhere takes a touch.** It was a `CustomPaint` groove
+// with the app's bookmark ribbon for a thumb, an absolute mapping — the thumb went under the
+// finger — and a hand-rolled `kTouchSlop` gate to keep taps inert. It is now [CNSlider]
+// behind `useNativeGlass` and [CupertinoSlider] everywhere else, which is the branch every
+// test takes. The sheet's contract did not change; every gesture that exercises it did.
 
-/// A point inside the band that takes touches, [atFraction] along it.
+/// The thumb's inset from each end of the slider: `CupertinoThumbPainter.radius` (14) plus
+/// `_kPadding` (8), both private to `package:flutter/src/cupertino/slider.dart`.
 ///
-/// **Only the top 24pt of the control's 48 is the thumb row**; the rest is the gap and the
-/// end labels, and they take nothing. `getCenter(find.byType(ReadingTrack))` lands in the
-/// gap, so a gesture aimed there misses the recognizer entirely — and a case asserting that
-/// nothing happened would pass without ever reaching the code it tests.
+/// **It is also the radius within which `_RenderCupertinoSlider.hitTestSelf` accepts a touch
+/// at all**, which is what invalidated this file's earlier drags: they began 2pt from the
+/// track's edge, so the slider never saw them — and a no-change case built on a gesture that
+/// reaches no recognizer passes without testing anything. A drag has to start on the thumb.
+const double _kThumbInset = 22;
+
+/// The slider's own band — `_kSliderHeight` in `reading_track.dart` — and the only part of
+/// the control's published 48 that takes a touch. **28 now, where the old thumb row was 24**;
+/// the 4pt gap and the 16pt label line below it take nothing, so `getCenter` on the whole
+/// control lands among the labels and a case aimed there asserts nothing.
+const double _kSliderBand = 28;
+
+/// A point in the slider's band, [atFraction] along the control's width.
+///
+/// **Aimed by the control's own geometry rather than through `find.byType(CupertinoSlider)`,
+/// and that is deliberate**: the inert-tap cases have to keep meaning something if the slider
+/// is ever swapped for an absolute one. A finder on the Cupertino type would fail on a
+/// missing widget instead, which is a broken harness rather than a caught regression.
 Offset _inBand(WidgetTester tester, {double atFraction = 0.5}) {
   final rect = tester.getRect(find.byType(ReadingTrack));
-  return Offset(rect.left + rect.width * atFraction, rect.top + 12);
+  return Offset(
+    rect.left + rect.width * atFraction,
+    rect.top + _kSliderBand / 2,
+  );
 }
 
-/// Drags the thumb to [atFraction] of the track's width and lifts.
+/// A point on the thumb as it is currently drawn — the only place a gesture can start.
 ///
-/// The gesture starts on the far side of the target so it always travels more than
-/// `kTouchSlop`, which the track measures itself: nothing moves until it has. See
-/// `ReadingTrack._onDragStart` for why a lone horizontal recognizer is handed plain taps
-/// and vertical pans too, and therefore why that slop is re-measured there.
+/// The thumb is painted rather than mounted, so there is no widget to measure: its centre is
+/// computed from the value the slider was last built with, which is the sheet's own state.
+Offset _onThumb(WidgetTester tester) {
+  final slider = find.byType(CupertinoSlider);
+  final rect = tester.getRect(slider);
+  final value = tester.widget<CupertinoSlider>(slider).value;
+  return Offset(
+    rect.left + _kThumbInset + value * (rect.width - 2 * _kThumbInset),
+    rect.center.dy,
+  );
+}
+
+/// Drags the thumb until the track reads [to], and lifts.
 ///
-/// The mapping is absolute — the thumb goes under the finger rather than moving by its
-/// delta — so the landing stop is a function of where the gesture *ends*, and the two
-/// extremes are reached by aiming a point inside either edge.
+/// **A delta from the thumb, because the slider is relative.** A drag of `dx` adds
+/// `dx / (width - 2 * _kThumbInset)` to the value — the usable travel is the track less the
+/// thumb's inset at each end — so there is no x to aim at, and [to] is a **value** rather
+/// than a place in the box. The sheet's 327pt slider leaves 283pt of travel, so one point is
+/// 0.353%. Starting on the thumb is not a nicety either; see [_kThumbInset].
 ///
-/// **[atFraction] is a fraction of the *width*, which is not a fraction of the value.** The
-/// travel is shorter than the track by the thumb's own width, so a finger at 0.9 of a 345pt
-/// track reports 91%. `0`, `0.5` and `1` come out exact; everything else is chosen so the
-/// stop it rounds to is unambiguous, because a case that wanted an exact percent out of an
-/// arbitrary fraction would be asserting this arithmetic rather than the sheet.
+/// **Two moves, and the first one is thrown away on purpose — this is where the sheet differs
+/// from the bare control.** `reading_track_test.dart` drives the same slider with a single
+/// `moveBy`, and it can: with nothing else in the arena the lone
+/// `HorizontalDragGestureRecognizer` wins by default at pointer-down, so its first move is
+/// already an update. Inside this sheet the bottom sheet's own drag-to-dismiss is in the
+/// arena too, so the slider has to *earn* the win on distance — and at
+/// `DragStartBehavior.start` the offset it accumulated getting there is folded into the
+/// origin rather than reported. A single `moveBy` therefore moved the thumb nowhere, which is
+/// what every drag case in this file failed on. So: 24pt to win the arena (past the 18pt
+/// `kTouchSlop`), then the real delta, which arrives whole.
+///
+/// The ends are overshot by 8pt rather than hit exactly. `_currentDragValue` is clamped, so
+/// overshooting is how a finger reaches an end, and it keeps 0 and 1 clear of a rounding
+/// boundary a float could land the wrong side of.
+///
+/// **Verified against the slider rather than trusted.** Printed from a run inside this
+/// sheet: the slider measures 327pt, so the travel is 283, and targets of 0.5, 0.6, 0.8, 1.0
+/// and 0.0 arrive as exactly 0.5, 0.6, 0.8, 1.0 and null — the read-out reading `50%`,
+/// `60%`, `80%`, `Finished 100%` and `Not started` respectively. They land exactly because
+/// the delta is computed from the same inset travel the slider divides by, not because the
+/// numbers are round.
 Future<void> _dragTrackTo(
   WidgetTester tester,
-  double atFraction, {
+  double to, {
   bool settle = true,
 }) async {
-  final rect = tester.getRect(find.byType(ReadingTrack));
-  final y = rect.top + 12;
-  final from = atFraction < 0.5 ? rect.right - 2 : rect.left + 2;
-  final towards = atFraction < 0.5 ? -1.0 : 1.0;
+  final slider = find.byType(CupertinoSlider);
+  final from = tester.widget<CupertinoSlider>(slider).value;
+  final travel = tester.getRect(slider).width - 2 * _kThumbInset;
+  final overshoot = to >= 1
+      ? 8.0
+      : to <= 0
+      ? -8.0
+      : 0.0;
 
-  final gesture = await tester.startGesture(Offset(from, y));
-  // **Two moves, and the first one is not optional.** `GestureDetector` defaults to
-  // `DragStartBehavior.start`, so the offset a recognizer accumulates on its way to
-  // winning the arena is *discarded* rather than delivered: the win reports `onStart` at
-  // wherever the finger had got to, and no `onUpdate` for the distance it covered getting
-  // there. A single jump to the target therefore moves the thumb nowhere — the track sees
-  // a start and an end and nothing between — which is why `tester.drag` splits its own
-  // gesture the same way. Without this line every drag case in this file failed, and the
-  // inert-tap cases would have passed for the wrong reason.
-  await gesture.moveBy(Offset(kDragSlopDefault * towards, 0));
-  await gesture.moveTo(Offset(rect.left + rect.width * atFraction, y));
+  await _slideTrack(
+    tester,
+    dx: (to - from) * travel + overshoot,
+    settle: settle,
+  );
+}
+
+/// The gesture underneath [_dragTrackTo], in raw points, for the one case that cares about
+/// points rather than about a value: a slip too small to be a percent.
+///
+/// One point is 0.353% on the sheet's 283pt of travel, so a few points of drag changes the
+/// raw value and rounds to the percent it already was.
+Future<void> _slideTrack(
+  WidgetTester tester, {
+  required double dx,
+  bool settle = true,
+}) async {
+  final sign = dx >= 0 ? 1.0 : -1.0;
+  final gesture = await tester.startGesture(_onThumb(tester));
+  // Consumed: see the note on [_dragTrackTo].
+  await gesture.moveBy(Offset(24 * sign, 0));
+  await tester.pump();
+  await gesture.moveBy(Offset(dx, 0));
+  await tester.pump();
   await gesture.up();
   if (settle) await tester.pumpAndSettle();
 }
@@ -293,6 +365,7 @@ String _dateRowText(WidgetTester tester, String label) {
 
 void main() {
   setUpAll(_loadAppFonts);
+
   // -------------------------------------------------------------------------
   // The control.
   //
@@ -307,6 +380,12 @@ void main() {
     testWidgets(
       'Given a tap on the bar, When it lands at 80% of the width, Then nothing changes',
       (tester) async {
+        // **The stray touch the rejection was about**, and it is refused before any gesture
+        // code runs: 80% of the width is far enough from a thumb at 46% that
+        // `_RenderCupertinoSlider.hitTestSelf` declines the pointer outright.
+        //
+        // It would be an absolute slider's tap-to-seek that broke this, so the point is
+        // aimed by the control's geometry rather than by the slider's type — see [_inBand].
         await _openSheet(
           tester,
           currentStatus: bookStatusReading,
@@ -325,8 +404,73 @@ void main() {
       },
     );
 
+    testWidgets('Given a tap on the thumb itself, Then nothing changes either', (
+      tester,
+    ) async {
+      // **The case above passes for a reason that does not cover the whole control**, so
+      // this one lands where the pointer *is* accepted and a drag genuinely opens. It
+      // stays inert because the slider is relative: the drag opens at
+      // `_currentDragValue = _value` and `_handleChanged` reports only a value that
+      // differs from the one it was built with, so a zero-delta gesture computes the
+      // value it already had.
+      //
+      // At the sheet's level that is the claim worth pinning: a reader who puts a finger
+      // on the handle and takes it off again has not edited their book.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        progress: 0.46,
+        progressPage: 200,
+        pageCount: _kPageCount,
+      );
+
+      await tester.tapAt(_onThumb(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('46%'), findsOneWidget);
+      expect(_save, findsNothing);
+      // And the page provenance survives, which is the subtler half: the sheet treats
+      // every report from this control as "the reader answered in percent" and clears
+      // `progressPage`, so a report of an unchanged value would silently drop `p.200`.
+      expect(find.text('p.200'), findsOneWidget);
+    });
+
+    testWidgets('Given a slip too small to be a percent, Then the sheet stays clean', (
+      tester,
+    ) async {
+      // **The nearest thing the platform slider has to the hand-rolled slop gate this
+      // control used to carry, and it is the one place `ReadingTrack.report` earns its
+      // keep.** `CupertinoSlider` fires `onChanged` for any movement at all, including one
+      // smaller than a step: on the sheet's 283pt of travel a percent is 2.83pt, so a 1pt
+      // slip changes the raw value and rounds to the percent it already was. `report` drops
+      // it.
+      //
+      // Without that drop the sheet would treat it as an answer — the handler takes every
+      // report as "the reader answered in percent" and clears `progressPage` — so a finger
+      // that moved a millimetre would drop `p.200` and raise Save. **A dirty sheet with no
+      // change in it**, which is the same defect as the percent wheel's `_touched` gate.
+      //
+      // A tap cannot reach this: `_CupertinoSliderState._handleChanged` already refuses a
+      // value equal to the built one, so the tap-on-thumb case above passes with `report`'s
+      // guard deleted. This is the case that fails.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        progress: 0.46,
+        progressPage: 200,
+        pageCount: _kPageCount,
+      );
+
+      await _slideTrack(tester, dx: 1);
+
+      expect(find.text('46%'), findsOneWidget);
+      expect(find.text('p.200'), findsOneWidget);
+      expect(find.text('~ p.199'), findsNothing);
+      expect(_save, findsNothing);
+    });
+
     testWidgets(
-      'Given a drag, When the finger lands mid-track, Then the read-out follows it',
+      'Given a drag, When the thumb is moved right, Then the read-out follows it',
       (tester) async {
         await _openSheet(
           tester,
@@ -344,18 +488,19 @@ void main() {
     testWidgets(
       'Given a gentle vertical pan, Then the track ignores it and the sheet stays',
       (tester) async {
-        // Half of "a vertical drag is not ours": the control is handed those moves whether
-        // it wants them or not — a lone horizontal recognizer is accepted by default and
-        // then reports every move with `dx` alone — so ignoring them is code rather than an
-        // omission. 40pt is under the sheet's dismissal threshold, so this isolates the
-        // track's half from the sheet's.
+        // Half of "a vertical drag is not ours". **Started on the thumb**, because anywhere
+        // else the slider refuses the pointer and the case would prove only that a gesture
+        // the control never received changed nothing. From here the lone horizontal
+        // recognizer is in the arena and is handed the moves, and what keeps the value still
+        // is that a vertical delta contributes no `dx`. 40pt is under the sheet's dismissal
+        // threshold, which isolates the track's half from the sheet's.
         await _openSheet(
           tester,
           currentStatus: bookStatusReading,
           progress: 0.46,
         );
 
-        await tester.dragFrom(_inBand(tester), const Offset(0, 40));
+        await tester.dragFrom(_onThumb(tester), const Offset(0, 40));
         await tester.pumpAndSettle();
 
         expect(find.byType(ReadingTrack), findsOneWidget);
@@ -383,7 +528,7 @@ void main() {
           saved: saved,
         );
 
-        await tester.dragFrom(_inBand(tester), const Offset(0, 160));
+        await tester.dragFrom(_onThumb(tester), const Offset(0, 160));
         await tester.pumpAndSettle();
 
         expect(find.byType(ReadingTrack), findsNothing);
@@ -413,22 +558,28 @@ void main() {
   // -------------------------------------------------------------------------
   // The heading.
 
-  group('the heading is the book', () {
-    testWidgets(
-      'Given the sheet opens, Then it is titled with the book and not with the form',
-      (tester) async {
-        // It edits one book's whole state now rather than one field of it, and the reader
-        // arrived from that book's own page.
-        await _openSheet(
-          tester,
-          currentStatus: bookStatusReading,
-          progress: 0.46,
-        );
+  group('the heading names the hero', () {
+    testWidgets('Given the sheet opens, Then it is titled Reading progress', (
+      tester,
+    ) async {
+      // **This reverses what the case here used to assert, and the reasoning that lost is
+      // worth keeping.** The heading was the *book's* title, taken as a `bookTitle`
+      // parameter, on the grounds that a sheet editing one book's whole state should name
+      // it. Two things were wrong with that: it read as a page header rather than a sheet
+      // title, and it told the reader something they already knew — they arrived from that
+      // book's page, and the book is still on screen behind the sheet.
+      //
+      // `changeReadingStatus` is equally gone, and for a different reason: it named a
+      // control this sheet no longer has.
+      await _openSheet(
+        tester,
+        currentStatus: bookStatusReading,
+        progress: 0.46,
+      );
 
-        expect(find.text(_kTitle), findsOneWidget);
-        expect(find.text('Change reading status'), findsNothing);
-      },
-    );
+      expect(find.text('Reading progress'), findsOneWidget);
+      expect(find.text('Change reading status'), findsNothing);
+    });
 
     testWidgets(
       'Given Save arrives, Then the title holds the left edge rather than re-centring',
@@ -440,7 +591,7 @@ void main() {
           currentStatus: bookStatusReading,
           progress: 0.46,
         );
-        final before = tester.getTopLeft(find.text(_kTitle)).dx;
+        final before = tester.getTopLeft(find.text('Reading progress')).dx;
 
         await _dragTrackTo(tester, 0.5);
 
@@ -448,7 +599,7 @@ void main() {
         // The `dx` alone. The sheet is bottom-anchored and grows upward, so the whole row
         // rises by the height of the start-date row on the same gesture — asserting the
         // full offset would have been asserting that the sheet does not grow.
-        expect(tester.getTopLeft(find.text(_kTitle)).dx, before);
+        expect(tester.getTopLeft(find.text('Reading progress')).dx, before);
       },
     );
   });
@@ -507,7 +658,7 @@ void main() {
       expect(_save, findsOneWidget);
     });
 
-    testWidgets('Given a drag away and back to the same stop, Then Save leaves again', (
+    testWidgets('Given a drag away and back to where it started, Then Save leaves again', (
       tester,
     ) async {
       // Dirty is a comparison against the values the sheet opened with, not a flag per
@@ -995,6 +1146,36 @@ void main() {
     });
 
     testWidgets(
+      'Given a tap nowhere near the words, Then the whole width is still the target',
+      (tester) async {
+        // **The action is centred and full-width now**, where it used to be an `Align` on the
+        // left, and the hit box is the reason rather than the alignment: the label is short,
+        // grey and the least important thing on the sheet, which is exactly the combination
+        // that makes a text-sized target hard to land on. So the band is the target.
+        //
+        // Tapped 4pt inside the content's left edge, which is ~100pt clear of the glyphs —
+        // a `Text`-sized box would miss it, and an `Align`ed one would have put the words
+        // there instead and hidden the difference.
+        await _openSheet(
+          tester,
+          currentStatus: bookStatusReading,
+          startDate: DateTime(2024, 3, 14),
+          progress: 0.46,
+        );
+
+        final label = tester.getRect(find.text('Stop reading this'));
+        // Full content width: 375 less the sheet's 24pt insets.
+        expect(label.width, 327);
+
+        await tester.tapAt(Offset(label.left + 4, label.center.dy));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Set aside'), findsOneWidget);
+        expect(find.text('Stop reading this'), findsNothing);
+      },
+    );
+
+    testWidgets(
       'Given it is tapped, When saved, Then the book is set aside at the page it was on',
       (tester) async {
         // **The whole point of the status existing.** Position cannot tell "at 46% and
@@ -1459,6 +1640,11 @@ void main() {
         // percent wheel alone (`_sheetHeight` sums 64 + 48 + 220 + 36) and ~342 for the old
         // status sheet. Rendered, the clean Reading state is 227 + 48 = 275 — within 5pt of
         // the estimate, and comfortably under both of the sheets it stands in for.
+        //
+        // **Re-measured after the track became a platform slider and the action moved, and it
+        // did not budge.** `ReadingTrack.height` is still 48: the slider's band is 28 with a
+        // 4pt gap where the hand-drawn thumb row was 24 with 8, and the end labels are the
+        // same 16pt line. Nothing in this group's figures moved by a point.
         await _openSheet(
           tester,
           currentStatus: bookStatusReading,

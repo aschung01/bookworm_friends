@@ -87,9 +87,6 @@ typedef BookStatusEdit = ({
 Future<void> showBookStatusBottomSheet(
   BuildContext context, {
 
-  /// Drawn as the sheet's heading, and **always left-aligned** so the row does not
-  /// re-centre when Save appears beside it.
-  required String bookTitle,
   required int currentStatus,
   required DateTime? startDate,
   required DateTime? finishDate,
@@ -175,11 +172,18 @@ Future<void> showBookStatusBottomSheet(
               children: [
                 Row(
                   children: [
-                    // Expanded rather than a bare Text so the title holds the left edge
-                    // whether or not Save is drawn next to it.
+                    // **The sheet's own title, not the book's.** The book's title was tried
+                    // first, on the reasoning that the row should never re-centre; it read
+                    // as a page header rather than as a sheet title, and it told the reader
+                    // something they already knew — they arrived from that book's page, and
+                    // the book is still on screen behind this sheet. What a sheet title owes
+                    // them is what this sheet *does*.
+                    //
+                    // Expanded so the title holds the left edge whether or not Save is
+                    // drawn beside it.
                     Expanded(
                       child: Text(
-                        bookTitle,
+                        l10n.readingProgressTitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.subtitle,
@@ -334,21 +338,28 @@ Future<void> showBookStatusBottomSheet(
                 // whole point of the status existing — the read-out keeps saying 46%.
                 if (status == bookStatusReading) ...[
                   const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() {
-                        status = bookStatusSetAside;
-                        finish ??= DateTime.now();
-                      }),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          l10n.stopReadingThis,
-                          style: AppTextStyles.label.copyWith(
-                            color: colors.secondaryText,
-                          ),
+                  // **Centred, and full width.** Left-aligned it sat under the start-date
+                  // row's own left inset and read as a third field in the form rather than
+                  // as an action on the book. Centring is also what the app does with every
+                  // other standalone text action.
+                  //
+                  // The `GestureDetector` takes the whole width so the target is a band
+                  // rather than the glyphs: the label is short, grey and the least
+                  // important thing here, which is exactly the combination that makes a
+                  // text-sized hit box hard to land on.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() {
+                      status = bookStatusSetAside;
+                      finish ??= DateTime.now();
+                    }),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        l10n.stopReadingThis,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.label.copyWith(
+                          color: colors.secondaryText,
                         ),
                       ),
                     ),

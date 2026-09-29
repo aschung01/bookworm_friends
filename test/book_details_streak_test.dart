@@ -19,8 +19,9 @@
 // of the day once a night is in, so celebrating on the state would raise the screen again on
 // every subsequent nudge. What earns it is `false` becoming `true`.
 
-// Cupertino rather than Material: the only framework widget named here is the percent
-// wheel's [CupertinoPicker], and importing both makes the Material one unnecessary.
+// Cupertino rather than Material: the framework widgets named here are the percent wheel's
+// [CupertinoPicker] and the track's own [CupertinoSlider], and importing both packages would
+// make the Material one unnecessary.
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -110,6 +111,13 @@ Future<void> _openTheSheet(WidgetTester tester) async {
   );
 }
 
+/// The thumb's inset from each end of the slider: `CupertinoThumbPainter.radius` (14) plus
+/// `_kPadding` (8), both private to `package:flutter/src/cupertino/slider.dart`.
+///
+/// **It is also the radius within which `_RenderCupertinoSlider.hitTestSelf` accepts a
+/// pointer at all**, which is the whole reason [_nudgeTheBookmark] aims at the thumb.
+const double _kThumbInset = 22;
+
 /// Opens the sheet, drags the track off the position it opened at, and saves.
 ///
 /// **The drag is the move, and the move is what the day-stamp hangs on.** Save computes
@@ -118,19 +126,56 @@ Future<void> _openTheSheet(WidgetTester tester) async {
 /// be, one level up. It is also why Save is only *drawn* once the sheet is dirty: the
 /// button's arrival is the sheet's whole unsaved-changes model.
 ///
-/// Dragged from inside the thumb row rather than from the widget's centre: the control is
-/// 48pt tall and only its top 24 take touches, so a gesture aimed at its centre lands in
-/// the gap above the end labels and reaches no recognizer at all — a move that would look
-/// like it happened and report nothing.
+/// **`ReadingTrack` was reimplemented underneath this, and the gesture had to be rebuilt
+/// twice over.** It was a `CustomPaint` groove with the app's bookmark ribbon for a thumb and
+/// an *absolute* mapping — the thumb went under the finger, so any point in the band was a
+/// place to drag from. It is now a [CupertinoSlider], and two of its properties invalidate
+/// that:
+///
+///  * **It takes a pointer only within [_kThumbInset] of the thumb.** The old gesture started
+///    at the centre of the track's *width*, which for a book at 20% is 47pt away, so
+///    `hitTestSelf` refused it and nothing downstream ran. The visible symptom was
+///    `tap()` failing on a missing `Save` — the sheet had never gone dirty — which reads like
+///    a broken sheet rather than a gesture that missed.
+///  * **It is relative**, so the drag is a delta from wherever the thumb is rather than a
+///    position to seek to. 60pt of the 298pt travel this sheet leaves is about 20 points of
+///    percent, which takes the book from 20% to 40%: a real change, which is all this helper
+///    needs.
+///
+/// The first `moveBy` is thrown away and is not optional. The slider's lone
+/// `HorizontalDragGestureRecognizer` shares the arena with the bottom sheet's own
+/// drag-to-dismiss, so it has to *earn* its win on distance — and at
+/// `DragStartBehavior.start` the offset it accumulated getting there is folded into the origin
+/// rather than reported. One `moveBy` therefore moves the thumb nowhere.
 Future<void> _nudgeTheBookmark(WidgetTester tester) async {
   await _openTheSheet(tester);
 
-  final track = tester.getRect(find.byType(ReadingTrack));
-  await tester.dragFrom(
-    Offset(track.left + track.width / 2, track.top + 12),
-    const Offset(60, 0),
+  final slider = find.byType(CupertinoSlider);
+  final rect = tester.getRect(slider);
+  final value = tester.widget<CupertinoSlider>(slider).value;
+  final gesture = await tester.startGesture(
+    Offset(
+      rect.left + _kThumbInset + value * (rect.width - 2 * _kThumbInset),
+      rect.center.dy,
+    ),
   );
+  await gesture.moveBy(const Offset(24, 0));
+  await tester.pump();
+  await gesture.moveBy(const Offset(60, 0));
+  await tester.pump();
+  await gesture.up();
   await tester.pumpAndSettle();
+
+  // **Asserted here rather than left to fail at the tap below**, because this is the line
+  // that went wrong last time and the tap's own failure named the wrong thing. Save exists
+  // only once the sheet is dirty, so its presence is the proof that the drag reached the
+  // slider and was reported — everything after this point is about the day, not the gesture.
+  expect(
+    find.text('Save'),
+    findsOneWidget,
+    reason:
+        'the drag must reach the slider, or the rest of the case is vacuous',
+  );
 
   await tester.tap(find.text('Save'));
   await tester.pumpAndSettle();

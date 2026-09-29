@@ -1222,10 +1222,6 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     final wasRead = ref.read(readTodayProvider);
     showBookStatusBottomSheet(
       context,
-      // The sheet's heading is the book, not "Change reading status". It edits one book's
-      // whole state now rather than one field of it, and the reader arrived from that
-      // book's own page.
-      bookTitle: book.title,
       currentStatus: book.status,
       startDate: book.startDate,
       finishDate: book.finishDate,

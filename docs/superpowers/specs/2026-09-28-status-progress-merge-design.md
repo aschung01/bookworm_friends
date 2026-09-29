@@ -76,9 +76,26 @@ existing rule that _"a door nobody can open must not draw a handle."_
 ### The control is a glassy, drag-only track
 
 A horizontal track spanning the whole book, ends named rather than numbered (_Not started_
-→ _Finished_), thumb drawn as the app's bookmark ribbon so what the reader sets here is
-what they see on the shelf afterwards. Glass via `native_glass.dart`, which gates real
-Liquid Glass on iOS 26 and paints a fallback elsewhere.
+→ _Finished_).
+
+**It is a native `UISlider`, and the two things this paragraph used to say instead were both
+wrong.** It said the thumb was the app's bookmark ribbon, so that what the reader set here was
+what they saw on the shelf afterwards; and it said the glass came from `native_glass.dart`
+gating a hand-painted fallback. Built that way, a reader's verdict was _"the bookmark makes an
+ugly thumb"_ — it is a tall asymmetric shape with a notch and a shadow hung off a 4pt bar, and
+at rest it read as a mark dropped on the track rather than a handle on it. The deeper mistake is
+the other half: **the toolchain already ships this control.** `CNSlider` in
+`cupertino_native_better` — already a dependency — is a native `UISlider`, which on iOS 26 is
+where the real Liquid Glass comes from. Painting a translucent rectangle and calling it glass
+got the _fallback's_ look on every platform, including the one platform that has the material.
+
+So: `CNSlider` behind the app's existing `useNativeGlass` gate, `CupertinoSlider` elsewhere, and
+the thumb is the platform's own disc.
+
+**Deliberately not `CNSlider`'s own fallback, which is a Material `Slider`.** Material sliders
+are _absolute_ — a tap on the track seeks to it — which would reintroduce the behaviour this
+whole control was designed around, on Android and in every widget test, i.e. everywhere the rule
+is actually checked.
 
 **48pt including its end labels, against 256pt for a wheel and its rider.** That is what
 makes the merged sheet _shorter_ than either sheet it replaces — 270pt clean, against an
@@ -92,6 +109,24 @@ irrecoverably."_ The house-approved answer there was arming (tap to arm, then dr
 Cancel). Making the tap inert reaches the same safety one tap cheaper: nothing needs arming
 because a tap was never live, and **dismissing the sheet discards**, so the bar owes no
 Cancel of its own.
+
+**And the platform gives it for free, because iOS sliders are relative.** Flutter's
+`_RenderCupertinoSlider` holds a single `HorizontalDragGestureRecognizer`, sets
+`_currentDragValue = _value` on drag start and then _adds_ deltas, so a tap opens and closes a
+drag whose delta is zero. Two further gates do the real work: `hitTestSelf` accepts a pointer
+only within about 22pt of the thumb, and `_handleChanged` reports only when the value differs
+from the built one.
+
+This replaced a hand-rolled slop gate, and **the discovery that forced that gate is still true
+and worth keeping**: a lone drag recognizer **wins its gesture arena by default at
+pointer-down**, in a microtask before the finger moves. So "use a drag recognizer only" does
+_not_ produce an inert tap — built that way, a plain tap rewrote the position and a _vertical_
+pan moved the thumb. What makes the tap inert is relative dragging, not the choice of recognizer.
+
+**Relative dragging reaches both ends from anywhere**, which was raised as an objection and does
+not hold: the value moves at `1 / (width - 44)` per pixel, so from any value there is exactly
+that fraction of the travel to its left and the rest to its right. This matters because the
+−/+ steppers were deliberately not drawn.
 
 Rejected: **−/+ steppers** beside the bar. They were drawn to cover what a drag cannot
 reach (a ~353pt track over 912 pages) and they make the sheet a form again — the same
@@ -177,8 +212,11 @@ The overload is kept browsable as the `derived` version in the mockups.
 
 ### One secondary action, grey, and only while Reading
 
-"Stop reading this" — the only text action on the sheet, in `secondaryText` grey rather
-than `flame`, because it is an ordinary thing to do to a book and not a destructive one.
+"Stop reading this" — the only text action on the sheet, **centred and full width**, in
+`secondaryText` grey rather than `flame`, because giving up on a book is ordinary rather than
+destructive. Left-aligned it sat under the start-date row's own left inset and read as a third
+field in the form rather than an action on the book; the tap target is the whole width, because
+a short grey label is exactly what a text-sized hit box makes hard to land on.
 It writes `status = 3` and `finish_date = today`, and **leaves the position exactly where
 it is**, which is the whole point: the row keeps saying 46%. Its label is a **new ARB key in
 both files** — nothing in the app says this today — so the Korean is written, not translated,
@@ -263,8 +301,15 @@ Clean 270pt, dirty 292pt, animated by the `AnimatedSize` the sheet already has. 
 arrival is the dirty indicator**, which is the feedback that a drag will persist; it also
 appears after a sub-sheet Confirm.
 
-**The book title is always left-aligned in the title row**, present or absent Save, so the
-row does not re-centre when the button appears.
+**The heading is `Reading progress`, and it was the book's own title first.** The title was
+chosen so the row could never re-centre when Save appeared; that argument holds and now applies
+to this heading instead. What it got wrong is what a sheet title is for — the book's name read
+as a page header rather than a sheet title, and it told the reader something they already knew,
+since they arrived from that book's page and the book is still on screen behind the sheet. The
+heading is **always left-aligned**, present or absent Save.
+
+The live objection: "Reading" is also the status word directly below, so the sheet can say it
+twice — at different sizes and in different colours, but twice.
 
 ### Vocabulary: Not started · Reading · Finished · Set aside
 

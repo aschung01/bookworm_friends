@@ -95,6 +95,46 @@ was 1903). `flutter analyze` is clean of errors and warnings in `lib/` and `test
 - **The "reading-day set still in flight" case did not exist.** `AGENTS.md` says
   `band_doors_test.dart` caught that regression; the case was never committed. Written now.
 
+### Second review round — the control was rebuilt
+
+A reader looked at the shipped sheet and asked whether it was using the glass slider the
+Cupertino package provides, said the bookmark made an ugly thumb, asked for the action to be
+centred, and asked for a real sheet title instead of the book's name. Three of the four were
+straightforward; the first was the important one.
+
+- **`ReadingTrack` went from ~650 lines of `CustomPaint` to ~150 wrapping `CNSlider`.** The
+  package was already a dependency and already shipped a native `UISlider`; the hand-drawn
+  groove got the *fallback's* look on every platform, including iOS 26, which is the only one
+  with the real material. The bookmark thumb went with it, and the glide, the slop gate and
+  the groove painter went with that.
+- **The inert tap now comes from the platform**, because `CupertinoSlider` and `UISlider` are
+  relative. The slop gate was a correct fix to a real discovery — a lone drag recognizer wins
+  its arena by default at pointer-down — and the platform sliders had already solved the same
+  problem by adding deltas instead of seeking.
+- **`CupertinoSlider` is used explicitly rather than letting `CNSlider` fall back**, because
+  its fallback is a *Material* `Slider`, which taps-to-seek. That would have reintroduced the
+  rejected `band-scrubber` behaviour on Android and in every widget test. A case now asserts
+  the widget is a `CupertinoSlider` and not a `Slider`, with that reason in its comment.
+- **Three defects in the rewrite, all found by review rather than by the suite**, and all
+  fixed: the root `Column` lost `mainAxisSize.min` (600pt in a bounded box, measured); the end
+  labels lost `Flexible` + `maxLines: 2` + ellipsis and overflowed by 119pt at 2× text, undoing
+  a documented decision; and `report` needed a no-change guard, because `CupertinoSlider` fires
+  `onChanged` for sub-step movement and the sheet treats every report as a percent answer — so
+  a 1pt slip dropped the reader's page provenance and raised Save with nothing changed.
+- **Two test files were passing vacuously**, both for the same reason: they dragged from the
+  middle of the track, and `_RenderCupertinoSlider.hitTestSelf` accepts a pointer only within
+  ~22pt of the thumb, so the gesture reached no recognizer. In `book_details_streak_test.dart`
+  that meant the transition-not-state assertion — the one that file exists for — **was not
+  live**: with no write happening, it would have passed against a `lib/` that celebrated on
+  state. Confirmed by mutating `lib/` and watching it fail only after the repair.
+- **The heading is a sheet title now.** `readingProgressTitle`, replacing the book's own name.
+  `changeReadingStatus` was already unread and stays annotated.
+- **"Stop reading this" is centred and full width.** Left-aligned it sat under the start-date
+  row's inset and read as a third field rather than an action.
+
+`flutter test`: **2008 pass, 0 fail, 0 skipped** — including one case that had been skipped
+because the label row overflowed, which the `Flexible` restoration made live again.
+
 ### Deferred, with the reason
 
 - **`changeReadingStatus` is now unread in `lib/`** and is kept with an `@` note saying why,

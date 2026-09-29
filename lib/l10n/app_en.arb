@@ -569,6 +569,10 @@
   "selectStartDate": "Select start date",
   "finishDate": "Finish date",
   "selectFinishDate": "Select finish date",
+  "readingProgressTitle": "Reading progress",
+  "@readingProgressTitle": {
+    "description": "Heading of the merged status-and-position sheet. Names the hero rather than the form: the sheet is a track the reader drags, and the status word under it is a read-out of where that thumb sits. Replaces the book's own title, which was tried first and read as a header rather than as a sheet title -- the reader arrived from that book's page and does not need telling which book it is. Also replaces changeReadingStatus, which named a control this sheet no longer has."
+  },
   "changeReadingStatus": "Change reading status",
   "@changeReadingStatus": {
     "description": "UNREAD SINCE THE STATUS AND POSITION SHEETS MERGED, and kept deliberately. It was that sheet's heading, and the heading is now the book's own title \u2014 the sheet edits one book's whole state rather than one field of it, and the reader arrives from that book's page. Retained rather than deleted because it is the only phrase in either ARB for \"the thing that sheet used to be\", and because a status-only editor is a plausible thing to want back. `band_doors_test.dart` asserts its absence from the new sheet, so its removal would be caught rather than silent."
