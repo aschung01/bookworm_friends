@@ -43,6 +43,10 @@ import 'package:bookworm_friends/constants/app_theme.dart';
 const _phoneLogical = Size(440, 956);
 const _phoneRatio = 3.0;
 
+/// The iPad 13" requirement: 1032x1376 at 2 is 2064x2752.
+const _tabletLogical = Size(1032, 1376);
+const _tabletRatio = 2.0;
+
 /// Where the caption sits, and which edge the device bleeds off.
 ///
 /// The device always bleeds off **one** edge. A fully contained phone floating in the
@@ -57,48 +61,122 @@ class _Treatment {
   final _Anchor anchor;
   final TextAlign align;
 
-  /// Flighty's pattern: a big line, then a lighter supporting line under it. Worth one
-  /// of the four because a 4-6 word caption alone may read thin at this size.
-  final bool supporting;
-
-  const _Treatment(
-    this.name,
-    this.anchor,
-    this.align, {
-    this.supporting = false,
-  });
+  const _Treatment(this.name, this.anchor, this.align);
 }
 
-const _treatments = <_Treatment>[
-  _Treatment('a_top_centre', _Anchor.top, TextAlign.center),
-  _Treatment('b_top_left', _Anchor.top, TextAlign.left),
-  _Treatment('c_bottom_centre', _Anchor.bottom, TextAlign.center),
-  _Treatment(
-    'd_top_centre_sub',
-    _Anchor.top,
-    TextAlign.center,
-    supporting: true,
+/// **Chosen by rendering four of these and looking**; the argument is in
+/// `docs/store/listing-1.1.0.md` under "The layout, decided by looking". Top because
+/// Apple crops the top in search results, so a bottom caption is invisible exactly where
+/// the frame has to work; centre because the device is centred and a left-hang reads
+/// unresolved at thumbnail size without Flighty's dark editorial ground beneath it.
+///
+/// Kept as a type rather than inlined so the comparison can be re-run if it is
+/// questioned — the losing three are `top/left`, `bottom/centre` and `top/centre`
+/// without a supporting line.
+const _chosen = _Treatment('chosen', _Anchor.top, TextAlign.center);
+
+/// One frame: a capture, a headline, and the line under it.
+///
+/// **No two headlines and no two supporting lines share an idea**, which is the
+/// benchmark's observation 2 applied one level down — the strong listings never spend a
+/// character twice. Slot 1's supporting line was `Covers, spines, or leaning.` for one
+/// round, which is slot 2's *headline* verbatim, so the first two frames a reviewer sees
+/// would have said the same thing twice. It carries the objection-removal move instead:
+/// free, no ads, no subscription is what Flighty spends its own opening on, it is true
+/// here, and nothing else in the set says it.
+class _Slot {
+  final String capture;
+  final String headline;
+  final String supporting;
+
+  const _Slot(this.capture, this.headline, this.supporting);
+}
+
+const _phoneSlots = <_Slot>[
+  _Slot(
+    'iphone69/01-library-covers',
+    'A bookshelf you actually keep',
+    'Free. No ads, no subscription.',
+  ),
+  _Slot(
+    'iphone69/02-library-spines',
+    'Covers, spines, or leaning',
+    'Drag them into the order you want.',
+  ),
+  _Slot(
+    'iphone69/03-library-card',
+    'Your reading becomes a card',
+    'Books, days, pace, most-read author.',
+  ),
+  _Slot(
+    'iphone69/05-book-details',
+    'Log the page you\u2019re on',
+    'By page or percent, in one drag.',
+  ),
+  // Headline changed from `Share it, or keep it`: "it" had no referent this side of slot
+  // 3, and the second clause described the absence of an action.
+  _Slot(
+    'iphone69/07-share-card',
+    'Made to be handed over',
+    'Nothing is public until you send it.',
+  ),
+  _Slot(
+    'iphone69/04-friends',
+    'Read alongside your friends',
+    'See what they have open right now.',
+  ),
+  _Slot(
+    'iphone69/06-search-results',
+    'Scan the barcode to add',
+    'Or search by title, author, or ISBN.',
   ),
 ];
 
-/// Slot 1's caption and its supporting line, from `docs/store/listing-1.1.0.md`.
-const _caption = 'A bookshelf you actually keep';
-const _supporting = 'Covers, spines, or leaning.';
+/// The iPad reuses four of the seven captions against its four captures rather than
+/// writing four more: this is one system at two sizes, not two sets.
+const _tabletSlots = <_Slot>[
+  _Slot(
+    'ipad13/01-library',
+    'A bookshelf you actually keep',
+    'Free. No ads, no subscription.',
+  ),
+  _Slot(
+    'ipad13/02-library-card',
+    'Your reading becomes a card',
+    'Books, days, pace, most-read author.',
+  ),
+  _Slot(
+    'ipad13/03-friends',
+    'Read alongside your friends',
+    'See what they have open right now.',
+  ),
+  _Slot(
+    'ipad13/04-book-details',
+    'Log the page you\u2019re on',
+    'By page or percent, in one drag.',
+  ),
+];
 
-/// Slot 1's capture. Stale — it draws the rust flame the app replaced with
-/// `kCandleFlame` — and that is fine here: this pass chooses a *layout*, and the layout
-/// does not depend on what is inside the screen.
-const _capture =
-    'docs/store/screenshots/1.1.0/capture/iphone69/01-library-covers.png';
+/// **The captures are stale and these frames are still worth rendering.** Five of the
+/// eleven draw the rust flame or the unfilled grey streak tile, and the two frames Apple
+/// shows in search results have the finished-books sheet half open across the bottom
+/// third. What this pass settles is the copy and the fit — neither of which depends on
+/// what is inside the screen. Re-capture, then re-run.
+const _captureRoot = 'docs/store/screenshots/1.1.0/capture';
 
 // --------------------------------------------------------------------------- the frame
 
 /// One store frame: ground, caption, and a bezelled device bleeding off an edge.
 class _StoreFrame extends StatelessWidget {
   final ui.Image shot;
+  final _Slot slot;
   final _Treatment treatment;
 
-  const _StoreFrame({required this.shot, required this.treatment});
+  const _StoreFrame({
+    required this.shot,
+    required this.slot,
+    required this.treatment,
+  });
 
   /// Fraction of the canvas width the whole device occupies, bezel included.
   static const _deviceWidthFraction = 0.82;
@@ -196,7 +274,7 @@ class _StoreFrame extends StatelessWidget {
             : CrossAxisAlignment.center,
         children: [
           Text(
-            _StoreFrameCopy.caption,
+            slot.headline,
             textAlign: treatment.align,
             style: AppTextStyles.hero.copyWith(
               fontSize: headline,
@@ -205,28 +283,20 @@ class _StoreFrame extends StatelessWidget {
               color: colors.primaryText,
             ),
           ),
-          if (treatment.supporting) ...[
-            SizedBox(height: w * 0.035),
-            Text(
-              _StoreFrameCopy.supporting,
-              textAlign: treatment.align,
-              style: AppTextStyles.body.copyWith(
-                fontSize: headline * 0.40,
-                height: 1.35,
-                color: colors.secondaryText,
-              ),
+          SizedBox(height: w * 0.035),
+          Text(
+            slot.supporting,
+            textAlign: treatment.align,
+            style: AppTextStyles.body.copyWith(
+              fontSize: headline * 0.40,
+              height: 1.35,
+              color: colors.secondaryText,
             ),
-          ],
+          ),
         ],
       ),
     );
   }
-}
-
-/// Held apart from the widget so the strings are in one place when the Korean pass lands.
-abstract final class _StoreFrameCopy {
-  static const caption = _caption;
-  static const supporting = _supporting;
 }
 
 /// The bezel, the screen, and the shadow that separates a light device from a light ground.
@@ -308,7 +378,7 @@ Future<void> _loadRealFonts() async {
   }
 }
 
-Widget _host(ui.Image shot, _Treatment treatment) => MaterialApp(
+Widget _host(ui.Image shot, _Slot slot) => MaterialApp(
   debugShowCheckedModeBanner: false,
   theme: AppTheme.light,
   locale: const Locale('en'),
@@ -323,118 +393,170 @@ Widget _host(ui.Image shot, _Treatment treatment) => MaterialApp(
     // Transparent because `_StoreFrame` paints the ground itself, inside this boundary.
     child: Material(
       color: Colors.transparent,
-      child: _StoreFrame(shot: shot, treatment: treatment),
+      child: _StoreFrame(shot: shot, slot: slot, treatment: _chosen),
     ),
   ),
 );
 
-void main() {
-  setUpAll(_loadRealFonts);
+/// Renders [slots] at [logical] x [ratio] into `build/store_frames/<prefix>-NN.png`.
+Future<List<ui.Image>> _renderSet(
+  WidgetTester tester,
+  Directory dir, {
+  required String prefix,
+  required List<_Slot> slots,
+  required Size logical,
+  required double ratio,
+  required Size required,
+}) async {
+  tester.view.physicalSize = logical * ratio;
+  tester.view.devicePixelRatio = ratio;
 
-  testWidgets('render the four caption treatments at 1320x2868', (
-    tester,
-  ) async {
-    tester.view.physicalSize = _phoneLogical * _phoneRatio;
-    tester.view.devicePixelRatio = _phoneRatio;
-    addTearDown(tester.view.reset);
-
-    final dir = Directory('build/store_frames')..createSync(recursive: true);
+  final written = <ui.Image>[];
+  for (var i = 0; i < slots.length; i++) {
+    final slot = slots[i];
 
     late ui.Image shot;
     await tester.runAsync(() async {
-      shot = await _decode(_capture);
+      shot = await _decode('$_captureRoot/${slot.capture}.png');
     });
 
-    for (final treatment in _treatments) {
-      await tester.pumpWidget(_host(shot, treatment));
-      await tester.pumpAndSettle();
-      final png = await _shoot(tester, _phoneRatio);
-      File('${dir.path}/${treatment.name}.png').writeAsBytesSync(png);
+    await tester.pumpWidget(_host(shot, slot));
+    await tester.pumpAndSettle();
 
-      final decoded = await tester.runAsync(
-        () => _decode('${dir.path}/${treatment.name}.png'),
-      );
-      expect(
-        Size(decoded!.width.toDouble(), decoded.height.toDouble()),
-        const Size(1320, 2868),
-        reason: 'the 6.9" requirement is exact; Apple rejects anything else',
-      );
-    }
+    // Slot order is the upload order, so it leads the filename: Apple shows the first
+    // three and nothing in the image says which one it is. The device prefix is there
+    // because the two sets reuse captions, so the numbers alone repeat.
+    final name = '${i + 1}'.padLeft(2, '0');
+    final path =
+        '${dir.path}/$prefix-$name-${slot.capture.split('/').last}.png';
+    File(path).writeAsBytesSync(await _shoot(tester, ratio));
 
-    // ignore: avoid_print
-    print('wrote ${dir.absolute.path}');
-  });
-
-  testWidgets('contact sheet of the four treatments', (tester) async {
-    // Judging four 1320x2868 frames means opening four files one at a time, which is how
-    // a set ends up inconsistent. Side by side at a tenth the size is also closer to how
-    // Apple actually serves them in search results.
-    const cell = Size(330, 717);
-    tester.view.physicalSize = Size(
-      cell.width * _treatments.length,
-      cell.height + 46,
+    final decoded = await tester.runAsync(() => _decode(path));
+    expect(
+      Size(decoded!.width.toDouble(), decoded.height.toDouble()),
+      required,
+      reason: 'store sizes are exact; Apple rejects anything else',
     );
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
+    written.add(decoded);
+  }
+  return written;
+}
 
-    final dir = Directory('build/store_frames');
-    final frames = <String, ui.Image>{};
-    await tester.runAsync(() async {
-      for (final treatment in _treatments) {
-        frames[treatment.name] = await _decode(
-          '${dir.path}/${treatment.name}.png',
-        );
-      }
-    });
+/// All of [frames] side by side on a dark ground, scaled to [cell].
+///
+/// Judging 1320x2868 files one at a time is how a set ends up inconsistent, and a
+/// thumbnail is closer to how Apple serves them in search results anyway.
+Future<void> _contactSheet(
+  WidgetTester tester,
+  Directory dir, {
+  required String name,
+  required List<ui.Image> frames,
+  required List<_Slot> slots,
+  required Size cell,
+}) async {
+  tester.view.physicalSize = Size(cell.width * frames.length, cell.height + 46);
+  tester.view.devicePixelRatio = 1;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        home: RepaintBoundary(
-          key: const ValueKey('shot'),
-          child: Material(
-            color: const Color(0xFF15171A),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final entry in frames.entries)
-                  SizedBox(
-                    width: cell.width,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          child: Text(
-                            entry.key,
-                            style: const TextStyle(
-                              fontFamily: AppFonts.sans,
-                              fontSize: 15,
-                              color: Color(0xFFE8EAED),
-                            ),
+  await tester.pumpWidget(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: RepaintBoundary(
+        key: const ValueKey('shot'),
+        child: Material(
+          color: const Color(0xFF15171A),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < frames.length; i++)
+                SizedBox(
+                  width: cell.width,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        child: Text(
+                          '${i + 1}. ${slots[i].headline}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: AppFonts.sans,
+                            fontSize: 14,
+                            color: Color(0xFFE8EAED),
                           ),
                         ),
-                        SizedBox(
-                          width: cell.width - 16,
-                          height: cell.height - 16,
-                          child: RawImage(
-                            image: entry.value,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      SizedBox(
+                        width: cell.width - 16,
+                        height: cell.height - 16,
+                        child: RawImage(image: frames[i], fit: BoxFit.contain),
+                      ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  File('${dir.path}/$name').writeAsBytesSync(await _shoot(tester, 1));
+}
+
+void main() {
+  setUpAll(_loadRealFonts);
+
+  testWidgets('render the seven iPhone frames and the four iPad frames', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    final dir = Directory('build/store_frames')..createSync(recursive: true);
+    // Stale output from an earlier run is worse than none: a renamed slot leaves a file
+    // behind and the contact sheet is the only place anyone would notice.
+    if (dir.existsSync()) {
+      for (final f in dir.listSync()) {
+        f.deleteSync();
+      }
+    }
+
+    final phone = await _renderSet(
+      tester,
+      dir,
+      prefix: 'iphone69',
+      slots: _phoneSlots,
+      logical: _phoneLogical,
+      ratio: _phoneRatio,
+      required: const Size(1320, 2868),
     );
-    await tester.pumpAndSettle();
-    File('${dir.path}/_sheet.png').writeAsBytesSync(await _shoot(tester, 1));
+    final tablet = await _renderSet(
+      tester,
+      dir,
+      prefix: 'ipad13',
+      slots: _tabletSlots,
+      logical: _tabletLogical,
+      ratio: _tabletRatio,
+      required: const Size(2064, 2752),
+    );
+
+    await _contactSheet(
+      tester,
+      dir,
+      name: '_sheet-iphone69.png',
+      frames: phone,
+      slots: _phoneSlots,
+      cell: const Size(210, 456),
+    );
+    await _contactSheet(
+      tester,
+      dir,
+      name: '_sheet-ipad13.png',
+      frames: tablet,
+      slots: _tabletSlots,
+      cell: const Size(300, 400),
+    );
 
     // ignore: avoid_print
-    print('wrote ${dir.path}/_sheet.png');
+    print('wrote ${dir.absolute.path}');
   });
 }

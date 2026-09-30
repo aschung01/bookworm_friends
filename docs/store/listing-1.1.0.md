@@ -614,15 +614,29 @@ Proposed order and captions — 4–6 words, set in Gowun Batang Bold to match t
 width on near-white paper is a wash, and the headline is the one thing in the frame that has
 to survive being served as a thumbnail.
 
-| #   | Capture             | Caption                       |
-| --- | ------------------- | ----------------------------- |
-| 1   | `01-library-covers` | A bookshelf you actually keep |
-| 2   | `02-library-spines` | Covers, spines, or leaning    |
-| 3   | `03-library-card`   | Your reading becomes a card   |
-| 4   | `05-book-details`   | Log the page you're on        |
-| 5   | `07-share-card`     | Share it, or keep it          |
-| 6   | `04-friends`        | Read alongside your friends   |
-| 7   | `06-search-results` | Scan the barcode to add       |
+| #   | Capture             | Headline                      | Supporting line                      |
+| --- | ------------------- | ----------------------------- | ------------------------------------ |
+| 1   | `01-library-covers` | A bookshelf you actually keep | Free. No ads, no subscription.       |
+| 2   | `02-library-spines` | Covers, spines, or leaning    | Drag them into the order you want.   |
+| 3   | `03-library-card`   | Your reading becomes a card   | Books, days, pace, most-read author. |
+| 4   | `05-book-details`   | Log the page you're on        | By page or percent, in one drag.     |
+| 5   | `07-share-card`     | Made to be handed over        | Nothing is public until you send it. |
+| 6   | `04-friends`        | Read alongside your friends   | See what they have open right now.   |
+| 7   | `06-search-results` | Scan the barcode to add       | Or search by title, author, or ISBN. |
+
+Two changes from the first draft of this table, both for the same reason — observation 2
+applied one level down, since the strong listings never spend a character twice:
+
+- **Slot 1's supporting line is the objection-removal move, not `Covers, spines, or
+leaning.`** That was slot 2's _headline_ verbatim, so the first two frames a reviewer sees
+  would have said one thing twice. Free, no ads, no subscription is what Flighty spends its
+  own opening on, it is true here, and nothing else in the set says it.
+- **Slot 5's headline was `Share it, or keep it`.** "It" had no referent this side of slot 3,
+  and the second clause described the absence of an action. `Made to be handed over` names
+  the artifact's purpose and leaves the privacy point to the line underneath.
+
+No two headlines and no two supporting lines share an idea. Headlines run 4–6 words;
+supporting lines stay under 40 characters, which is one line at 40% of the headline's size.
 
 iPad reuses 1, 3, 6, 4 against its four captures.
 
@@ -682,6 +696,8 @@ Two open questions I am not deciding for you:
   no UI at all. We have the chalk-hand asset vocabulary to do it — but read
   `docs/mockups/empty-states/PROMPTS.md` first, because `AGENTS.md` is explicit that hand-authored
   SVG in that style has failed ten times and only the xAI route worked.
-- **Whether supporting lines get written for all seven slots.** Only slot 1's exists. The
-  alternative is a bare headline below slot 3, on the argument that Apple shows three and the
-  rest are browsed rather than read.
+- **Whether supporting lines get written for all seven slots.** ~~Only slot 1's exists.~~
+  Written — all seven are in the table above and in the renderer. What is still open is
+  whether the **Korean** set reuses this structure or needs shorter lines: the tile fits
+  about 14 full-width syllables where English gets 30, which is the same constraint the
+  home-screen widget's copy ladder already works under.
