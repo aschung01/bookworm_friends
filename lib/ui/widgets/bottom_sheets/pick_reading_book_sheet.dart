@@ -33,11 +33,11 @@ const double kPickerCoverHeight = 66;
 /// figure stays checkable.
 const double kPickerRowHeight = 78;
 
-/// Asks which book tonight's reading was, and returns it.
+/// Asks which book today's reading was, and returns it.
 ///
 /// **Step one of a pair, and it is mandatory.** Recording a day used to write one
 /// `reading_days` row and nothing else; the streak page's button now raises this and then
-/// the shipped percent wheel, because recording the night and knowing where you stopped are
+/// the shipped percent wheel, because recording the day and knowing where you stopped are
 /// one event and this is the one moment the reader has the answer in their hand. The
 /// argument is *not* that `books.progress` is sparse — that column has never been in a
 /// build any reader has, so its row count measures the release rather than the demand. It
@@ -47,7 +47,7 @@ const double kPickerRowHeight = 78;
 /// must abandon the whole write rather than stamping a day with no attribution, since a
 /// half-completed pair is exactly the silent write this design refuses.
 ///
-/// **Reading books are their own group and come first.** On almost every night the answer
+/// **Reading books are their own group and come first.** On almost every day the answer
 /// is three rows from the top; a reader who has to *search* for the book in their hand has
 /// been failed by the ordering rather than by the field. The field exists for the other
 /// case — finishing a book never marked Reading, or picking something off a shelf — and it
@@ -117,7 +117,7 @@ class _PickBookSheetState extends State<_PickBookSheet> {
       // Lifts the list clear of the keyboard rather than letting it be covered.
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SizedBox(
-        // Tall enough that the Reading group lands above the fold on an ordinary night,
+        // Tall enough that the Reading group lands above the fold on an ordinary day,
         // short enough that the page behind is still visible as the thing this is a step
         // in. Proportional rather than fixed, because a 560pt sheet is most of a small
         // phone and half of a large one.

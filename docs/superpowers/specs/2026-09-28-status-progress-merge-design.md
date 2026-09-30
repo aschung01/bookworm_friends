@@ -54,9 +54,55 @@ transition.
 
 ### One sheet, one door
 
-The book-details band becomes a single card carrying status, dates **and** position, and it
-opens one sheet. `BandProgressRow` is deleted; `showSelectPercentBottomSheet` survives but
-is only reached from inside the new sheet.
+The book-details band becomes a single card, and it opens one sheet. `BandProgressRow` is
+deleted; `showSelectPercentBottomSheet` survives but is only reached from inside the new
+sheet.
+
+**This said "carrying status, dates _and_ position", it was built that way, and a reader
+called the result messy.** Four values beside the badge, wrapping onto two lines at the
+default text size on a 390pt phone — which is not a wrap valve opening, it is too much in
+the card — and two of the four were redundant with the other two: the start date and the
+elapsed day count are one fact, and so are the percent and the page.
+
+So the card has **two slots**. The first is _where or when_ and takes the most specific fact
+there is: the position if there is one, the finish date if there is not, nothing if there is
+neither. The second is _how long_, always, because the day count is the one thing neither
+the position nor the sheet behind the card states. Exactly one of the two is `brandText`;
+the other recedes to `secondaryText`, since two green values beside a green badge was the
+other half of "messy".
+
+| state                    | where / when | how long  |
+| ------------------------ | ------------ | --------- |
+| Reading, with a position | `71%`        | `15 days` |
+| Reading, no position yet | —            | `15 days` |
+| Set aside, with one      | `46%`        | `15 days` |
+| Finished                 | `2026.09.28` | `15 days` |
+
+**And the position is a bare percent, because the page pair was withdrawn next.** The card
+read `71% · p.307 / 432` — about 120pt of its 333 — and both page numbers are derived from
+the percent and the total, so the widest value on the card was restating its first third
+with more precision than a glance wants. `pageCount` left `ReadingPeriodRow` with them, and
+the widget now has no way to draw a page at all.
+
+Nothing is lost, because the precision moved to where it is asked for rather than being
+deleted. The sheet this card opens draws `ReadingStateLine`, whose page and total are each a
+tappable span onto the wheel — so a reader who wants the page number is one tap from
+_editing_ it, and a reader glancing at the band gets `71%`. This is also what finally made
+the first slot narrow: the two-slot rule fixed the _count_ of values, and this fixed the
+width of the one that remained.
+
+**The start date is gone from the card, and the finish date is not.** `15 days` is what the
+start date was there to say, in the form a reader wants it; nobody subtracts dates to learn
+a book has been open a fortnight. Nothing on the card implies the _finish_ date, so it stays
+— when a book landed is a memory anchor. Both dates remain visible and editable in the sheet
+this card opens, which is what makes the loss affordable.
+
+A finished book was the state that actually wrapped: `2026.09.13 ~ 2026.09.28` plus
+`15 days` does not fit beside a badge at 333pt, so the one book whose reading period is
+_complete_ was the one drawing two lines, and spending both on a closed range with its own
+duration printed underneath it. Dropping `15 days` there instead would have fixed the wrap
+too and costs more — a settled "it took me 15 days" is the satisfying number on a book you
+have finished, where two ISO dates are a database row.
 
 This saves **30pt of row — 40pt in the prompt state**, and the two numbers are not the same
 measurement: the row is a `SizedBox(height: 30)`, while `BandProgressRow`'s doc measures 40
@@ -76,9 +122,26 @@ existing rule that _"a door nobody can open must not draw a handle."_
 ### The control is a glassy, drag-only track
 
 A horizontal track spanning the whole book, ends named rather than numbered (_Not started_
-→ _Finished_), thumb drawn as the app's bookmark ribbon so what the reader sets here is
-what they see on the shelf afterwards. Glass via `native_glass.dart`, which gates real
-Liquid Glass on iOS 26 and paints a fallback elsewhere.
+→ _Finished_).
+
+**It is a native `UISlider`, and the two things this paragraph used to say instead were both
+wrong.** It said the thumb was the app's bookmark ribbon, so that what the reader set here was
+what they saw on the shelf afterwards; and it said the glass came from `native_glass.dart`
+gating a hand-painted fallback. Built that way, a reader's verdict was _"the bookmark makes an
+ugly thumb"_ — it is a tall asymmetric shape with a notch and a shadow hung off a 4pt bar, and
+at rest it read as a mark dropped on the track rather than a handle on it. The deeper mistake is
+the other half: **the toolchain already ships this control.** `CNSlider` in
+`cupertino_native_better` — already a dependency — is a native `UISlider`, which on iOS 26 is
+where the real Liquid Glass comes from. Painting a translucent rectangle and calling it glass
+got the _fallback's_ look on every platform, including the one platform that has the material.
+
+So: `CNSlider` behind the app's existing `useNativeGlass` gate, `CupertinoSlider` elsewhere, and
+the thumb is the platform's own disc.
+
+**Deliberately not `CNSlider`'s own fallback, which is a Material `Slider`.** Material sliders
+are _absolute_ — a tap on the track seeks to it — which would reintroduce the behaviour this
+whole control was designed around, on Android and in every widget test, i.e. everywhere the rule
+is actually checked.
 
 **48pt including its end labels, against 256pt for a wheel and its rider.** That is what
 makes the merged sheet _shorter_ than either sheet it replaces — 270pt clean, against an
@@ -93,6 +156,24 @@ Cancel). Making the tap inert reaches the same safety one tap cheaper: nothing n
 because a tap was never live, and **dismissing the sheet discards**, so the bar owes no
 Cancel of its own.
 
+**And the platform gives it for free, because iOS sliders are relative.** Flutter's
+`_RenderCupertinoSlider` holds a single `HorizontalDragGestureRecognizer`, sets
+`_currentDragValue = _value` on drag start and then _adds_ deltas, so a tap opens and closes a
+drag whose delta is zero. Two further gates do the real work: `hitTestSelf` accepts a pointer
+only within about 22pt of the thumb, and `_handleChanged` reports only when the value differs
+from the built one.
+
+This replaced a hand-rolled slop gate, and **the discovery that forced that gate is still true
+and worth keeping**: a lone drag recognizer **wins its gesture arena by default at
+pointer-down**, in a microtask before the finger moves. So "use a drag recognizer only" does
+_not_ produce an inert tap — built that way, a plain tap rewrote the position and a _vertical_
+pan moved the thumb. What makes the tap inert is relative dragging, not the choice of recognizer.
+
+**Relative dragging reaches both ends from anywhere**, which was raised as an objection and does
+not hold: the value moves at `1 / (width - 44)` per pixel, so from any value there is exactly
+that fraction of the travel to its left and the rest to its right. This matters because the
+−/+ steppers were deliberately not drawn.
+
 Rejected: **−/+ steppers** beside the bar. They were drawn to cover what a drag cannot
 reach (a ~353pt track over 912 pages) and they make the sheet a form again — the same
 complaint that killed the three-control stack in `streaks/index.html` (_"too many ways to
@@ -101,7 +182,7 @@ say the same thing"_). The exact path is the numerals instead.
 Rejected: **the bare draggable track**, i.e. live on first touch. Kept in the mockups as
 `rej-bare` so the rejection stays browsable rather than asserted.
 
-### Three tappable numerals, and only two of them underlined
+### Three tappable numerals, none of them underlined
 
 The read-out is **one line**: status word, percent, and the page inside the total.
 
@@ -111,9 +192,36 @@ The read-out is **one line**: status word, percent, and the page inside the tota
 - `462` → a new total-pages sheet. **Keypad first, wheel second**, and no Percent/Page
   segment, because a total has one unit.
 
-**Only the page numerals carry underlines.** They are small and sit inside a phrase. The
-percent is the largest thing on the line and obviously the value; underlining it too made
-three competing affordances out of one read-out.
+**Nothing on the line is underlined, and this reverses two rounds of the opposite.** It read:
+_"Only the page numerals carry underlines. They are small and sit inside a phrase. The percent
+is the largest thing on the line and obviously the value; underlining it too made three
+competing affordances out of one read-out."_ That argument had already survived one
+re-litigation. It was settled the other way on instruction — the numerals lost the mark and the
+sheet's two text actions gained it — and the rule that replaces it is narrower than the one it
+displaces: **an underline marks an action, not a value.** Every part of this line is a value;
+`Stop reading this` and `Start reading again` are the only things on the sheet that _do_
+something, and they were the only unmarked tappable text left. One device, one meaning.
+
+**The cost is that the doors are now undiscoverable, and it was accepted knowingly.** Nothing
+announces that `213` opens a wheel. What remains is the ink — `primaryText` for a live span,
+`secondaryText` for a dead one — which was designed to separate a value from ambient context
+rather than to advertise a gesture, and the 44pt track immediately below, which is why a reader
+who never finds the numerals is not stuck. `Semantics(button: true)` is untouched, so VoiceOver
+is now better served than sight is; stated plainly because it is the inverse of the usual
+defect.
+
+**`Add total pages` keeps its underline**, alone on the line. Not an exception to the rule but
+an instance of it: it is the only _call to action_ the line can contain, and the one state
+where the mark is load-bearing rather than decorative — an unmarked grey sentence inside a
+read-out is read as a caption. It is also the majority state, at ~65% of the corpus.
+
+**The page pair takes one ink for both spans, decided by the page's own door.** Per-span ink
+was invisible while the pair was either two doors or two dead spans; the Set aside state made
+it visible and wrong, because it closes the position's doors and leaves the total's open — so
+`p.213` came out grey beside `/ 462` dark, two halves of one phrase in two colours, which reads
+as a rendering fault rather than as a distinction. The total stays tappable in either ink,
+which is only a contradiction if ink is still claiming to mark what is tappable; since the
+underline left this line, it is not.
 
 **Editing the total is a new capability and the largest single win here.** `page_count` is
 written once by `addBook` and never again — the wheel's own doc says _"Never written"_ —
@@ -175,25 +283,108 @@ and neither cares why the book ended.
 
 The overload is kept browsable as the `derived` version in the mockups.
 
-### One secondary action, grey, and only while Reading
+### One secondary action, grey, and which one is the status
 
-"Stop reading this" — the only text action on the sheet, in `secondaryText` grey rather
-than `flame`, because it is an ordinary thing to do to a book and not a destructive one.
+"Stop reading this" — the only text action on the sheet, **centred and full width**, in
+`secondaryText` grey rather than `flame`, because giving up on a book is ordinary rather than
+destructive. Left-aligned it sat under the start-date row's own left inset and read as a third
+field in the form rather than an action on the book; the tap target is the whole width, because
+a short grey label is exactly what a text-sized hit box makes hard to land on.
 It writes `status = 3` and `finish_date = today`, and **leaves the position exactly where
 it is**, which is the whole point: the row keeps saying 46%. Its label is a **new ARB key in
 both files** — nothing in the app says this today — so the Korean is written, not translated,
 like the rest of the sweep below.
 
-**It is drawn in the Reading state only**, which is what the mockups encode — `one-rest`,
-`one-armed` and `one-nopages` carry it; `one-finished`, `one-setaside` and `one-null` do
-not. The reasoning per state: nothing has been started at Not started; a finished book
-cannot be given up on; and a set-aside book **resumes by moving the thumb**, so a resume
-link would be a second affordance for a gesture the sheet already has.
+**It is drawn in the Reading state only**, and `Start reading again` takes the same slot once
+the book is set aside. Not started and Finished offer neither: nothing has been started at the
+origin, and a finished book can be neither given up on nor resumed.
 
-Rejected: **"Put back on the shelf"** and **"Start reading"**. "Start reading" names a
-transition the thumb already performs — drag off the origin — and the sheet's whole argument
-is that status is a read-out of position, so a button that sets a status is the old model
-smuggled back in.
+**The set-aside half reverses this section, which said a resume link would be a second
+affordance for a gesture the sheet already has** — a set-aside book resumes by moving the
+thumb. The premise was wrong rather than the conclusion. The thumb resumes only by _changing
+the position_, so a reader who set a book aside at 46% and wants to carry on from 46% had no
+move available at all, short of dragging away and back to land on the same percent. Set aside
+is the one status a position cannot imply, which makes it the one status that needs a control
+of its own. The related rejection of **"Start reading"** still stands, and is a different
+thing: that named a transition the thumb does perform, from the origin.
+
+**And then the thumb stopped resuming at all.** On instruction, a set-aside book's track and
+its two position doors are dead, so `Start reading again` is not merely the discoverable way
+out but the only one. That is the coherent end of the same argument rather than a second
+change: a status a position cannot imply should not be a status a position can silently
+overwrite. It also closes a hole the link alone left open — the percent wheel's `0` stop would
+otherwise resume a book _and_ send it back to Not started in a single confirm.
+
+Two details in that, both load-bearing. **The total's door stays open**, because a page count
+is a fact about the book rather than about the reader's place in it and there is nothing to
+resume in order to record one; closing it would also draw `Add total pages` as an offer nobody
+can accept, in the majority state of the corpus. And the freeze is keyed on the sheet's
+**pending** status rather than the saved one, so tapping `Start reading again` unfreezes the
+track in the same frame with nothing written — keyed on the argument, a resumed book's track
+would stay dead until the reader saved, closed the sheet and reopened it, and a just-stopped
+book's track would stay live, which is the silent resume this exists to prevent.
+
+**The two actions are the sheet's only underline**, which arrived in the same trade that took
+the mark off the read-out's numerals. Before it they were grey 13pt centred text with no
+furniture at all, so the only thing that read as tappable was position — on the same 36pt band
+this section describes two paragraphs down as easy to hit _by accident_, which is a sentence
+about something that does not look like a control.
+
+**`Stop reading this` opens a confirmation sheet; `Start reading again` does not.** The
+asymmetry is not about which act is weightier — setting a book aside is reversible in one tap
+now, and every string here is written to keep judgement out of it. It is about what the control
+physically is: a full-width opaque band of grey text directly under a tappable date row, with
+no fill and no border, deliberately wide because a text-sized target for the least important
+label on the sheet is hard to land on. The cost of that width is that it is easy to hit without
+meaning to, and an accidental _resume_ costs a reader nothing.
+
+**The confirmation says what is kept and no longer says where the book goes.** The body was
+_"Your place is kept, so you can start reading again any time. The book moves to Set aside."_
+and is now the first sentence alone, with `place` → `progress`. Both halves on instruction, and
+both defensible on their own terms. The deleted sentence was there so the chip afterwards would
+not surprise anyone; against it, a yes-or-no question about the reader's own book should not
+require them to hold the app's status taxonomy — the title already names the act, and the chip
+names the result one tap later. The cost, stated: the destination is now learned after the fact.
+`progress` over `place` is the smaller win and the surer one — it is the word the sheet's own
+title uses (`readingProgressTitle`), so the two agree instead of describing the same number
+twice.
+
+**The confirmation writes, and both directions are confirmed.** This section said the
+opposite, at length: _"The confirmation does not write, which is what lets it exist here at all
+... Committing straight from it was the obvious alternative — a confirmation that returns you to
+a form with a Save button looks like being asked twice — and was rejected on two grounds:
+`Save` is the only writer anywhere in this sheet, and that invariant is the entire answer to the
+objection that killed the drag control the first time it was drawn ('a stray touch could
+silently rewrite your position'); and the symmetry that matters is with the sheet's other
+sub-sheets rather than with the app's delete sheet, since answering the date sheet does not save
+a date either."_
+
+Reversed on instruction, and **the argument for it is the one that sentence recorded as having
+lost**: a confirmation that hands the reader back to a form with a Save button asks the same
+question twice.
+
+**What makes the reversal safe is the thing being reversed.** The old invariant existed to stop
+a _stray touch_ writing. A confirmation is a different and stronger answer to exactly that: two
+deliberate taps, the second on a button that names the act. So the protection moved rather than
+went — from "nothing writes until Save" to "this writes because you were asked". The other
+sub-sheets still hand their answers back, and the distinction is not arbitrary: a date and a
+percent are values the reader is _composing_, where these two are acts they are _committing_.
+
+**Which is why `Start reading again` gained the confirmation it was explicitly denied.** The
+asymmetry above rested on _"an accidental resume costs a reader nothing"_, which was true only
+while nothing was written before Save. It now costs a write, and that write clears the day the
+book was closed. The remaining half of the objection — that confirming both makes the pair read
+as a matched set of consequential acts — is answered by shape: it is **one function in two sets
+of words**, the same answer `_SheetTextAction` gives for the action itself.
+
+**Three costs, stated.** Dismissing the sheet no longer guarantees nothing happened. A reader
+who confirms with a drag pending has committed one and not the other, so the sheet can show a
+saved status beside an unsaved position — deliberate, because sending the pending position
+would save a drag under a confirmation given for something else. And `Discard changes` can no
+longer put a status change back, which is why the sheet is _clean_ the moment a confirmation
+lands: offering the button would be offering something this sheet cannot deliver.
+
+Rejected: **"Put back on the shelf"**.
 
 "Put back on the shelf" is not drawn either, and the thumb covers it after all: **a drag
 back to the origin writes `null`, not `0`.** So the origin _is_ Not started, and Reading →
@@ -227,11 +418,15 @@ callers — this row, and the `kDebugMode`-gated footer in `reading_streak_page.
 this there is **no shipped way to un-record a reading day** — to delete a `reading_days` row
 once it exists. See _Open questions_ #1.
 
-### Save commits, and nothing else writes
+### Save commits a position; a confirmed status change commits itself
 
-**Save is the only writer on this sheet.** The drag does not persist on release, the three
-sub-sheets' Confirm buttons do not write, and dismissing discards everything. One sheet, one
-write.
+**Save is the only writer of a position, and it is no longer the only writer.** This read
+_"Save is the only writer on this sheet ... One sheet, one write."_ The two confirmed status
+transitions now commit on confirmation; see the reversal recorded under the secondary action
+above, including why a confirmation is a better answer to "a stray touch" than deferral was.
+
+What survives is every claim that was doing work: the drag does not persist on release, the
+three value sub-sheets do not write, and dismissing discards everything they hold.
 
 This makes the sheet coherent in a way the alternative could not be: "dismissing discards"
 was already the answer to the objection that killed `band-scrubber`, and a drag that wrote on
@@ -263,8 +458,15 @@ Clean 270pt, dirty 292pt, animated by the `AnimatedSize` the sheet already has. 
 arrival is the dirty indicator**, which is the feedback that a drag will persist; it also
 appears after a sub-sheet Confirm.
 
-**The book title is always left-aligned in the title row**, present or absent Save, so the
-row does not re-centre when the button appears.
+**The heading is `Reading progress`, and it was the book's own title first.** The title was
+chosen so the row could never re-centre when Save appeared; that argument holds and now applies
+to this heading instead. What it got wrong is what a sheet title is for — the book's name read
+as a page header rather than a sheet title, and it told the reader something they already knew,
+since they arrived from that book's page and the book is still on screen behind the sheet. The
+heading is **always left-aligned**, present or absent Save.
+
+The live objection: "Reading" is also the status word directly below, so the sheet can say it
+twice — at different sizes and in different colours, but twice.
 
 ### Vocabulary: Not started · Reading · Finished · Set aside
 
@@ -291,8 +493,17 @@ happened yet and there is no position to derive from.
 ### Where a set-aside book lives: the read sheet, and the title is the filter
 
 `FinishedBooksSheet` gains a two-state completion filter, and **the sheet's own title is its
-read-out**. A chevron-down sits to the right of the title; title, count and chevron are one
-tap target; tapping opens a glass popover with two checkable rows.
+read-out**. A chevron-down sits to the right of the title in **both** of the sheet's headers,
+and tapping it opens the platform's own menu with two checkable rows.
+
+**This said _"title, count and chevron are one tap target"_, on the grounds that "three
+separately tappable things in a row this size would be three ways to miss". That is reversed,
+and not by preference.** The menu is a `UIMenu` now — see _The mechanism_ below — and UIKit
+presents one from `button.showsMenuAsPrimaryAction`, so there is no programmatic open and the
+thing tapped has to **be** the native button. A Flutter gesture wrapping the whole row would
+have nothing to call. The cost is a 30pt target where there was a full-width one, paid because
+the friend's library already spends it: `_VisitMenuButton` is the same chevron beside the same
+kind of Flutter-drawn title.
 
 | mode      | title            | count | rows                                     |
 | --------- | ---------------- | ----- | ---------------------------------------- |
@@ -316,32 +527,80 @@ while the Library Card read 23 a tab away, both correct, with the clash written 
 23` and matches the Card exactly, and the only state that reads 29 is the one whose title
 says why. The `AGENTS.md` note shrinks to a sentence.
 
-**The mechanism exists twice and the obvious one is wrong.** `read_filter.dart`'s collapsed
-popover is `CNPopupMenuButton` with `CNButtonStyle.glass` and `CNPopupMenuItem(checked:)` — an
-apparently exact fit, including the check marks. But its `buttonLabel` is rendered **by the
-platform**, and that file's own record documents the label arriving at "the system's 17pt in
-the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for 13pt".
-The title is the largest text on the sheet and `LibrarySheetTitle` draws its count in the
-brand colour, so it cannot become a platform-styled button label.
+**The mechanism is the platform's menu, after three rounds of building the card by hand.**
 
-The right precedent is `shelf_picker_popover.dart`'s `showShelfPickerPopover` — an app-drawn
-card hung from an anchor's `RenderBox` rect, `LiquidGlassContainer` on iOS 26 and
-`BackdropFilter` as the fallback, where _"Flutter draws every pixel of content, the platform
-supplies the material behind it."_ Its doc also notes the app-drawn path _"is the only path a
-widget test ever takes, because `flutter test` reports Android"_, which is what makes this
-testable at all.
+This section argued the opposite, and the argument is kept because it is exactly half right.
+It said `read_filter.dart`'s collapsed popover — `CNPopupMenuButton` with
+`CNButtonStyle.glass` and `CNPopupMenuItem(checked:)`, an apparently exact fit including the
+check marks — was the obvious choice and the wrong one, because its `buttonLabel` is rendered
+**by the platform**, and that file's own record documents a label arriving at "the system's
+17pt in the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for
+13pt". The title is the largest text on the sheet and `LibrarySheetTitle` draws its count in
+the brand colour, so it cannot become a platform-styled button label. **All of that is true,
+and it rules out the _labelled_ constructor only.** `CNPopupMenuButton.icon` renders one SF
+Symbol and no text, so the title beside it stays Flutter's, and `home_page.dart`'s
+`_VisitMenuButton` has been shipping that arrangement next to a Flutter-drawn title all along.
+
+It also named the precedent, and **that exemplar is what cost three rounds**:
+`shelf_picker_popover.dart`'s `showShelfPickerPopover` — an app-drawn card hung from an
+anchor's `RenderBox` rect, `LiquidGlassContainer` on iOS 26 and `BackdropFilter` as the
+fallback, where _"Flutter draws every pixel of content, the platform supplies the material
+behind it."_ A reader said the resulting popover "isn't glassy". `LiquidGlassContainer` is a
+bare `glassEffect` with no material of its own, so over an opaque sheet it draws flat. A
+stretched contentless glass `CNButton` fixed the flatness and came out a **capsule**, because
+the plugin's UIKit branch sets `cornerStyle = round ? .capsule : .dynamic` and never reads
+`borderRadius`. A `glassEffectId` to reach the SwiftUI branch that _does_ honour the radius
+then sized the glass to the button's **content** — an empty label — collapsing it to a pill in
+the middle of the card. Each fix was right about the thing it fixed and uncovered the next.
+
+**What ended it is that none of it is checkable from here.** `useNativeGlass` needs an Apple
+target _and_ iOS 26 while `flutter test` reports Android, so three rounds of material work were
+three rounds of reasoning about Swift nobody could watch run. A `UIMenu` brings the material,
+the radius, the entrance, the dismissal, the checkmarks and the VoiceOver behaviour from the
+platform, and none of them can drift from iOS because none of them is ours. About 250 lines
+went with the card: the `PopupRoute`, the anchor maths, the entrance, the two rows and the
+check slot.
+
+The old note's last clause survives intact and now describes the fallback instead. Material's
+menu **is the only path a widget test ever takes, because `flutter test` reports Android** —
+which is what makes the labels, the order of the two rows and the check following the choice
+testable at all, and what leaves the native path judged only on a device.
 
 **The year rail stays directly under the title row** — `expandedHeader` is `Column[title,
 ReadFilter(expanded: true)]` — and that is structure, not preference. It is also why the
 filter could not live on the rail's row: drawn to scale, a card hung under the title
 **occludes the rail**, so the two would have collided in geometry as well as in wording.
 
-**The filter applies in both sheet states; only the chevron is expanded-only.** An earlier
-draft scoped the whole thing to the expanded sheet and left "the spine pile completed-only",
-which is inconsistent once the filter is a persisted view mode — the count would jump on
-collapse. Collapsed, the header's row already has the year popover competing for it, and
-`library_clearance_test.dart` exists because that row overflows at 2× text with a two-digit
-count.
+**The filter applies in both sheet states, and so does the chevron.** An earlier draft scoped
+the whole thing to the expanded sheet and left "the spine pile completed-only", which is
+inconsistent once the filter is a persisted view mode — the count would jump on collapse.
+
+**Then the chevron alone stayed expanded-only for a round, and that is reversed too.** The
+reason given was that "collapsed, the header's row already has the year popover competing for
+it, and `library_clearance_test.dart` exists because that row overflows at 2× text with a
+two-digit count" — a claim about **width**, and width is not the constraint. Both halves of
+that row are flexible and the title ellipsizes, so a control there takes room from the title's
+_characters_ rather than from the row's edge.
+
+It had to move because **collapsed is where this sheet opens.** The filter was honoured in both
+states from the first draft, so the pile in front of the reader was already obeying an answer
+they had to expand the sheet to give — the control was the only expanded-only part of it.
+
+**What it costs is height, and only off iOS 26.** The collapsed sheet is its header plus
+`ReadPile.extent`, so a taller header is a shorter library. Measured on the smallest phone: the
+title row goes **21 → 30** and the visible library **324 → 315**, the 30 being the control's own
+box. Native it is free — the year popover beside it is a 36pt `CNPopupMenuButton`, so the row
+is 36 tall either way — and at 2× text it is free on both paths, because the title's line is
+43pt by itself. `flutter test` reports Android, so the suite measures the strict case.
+
+**And the row's flex is 2:1, because an even split cost the title its last four characters.**
+Rendered at 390pt with both halves at flex 1 it read `Books fini... 12 ⌄`: the count and the
+chevron take the fixed end of a half-width box, so the title is what gave way. That is the one
+thing this header cannot spend — the title _is_ the read-out, so truncating it truncates the
+state, and `Books fini...` does not tell the two modes apart. The **year label** gives way
+instead and can afford to: it repeats inside its own menu, its chevron says it is one, and
+`All ti...` still reads. Note this narrows the original reason both halves were made flexible,
+which was the popover starving the title; the fix is to weight the title, not to unweight it.
 
 **A friend's library shows it too.** `FinishedBooksSheet` also serves friends through
 `userFinishedBooksProvider`, which needs a set-aside sibling. The consequence, stated rather
@@ -421,7 +680,8 @@ question · the derived-set-aside inference · the −/+ steppers that were draw
 ## Open questions
 
 Five of the six are decided and have moved into _Decisions_: Save commits the drag, the
-filter is the title plus a glass popover, a friend's library shows it, a drag to the origin
+filter is the title plus the platform's menu (a glass popover first — reversed in _Where a
+set-aside book lives_), a friend's library shows it, a drag to the origin
 writes `null`, and un-recording a reading day is **accepted as lost**. One remains.
 
 1. **This inverts `ss-finished`**, which removed the position row at status 2 because _"a
@@ -511,15 +771,247 @@ Estimated, summed from row heights in the Dart and labelled as such on every moc
 270pt clean, 292pt dirty, 246pt not-started, 282pt terminal, ~342pt for today's status
 sheet, ~300pt for the read sheet's crop.
 
+**Measured after building**, at a real 375×667 with the app's own fonts registered (which is
+what made them measurable — under the test font every string is one em-square per glyph):
+
+| state                            | measured | estimated |
+| -------------------------------- | -------- | --------- |
+| Reading, clean                   | **275**  | 270       |
+| Reading, dirty                   | 286      | 292       |
+| Finished, clean (both date rows) | 276      | 282       |
+| Set aside, dirty                 | **287**  | —         |
+| Not started, clean               | **170**  | 246       |
+
+Three within 6pt, and the estimates were good. **Not started is 76pt out, and not by an
+arithmetic slip:** at the origin the read-out collapses to a single word — no percent, no page
+pair — and neither date row is drawn, which the row-sum did not model. The sheet is comfortably
+shorter than both it replaces (342 and 368) in every state.
+
+### The track ticks every 5%, where the wheel ticks every stop
+
+Asked for: _"similar haptics when moving the linear progress bar's thumb with when we scroll
+the custom wheel."_ The wheel is a `CupertinoPicker`, whose `_handleHapticFeedback` makes
+**two** calls on each change of selected item — `HapticFeedback.selectionClick()` and
+`SystemSound.play(SystemSoundType.tick)`. Both are copied exactly. Two things about them are
+not.
+
+**The step is 5%, not 1%, and the arithmetic is the whole argument.** The picker's
+`_kItemExtent` is 34, so one tick costs 34pt of finger travel. `CupertinoSlider` maps its value
+over `width - 44`, which on this sheet's 327pt is 283pt for the full range — so a 1% tick costs
+**2.83pt**, one twelfth of the wheel's. At an ordinary drag speed that is not a sequence of
+clicks, it is vibration, and it would be vibration at every speed because the ratio is
+scale-free. 5% costs 14.15pt, within about 2.4× of the wheel, which reads as ticks.
+
+**The value is not quantised to match**, so 73% is still reachable by dragging and the ticks
+are landmarks — a ruler's graduations rather than detents. The alternative is real detents:
+give `CupertinoSlider` a `divisions` and let the number move in fives, which would make every
+tick coincide with a visible change and is arguably on-brief, since the track is for coarse
+work and the read-out's doors are for exact answers. Not taken, because it costs something the
+haptics did not ask for — the track would express less than the wheel it is meant to agree
+with.
+
+**It ticks on every platform, where the wheel ticks only on iOS.** `CupertinoPicker`'s switch
+returns for every non-iOS platform, but that is Flutter's decision inside a stock widget rather
+than this app's: the app's own three selection haptics — `read_filter.dart`,
+`friends_sheet.dart`, `library_sheet.dart` — are all unconditional, and Android has a good
+selection haptic. So this follows the app. The cost, stated: on Android the track ticks where
+the wheel does not.
+
+**Copying the iOS gate was the first attempt and it is a trap worth recording.**
+`useNativeGlass` reads `defaultTargetPlatform` too, so a test that overrode the platform to
+iOS to reach the haptic also flipped the glass branch, built a `CNSlider`, and left the case
+holding a platform view it could not drag — _"Found 0 widgets with type CupertinoSlider"_. The
+two switches look independent and are not.
+
+**The audible tick is half of it, and this shipped once without it.** The first round read
+"similar haptics" as naming a channel and refused `SystemSound.play(SystemSoundType.tick)`,
+reasoning that iOS's own sliders are silent and the audible click is a picker affordance. The
+reply was _"i still don't hear the tick tick sound ... which i hear when scrolling thru the
+wheel"_ — so the brief was the whole sensation, the wheel was the specification, and a
+defensible argument had answered a question nobody asked. **Recorded rather than deleted
+because the reasoning was sound and the premise was wrong**: whether a stock iOS slider clicks
+is not the question when the request names the control to imitate.
+
+**The sound is the wheel's specifically, and the near miss is the neighbouring constant.**
+`SystemSoundType.tick` reaches `AudioServicesPlaySystemSound(1157)` — `kWheelsOfTimeSoundId` in
+the engine, the picker's own scroll sound and the only thing the framework uses it for.
+`SystemSoundType.click` is id 1306, the keypress. Both are "a tick" in prose; one sounds like a
+wheel and one like a keyboard, which is why the case asserts the argument by name.
+
+**The sound needs no platform gate, unlike the haptic.** The framework documents `.tick` as
+_"ignored on all platforms except iOS"_ and the engine bears it out — `playSystemSound:`
+compares the string and matches nothing off iOS. So the audible half is iOS-only for free, and
+the divergence from the wheel above is confined to the channel that can carry it.
+
+**Silent mode mutes the sound and not the haptic, which is a reason to keep both.** Those ids
+go through iOS's UI-sound path, the one the ringer switch governs. On a silenced phone the
+haptic is the entire signal; on a simulator, which has no haptics, the sound is. Neither
+channel is sufficient alone, so "I can't hear it" has a second cause that is not a defect.
+
+### The derived page lost its tilde
+
+`progressApproxPage` printed `~ p.213` for a page computed from the fraction, against
+`p.213` for one the reader typed. **It is deleted** — key, both translations and both call
+sites.
+
+The mark existed because in percent mode the wheel has 101 stops, so at 320 pages one stop is
+3.2 pages: a reader aiming at p.148 lands on p.147, and the tilde was where that was admitted.
+**The cost of losing it is that the read-out states the arithmetic's page as flatly as the
+reader's.**
+
+**Both call sites, not just the read-out that was pointed at.** The wheel's rider carried the
+same mark, and one mark meaning "derived" under the wheel and nothing in the read-out the wheel
+feeds is read as a rendering glitch rather than as a distinction.
+
+**It was never "the entire reason `progress_page` is stored"**, which `reading_state_line.dart`
+claimed. The column earns its place by making a typed page round-trip exactly — `given` still
+decides which number is drawn, it just no longer decides the format — and that is untouched.
+Two cases had to be re-aimed from the format to the value for the same reason: as written they
+would have passed on a widget that threw the stored page away.
+
+If a marker is ever wanted back, it cannot be `≈`: the faces are subset to Latin-1 plus Hangul,
+so `U+2248` drew from a platform fallback in another typeface, which is why the one that shipped
+was an ASCII tilde.
+
+### Save and Discard changes sit at the foot, and the read-out ends at the right edge
+
+Save was in the title row beside the heading, at 92×32. It was asked for at the foot, and the
+move brings two things with it: a second button becomes possible — a 92pt slot next to a title
+has room for one, a full-width row has room for a pair — and the sheet stops putting its only
+write control in the corner furthest from the thumb, on a sheet whose whole argument for being a
+sheet is that the control sits in the thumb's arc. The delete sheet's geometry: two `Expanded`
+buttons at 44 with a 12pt gap, recessive on the left.
+
+**The recessive button says `Discard changes`, and said `Reset` for two rounds.** Renamed on
+instruction, and the reason it holds is that `Reset` names a mechanism where this names the
+consequence — which is what a reader standing in front of a Save button is actually choosing
+between. The cost is width: two words in a half-width 44pt button, survivable only because the
+pair is `Expanded`, so both buttons are sized by the row rather than by their labels. The ARB key
+was renamed with the value; it had exactly one reader.
+
+**Its arrival is still the dirty indicator**, so there is no other unsaved marker and no
+disabled Save to explain. Arriving _below_ the track is also what let the title row's pinned
+height go — anything appearing down there cannot push the track, which is what the pin was for.
+
+**And it is pinned to the foot by a `Spacer`, which took a second pass.** Framing the sheet
+leaves spare room in every state but the tallest, and top-aligned that room fell _below_ the
+commit row — so buttons asked for "at the bottom of the sheet" were drawn 49pt up it on a
+Reading book. The slack now falls above the row and under the text action: `Stop reading this`
+edits the pending status, so it belongs with the form, and the commit row is the only thing that
+belongs to the sheet's edge.
+
+The `Spacer` needs a bounded height and neither obvious spelling gives one —
+`MainAxisSize.max` inside the `ConstrainedBox` fills the _maximum_, which is most of the screen,
+and a plain `SizedBox` is bounded but clips instead of growing. `IntrinsicHeight` is the answer:
+it tightens the column to its own intrinsic height, `BoxConstraints.tighten` clamps that against
+the incoming minimum, and the column is handed a tight `max(natural, 336)`. The `Spacer`
+contributes nothing to the intrinsic measurement, which is what keeps `natural` honest.
+
+**The mockup could not have caught this.** `.dev` has no height, so every crop is drawn at its
+content's natural height and there is no slack to distribute — the defect was invisible on the
+page and obvious in a photograph of a device. Same blind spot the streak widget's review page
+has about WidgetKit. `build/status_sheet_preview/readingdirty_light_en.png` is the frame that
+shows it.
+
+**`Discard changes` is not `Cancel`, and the difference is that it stays.** Dismissing already discards,
+so a button that dismissed would be a second spelling of a gesture the reader has. This one puts
+every field back to what the sheet opened with and leaves them on it, which is what someone who
+over-dragged the track wants: the old value back, and to carry on. It restores the _arguments_,
+which is the same set `dirty` compares against, so a reset sheet is clean by construction and the
+row cannot survive its own press.
+
+**The page pair moved to the trailing edge.** `Reading 71%` holds the left, `~ p.307 / 432` ends
+flush with the line. Two things about how, both of which a simpler spelling gets wrong:
+
+- **`WrapAlignment.spaceBetween` over two nested groups, not over the flat list of four parts.**
+  Flat, it spreads all four evenly and floats the percent into the middle of the line.
+- **Nested `Wrap`s, not a `Row` with a `Spacer`.** A `Row`'s children have no run to drop to, so
+  its only degradations are overflow and ellipsis — and a clipped status word is the one failure
+  that makes the line lie about the book. Nested, each group is handed the outer `Wrap`'s own
+  `maxWidth`, so a group too wide for the line soft-wraps inside itself.
+
+When the two groups will not fit the pair drops to a second run and lands **left**, because
+`spaceBetween` leaves a lone child in a run at the start. Right for a continuation; right-aligning
+it would open a ragged gutter mid-read-out. The same rule is why the origin state needs no special
+casing: one child, at the start.
+
+### And then the sheet was given one height, 335 — now 384
+
+**Every figure above is a natural height, and the sheet no longer has one.** It is framed to
+its tallest state — set aside with a dirty Save, 287 of content plus `AppSheet`'s 48 — so every
+state renders at 335 and the sheet never resizes.
+
+The reason is not tidiness. A bottom sheet is anchored to the bottom of the screen, so growing
+moves its _top_ edge up and every child with it — and both date rows sit **below** the track.
+Dragging off the origin adds the start-date row and the Save button, about 70pt, which slid the
+control out from under the finger that was dragging it. The previous answer to this was an
+`AnimatedSize`, and the case that pinned it said why it mattered: _"both happen on the same
+gesture, so without the animation the sheet would jump twice under the reader's thumb."_ That
+diagnosis was right and the remedy treated the symptom; 220ms of easing still moves the track.
+
+Two details that only a rendered frame and a rectangle-level assertion would find:
+
+- **The title row is pinned to 32 as well**, which is the Save button's height and not the
+  title's ~21. Without that the row grew 11pt the instant the sheet went dirty and pushed
+  everything below it down — the same defect one level in, and invisible to any assertion about
+  the sheet's own height. The case measures `ReadingTrack`'s rectangle for this reason.
+- **It is a minimum height, not a fixed one.** A `SizedBox` would trade a moving control for a
+  clipped one at large accessibility text sizes; `ConstrainedBox(minHeight:)` lets a state that
+  genuinely needs more room grow, and the `AnimatedSize` is kept for that one residual case.
+
+**287 → 336 of content when Save moved to the foot**, so 384 in total. The title row gave back
+11 and the commit row costs 60, and the frame follows the tallest state, so every state pays the
+60 whether or not it draws the buttons.
+
+**Which makes the sheet taller than both it replaced, and that headline claim is now false.**
+342 for the old status sheet, 368 for the percent wheel. Two deliberate decisions spent the
+margin, in order: framing the sheet so the track stops moving under a drag (275 → 335), and
+moving Save to the foot (335 → 384). Neither is reversible by tightening a gap, and the second is
+what crossed the line. The case that used to assert `lessThan(342)` now asserts `greaterThan` both,
+so the size is a number someone has to look at rather than a claim that quietly stopped being true.
+
+**And what it costs is a void on Not started: 214pt, over half that state.** Its content is 122 —
+a single word in the read-out, no date row, no text action, nothing to commit — and the sheet is
+sized for a set-aside book, which that book is three taps away from. It was 165 before the commit
+row moved down.
+
+**Both sides of the trade got worse at once**, which is the thing to weigh: the jump the frame
+prevents also grew, from 115pt to 165, because the commit row arrives below the track. So the
+frame is worth more than it was and costs more than it did.
+`book_status_bottom_sheet_test.dart` pins the 214 as a number for exactly this reason.
+
+Three ways out, none taken:
+
+- **Draw the start-date row at the origin.** Fills 60 of the 214 and closes a real gap — a start
+  date cannot currently be set without first inventing a position by dragging the thumb. The only
+  option that costs the no-jump property nothing.
+- **Frame only the states a drag moves between** — Not started → Reading → Finished, 288 — and let
+  the two confirmed status transitions resize the sheet by 48. Halves the void; a tap's target
+  moving after the tap has completed is a milder defect than a drag's target moving mid-gesture.
+- **Give the frame up.** The void goes and the 165pt jump comes back.
+
 **Verified by rendering the mockup:** the popover, hung under the title the way
 `showShelfPickerPopover` hangs its card, **occludes the year rail** — which is a second reason
 the filter could not have gone on the rail's row, this one geometric. Recorded rather than
 designed away; sliding the card below the rail is available if it is judged worse than the
 occlusion.
 
-**Still not verified: how the sheet itself looks.** The mockups are CSS standing in for Liquid
-Glass and for a Flutter layout. The glass treatment and the one-line read-out at
-`Set aside 46% p.213 of 462` — longer in Korean — need eyes before implementation.
+**The card is gone and only half of that survives.** The geometric argument against putting
+the filter on the rail's row still holds, because the menu hangs from the same anchor. The
+lever does not: a `UIMenu` places itself, and iOS decides whether it opens above or below the
+chevron given the room, so "slide the card below the rail" is no longer ours to do. What
+replaces it, if the occlusion is judged wrong, is moving the **anchor**.
+
+**Still not verified: how the sheet looks on a device.** The mockups are CSS standing in for
+Liquid Glass, and a widget test reports Android, so every automated check of the track has
+exercised the `BackdropFilter` fallback rather than the real material. The read-out's longest
+case is confirmed to wrap rather than clip at 2× text in both locales, but it has been *measured*
+rather than looked at.
+
+Two things the build found by rendering that no green suite could see: the track's thumb sat
+above its groove (the row had been sized to the bookmark asset's box rather than to the visible
+ribbon), and the read-out inherited an underline from `MaterialApp`'s fallback text style — on
+the one widget whose whole contract is which parts are underlined.
 
 **One correction worth recording about the mockup itself**, because it is the cost of writing
 a page without opening it: the committed version carried a stray `</div>` in its lead

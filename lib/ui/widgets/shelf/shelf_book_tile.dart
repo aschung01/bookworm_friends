@@ -124,6 +124,9 @@ class ShelfBookTile extends StatelessWidget {
             onLongPress: null,
           ),
           if (isEditMode && badge != null)
+            // Straddling the corner, half outside this `Stack` — which is painted and
+            // *not* hit-tested, so the badge's reach comes from [DeleteBadgeTapScope]
+            // rather than from this box. See that class before moving either.
             Positioned(
               top: -DeleteBookBadge.halfTarget,
               left: -DeleteBookBadge.halfTarget,

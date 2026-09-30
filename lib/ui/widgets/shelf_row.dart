@@ -648,6 +648,9 @@ class _ShelfRowState extends ConsumerState<ShelfRow>
           // `Align`, because `Positioned` with both edges pinned would hand the badge a
           // tight width — a cover's, so about 80pt — and `SizedBox` widens to a tight
           // constraint rather than holding its own 44.
+          //
+          // The half above the cover's head is outside this `Stack`, so what makes it
+          // tappable is [DeleteBadgeTapScope] rather than this box.
           Positioned(
             top: -DeleteBookBadge.halfTarget,
             left: 0,

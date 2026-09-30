@@ -131,7 +131,7 @@ void main() {
   group('longestStreakProvider', () {
     test('Given two runs, Then it is the longest and not the latest', () async {
       // The record is a statement about the reader, and the only figure that
-      // survives the missed night that resets everything else.
+      // survives the missed day that resets everything else.
       final old = DateTime(today.year, today.month, today.day - 30);
       final container = await _container({
         ..._run(9, endingOn: old),
@@ -171,7 +171,7 @@ void main() {
   group('the window', () {
     test('is a ceiling nobody is near, not a page', () async {
       // A run longer than this would be under-reported. 400 days is over a year of
-      // unbroken nightly reading, and the oldest reading book in this database was
+      // unbroken daily reading, and the oldest reading book in this database was
       // started 1205 days ago and never touched again.
       expect(kReadingDaysWindow, greaterThan(365));
     });

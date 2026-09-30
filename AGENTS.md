@@ -785,14 +785,14 @@ to fill that gap.** The gap is deliberate (the page's own comment says so) and t
 reconciles the two options the record had left fighting: **F** wanted a ladder, **G** wanted
 no standing reminder of what the reader has not done and the whole reward in the
 celebration. F's object shown only at G's moment is both — a reader meets the ladder on the
-night they just added to it, never as a permanent list of four things they have not managed.
+day they just added to it, never as a permanent list of four things they have not managed.
 It also puts the track on the ground it was drawn for, since it paints in `kCandleStockTop`
 and `kCandleFlame` and was the only candlelit object on a `pageBackground` page.
 
 **It replaced `_MilestoneBar`, which is deleted.** That bar filled `streak / (best + 1)` and
-vanished on a record night. Two amber rails 10pt apart is one duplication; the worse one is
+vanished on a record day. Two amber rails 10pt apart is one duplication; the worse one is
 that the sentence under it — "8 more days to beat your best." — _was_ the bar, in words. The
-ladder says what the sentence cannot, and is present every night. **Its fill does not
+ladder says what the sentence cannot, and is present every day. **Its fill does not
 animate.** The `_Rise` is the reveal.
 
 **The fill reads `streak`, the run in progress, not `best`, the record — and it read `best`
@@ -819,6 +819,64 @@ shorter than any phone the app supports**, so both `streak_celebration_test.dart
 `reading_streak_page_test.dart` now set a real size in their `_pump`. Without that, moving
 the ladder in failed 31 cases with a `RenderFlex` overflow naming a widget none of them
 mentioned.
+
+### The month card pages, and the note refusing it was wrong about the query
+
+`_MonthCard` carries the record's `‹ ›` pagers now, and the comment where they sit spent three
+rounds arguing they must not: they would "imply `readingDaysProvider` can be asked for an
+arbitrary month, and it cannot — it holds one window", so drawing them would be an affordance
+for something that does nothing.
+
+**The premise was a misreading of the provider.** `kReadingDaysWindow` is
+`.order('day', ascending: false).limit(400)` — a limit on **rows**, not a date range. The map
+therefore already holds every recorded day back to the 400th: over a year for a reader who has
+never missed a day, and far longer for anyone who reads in bursts. Paging asks the network for
+nothing. What is genuinely bounded is the far **edge** of that row limit, and that edge is what
+`_MonthCardState._oldestMonthsBack` derives the back stop from — the oldest day in the map, not
+a typed number of months, because a month the query never fetched draws as thirty empty cells
+and would read as _"you did not read in 2023"_ rather than as _"this does not go back that
+far"_. Forward stops at the current month: a future month is thirty dimmed numerals and no
+record.
+
+Five things not to undo:
+
+- **The state is an offset in months, not the month itself**, so the midnight rollover carries
+  the card with the clock instead of stranding it on a month that was "this" when the page
+  opened. It is clamped **on read** rather than corrected in a `setState`, because the log
+  shrinks under the card twice as a matter of course — the first build sees an empty map before
+  the fetch lands, and an undo can delete the only row in the month being looked at — and a
+  widget that calls `setState` from its own `build` is one more cause away from a loop.
+- **Both chevrons stay drawn at either end, dimmed.** Removing the unavailable one reflows the
+  heading, so the month name would shift sideways as a side effect of the log rather than of a
+  tap; and a lone chevron stops saying that the one pointing the other way exists. That holds
+  for the both-ends-at-once case a reader with a single recorded day sees: hiding the pair there
+  is tidier on that one screen and buys a control that appears out of nowhere the month after.
+- **36pt discs, not the record's 30.** `.cnav .cpg s` is 30, which is under every platform's
+  minimum and under the 36 `_LibraryBar` already settled on — and this row is tighter than that
+  one. No ink: the nearest `Material` is under the card's opaque `surface` fill, so an `InkWell`
+  here splashes _behind_ the card and shows nothing.
+- **Neither stat caption names a month any more.** They read `read this month` / `this month`
+  while the card could only ever draw the current one; with a pageable heading directly above
+  them that contradicts the heading. They are `recorded` / `read`, and the heading is the scope.
+- **Recording a day does not snap the card back to this month.** Tempting, because the stamp
+  the reader just made is on a grid they are not looking at — and rejected, because it moves the
+  card out from under someone who paged there deliberately, one second after they dismissed a
+  full-screen celebration. The hero and the week row have both already updated, so nothing on
+  screen is stale. Pinned by a case, since the obvious "fix" is a one-liner.
+
+The four new Korean strings were written rather than natively reviewed: the two captions
+(`기록` / `독서`) and the two chevron labels (`이전 달` / `다음 달`).
+
+`test/streak_month_pager_render_preview.dart` writes the five states worth looking at to
+`build/month_pager_preview/`, because the two things here a green suite cannot see are whether a
+disabled disc reads as _unavailable_ rather than as _failed to load_ on both grounds, and
+whether a **past** month — which can carry thirty hollow gap dots where the current month only
+ever shows a handful — still reads as a record. It loads `MaterialIcons` off the SDK cache by
+walking up from `Platform.resolvedExecutable`: without that both chevrons render as Ahem boxes,
+which looks exactly like the defect the shots exist to rule out. It also keys each
+`ProviderScope`, because successive `pumpWidget` calls build a structurally identical tree and
+Riverpod updates the scope in place — so the card kept the month it had been stepped to and one
+shot came back showing a different log's stamps.
 
 ### Two defects a green suite could not see, so render and look
 
@@ -977,12 +1035,12 @@ re-adding a decoration and watching five cases fail.
 `StatTileVariant` has **four** values now — `hero`, `tile`, `warm`, `cool` — and the streak
 tile is the only non-hero tile on that card with a fill of its own. It earns that by being a
 **state rather than a stat**: pace and most-read author are true all week, and this one
-changes tonight. Warm (`kCandleFlame`) once today is recorded, cool before.
+changes today. Warm (`kCandleFlame`) once today is recorded, cool before.
 
 **Keyed on `readToday`, never on the count.** `readToday` is threaded `home_page.dart` →
 `LibraryCardSheet` → `LibraryCardBody`, off the same `readTodayProvider` the bar's chip uses,
 so the two cannot disagree about whether today counts. The count is intact all day and only
-the day's status changes at the 4am rollover, so a tile keyed on the number would be warm at
+the day's status changes at the midnight rollover, so a tile keyed on the number would be warm at
 9am on a day nothing had been read. Both states read the full count, because the record does
 not scold.
 
@@ -1045,7 +1103,7 @@ compose with what shipped.
 home fixture plus selecting the Card tab and opening the sheet; the body and sheet tests
 cover everything below it.
 
-### Recording a night has two doors, and the celebration is a route rather than an overlay
+### Recording a day has two doors, and the celebration is a route rather than an overlay
 
 `showStreakCelebration` (`lib/ui/widgets/streak/streak_celebration_route.dart`) is the only
 way the celebration is raised, and both callers use it: `ReadingStreakPage._recordToday` and
@@ -1053,7 +1111,7 @@ way the celebration is raised, and both callers use it: `ReadingStreakPage._reco
 driven by `_celebrating` and `_celebratedStreak`, which was right while that page was the only
 thing that could write a `reading_days` row.
 
-**The band's percent wheel now stamps the night, and it did not before.** That was the gap:
+**The band's percent wheel now stamps the day, and it did not before.** That was the gap:
 nudging a bookmark is the shortest "I read some of this" in the app and the path most readers
 actually use, and it was the only one that left the streak untouched — so the reader most
 likely to have a run going was the one whose run grew silently, with no celebration, from a
@@ -1068,12 +1126,12 @@ nor the day. What the wheel asserts is a reading of intent — someone who just 
 where they are in a book read it today. The cost, stated in place: correcting a percentage the
 reader got wrong last week also stamps _today_, and there is no way to tell that apart, because
 the wheel records a position and not a date. The narrower rule (stamp only when the position
-moved forward) is one comparison away and would refuse the night to someone re-reading a
+moved forward) is one comparison away and would refuse the day to someone re-reading a
 chapter.
 
 **Celebrate on the transition, never the state.** `readToday` stays true for the rest of the
 day, so celebrating on the state would raise the screen on every later nudge.
-`_celebrateIfTonightIsNew` takes both halves as arguments rather than reading the second back,
+`_celebrateIfTodayIsNew` takes both halves as arguments rather than reading the second back,
 because the callers already know them.
 
 **`BookDetailsTabView.build` watches `readingDaysProvider` for its side effect.** Nothing there
@@ -1081,7 +1139,7 @@ draws the streak. Both write paths ask `readTodayProvider` whether today was alr
 and that getter is derived from an _async_ set — so it answers `false` while the fetch is in
 flight rather than "not known yet". Unwatched, two things broke: the status sheet opened with "I
 read today" unticked on a day that **was** recorded, and saving it called `setRead(read: false)`
-and took the night away; and every first nudge looked like the first of the day, so the
+and took the day away; and every first nudge looked like the first of the day, so the
 celebration fired on a run it had already celebrated. Both survive on device only because the
 library bar's chip watches the same provider and the route below stays in the tree, so the set
 is nearly always already cached — the failure showed up the moment a test pumped the page with
@@ -1106,7 +1164,7 @@ whole implementation of the reading-streaks design's `sc-risk`, choosing between
 from the warning hour.
 
 **Withdrawn on instruction, and the reason it holds is that the page was saying it four
-times.** Whether tonight is in is already the flame's tint above the figure, the week row's
+times.** Whether today is in is already the flame's tint above the figure, the week row's
 last cell below it, and whether the foot of the page offers a record button or a
 confirmation. The words were the page explaining its own drawing.
 
@@ -1216,7 +1274,7 @@ That fallback is why this shipped with **`v` still at 1** and no coordinated rel
 "simplify" it away: it is what the tile draws on the first render after a book change, for a reader
 who was offline then, and for any cover URL that 404s. Five things not to undo:
 
-- **The snapshot is written first, the cover second.** Reversing it makes a recorded night wait on a
+- **The snapshot is written first, the cover second.** Reversing it makes a recorded day wait on a
   download. The extra timeline reload is affordable only because `write` is deduplicated per
   snapshot — the refresh budget is spent by per-rebuild reloads, not by per-book-change ones.
 - **`StreakCoverThumbnail` re-fetches rather than reusing `cover_sample.dart`'s decode.** The free
@@ -1271,10 +1329,606 @@ literals back out of the Swift.
 widget cannot be re-added — `simctl` can install and screenshot but not place a widget. Expect to
 ask for a screenshot rather than to take one.
 
+## Status and reading position are one sheet, and the band has one door
+
+`showBookStatusBottomSheet` is the whole of it on the details page. The percent wheel is no
+longer a second door off the band: `BandProgressRow` and `book_details_tab_view.dart`'s
+`_onEditProgressPressed` are deleted, and on that page `showSelectPercentBottomSheet` is
+reached only from inside the merged sheet. **It still has its own caller on the streak
+page**, in `_recordToday`'s pick-a-book-then-how-far flow, so it is not a private helper and
+its contract — hand the value out, let the caller write — has to keep holding for both. The
+merged sheet's hero is a reading track, the status **word is derived from the position**, and
+`Save` is the only writer **of a position** — the two confirmed status transitions write
+themselves; see below.
+
+The full record is `docs/superpowers/specs/2026-09-28-status-progress-merge-design.md` plus
+the plan's **Build log** beside it. What follows is the part that is expensive to
+rediscover.
+
+### The track is the platform's slider, and its own fallback is the wrong one
+
+`ReadingTrack` (`lib/ui/widgets/book/reading_track.dart`) is `CNSlider` from
+`cupertino_native_better` behind `useNativeGlass` and **`CupertinoSlider` everywhere
+else** — which means it overrides the package's own fallback, deliberately.
+
+**`CNSlider` falls back to a Material `Slider`, and a Material `Slider` is absolute: a tap
+on the track seeks to it.** That is `band-scrubber`, the arrangement this design rejected.
+Since `useNativeGlass` is **false under `flutter test`** (it reports Android), letting the
+package choose would put the rejected behaviour in every test and on every Android device
+while the reviewed behaviour existed only on iOS 26.
+
+**The inert tap is the platform's, not a gate of ours.** `CupertinoSlider` and `UISlider`
+are _relative_: `_RenderCupertinoSlider` holds one `HorizontalDragGestureRecognizer`, sets
+`_currentDragValue = _value` and adds deltas, so a tap is a drag of zero delta and reports
+nothing. Two real gates come with that and are worth knowing before debugging a test:
+`hitTestSelf` accepts a pointer only within about **22pt of the thumb** (`_kPadding` 8 plus
+`CupertinoThumbPainter.radius` 14), and `_handleChanged` reports only when the value
+actually differs.
+
+**So a test must drag from the thumb, and inside a sheet it needs two `moveBy`s** — about
+24pt first to win the gesture arena against drag-to-dismiss, then the real delta. Dragging
+mid-track reaches nothing and **passes vacuously**, which is not hypothetical: it silently
+disabled the celebrate-on-the-transition assertion in `book_details_streak_test.dart`.
+
+**The track ticks every 5%, and 1% would be a buzz.** `HapticFeedback.selectionClick()` **and
+`SystemSound.play(SystemSoundType.tick)`**, both copied verbatim from
+`CupertinoPicker._handleHapticFeedback`, which is what the percent wheel is. The step is not: the picker's `_kItemExtent` is 34, so one of its ticks costs 34pt of
+finger travel, while `CupertinoSlider` maps its value over `width - 44` — 283pt of travel on
+this sheet's 327 — so a 1% tick costs **2.83pt**. One twelfth of the wheel's, at every speed,
+because the ratio is scale-free. **The value is not quantised to match**, so the ticks are
+landmarks rather than detents and 73% stays reachable by dragging.
+
+**The sound is half of it, and it shipped once without — the tick is a pair, not a haptic.**
+The first round read "similar haptics" as naming a channel and left the sound out, arguing that
+iOS's own sliders are silent. The answer was _"i still don't hear the tick tick sound"_: the
+wheel was the specification, not the word. **Don't re-derive that argument** — whether a stock
+slider clicks is not the question when the request names the control to copy.
+
+**`SystemSoundType.tick` is the wheel's sound and `.click` is the keyboard's.** `.tick` reaches
+`AudioServicesPlaySystemSound(1157)`, `kWheelsOfTimeSoundId` in the engine, which the framework
+uses for nothing else; `.click` is id 1306, the keypress. The test asserts the argument **by
+name** for that reason, since both are "a tick" in prose.
+
+**Silent mode mutes the sound and not the haptic, and the simulator has no haptics at all.** So
+_neither_ channel is sufficient alone, and a report of "I can't hear it" has a cause that is not
+a defect — check the ringer switch and check it is a device. This is the reason the pair is not
+reduced to whichever one seems to be doing the work.
+
+**It ticks on every platform, and `CupertinoPicker` does not — that is deliberate.** The
+picker's switch returns for everything but iOS, but the app's own three selection haptics
+(`read_filter.dart`, `friends_sheet.dart`, `library_sheet.dart`) are all unconditional. This
+follows the app, not the framework. **The sound needs no such decision**: the framework
+documents `.tick` as ignored off iOS and the engine matches nothing there, so it is iOS-only for
+free. A `Platform.isIOS` around it would be dead code — and the case
+`and the sound is asked for unconditionally too, gate-free` fails if anyone adds one, so read
+its comment first: the mock sits in front of the engine, so it records the call on the Android
+test platform and proves the absence of a Dart gate rather than anything about audibility.
+
+**Copying the picker's iOS gate breaks every test in a way that looks unrelated, so don't.**
+`useNativeGlass` reads `defaultTargetPlatform` too, so
+`debugDefaultTargetPlatformOverride = TargetPlatform.iOS` flips the glass branch with it: the
+case builds a `CNSlider`, cannot drag a platform view, and fails with **"Found 0 widgets with
+type CupertinoSlider"**. Two switches that look independent and are not.
+
+**`_slide` in `reading_track_test.dart` reports exactly once however far it travels** — one
+`moveBy`, deliberately, so a case can reason about a landing value. Anything about tick
+_density_ has to drive many small moves by hand; written against `_slide` it measures one
+report and one tick and looks like proof of something it has not tested.
+
+**Do not add a `TapGestureRecognizer` to make the tap inert.** A lone drag recognizer wins
+its arena at pointer-down, so "use a drag recognizer only" does not make a tap inert by
+itself; the relative arithmetic is what does. A no-op tap recognizer as a second arena
+member fixes the tap and not the vertical pan.
+
+And the thumb is **the platform's**, not the app's bookmark ribbon. That was built — so
+that what you set here was what you saw on the shelf — and a reader's verdict was "the
+bookmark makes an ugly thumb": it is a tall asymmetric notched shape with a shadow, hung
+off a 4pt bar.
+
+### There are two glass idioms and `LiquidGlassContainer` is the broken one
+
+**Do not reach for `LiquidGlassContainer` for a surface that sits on an opaque background.**
+It renders a bare `glassEffect(.regular)` layer with **no material of its own**, and glass
+refracts what is behind it — so over an opaque sheet, which is what a platform view is
+composited over, it comes out flat: no rim, no specular edge, no shadow. `read_filter.dart`
+and `adaptive_icon_button.dart` both call it _the thing that does not work_ and say why.
+`CNGlassEffect.prominent` is not an escape: the plugin's Swift pins `Glass.regular` either
+way.
+
+**The idiom that works is a contentless `CNButton` with `CNButtonStyle.glass`, stretched
+behind Flutter's own content** — `Stack(fit: StackFit.passthrough)` with a
+`Positioned.fill`, so the content sizes the box and no `getIntrinsicSize` round-trip is
+needed. A glass `UIButton`'s material comes from its button _configuration_, which carries
+the rim and the shadow whatever is behind it. `read_filter._Capsule._glass` and
+`AdaptiveContentButton` are the two worked examples.
+
+**This was rediscovered a third time, on the read sheet's filter popover**, which a reader
+said "isn't glassy". It had copied `shelf_picker_popover.dart`, and the plan's own Step 4
+said to reuse the existing division of labour and _"not introduce a third glass idiom"_ —
+correct instruction, wrong exemplar: there were already two, and it pointed at the one that
+does not work. **`shelf_picker_popover.dart` still uses `LiquidGlassContainer` and has the
+same defect**; it is deliberately left until the popover's fix has been looked at on a
+device, so that two twins are not changed on one unverified diagnosis.
+
+**That fix is no longer in the app.** The card was deleted and the read sheet's filter is
+the platform's `UIMenu` now — see the end of this section. What follows is kept because it is
+the record of the chain that decision came out of, and because every item still holds for
+`read_filter._Capsule` and `AdaptiveContentButton`, which are controls _with_ a material
+rather than surfaces pretending to be one.
+
+Five details that are easy to get wrong and are all load-bearing:
+
+- **`onPressed` must be a non-null no-op, not null.** `CNButton` sends
+  `'enabled': (widget.enabled && widget.onPressed != null)`, so a null callback disables the
+  platform button and UIKit draws a **dimmed** material — the same flat result, reached from
+  the other direction.
+- **`interaction: false` when it is material rather than a control**, which is the package's
+  own mechanism and does three things: it gates the `Listener` that pushes `isHighlighted` on
+  pointer down, wraps the widget in an `IgnorePointer` itself, and becomes
+  `.allowsHitTesting(false)` on the Swift side. Without it the card flashes under a finger
+  aimed at one row, and the button's tap recognizer joins the arena and usually beats the
+  row's, so the wrong row answers. `_Capsule` leaves its button interactive on purpose, which
+  is the opposite case rather than a contradiction. Pair it with
+  `glassEffectInteractive: false`: no wobble under a touch it cannot receive.
+- **Do not clip it.** A glass button draws its rim and shadow **outside** its own box —
+  `_Capsule`'s row reserves 3pt for exactly that — so a `ClipRRect` around the material cuts
+  off the two things that make it read as glass. Clip the content instead, which needs it
+  anyway so row ink cannot splash past the corner arcs.
+- **`config.borderRadius` alone does nothing, and this is the expensive one.** A reader's
+  follow-up was that the card looked "too round", and the cause is
+  `CupertinoButtonPlatformView.swift`: its **UIKit branch sets
+  `config.cornerStyle = round ? .capsule : .dynamic` and never reads `borderRadius` at all**,
+  so a 216×97 glass button comes out a stadium. The radius is honoured only by
+  `GlassButtonSwiftUI.shapeForStyle`, and that view is built only when
+  `glassEffectUnionId != nil || glassEffectId != nil`. So **setting a `glassEffectId` is how
+  you ask for a rectangular glass shape** — the id does nothing else here, since morphing
+  needs a glass container to morph within. Passing `borderRadius` without one is a silent
+  no-op.
+- **A capsule material makes the content's clip look like the bug.** The same report had a
+  second half: a row's tint spilling past the card's corners "as a rectangle with zero
+  radius". That was one cause with two symptoms — the rows are clipped to the intended 14
+  while the material drew a capsule, so at every corner the ink sat outside the glass. If ink
+  ever overflows a glass surface again, suspect the material's shape before the clip's.
+
+**None of this is verifiable from here.** `useNativeGlass` needs an Apple target _and_ iOS
+26, and `flutter test` reports Android — so every test and every render preview draws the
+`BackdropFilter` fallback. The native path can only be judged on an iOS 26 device or
+simulator, which is also why the fallback is what `build/read_filter_preview/` shows.
+
+**Measured, and separate from the above: the fallback is nearly invisible on a uniform
+background.** Over the read sheet's plain ground the blurred card composites to
+`(238, 238, 237)` against a `(240, 240, 240)` background — a 2/255 difference, so the card is
+carried entirely by a 0.5pt hairline and its shadow. Where covers sit behind it the blur has
+something to work with and it reads properly. This is the same trap `shelf_picker_popover`
+records from the other end (_"a blur of something uniform is that thing"_) and it is **not**
+fixed: it is a separate judgement about the non-glass path, and retuning the fill is a change
+nobody has asked for yet. **Moot for the read filter**, whose fallback is now Material's menu
+on `colors.surface`; kept because `shelf_picker_popover` still draws that card, and because
+the measurement is about the idiom rather than about any one widget.
+
+### And then the card was deleted: the read filter is the platform's `UIMenu`
+
+`ReadSetFilterMenuButton` in `read_set_filter_popover.dart` is a `CNPopupMenuButton.icon`
+behind `useNativeGlass`, and a `PopupMenuButton` off it. About 250 lines went with the card
+it replaced: its own `PopupRoute`, the anchor's `RenderBox` maths, the scale-and-fade
+entrance, two `InkWell` rows with a check slot, and the glass material the section above is
+about.
+
+**The decision is about the shape of the chain rather than any one link in it.** Three
+fixes, each correct about the thing it fixed and each uncovering the next, is what a
+hand-built material costs when **none of it can be checked from here** — `useNativeGlass`
+wants an Apple target _and_ iOS 26, and `flutter test` reports Android, so all three rounds
+were reasoning about Swift nobody could watch run. A `UIMenu` brings the material, the corner
+radius, the entrance, the dismissal, the checkmarks and the VoiceOver behaviour from the
+platform, and none of them can drift from iOS because none of them is ours.
+
+**The rejection that sent this down the hand-built road in the first place was half right.**
+`read_set_filter_popover.dart` used to say the platform menu was "the wrong mechanism here"
+because `buttonLabel` is rendered **by the platform** — pointing at `read_filter.dart`'s
+record of a label arriving at the system's 17pt, wrapped onto two lines inside a view sized
+for 13pt. True, and it rules out the **labelled** constructor only. `.icon` renders one SF
+Symbol and no text, so the Flutter title beside it stays Flutter's 22pt with its count in
+`brandText`. `home_page.dart`'s `_VisitMenuButton` — the friend's-library chevron with
+`Remove friend` under it — has been shipping that exact arrangement all along, and is what a
+reader pointed at.
+
+**What it costs: the title and count are no longer part of the tap target**, which reverses a
+documented decision (_"title, count and chevron are one tap target; three separately tappable
+things in a row this size would be three ways to miss"_) and inverted the case that asserted
+tapping the count opens the filter. It is not a preference. UIKit presents from
+`button.showsMenuAsPrimaryAction` and the plugin exposes no programmatic open, so the tapped
+thing has to **be** the native button; a Flutter gesture on the row has nothing to call.
+Stretching a label-less `.plain` `CNPopupMenuButton` across the whole row — the way
+`_Capsule` stretches a plain `CNButton` — is the one way back, and was not taken: after three
+unverifiable attempts at hand-built glass, copying a control known to work on a device beat
+inventing a fourth. **`CNPopupGesture` is not the escape either**: long-press only, and it
+draws a Flutter overlay rather than a native menu.
+
+Three things to copy rather than rediscover, all from `_VisitMenuButton._fallback`:
+
+- **The `PopupMenuButton` needs `color:` and `shape:`**, or Material's default draws a heavy
+  dark outline with near-square corners over the sheet. That is what the first render showed,
+  and it looks like a rendering fault rather than a missing argument.
+- **The glyph goes in `child:` wrapped in a `Center`, not `icon:`**, whose `IconButton`
+  padding does not fit a small box.
+- **The box is 30, not `_VisitMenuButton`'s 44.** That one punctuates a 56pt row; this
+  punctuates a title row sized by a 22pt line, and `library_clearance_test.dart` measures that
+  row at 2× text with a two-digit count, so 44 would push everything under it down. Below the
+  platform's floor and accepted, for the reason the read-out's numerals accept it: this is the
+  coarse control's neighbour, not the only way to the state.
+
+**`shelf_picker_popover.dart` is still the untouched twin** — still `LiquidGlassContainer`,
+still with the original defect, and now one idiom further behind, since a picker of shelves is
+the same `UIMenu` candidate. Still deliberately left until this one has been looked at on a
+device.
+
+### The completion filter is on both of the read sheet's headers, and it costs 9pt of library
+
+`FinishedBooksSheet` passes `ReadSetFilterMenuButton` to **both** `header` and
+`expandedHeader`. It was expanded-only for several rounds, and the reason recorded in the code,
+the spec, the plan and the mockup was that _"the collapsed row already has the year popover
+competing with the title for it"_.
+
+**That was a claim about width, and width is not the constraint.** The collapsed header is
+`Row(spaceBetween)[Expanded(title), Flexible(year)]` — both halves flexible, title
+`maxLines: 1` with an ellipsis — so a control there takes room from the title's _characters_,
+never from the row's edge. The row cannot overflow, which is also why
+`library_clearance_test.dart` never objected.
+
+**It moved because collapsed is where this sheet opens.** The filter itself was honoured in
+both states from the first draft, so the reader's pile was already obeying an answer they had
+to expand the sheet to give. The control was the only expanded-only part of it.
+
+**The real cost is height, and it is paid on one path only.** The collapsed sheet is its header
+plus `ReadPile.extent`, so a taller header is a shorter library. Measured on the smallest
+phone, by removing the control and re-measuring rather than by estimating:
+
+|                     | title row | visible library |
+| ------------------- | --------- | --------------- |
+| without the chevron | 21        | 324             |
+| with it             | 30        | 315             |
+
+The 30 is the control's own box. **Native it is free**: the year popover beside it is a 36pt
+`CNPopupMenuButton`, so the row is 36 tall either way — and at 2× text it is free on both
+paths, because the title's own line is 43pt. `flutter test` reports Android, so the suite
+measures the strict case. Both numbers are pinned as **equalities** in
+`library_clearance_test.dart`, not bounds: a cost accepted at a size should be re-argued
+rather than allowed to creep.
+
+### The collapsed row's flex is 2:1, and an even split ellipsized the title
+
+With both halves at flex 1 that row rendered `Books fini... 12 ⌄` on a 390pt phone. **The one
+thing this header cannot spend**, because the title _is_ the filter's read-out — truncating it
+truncates the state, and `Books fini...` does not tell `Books finished` from `Books read`. The
+**year label** gives way instead and can afford to: it repeats inside its own menu, its chevron
+says it is one, and `All ti...` still reads.
+
+This **narrows** the reason both halves were made flexible in the first place, rather than
+contradicting it. That reason was the year popover's accessibility-sized label starving the
+title of the room its count needs — so the fix is to weight the title, not to unweight it.
+
+**No assertion could have caught this, and that is the general lesson.**
+`library_clearance_test.dart` watches for overflow, and an ellipsis is the widget doing exactly
+what it was told; every case passed on the defect. It was found by looking at
+`build/read_filter_preview/`, which that renderer's own header already says is the only way to
+judge this control — the preview now writes the collapsed state and the collapsed menu in both
+themes. `docs/mockups/status-progress-merge/index.html`'s `sheet-collapsed` draws the row,
+because two chevrons in it — the completion filter's attached to the count, the year filter's
+flush right, same glyph, same size, same ink — is a thing only looking settles.
+
+### Erasing a position needed a new flag, because `null` was already taken
+
+`updateBookStatus`'s `progress` parameter uses `null` to mean **do not write**, so "the
+reader dragged back to the origin, forget where they were" had no spelling at all. There is
+now an explicit `clearProgress` flag on both the provider and `BookStatusEdit`. **Do not
+collapse it back into a nullable `progress`** — the asymmetry is the point.
+
+A drag to the **origin writes `null`**, which costs 0% as a recordable position; 0% is
+still reachable through the wheel's own `0` stop.
+
+`updateBookStatus` also gained **`fromStatus`**, which gates the `reading_shelf_index`
+re-head. Without it, saving a position promotes the book to the head of the Reading shelf —
+a reader who nudges a bookmark reorders their shelf.
+
+`recordReadingPosition` is the narrow position writer and `recordTotalPages` is new;
+`kMinTotalPages` / `kMaxTotalPages` live beside them in `library_provider.dart`.
+
+### Set aside is its own status, not a reading book with a low number
+
+`bookStatusSetAside = 3`. It was specified as `status 2 + progress < 1` first and that is
+not the same thing: a finished book's position is exactly 1, so the predicate would have
+made every partially-read _Reading_ book abandoned, and there would be no way to record
+"I stopped" for a book with no position at all.
+
+`BookStatusBadge.presentation(l10n, colors, status)` is the one place the word and the
+colour are chosen, and the sheet's read-out borrows it so the chip and the running text
+cannot disagree. Its `switch` had a silent `_` arm that rendered **"Other"** for status 3
+before this.
+
+The vocabulary moved with it: _Interested_ → **Not started**, _Read_ → **Finished**.
+
+### The sheet is one height, 335, and that is a fix rather than a tidy-up
+
+`_kContentHeight` is **336**, the tallest state's content — a set-aside book with a dirty Save —
+plus `AppSheet`'s own 48, so **384**. Every state renders at that, so the sheet never resizes.
+
+**384 is taller than both sheets this replaced** (342 for the old status sheet, 368 for the
+percent wheel), so the merge's headline claim is false now. Two decisions spent the margin: the
+frame itself (275 → 335) and moving Save to the foot, which adds a 60pt commit row to the tallest
+state and therefore to every state (335 → 384). The test asserts `greaterThan` both figures, so
+the size is something someone has to look at rather than a claim that quietly rotted.
+
+**A bottom sheet is anchored to the bottom of the screen**, so growing moves its _top_ edge up
+and every child with it. Both date rows sit **below** the track, so dragging off the origin
+added ~70pt and slid the control out from under the finger dragging it. The previous answer was
+an `AnimatedSize`, and the test that pinned it argued against itself: _"both happen on the same
+gesture, so without the animation the sheet would jump twice under the reader's thumb."_ Easing
+a defect is not fixing it.
+
+Four things not to undo:
+
+- **`_kTitleRowHeight` is 32, the Save button's height and not the title's ~21.** Without it
+  the title `Row` grew 11pt the instant the sheet went dirty and pushed everything below it
+  down — the same defect one level in. **An assertion about the sheet's height passes on that
+  bug**; the case measures `ReadingTrack`'s _rectangle_ for exactly this reason.
+- **`ConstrainedBox(minHeight:)`, never `SizedBox`.** A fixed height trades a moving control
+  for a clipped one at large accessibility text sizes. The `AnimatedSize` survives only for
+  that residual case.
+- **The 214pt void on Not started is the accepted cost, and it is pinned as a number.** That
+  state's content is 122, so **over half** of it is empty cream, on the state a reader meets
+  first. It was 165 before the commit row moved to the foot — and the jump the frame prevents
+  grew from 115 to 165 in the same move, so both sides of the trade got worse at once. Three
+  ways out, written up in the spec and none taken: draw the start-date row at the origin (fills
+  60, closes a real gap, costs the no-jump property nothing); frame only the drag range, 288,
+  and let the two confirmed status transitions resize; or give the frame up.
+- **`BottomSheet` dismisses on a drag past half its own height**, so any test that pans to
+  dismiss must measure the sheet rather than hard-code a distance. One case broke twice on
+  this — once when fonts were loaded, once when the frame went in — and its own comment had
+  recorded the first.
+
+### Save and Discard changes are at the foot, and the read-out ends flush right
+
+Save left the title row on instruction. Two things not to undo:
+
+- **The commit row is pinned to the foot by a `Spacer`, and that needs `IntrinsicHeight`.**
+  The frame leaves spare room in every state but the tallest, and top-aligned it fell _below_
+  the buttons — 49pt of cream under them on a Reading book. `MainAxisSize.max` inside the
+  `ConstrainedBox` fills the maximum, which is most of the screen; a `SizedBox` is bounded but
+  clips instead of growing. `IntrinsicHeight` tightens the column to `max(natural, 336)`, which
+  is bounded, still at least the frame, and still free to grow. **The mockup cannot show this
+  defect** — `.dev` has no height, so every crop is drawn at its natural height and there is no
+  slack. It was reported from a photograph. And a test that measures `find.text('Save')` reports
+  the row 14pt clear of a foot it is flush with: the label's box is shorter than its 44pt
+  button.
+- **The recessive button says `Discard changes`, and the ARB key is `discardChanges`.** It was
+  `reset` / `Reset` for two rounds; renamed on instruction, because `Reset` names a mechanism
+  where this names the consequence the reader is weighing against Save. The cost is width — two
+  words in a half-width 44pt button, which only fits because the pair is `Expanded` and sized by
+  the row rather than by its labels.
+- **It restores the sheet's arguments, not a later snapshot.** Those are the same values
+  `dirty` compares against, so a discarded sheet is clean by construction and the commit row
+  cannot survive its own press. It is **not** `Cancel`: dismissing already discards, so a button
+  that dismissed would be a second spelling of a gesture the reader has. This one stays on the
+  sheet, which is the point — someone who over-dragged the track wants the old value back and to
+  carry on.
+- **The page pair is right-aligned by `WrapAlignment.spaceBetween` over _two nested groups_.**
+  Over the flat list of four parts it spreads all four and floats the percent into the middle;
+  and a `Row` with a `Spacer` — the obvious spelling — throws away the reason
+  `ReadingStateLine` is a `Wrap` at all, since a `Row`'s children have no run to drop to and a
+  clipped status word is the one failure that makes the line lie about the book.
+
+**Nothing in the read-out is underlined, and `Add total pages` is.** The two page numerals
+carried the mark against a bare percent for two rounds, and the spec defended it through a
+re-litigation. It went the other way on instruction: the numerals lost it, `Stop reading this`
+and `Start reading again` gained it, and the rule to keep is **an underline marks an action, not
+a value.** The offer is not an exception — it is the line's only call to action, and the one
+place the mark is load-bearing, since an unmarked grey sentence inside a read-out reads as a
+caption. Stated cost, accepted knowingly: nothing announces that `213` opens a wheel. Only the
+ink is left, which was never an affordance, plus the 44pt track below. `Semantics(button: true)`
+is untouched, so VoiceOver is better served than sight here.
+
+**The page pair takes one ink for both spans, decided by the page's door.** Per-span ink was
+invisible while the pair was two doors or two dead spans; freezing Set aside made it visible and
+wrong, drawing `p.213` grey beside `/ 462` dark — one phrase in two colours, which reads as a
+rendering fault. Do not "fix" the total back to its own ink: since the underline left this line,
+ink separates a live value from ambient context rather than marking what is tappable.
+
+**The mockup's underline check passed against a page drawing no underline at all**, because it
+looked for `<u>213</u>` and the numerals are still wrapped in `<u>` — what changed is the CSS
+that gives `<u>` a rule. Both checks read the stylesheet now. A tag is not a treatment.
+
+**The stop-reading confirmation is one sentence.** It was two: it named `Set aside` as the
+destination so the chip afterwards would not surprise anyone. Removed on instruction — a
+yes-or-no question about the reader's own book should not require them to hold the app's status
+taxonomy — and the cost is that the destination is learned after the fact. `place` became
+`progress`, matching `readingProgressTitle`. The test asserts the **absence** of the old
+sentence, since matching only the new one passes with both.
+
+**A test for the trailing edge needs a wider box than the sheet's 327.**
+`reading_state_line_test.dart` loads no fonts, so every glyph is a one-em square, `Reading` sets
+to 151pt against about 75 on a phone, and the two groups do not fit — the pair drops to a second
+run and the case measures the wrap instead of the alignment. It uses 500. Real widths live in
+`book_status_bottom_sheet_test.dart`, which loads the app's faces.
+
+### Stopping a book is confirmed; resuming it is not
+
+`showStopReadingBottomSheet` sits behind `Stop reading this`, and `Start reading again` takes
+the same slot once the book is set aside.
+
+**The confirmation is not about the act's weight.** Setting a book aside is reversible in one
+tap and every string in the flow is written to keep judgement out of it. It is about what the
+control is: a full-width opaque band of grey text with no fill and no border, directly under a
+tappable date row, made wide on purpose because a text-sized target for the least important
+label on the sheet is hard to land on. The cost of the width is that it is easy to hit by
+accident — and an accidental _resume_ costs nothing, which is the whole asymmetry. **Don't add
+a confirmation to `Start reading again` for symmetry**; a matched pair of confirmed actions is
+the judgement these strings avoid.
+
+**It writes, and for two rounds this said it must not.** The old note: _"it hands an answer
+back and does not write ... Committing straight from it is the obvious alternative — a
+confirmation that returns you to a form with a Save button looks like being asked twice — and it
+would need arguing against the reason the sheet exists, since `Save` being the only writer is the
+entire answer to 'a stray touch could silently rewrite your position'."_ The parenthetical
+argument is the instruction now.
+
+**Do not re-derive the old invariant from the stray-touch objection**, which is the trap here.
+That objection is about _stray_ touches, and a confirmation answers it better than deferral did:
+two deliberate taps, the second on a button naming the act. A drag still writes nothing on
+release, the value sub-sheets still hand their answers back, and dismissing still discards
+everything they hold. Only the two confirmed acts commit.
+
+**Three consequences that look like bugs and are not.** The sheet is **clean** the instant a
+confirmation lands — no Save, no `Discard changes` — because `baseStatus`/`baseStart`/`baseFinish`
+move with the write; offering to discard a committed change would be offering something this
+sheet cannot deliver. Dismissing no longer means nothing happened. And a confirmation sends the
+position the sheet **opened** with, not the pending one, so a reader who drags and then confirms
+has committed the status and still owes a Save for the drag — `editFor(withPendingAnswers:)` is
+that switch, and sending `null` instead would read as a move in `book_details_tab_view.dart`,
+stamping a reading day for someone who just stopped reading.
+
+**`book_details_tab_view.dart` tracks `priorStatus` because `onSave` can now fire more than once
+per sheet.** Left as the captured `book.status`, a stop-then-resume in one visit passes a
+status-identical `fromStatus` on the second write, `updateBookStatus` skips the reposition, and
+the book rejoins the Reading shelf carrying the `null` `reading_shelf_index` the first write
+cleared.
+
+Tests go through `_stopReading` and `_startReadingAgain`, which each tap and confirm.
+
+**`Start reading again` is confirmed too, and this file argued twice that it must not be.** The
+claim was that an accidental resume costs a reader nothing. It cost nothing while nothing was
+written before Save; it now writes at once, and the write **clears the day the book was closed**
+— so `startReadingAgainConfirmBody` says so, which is the whole difference between an honest
+confirmation and ceremony. The resume therefore sets `finish = null` in the form as well,
+reversing the note that kept it (_"a reader who resumes and stops again does not lose the day
+they first closed the book"_): the column is empty the moment the resume is confirmed, so a form
+still holding the date would disagree with the database about a field the reader cannot see. Cost:
+stopping again stamps today.
+
+**`Start reading again` reverses a decision recorded in five places** — this file's ancestor,
+the spec, the plan, the mockup caption and three comments in the sheet — all saying a set-aside
+book resumes by moving the thumb, so a link would be a second affordance. The premise was
+wrong: the thumb resumes only by _changing the position_, so a reader who stopped at 46% and
+wants to carry on from 46% had no move available. Set aside is the one status a position cannot
+imply, which makes it the one that needs a control of its own.
+
+**And now it is the _only_ way out, because the track and the two position doors are dead at Set
+aside.** On instruction, and it finishes the argument above rather than adding a second one: a
+status a position cannot imply should not be one a position can silently overwrite. It also
+closes a hole the link alone left open — the wheel's `0` stop would otherwise resume a book _and_
+send it back to Not started in a single confirm. **The total's door stays open**, because a page
+count is a fact about the book rather than about the reader's place in it, and shutting it would
+draw `Add total pages` as an offer nobody can accept in ~65% of the corpus.
+
+**Keyed on the sheet's _pending_ status, never `currentStatus`.** Otherwise `Start reading again`
+leaves the track dead until the reader saves, closes the sheet and comes back — so the link looks
+broken — and a just-stopped book's track stays live, which is the silent resume the freeze exists
+to prevent. Both directions are pinned in `book_status_bottom_sheet_test.dart`.
+
+**`CupertinoSlider` will not draw itself disabled, and `onChanged: null` alone is a trap.**
+`isInteractive` gates its gesture recognizer and its semantics; its `paint` never reads it, so a
+disabled slider is pixel-identical to a live one — a control that looks draggable and ignores the
+finger, which reads as a broken app. `ReadingTrack` therefore wraps **only that branch** in an
+`Opacity` at the platform's 0.4. Do not wrap both: `CNSlider` takes `enabled`, which reaches
+`UISlider.isEnabled` natively and also gates its own Material fallback, so wrapping it would dim
+the native view twice.
+
+**It does not clear `finish`.** Save filters the finish date out for a reading book, so nothing
+wrong is written, and keeping it means a reader who resumes and stops again does not silently
+restamp the closing with today. Same rule the sheet applies to `start`.
+
+### Two small traps in the strings and one in the sheet's title
+
+**There is no approximate marker on a page number any more, and `U+2248` is why there could
+not be a good one.** `progressApproxPage` printed `~ p.213` for a page the app derived from a
+fraction, against `p.213` for one the reader typed. It is **deleted** — key and both
+translations — on instruction.
+
+The mark existed because in percent mode the wheel has 101 stops, so at 320 pages one stop is
+3.2 pages: a reader aiming at p.148 lands on p.147, and the tilde admitted it. So the cost of
+losing it is that the read-out states the arithmetic's page as flatly as the reader's. It was
+affordable because the same mark appeared **under the wheel too**, and one mark meaning
+"derived" in two places and nothing in the read-out those two feed is read as a rendering
+glitch rather than as a distinction — which is why both call sites went, not just the one that
+was pointed at.
+
+**The derived-versus-typed distinction survives in the data**, where `progress_page` is null
+or set, and that is still what makes a typed page round-trip exactly.
+`reading_state_line.dart` used to credit the column's existence to the tilde; it does not.
+
+**If a marker is ever wanted back, it cannot be `≈`.** The faces are subset to Latin-1 plus
+Hangul, so `U+2248` drew from a platform fallback in a different typeface — which is why the
+one that shipped was an ASCII `~`.
+
+**The sheet's heading is `readingProgressTitle` ("Reading progress"), not the book
+title.** A sheet that names the book says nothing about what it does, and the book is
+already the page behind it.
+
+**The Korean for the twelve new strings was written rather than natively reviewed** — the
+plan's build log lists which.
+
+### The band card has two slots, and it had four values for one round
+
+See `ReadingPeriodRow`'s own doc for the rule and the two reversals it records. The short
+version: _where or when_ (the position, else the finish date, else nothing), then _how
+long_ (the day count, always), with exactly one of the two in `brandText`. **The start date
+is gone from the card** — `15 days` is what it was there to say — and both dates are still
+editable in the sheet the card opens.
+
+**`ReadingPeriodRow` has no `pageCount`, and it is not an oversight.** The card read
+`71% · p.307 / 432`; the page and the total were withdrawn on instruction, so the position
+is a bare percent and the widget cannot draw a page at all. Both numbers are derived from
+the percent and the total, so that was the card's widest value restating its first third
+more precisely than a glance wants. **Don't add the parameter back to make the band more
+informative** — the sheet behind the card draws `ReadingStateLine`, whose page and total are
+each a tappable span onto the wheel, so the numerals are one tap away and _editable_ there
+rather than merely displayed.
+
+Two knock-on facts that look like bugs and are not: the render preview has **five** states
+rather than six, because "Reading with a page count" and "Reading without one" stopped
+differing; and `band_doors_test.dart` asserts the page numeral is **absent** from the band,
+which is the opposite of what it asserted when `BandProgressRow` was deleted. The card's
+cases search bare digit runs (`307`, `432`) rather than `p.307`, so bringing the numbers
+back under a different separator still fails.
+
+**A `Wrap` that opens at the default text size on the widest phone is not a valve
+opening.** That is how this was caught, and it is the check to apply to the rest of the
+band: the `Wrap`s in there are for accessibility sizes and long locales, so one wrapping in
+English at 1.0 means the content is too much, not that the layout is working.
+
+### Rendering these screens, and the harness that lied about one
+
+`flutter test test/book_status_sheet_render_preview.dart` writes
+`build/status_sheet_preview/*.png` — the merged sheet in all four states, and the Reading
+state in both themes and both locales on the shortest phone. **The slider in those frames is
+`CupertinoSlider`**, since `useNativeGlass` is false under `flutter test`; the native glass
+track can only be judged on an iOS 26 device. Everything else in the sheet is settled there.
+
+`flutter test test/reading_period_row_render_preview.dart` writes
+`build/period_row_preview/{light,dark}.png` across six states.
+
+**Neither runs in `flutter test`, and the case count is right anyway.** `*_render_preview.dart`
+does not match `*_test.dart`, so the default sweep skips every preview in `test/` — which is
+why `AGENTS.md` always names them by path. Adding one does not move the 2058, and a preview
+that has rotted is therefore invisible until someone runs it. Its first frame came back
+with red text and yellow double underlines everywhere, which reads exactly like a defect in
+the card and was a defect in the harness: **no `Material` ancestor**, so every `Text` that
+inherits its colour fell back to `MaterialApp`'s `_errorTextStyle`, while the spans setting
+a colour explicitly survived — a frame that looks _selectively_ broken. `Material` is where
+`AnimatedDefaultTextStyle` comes from; a `ColoredBox` is not a substitute.
+
+The other half is the same as `read_week_row_render_preview.dart`'s: **load the real fonts,
+icon font included**, or the chevron is an empty square and every glyph is 40% too wide.
+
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (1851 cases). There is no expected-failure list any
+`flutter test` passes completely (2092 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
+
+**A run that reports a much lower total, or fails to load a file naming a string nothing in the
+diff touched (`The getter 'removeFromLibrary' isn't defined`), is a build artefact rather than a
+regression.** `lib/l10n/app_localizations*.dart` is gitignored and regenerated from the ARBs on
+every build, and a run that starts while that is in flight has been seen to do both. Re-run
+before investigating; two runs agreeing on the total is the check.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3
 failures that were not regressions, because `ReadPile` moved out of the library page into

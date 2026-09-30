@@ -271,7 +271,10 @@ void main() {
           isFalse,
         );
 
-        await tester.tap(find.byType(ElevatedActionButton), warnIfMissed: false);
+        await tester.tap(
+          find.byType(ElevatedActionButton),
+          warnIfMissed: false,
+        );
         await tester.pump();
         expect(fake.creates, 1);
 

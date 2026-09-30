@@ -70,6 +70,18 @@ double sheetMidExtent(double available) => available * 0.65;
 /// of the same number is a number that eventually stops agreeing with itself.
 const double sheetMinHeightFraction = 0.2;
 
+/// Horizontal gutter a [LibrarySheet] puts around its header, and by convention what
+/// a body should sit inside too, so a tab switch does not shift the title sideways.
+///
+/// **Top-level because a tab that caps its own width has to discount it.** The sheet
+/// stays full-width on a tablet by design — it is the persistent sheet, so neither
+/// Material's 640 nor `CenteredContent` was ever applied to it — which means a tab
+/// whose content should not stretch has to cap the content itself. A cap applied
+/// *inside* this padding must subtract it twice to land on the same centre line as one
+/// applied outside it, and `LibraryCardSheet` needs both. Duplicating the literal there
+/// is how a header and a hero drift apart by 50pt.
+const double kLibrarySheetGutter = 25;
+
 /// Where a [LibrarySheet] rests.
 ///
 /// An enum rather than the boolean this used to be, because "expanded" stopped being
@@ -460,7 +472,7 @@ class _LibrarySheetState extends State<LibrarySheet>
   /// Measured from the card's edge, not the screen's, so it moves with
   /// [_gutterInset]: the title sits 25 inside the card at every position, which is
   /// what makes the card read as one object being resized.
-  static const double _gutter = 25;
+  static const double _gutter = kLibrarySheetGutter;
 
   /// Fraction of a drag that still moves the sheet once it is past a snap
   /// position, i.e. how rubbery it feels when overdragged.
@@ -1918,16 +1930,65 @@ class LibrarySheetTitle extends StatelessWidget {
   /// count (the Card tab).
   final int? count;
 
-  const LibrarySheetTitle({super.key, required this.title, this.count});
+  /// Makes the title a control: a trailing chevron, and one tap target covering
+  /// the title, the count and the chevron together.
+  ///
+  /// **One parameter with both effects, on purpose.** A chevron with nothing behind
+  /// it is a lie about the row, and a tap target with no chevron is an affordance the
+  /// reader has to find by accident; neither half is useful alone, so neither is
+  /// separately settable.
+  ///
+  /// **Unread in `lib/` as of the read filter becoming a platform menu.** The read
+  /// sheet was its only caller: the title was the read-out of its completion filter and
+  /// this was the whole-row target that opened it. A `UIMenu` is presented by the button
+  /// the reader touched, so that target could not survive — see [menu], and
+  /// `read_set_filter_popover.dart` for the argument.
+  ///
+  /// Kept rather than deleted because it is the only spelling of *this row is a button*
+  /// the app has, and the Friends sheet and the Card are both plausibly next. **Not a
+  /// route back to the whole-row target**, though: restoring that means stretching a
+  /// label-less `CNPopupMenuButton` behind the Flutter title, where the platform owns the
+  /// tap and this callback would still have nothing to do.
+  final VoidCallback? onTap;
+
+  /// A control drawn where the chevron would be, which supplies its own chevron.
+  ///
+  /// **For a menu the platform presents.** `CNPopupMenuButton` hangs a `UIMenu` off
+  /// `showsMenuAsPrimaryAction`, so the thing tapped has to *be* the native button and a
+  /// [onTap] on this row has nothing to call. The read sheet passes
+  /// `ReadSetFilterMenuButton` here and no [onTap]; see that file for the cost, which is
+  /// that the title and count stop being part of the target.
+  ///
+  /// Passed by **both** of that sheet's headers. Collapsed it lands beside the year
+  /// popover, which is the row `library_clearance_test.dart` exists to measure: the width
+  /// holds because the title ellipsizes, and what the control costs there is *height*,
+  /// since the collapsed sheet is its header plus the pile.
+  ///
+  /// Mutually exclusive with [onTap] by assertion rather than by type: both draw the
+  /// chevron, and a row with two of them would be two affordances for one menu.
+  final Widget? menu;
+
+  const LibrarySheetTitle({
+    super.key,
+    required this.title,
+    this.count,
+    this.onTap,
+    this.menu,
+  }) : assert(
+         onTap == null || menu == null,
+         'onTap and menu both draw the chevron; pass one',
+       );
 
   @override
   Widget build(BuildContext context) {
     const style = AppTextStyles.subtitle;
-    return Row(
+    final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         // Flexible, not fixed: at accessibility text sizes a 17pt semibold title
         // plus whatever sits beside it in the header overflowed the row outright.
+        // The chevron is one more fixed thing beside it, which is what
+        // `library_clearance_test.dart` measures at 2x with a two-digit count.
         Flexible(
           child: Text(
             title,
@@ -1947,7 +2008,51 @@ class LibrarySheetTitle extends StatelessWidget {
             style: style.copyWith(color: context.colors.brandText),
           ),
         ],
+        if (onTap != null) ...[
+          // Tighter than the count's 12: the chevron belongs to the pair beside it
+          // rather than being a third thing in the row, and the glyph carries side
+          // bearing of its own inside an 18pt box. The drawing sets the same gap.
+          const SizedBox(width: 4),
+          Icon(
+            // The same glyph `ReadFilter`'s own fallback and the shell's overflow
+            // menu use, at the same size, so the app has one "this opens a menu".
+            Icons.keyboard_arrow_down,
+            size: 18,
+            color: context.colors.secondaryText,
+          ),
+        ] else if (menu != null)
+          // No gap of its own: the control is a 30pt box around an 18pt glyph, so it
+          // brings 6pt of side bearing with it — adding the 4 above would read as 10.
+          menu!,
       ],
+    );
+
+    if (onTap == null) return row;
+
+    // **The target is the content, not the row's box.** Both call sites hand this
+    // widget tight width constraints — `Expanded` collapsed, a stretching `Column`
+    // expanded — so the `MainAxisSize.min` row above is laid out at the sheet's full
+    // width either way. Wrapped without this, a tap on the empty space at the far
+    // right of the header would open the filter, which is a control the reader cannot
+    // see the edges of.
+    //
+    // Only the *gesture* shrinks: the [Align] still fills the width it is given, so
+    // the row's rect — which is what the popover hangs from — is unchanged, and the
+    // card lands under the title's first word rather than under the middle of the
+    // sheet.
+    //
+    // A tap and nothing else. A vertical drag on the header is how the sheet is
+    // moved, and a bare `onTap` loses that arena to the sheet's own drag recogniser.
+    return Semantics(
+      button: true,
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: row,
+        ),
+      ),
     );
   }
 }

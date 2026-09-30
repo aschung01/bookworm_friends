@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:bookworm_friends/constants/app_text_styles.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
-import 'package:bookworm_friends/ui/widgets/band_progress_row.dart';
+import 'package:bookworm_friends/providers/library_provider.dart';
 import 'package:bookworm_friends/ui/widgets/book_status_badge.dart';
 
 /// Minimum height of the card once it is a door. The card draws 42, so reaching the
@@ -23,24 +23,29 @@ const double _kChevronColumnPull = 10;
 
 /// How far the status-0 line's tap target reaches below its own ink.
 ///
-/// The same 14 as [kBandProgressRowSpill], taken out of the band's 16pt bottom
-/// padding in the same way and for the same reason: the band's height is unchanged
-/// by making the line tappable. The figure is shared rather than restated because
-/// there is only one bottom padding to take it out of.
+/// 14, taken out of the band's 16pt bottom padding rather than added to the layout, so
+/// the band's height is unchanged by making the line tappable.
 ///
-/// **Only one of the two rows can ever spend it, and that is provable rather than
-/// arranged.** This line spills only when there is no start date; [BandProgressRow]
-/// exists only at `bookStatusReading`, which the status sheet cannot leave without
-/// defaulting a start date. The `spillsIntoBandPadding` flag is what settles the
-/// legacy row that manages to be both — a status-1 book with a null start — by
-/// handing the padding to the progress row, which is the lower of the two.
+/// **This used to read `= kBandProgressRowSpill`, and the contention it arbitrated is
+/// gone.** There were two rows below the cover that could reach past their own ink — this
+/// line and `BandProgressRow` — competing for one bottom padding, and a `spillsBelow`
+/// predicate existed to prove only one of them ever spent it. The band is one card now:
+/// the period row carries the position as well, so there is one row, no contention, and
+/// the figure belongs to this file.
 ///
 /// The target this buys is **40pt rather than 44**, and that is the one deliberate
 /// shortfall in the band. The alternative was 18pt of permanent band height on every
-/// Interested book to seat a 26pt line in a 44pt box, on the one screen whose last
+/// Not-started book to seat a 26pt line in a 44pt box, on the one screen whose last
 /// redesign was about lifting content above the tab strip. 40×110 is not a glyph
 /// button in a corner; it is a labelled row two thirds the width of the band.
-const double kStatusVerbSpill = kBandProgressRowSpill;
+const double kStatusVerbSpill = 14;
+
+/// What is left of the band's 16pt bottom padding once [kStatusVerbSpill] is taken out of
+/// it. 16 − 14.
+///
+/// Lives here rather than in the deleted `band_progress_row.dart`, which owned it while
+/// that row was the one reaching below its own ink.
+const double kBandResidualPadding = 2;
 
 /// The reading facts about a book: its status, the dates, and the elapsed day
 /// count.
@@ -103,13 +108,19 @@ const double kStatusVerbSpill = kBandProgressRowSpill;
 /// **And note what does not apply here.** Putting the progress row on a white card
 /// failed partly because a white card on this band already meant "read-only" — and
 /// this card was that read-only card. Once it is itself a door there is no read-only
-/// white card left in the band to be confused with. The two doors are told apart by
-/// what they say, not by their grounds.
+/// white card left in the band to be confused with — and since the merge there is no
+/// second row either, so the band has one ground and one door.
 ///
-/// Laid out as a [Wrap] so a long range (or a longer localized label) moves to
+/// Laid out as a [Wrap] so a long value (or a longer localized label) moves to
 /// the next line instead of overflowing or truncating — every value stays
 /// readable at any width. That survives the door treatment: the value group is
 /// pushed right *and* still wraps, rather than being pinned to one line.
+///
+/// **It is a safety valve and no longer a working layout, which is the point of the
+/// two-slot rule in `build`.** The card wrapped in normal use for one round, on a
+/// finished book, and a wrap that happens at the default text size on the widest phone
+/// is not a valve opening — it is four values in a space for two. The `Wrap` stays for
+/// accessibility sizes and for a locale that needs the room.
 class ReadingPeriodRow extends StatefulWidget {
   const ReadingPeriodRow({
     super.key,
@@ -117,6 +128,7 @@ class ReadingPeriodRow extends StatefulWidget {
     this.startDate,
     this.finishDate,
     this.onTap,
+    this.progress,
     this.spillsIntoBandPadding = false,
   });
 
@@ -134,12 +146,42 @@ class ReadingPeriodRow extends StatefulWidget {
   /// `Change status` verb at all, for the same reason.
   final VoidCallback? onTap;
 
+  /// The book's stored position, or null when nothing has been recorded.
+  ///
+  /// **Drawn here because the band is one card now.** It used to live in a second row
+  /// below this one, `BandProgressRow`, which was also a second door — it opened the
+  /// percent wheel directly while this card opened the status sheet. The merge deleted the
+  /// row, and deleting the row without moving its numerals would have left the band
+  /// silent about the one fact that changes most often.
+  ///
+  /// Null draws nothing rather than `0%`: "never asked" and "at the very start" are
+  /// different states, and a band that printed `0%` for every unread book would be
+  /// claiming the reader had opened all of them.
+  final double? progress;
+
+  // There is no `pageCount` here, and there was for two rounds.
+  //
+  // The card printed `71% · p.307 / 432`, and the page pair was withdrawn on instruction:
+  // *"no need to show total page count or current page index from the tappable row."* Both
+  // numbers are derived from the percent and the total, so the card was spending two thirds
+  // of its widest value restating its first third with more precision than a glance wants.
+  //
+  // The precision is not lost, it moved to where it is asked for: the sheet this card opens
+  // draws `ReadingStateLine`, whose page and total are each a tappable span onto the wheel.
+  // A reader who wants the page number is one tap from editing it; a reader glancing at the
+  // band gets `71%`.
+  //
+  // This is also what finally made the first slot narrow. The two-slot rule below fixed the
+  // *count* of values; `71% · p.307 / 432` was still 120pt of the card's 333, and it is the
+  // reason a finished book's closed range would not fit beside it.
+
   /// Whether the caller has taken [kStatusVerbSpill] out of the band's bottom
   /// padding for this row, so the status-0 verb may reach below its own ink.
   ///
   /// False by default, which is the safe answer: the target is then the line's own
-  /// height and nothing overhangs a neighbour. The band passes `!showsProgressRow`,
-  /// because there is one bottom padding and [BandProgressRow] has first claim on it.
+  /// height and nothing overhangs a neighbour. The band passes a literal `true`; it used
+  /// to pass `!showsProgressRow`, because a second row below this one had first claim on
+  /// the single bottom padding. That row is deleted, so there is one claimant.
   final bool spillsIntoBandPadding;
 
   /// Whether a row with these inputs wants the band's bottom padding.
@@ -248,17 +290,78 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
     }
 
     final finish = widget.finishDate;
-    final range =
-        '${ReadingPeriodRow._formatDate(start)} ~ ${finish != null ? ReadingPeriodRow._formatDate(finish) : ''}';
+    final position = widget.progress;
+
+    // **Two slots, and no date the day count already implies.**
+    //
+    // Four values fitted here for one round — the range, the position and the day count
+    // beside the badge — and a reader called it messy, correctly. The count was not the
+    // whole of it. Two of the four said the same thing twice:
+    //
+    //  * `71%` and `p.307 / 432` are one fact, given the total. The page pair has since
+    //    been withdrawn from the card altogether — see the headstone where `pageCount`
+    //    used to be — so the first slot is now a bare percent.
+    //  * the **start** date and the elapsed day count are one fact. `15 days` *is*
+    //    `2026.09.13 ~` measured from today, and it is the half that keeps moving.
+    //
+    // So the card has two slots and a rule for each. The second is always the day count —
+    // *how long* — because it is the one thing neither the position nor the sheet behind
+    // this card states. The first is *where or when*, and it takes the most specific fact
+    // available:
+    //
+    // | state                     | where / when   | how long  |
+    // | ------------------------- | -------------- | --------- |
+    // | Reading, with a position  | `71%`          | `15 days` |
+    // | Reading, no position yet  | —              | `15 days` |
+    // | Set aside, with one       | `46%`          | `15 days` |
+    // | Finished                  | `2026.09.28`   | `15 days` |
+    //
+    // **The start date is gone from the card, and that is the reversal here.** The card
+    // used to lead with `2026.09.13 ~`, which is the fact the day count already carries in
+    // the form a reader wants it — nobody subtracts dates to learn a book has been open a
+    // fortnight. The *finish* date survives because nothing else on the card implies it:
+    // when this landed is a memory anchor, and it is the one date the day count cannot
+    // reconstruct without the other. Both dates are still one tap away and still editable
+    // in the sheet this card opens, which is the reason the loss is affordable.
+    //
+    // **A finished book prints that date rather than the range, and the range is what
+    // wrapped.** `2026.09.13 ~ 2026.09.28` plus `15 days` does not fit beside a badge at
+    // 333pt, so the one state whose period is *complete* was the one drawing two lines —
+    // and it was spending both on a closed range whose duration was printed underneath it.
+    // Dropping `15 days` there instead would have fixed the wrap too, and costs more: a
+    // settled "it took me 15 days" is the satisfying number on a book you have finished,
+    // where two ISO dates are a database row.
+    //
+    // **Finished is excluded from the position explicitly, and the first version of this
+    // forgot to**: a finished book has a non-null position of exactly 1, so `position !=
+    // null` alone let it print `100%` beside a badge already reading *Finished*. Two ways
+    // of saying "the end", where the date is the thing that slot has left to say.
+    final hasPosition = position != null && widget.status != bookStatusFinished;
+
+    // **One green thing, and it is whichever slot holds the answer.** Two `brandText`
+    // values beside a green badge is what made three greens on one line, so the slot that
+    // is only context recedes to `secondaryText`.
+    final answerStyle = AppTextStyles.label.copyWith(
+      color: context.colors.brandText,
+    );
+
+    final Widget? anchor = hasPosition
+        // Not localized: a numeral and a percent sign, which sit the same way round in
+        // both supported locales.
+        ? Text('${(position * 100).round()}%', style: answerStyle)
+        : finish != null
+        ? Text(ReadingPeriodRow._formatDate(finish), style: answerStyle)
+        : null;
 
     final values = [
-      Text(range, style: AppTextStyles.label),
+      if (anchor != null) anchor,
       Text(
         l10n.daysCount((finish ?? DateTime.now()).difference(start).inDays),
-        // Same token as the range beside it: `brandText` is what marks the
-        // duration as the row's answer, so emphasising it twice would only
-        // make one line of small print look like a different size.
-        style: AppTextStyles.label.copyWith(color: context.colors.brandText),
+        // Green only when it is the whole answer, which is a book that has been opened
+        // and has neither a position nor a finish date.
+        style: anchor == null
+            ? answerStyle
+            : AppTextStyles.label.copyWith(color: context.colors.secondaryText),
       ),
     ];
 
@@ -365,17 +468,22 @@ class _ReadingPeriodRowState extends State<ReadingPeriodRow> {
 /// The status-0 line's door: `Change status ›`.
 ///
 /// Styled as the band's own prompt rather than as a button. [AppTextStyles.label] in
-/// `brandText` with the same `chevron_right` at 20 that the period card and
-/// [BandProgressRow] carry — there is no fill, no border and no second ground, because
-/// the band already has two doors and a third with furniture on it would be the
+/// `brandText` with the same `chevron_right` at 20 the period card carries — there is no
+/// fill, no border and no second ground, because furniture on it would make it the
 /// loudest thing on the page.
 ///
 /// **`brandText` rather than `secondaryText`, unlike `How far in?`.** That row's
 /// prompt is in the no-value-yet tone because it will be *replaced by* a value in the
 /// same slot at the same size, and the app's green is what marks the answer. This one
-/// is replaced by a date range, which is not green either — it is an offer to act, not
-/// a blank waiting to be filled, so it takes the colour the app gives to things you
-/// can do.
+/// is an offer to act rather than a blank waiting to be filled, so it takes the colour
+/// the app gives to things you can do.
+///
+/// **This used to add "and what replaces it is not green either", and that was never
+/// true.** The value group that fills this slot at status 1 has always had a green
+/// answer in it — the day count, back when the card printed a range beside it, and the
+/// day count again now that a just-started book's card prints nothing else. So green
+/// here is not doing the work of distinguishing the verb from its successor, and the
+/// reason above is the whole reason.
 ///
 /// The opacity is the press state, and on a wordmark with no fill it is the only one
 /// available: there is no ground to darken the way the card darkens toward the band.

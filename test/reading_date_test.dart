@@ -60,7 +60,7 @@ void main() {
       'Given 00:30, When the reading date is taken, Then it already counts for the new day',
       () {
         // The case a 4am rollover existed to protect: a chapter finished at half
-        // past midnight used to read as *tonight's* reading. At a midnight
+        // past midnight used to read as *today's* reading. At a midnight
         // rollover it does not, and that is the accepted cost of matching
         // Duolingo's reset rather than the earlier reasoning.
         expect(

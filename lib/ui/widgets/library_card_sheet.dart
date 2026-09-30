@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:bookworm_friends/constants/app_layout.dart';
 import 'package:bookworm_friends/constants/app_routes.dart';
 import 'package:bookworm_friends/constants/app_theme.dart';
 import 'package:bookworm_friends/l10n/app_localizations.dart';
@@ -162,6 +163,26 @@ class LibraryCardSheet extends StatelessWidget {
   /// push the text to 41 and wrap `per book, of 22 dated` on a half-width tile.
   static const double _bodyGutter = 9;
 
+  /// What the header's content may occupy, and what the body's may.
+  ///
+  /// **The card does not stretch on an iPad, and it used to.** Every modal sheet in
+  /// the app inherited Material 3's 640 cap, and `CenteredContent` put the pages that
+  /// need one behind the same number — but this is the *persistent* sheet, which is
+  /// full-width by design, so neither ever applied here. The result was a hero card and
+  /// three tiles spread across all 1032 points of an iPad with a dead white half-page
+  /// underneath, which is what `docs/store/screenshots/1.1.0/capture/ipad13/02` shows.
+  ///
+  /// Two caps rather than one because the two are padded differently and the gap
+  /// between them is the point: the title sits [LibrarySheet.gutter] inside the card
+  /// and the hero [_bodyGutter], so the title is 16 further in than the card edge on
+  /// every phone. Capping both at a bare [kContentMaxWidth] would centre both boxes on
+  /// the same line and make the title flush with the hero — tidier in isolation, and a
+  /// different object from the one the phone draws. Discounting each by the gutter that
+  /// already surrounds it keeps the 16 and lands both on one centre line.
+  static const double _headerContentMax =
+      kContentMaxWidth - kLibrarySheetGutter * 2;
+  static const double _bodyContentMax = kContentMaxWidth - _bodyGutter * 2;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -197,62 +218,68 @@ class LibraryCardSheet extends StatelessWidget {
     // Stacks the rail under the title row. One header serves every snap position — there
     // is no `expandedHeader`, which is what makes the collapse a shorter viewport onto
     // the same chrome rather than a different set of controls.
-    final header = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            // Flexible and pinned apart rather than laid out at natural width:
-            // the read view's collapsed header overflowed at accessibility text
-            // sizes for exactly this shape, and the fix there was this.
-            Expanded(child: title),
-            // **Gated on the library, not on the selected year.** `readFilterYears`
-            // offers every year between the first finish and today, gaps included, so
-            // a reader whose last book was two years ago can select a year with
-            // nothing in it — and gating on `stats.booksRead` made the button vanish
-            // when they did, taking the header's shape with it. The button stays put
-            // and goes inert instead: sharing a hero that says 0 is still not
-            // something anyone wants to have tapped by accident, but that is a reason
-            // to disable a control, not to move the furniture.
-            if (books.isNotEmpty)
-              LibraryCardShareButton(
-                enabled: !isEditMode && stats.booksRead > 0,
-                // Liquid Glass here, bare icon in the library bar, and the split is
-                // deliberate — see [LibraryCardShareButton.glass]. Flighty's Passport
-                // puts a glass share in exactly this corner, and the card is the
-                // artifact the sheet exists to hand over.
-                glass: true,
-                color: context.colors.brandText,
-                // Pushes the preview rather than exporting straight to the OS
-                // sheet, which is what this button did until Phase 5 Task 3. The
-                // export itself has not moved — `ShareCardPage` still calls
-                // `shareLibraryCard`, the app's one capture path — but the reader
-                // now sees the image, is told which year is in it, and gets the
-                // framing and lighting controls, none of which a blind hand-off can
-                // offer.
-                //
-                // `origin` is dropped here: the iPad popover has to be anchored to
-                // whatever was tapped, and by the time the OS sheet opens that is a
-                // destination on the pushed screen, not this button. The library bar
-                // used to carry a second share that took the direct path and needed
-                // the rect; that button is gone.
-                onShare: (_) => Navigator.pushNamed(
-                  context,
-                  AppRoutes.shareCard,
-                  arguments: ShareCardArgs(
-                    books: books,
-                    reading: reading,
-                    year: filterYear,
-                    displayName: username,
-                    handle: handle,
-                    memberSince: memberSince,
+    //
+    // Capped so the title and the share button do not end up at opposite ends of an
+    // iPad. See [_headerContentMax].
+    final header = CenteredContent(
+      maxWidth: _headerContentMax,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              // Flexible and pinned apart rather than laid out at natural width:
+              // the read view's collapsed header overflowed at accessibility text
+              // sizes for exactly this shape, and the fix there was this.
+              Expanded(child: title),
+              // **Gated on the library, not on the selected year.** `readFilterYears`
+              // offers every year between the first finish and today, gaps included, so
+              // a reader whose last book was two years ago can select a year with
+              // nothing in it — and gating on `stats.booksRead` made the button vanish
+              // when they did, taking the header's shape with it. The button stays put
+              // and goes inert instead: sharing a hero that says 0 is still not
+              // something anyone wants to have tapped by accident, but that is a reason
+              // to disable a control, not to move the furniture.
+              if (books.isNotEmpty)
+                LibraryCardShareButton(
+                  enabled: !isEditMode && stats.booksRead > 0,
+                  // Liquid Glass here, bare icon in the library bar, and the split is
+                  // deliberate — see [LibraryCardShareButton.glass]. Flighty's Passport
+                  // puts a glass share in exactly this corner, and the card is the
+                  // artifact the sheet exists to hand over.
+                  glass: true,
+                  color: context.colors.brandText,
+                  // Pushes the preview rather than exporting straight to the OS
+                  // sheet, which is what this button did until Phase 5 Task 3. The
+                  // export itself has not moved — `ShareCardPage` still calls
+                  // `shareLibraryCard`, the app's one capture path — but the reader
+                  // now sees the image, is told which year is in it, and gets the
+                  // framing and lighting controls, none of which a blind hand-off can
+                  // offer.
+                  //
+                  // `origin` is dropped here: the iPad popover has to be anchored to
+                  // whatever was tapped, and by the time the OS sheet opens that is a
+                  // destination on the pushed screen, not this button. The library bar
+                  // used to carry a second share that took the direct path and needed
+                  // the rect; that button is gone.
+                  onShare: (_) => Navigator.pushNamed(
+                    context,
+                    AppRoutes.shareCard,
+                    arguments: ShareCardArgs(
+                      books: books,
+                      reading: reading,
+                      year: filterYear,
+                      displayName: username,
+                      handle: handle,
+                      memberSince: memberSince,
+                    ),
                   ),
                 ),
-              ),
-          ],
-        ),
-        filter,
-      ],
+            ],
+          ),
+          filter,
+        ],
+      ),
     );
 
     // What the *content* may occupy: the sheet keeps the tab bar's band and the home
@@ -319,19 +346,25 @@ class LibraryCardSheet extends StatelessWidget {
           // The streak is not year-filtered, unlike everything else on this card — a
           // run is a fact about now, and "your longest streak in 2024" is a different
           // feature. See `LibraryCardBody.streak`.
-          child: LibraryCardBody(
-            stats: stats,
-            books: books,
-            reading: reading,
-            year: filterYear,
-            streak: streak,
-            longestStreak: longestStreak,
-            readToday: readToday,
-            // Withheld during an edit, exactly as the year rail is at `enabled:
-            // !isEditMode` above. An edit is a modal thing happening behind this
-            // sheet; a tap that pushed a full-screen page out from under it would
-            // strand the reader mid-drag with covers in hand.
-            onStreakTap: isEditMode ? null : onStreakTap,
+          //
+          // Capped for the reason the header is, and to the same centre line. See
+          // [_bodyContentMax].
+          child: CenteredContent(
+            maxWidth: _bodyContentMax,
+            child: LibraryCardBody(
+              stats: stats,
+              books: books,
+              reading: reading,
+              year: filterYear,
+              streak: streak,
+              longestStreak: longestStreak,
+              readToday: readToday,
+              // Withheld during an edit, exactly as the year rail is at `enabled:
+              // !isEditMode` above. An edit is a modal thing happening behind this
+              // sheet; a tap that pushed a full-screen page out from under it would
+              // strand the reader mid-drag with covers in hand.
+              onStreakTap: isEditMode ? null : onStreakTap,
+            ),
           ),
         ),
       ),

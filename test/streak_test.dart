@@ -92,7 +92,7 @@ void main() {
     test(
       'Given a run interrupted by one missed day, When the run is derived, Then only the days since the gap count',
       () {
-        // Freezes are deferred, so one missed night severs the thread outright. This
+        // Freezes are deferred, so one missed day severs the thread outright. This
         // is the cost the design accepted, asserted here so that it is a decision
         // rather than a surprise.
         final today = DateTime(2026, 9, 12);
@@ -159,7 +159,7 @@ void main() {
       'Given a broken run, When the record is derived, Then the history survives',
       () {
         // The pair that matters: the current run is gone, the record is not. Without
-        // this the missed night reads as though the reading never happened.
+        // this the missed day reads as though the reading never happened.
         final today = DateTime(2026, 9, 12);
         final days = _runEndingOn(DateTime(2026, 9, 10), 12);
 

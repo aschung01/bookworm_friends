@@ -3,7 +3,7 @@
 /// **What the cases are about.** Three variants were drawn (`docs/mockups/streaks/index.html`,
 /// `cp-d-pick` / `-big` / `-shelf`) and the chosen one is the 44×66 list. Two of its
 /// properties are the reason it was chosen rather than decoration: the *ordering* (reading
-/// books first, because on an ordinary night the answer is a few rows from the top) and the
+/// books first, because on an ordinary day the answer is a few rows from the top) and the
 /// *ribbon* (because the very next question is how far in, so the reader should see where the
 /// app already thinks they are on the thing they are tapping).
 library;
@@ -91,7 +91,7 @@ void main() {
   testWidgets('reading books are their own group and come first', (
     tester,
   ) async {
-    // On almost every night the answer is three rows from the top. A reader who has to
+    // On almost every day the answer is three rows from the top. A reader who has to
     // *search* for the book in their hand has been failed by the ordering, not by the field.
     await _open(tester);
 

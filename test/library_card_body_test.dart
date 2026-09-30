@@ -498,7 +498,7 @@ void main() {
       tester,
     ) async {
       // **Keyed on today, never on the count.** The count is intact all day and only
-      // the day's own status changes at the 4am rollover, so a tile that took its
+      // the day's own status changes at the midnight rollover, so a tile that took its
       // temperature from the number would be warm at 9am on a day nothing had been
       // read — the opposite of a nudge. `ReadingStreakChip` was written against the
       // same rule; this is the second reader of it, which is why the fixture here
@@ -642,10 +642,10 @@ void main() {
       );
     });
 
-    testWidgets('carries the record, which a missed night does not erase', (
+    testWidgets('carries the record, which a missed day does not erase', (
       tester,
     ) async {
-      // With freezes deferred a single missed night severs a run outright, so this
+      // With freezes deferred a single missed day severs a run outright, so this
       // is the only figure on the card that survives it. Without the record a
       // reader who missed one Thursday sees a fortnight reduced to `1d`.
       await _pump(

@@ -151,6 +151,11 @@ Future<void> pumpHome(
           () => FakeLibraryNotifier(shelves ?? singleBookLibrary()),
         ),
         finishedBooksProvider.overrideWith((ref) async => <Book>[]),
+        // The read sheet merges a second query behind its own filter, so without
+        // this every tree with a `HomePage` in it would reach for Supabase on
+        // build. It fails soft — the sheet treats an errored set-aside query as an
+        // empty list — which is exactly what makes the omission hard to notice.
+        setAsideBooksProvider.overrideWith((ref) async => <Book>[]),
         profileProvider.overrideWith(
           (ref) async => Profile(
             id: 'u',

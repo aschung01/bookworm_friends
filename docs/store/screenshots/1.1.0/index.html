@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Libstack 1.1.0 — store screenshot contact sheet</title>
+    <!--
+      Generated review page for the 11 captures under `capture/`.
+
+      Why it exists: the captures were taken 2026-09-19 and the reading-streak feature
+      merged to main 2026-09-26, so some frames draw a UI that no longer ships. That is
+      invisible one file at a time and obvious when they are side by side.
+
+      Paths are relative, so this opens straight off disk with no server.
+    -->
+    <style>
+      :root {
+        --ground: #15171a;
+        --panel: #1e2126;
+        --panel-2: #262a30;
+        --edge: #33383f;
+        --ink: #e8eaed;
+        --ink-dim: #9aa1aa;
+        --brand: #09bc8a;
+        --flame: #f2a93f;
+        --warn: #e8833a;
+        --bad: #e5534b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 1680px; margin: 0 auto; padding: 40px 32px 96px; }
+
+      h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+      .sub { color: var(--ink-dim); margin: 0 0 28px; }
+      h2 {
+        font-size: 17px;
+        margin: 52px 0 4px;
+        padding-top: 22px;
+        border-top: 1px solid var(--edge);
+      }
+      h2 .count { color: var(--ink-dim); font-weight: 400; }
+      h2 + .note { color: var(--ink-dim); margin: 0 0 20px; font-size: 14px; }
+
+      .banner {
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-left: 3px solid var(--warn);
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin: 0 0 26px;
+      }
+      .banner b { color: var(--warn); }
+      .banner p { margin: 8px 0 0; color: var(--ink-dim); font-size: 14px; }
+      .banner p:first-child { margin-top: 0; }
+      code {
+        font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: var(--panel-2);
+        border: 1px solid var(--edge);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+
+      .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 8px; }
+      button {
+        font: inherit;
+        font-size: 13px;
+        color: var(--ink);
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+      }
+      button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #04120d; font-weight: 600; }
+      .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-dim); margin: 14px 0 0; }
+      .legend span { display: inline-flex; align-items: center; gap: 6px; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+      .grid { display: grid; gap: 22px; margin-top: 22px; }
+      .grid.phone { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); }
+      .grid.tablet { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+
+      figure {
+        margin: 0;
+        background: var(--panel);
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      figure a { display: block; background: #0d0f11; line-height: 0; }
+      figure img { width: 100%; height: auto; display: block; }
+      figcaption { padding: 12px 14px 14px; font-size: 13px; }
+
+      .slot {
+        display: inline-block;
+        min-width: 20px;
+        text-align: center;
+        background: var(--brand);
+        color: #04120d;
+        font-weight: 700;
+        font-size: 11.5px;
+        border-radius: 4px;
+        padding: 1px 6px;
+        margin-right: 7px;
+      }
+      .slot.none { background: var(--edge); color: var(--ink-dim); }
+      .caption { font-weight: 600; }
+      .file { color: var(--ink-dim); font-size: 11.5px; margin-top: 5px; font-family: ui-monospace, Menlo, monospace; }
+      .issues { margin: 10px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--ink-dim); }
+      .issues li { position: relative; padding-left: 15px; margin-top: 5px; }
+      .issues li::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 6px;
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--warn);
+      }
+      .issues li.blocker::before { background: var(--bad); }
+      .issues li.ok::before { background: var(--brand); }
+      .issues li.unseen::before { background: var(--edge); }
+
+      .gap-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-top: 20px; }
+      .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 18px 20px; }
+      .card h3 { margin: 0 0 4px; font-size: 15px; }
+      .card .verdict { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+      .card p { margin: 10px 0 0; font-size: 13px; color: var(--ink-dim); }
+      .yes { color: var(--brand); }
+      .maybe { color: var(--flame); }
+      .no { color: var(--bad); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Libstack 1.1.0 — store screenshots</h1>
+      <p class="sub">
+        11 captures, every one at its exact required size. Click any frame for full
+        resolution. Rescued out of <code>build/shots/</code>, which was one
+        <code>flutter clean</code> from destroying them.
+      </p>
+
+      <div class="banner">
+        <p>
+          <b>These predate the reading streak.</b> Captured <b>2026-09-19</b>; the streak
+          flame, span track, celebration and home-screen widget merged to main
+          <b>2026-09-26 21:41</b> in <code>d147827</code>.
+        </p>
+        <p>
+          Three frames draw a UI that no longer ships, confirmed by opening them: the
+          library bar's flame is <b>rust</b> where the app now draws
+          <code>kCandleFlame&nbsp;#F2A93F</code>, and the Library Card's streak tile is an
+          <b>unfilled grey tile</b> where the app now fills it warm or cool and puts a
+          <code>StreakFlameMark</code> on it. Captioning these would composite text onto
+          obsolete frames.
+        </p>
+      </div>
+
+      <div class="bar">
+        <button id="order-store" aria-pressed="true">Store order</button>
+        <button id="order-file" aria-pressed="false">File order</button>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background: var(--bad)"></i> blocker — do not upload as is</span>
+        <span><i class="dot" style="background: var(--warn)"></i> stale or weak, verified by looking</span>
+        <span><i class="dot" style="background: var(--brand)"></i> fine</span>
+        <span><i class="dot" style="background: var(--edge)"></i> not opened in this pass</span>
+      </div>
+
+      <h2>iPhone 6.9″ <span class="count">— 1320 × 2868, 7 frames</span></h2>
+      <p class="note">Apple shows only the first three in search results, so those three carry what it is, why it is different, and the payoff.</p>
+      <div class="grid phone" id="phone"></div>
+
+      <h2>iPad 13″ <span class="count">— 2064 × 2752, 4 frames</span></h2>
+      <p class="note">Reuses the iPhone captions against its four captures.</p>
+      <div class="grid tablet" id="tablet"></div>
+
+      <h2>What is missing, now that the streak shipped</h2>
+      <p class="note">Nothing in the 11 shows the feature this release is largely about.</p>
+      <div class="gap-grid" id="gaps"></div>
+    </div>
+
+    <script>
+      const RUST_FLAME = {
+        text: "bar flame is rust — ships <code>#F2A93F</code> amber, and the mark is generated now, not a Phosphor glyph",
+        kind: "",
+      };
+      const PILE_SHEET = {
+        text: "the finished-books sheet sits half-open across the bottom third: “Books read 1”, one spine, mostly white",
+        kind: "",
+      };
+      const STALE_TILE = {
+        text: "streak tile is unfilled grey — ships filled warm/cool with a flame mark",
+        kind: "",
+      };
+      const WEAK_STREAK = {
+        text: "“1d, best 1” is the weakest possible streak, and the tile is loud now",
+        kind: "",
+      };
+      const UNSEEN = { text: "not opened in this pass — worth a look before captioning", kind: "unseen" };
+
+      const phone = [
+        { file: "01-library-covers", slot: 1, caption: "A bookshelf you actually keep", issues: [RUST_FLAME, PILE_SHEET] },
+        { file: "02-library-spines", slot: 2, caption: "Covers, spines, or leaning", issues: [RUST_FLAME, PILE_SHEET] },
+        { file: "03-library-card", slot: 3, caption: "Your reading becomes a card", issues: [STALE_TILE, WEAK_STREAK] },
+        { file: "05-book-details", slot: 4, caption: "Log the page you’re on", issues: [UNSEEN] },
+        { file: "07-share-card", slot: 5, caption: "Share it, or keep it", issues: [UNSEEN] },
+        { file: "04-friends", slot: 6, caption: "Read alongside your friends", issues: [UNSEEN] },
+        { file: "06-search-results", slot: 7, caption: "Scan the barcode to add", issues: [UNSEEN] },
+      ];
+
+      const tablet = [
+        { file: "01-library", slot: 1, caption: "A bookshelf you actually keep", issues: [UNSEEN] },
+        {
+          file: "02-library-card",
+          slot: 2,
+          caption: "Your reading becomes a card",
+          issues: [
+            { text: "<b>Library Card stretches the full 2064px</b> with a dead white half-page under it — the persistent sheet never got the 640 cap", kind: "blocker" },
+            STALE_TILE,
+            WEAK_STREAK,
+          ],
+        },
+        { file: "03-friends", slot: 3, caption: "Read alongside your friends", issues: [UNSEEN] },
+        { file: "04-book-details", slot: 4, caption: "Log the page you’re on", issues: [UNSEEN] },
+      ];
+
+      const gaps = [
+        {
+          title: "The streak page",
+          verdict: "Add it",
+          cls: "yes",
+          body:
+            "The flame, the rolling week row, the span ladder and the month grid, none of which appear in any of the 11. It is the most Duolingo-legible thing in the app and the clearest reason to open it daily. Needs seeded data — a real run, not “1d, best 1”. Slot 4 reads best, after the Library Card payoff.",
+        },
+        {
+          title: "The celebration",
+          verdict: "Probably not",
+          cls: "maybe",
+          body:
+            "The Rive flame over the opening book is the best-looking thing in the build, but it is a transient full-screen moment and a still frame loses the ignition entirely. It also needs <code>rive_native</code>'s dylib present or it silently draws the fallback. Better as an App Preview video than a screenshot.",
+        },
+        {
+          title: "The widget and the cat",
+          verdict: "Wants a real device",
+          cls: "no",
+          body:
+            "The mascot exists <b>only</b> in the widget — <code>streak_celebration.dart</code> says outright there is no mascot in the app, and the month grid draws just the paw as a vector. So the cat cannot be screenshotted from any app screen. And per <code>AGENTS.md</code> this machine's Xcode ships no <code>Simulator.app</code>, so a widget cannot be placed on a simulator home screen. Rendering <code>docs/mockups/streak-widget/final.html</code> instead would be shipping a browser's drawing of the widget rather than the widget.",
+        },
+      ];
+
+      function issueList(issues) {
+        return (
+          '<ul class="issues">' +
+          issues.map((i) => `<li class="${i.kind}">${i.text}</li>`).join("") +
+          "</ul>"
+        );
+      }
+
+      function render(el, items, dir) {
+        el.innerHTML = items
+          .map(
+            (s) => `
+          <figure>
+            <a href="capture/${dir}/${s.file}.png" target="_blank" rel="noopener">
+              <img src="capture/${dir}/${s.file}.png" alt="${s.caption}" loading="lazy" />
+            </a>
+            <figcaption>
+              <div><span class="slot">${s.slot}</span><span class="caption">${s.caption}</span></div>
+              <div class="file">${s.file}.png</div>
+              ${issueList(s.issues)}
+            </figcaption>
+          </figure>`
+          )
+          .join("");
+      }
+
+      const phoneEl = document.getElementById("phone");
+      const tabletEl = document.getElementById("tablet");
+
+      function draw(mode) {
+        const by = (a, b) =>
+          mode === "store" ? a.slot - b.slot : a.file.localeCompare(b.file);
+        render(phoneEl, [...phone].sort(by), "iphone69");
+        render(tabletEl, [...tablet].sort(by), "ipad13");
+      }
+
+      const bStore = document.getElementById("order-store");
+      const bFile = document.getElementById("order-file");
+      bStore.onclick = () => {
+        bStore.ariaPressed = "true";
+        bFile.ariaPressed = "false";
+        draw("store");
+      };
+      bFile.onclick = () => {
+        bFile.ariaPressed = "true";
+        bStore.ariaPressed = "false";
+        draw("file");
+      };
+
+      document.getElementById("gaps").innerHTML = gaps
+        .map(
+          (g) => `
+        <div class="card">
+          <div class="verdict ${g.cls}">${g.verdict}</div>
+          <h3>${g.title}</h3>
+          <p>${g.body}</p>
+        </div>`
+        )
+        .join("");
+
+      draw("store");
+    </script>
+  </body>
+</html>

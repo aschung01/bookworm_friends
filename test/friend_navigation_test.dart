@@ -352,7 +352,7 @@ void main() {
         await enterVisit(tester, 'jisoo');
 
         expect(find.byType(FriendsSheet), findsNothing);
-        expect(find.text('Books read'), findsOneWidget);
+        expect(find.text('Books finished'), findsOneWidget);
         // Nothing was added to this header. An earlier round put a `‹ Friends`
         // control in the leading slot, which cost the year popover its place (three
         // controls in a 375pt row is what overflows at 2× text) and made her read
@@ -508,7 +508,7 @@ void main() {
           findsOneWidget,
           reason: 'an empty library is a library with a sheet over it',
         );
-        expect(find.text('Books read'), findsOneWidget);
+        expect(find.text('Books finished'), findsOneWidget);
       },
     );
 

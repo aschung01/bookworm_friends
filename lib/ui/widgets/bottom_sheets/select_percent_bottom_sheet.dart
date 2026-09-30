@@ -63,7 +63,7 @@ const double _kUnitOffset = 92;
 ///
 /// **[page] is provenance, not position.** [progress] is always the position, and a
 /// page answer round-trips through it exactly. [page] is non-null only when the
-/// reader typed or scrolled a page, and it is what lets `ProgressFieldRow` print
+/// reader typed or scrolled a page, and it is what lets the band and the sheet's read-out print
 /// `p.200` back to a reader who said p.200 rather than the percent it works out to.
 /// Null means "answered in percent", which downstream is a real instruction to clear
 /// the stored provenance rather than an absence of news.
@@ -115,12 +115,25 @@ Future<void> showSelectPercentBottomSheet(
   /// caller for whom this sheet is a *required step* has to know the step was completed:
   /// from outside, "confirmed without moving the wheel" and "swiped the sheet away" both
   /// look like silence, and treating the first as a dismissal would refuse to record a
-  /// night the reader just confirmed.
+  /// day the reader just confirmed.
   ///
   /// Fires before [onProgressSelected] and before the pop, so a caller can set a flag in
   /// it and read the answer after the await. Optional, and null for every caller that
   /// only wants the value.
   VoidCallback? onConfirmed,
+
+  /// Opens on Page rather than Percent.
+  ///
+  /// **For the caller who already knows which unit the reader is thinking in**, which
+  /// is the merged status sheet: its read-out prints `46%` and `p.213` as two separate
+  /// doors, so tapping the page has already said "pages" and opening on Percent would
+  /// make the reader say it twice.
+  ///
+  /// Distinct from [initialPage], which is only a *resume* hint and deliberately does
+  /// not change the opening mode — a reader who once typed a page still gets Percent
+  /// when they come back through a door that did not mention pages. Ignored when the
+  /// book has no [pageCount], because Page mode does not exist for those books.
+  bool openInPageMode = false,
   String? title,
 }) {
   return AppSheet.show(
@@ -142,6 +155,7 @@ Future<void> showSelectPercentBottomSheet(
       pageCount: pageCount,
       onProgressSelected: onProgressSelected,
       onConfirmed: onConfirmed,
+      openInPageMode: openInPageMode,
       title: title,
     ),
   );
@@ -154,6 +168,7 @@ class _ProgressSheet extends StatefulWidget {
     required this.pageCount,
     required this.onProgressSelected,
     required this.onConfirmed,
+    required this.openInPageMode,
     required this.title,
   });
 
@@ -162,6 +177,7 @@ class _ProgressSheet extends StatefulWidget {
   final int? pageCount;
   final ValueChanged<ProgressAnswer> onProgressSelected;
   final VoidCallback? onConfirmed;
+  final bool openInPageMode;
   final String? title;
 
   @override
@@ -208,6 +224,11 @@ class _ProgressSheetState extends State<_ProgressSheet> {
       kProgressWheelStops - 1,
     );
     _page = widget.initialPage;
+    // Only with a count to page against; see [showSelectPercentBottomSheet.openInPageMode].
+    if (widget.openInPageMode && _hasPages) {
+      _mode = _Mode.page;
+      _page ??= _seedPage;
+    }
     _input = TextEditingController();
     _fieldFocus = FocusNode();
     _fieldFocus.addListener(_onFocusChanged);
@@ -287,7 +308,7 @@ class _ProgressSheetState extends State<_ProgressSheet> {
   /// would give 4568 and clamp to the last page. This is the platform's own
   /// select-on-focus behaviour rather than a flag this file has to maintain.
   void _startTyping() {
-    final seed = '${_value}';
+    final seed = '$_value';
     setState(() {
       _typing = true;
       if (_mode == _Mode.page) _page = _value;
@@ -733,7 +754,7 @@ class _RangeFormatter extends TextInputFormatter {
 ///
 /// **A fixed box in every state**, so the sheet's height never depends on the data.
 ///
-/// Percent mode prints `≈ p.N` — approximate on purpose, because 101 stops over 320
+/// Percent mode prints `~ p.N` — approximate on purpose, because 101 stops over 320
 /// pages is 3.2 pages a stop and p.148 is not expressible. Page mode prints the
 /// exact percent with **no tilde**, because nothing was approximated: the page the
 /// reader typed is stored and reads back unchanged.
@@ -755,7 +776,7 @@ class _Rider extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final String? text;
     if (mode == _Mode.page) {
-      // Blank rather than the derived `≈ p.N`: in page mode the percent is what the
+      // Blank rather than the derived `p.N`: in page mode the percent is what the
       // rider translates *to*, and with an empty field there is nothing to
       // translate. Falling through to the percent branch would print a page derived
       // from a stop the reader is not looking at.
@@ -766,7 +787,13 @@ class _Rider extends StatelessWidget {
           : '${(page! / pageCount! * 100).round()}%';
     } else {
       final derived = bookProgressPage(stop / 100, pageCount);
-      text = derived == null ? null : l10n.progressApproxPage(derived);
+      // **`progressPage`, not the deleted `progressApproxPage`.** The rider read `~ p.213`,
+      // and the tilde admitted that a 101-stop wheel cannot express every page — 3.2 of them
+      // per stop at 320 pages. It was removed on instruction from the merged sheet's read-out,
+      // and removing it here too is the point rather than collateral: a mark that means
+      // "derived" under the wheel and nothing in the read-out the wheel feeds is worse than no
+      // mark, because the same number then renders two ways for one book.
+      text = derived == null ? null : l10n.progressPage(derived);
     }
     return SizedBox(
       height: 36,

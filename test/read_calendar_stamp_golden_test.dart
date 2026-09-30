@@ -61,7 +61,7 @@ void main() {
     // anatomy reviewable by eye, and 24 is the size at which a two-band die either
     // still reads as two bands or has to be abandoned for the single oval.
     const sizes = [96.0, 40.0, 24.0];
-    // Two real jacket colours and the neutral a night with no attribution draws in, so
+    // Two real jacket colours and the neutral a day with no attribution draws in, so
     // the sheet also answers whether the ink survives at each.
     const inks = [Color(0xFF26243E), Color(0xFFA4552F), Color(0xFF6B7280)];
 

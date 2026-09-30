@@ -9,6 +9,10 @@
   },
   "save": "Save",
   "cancel": "Cancel",
+  "discardChanges": "Discard changes",
+  "@discardChanges": {
+    "description": "Discards the merged status sheet's unsaved answers and puts every field back to what the sheet opened with, without closing it. Distinct from cancel, which the app uses for a button that dismisses: this one stays on the sheet, which is the point \u2014 a reader who over-dragged the track wants the old value back and to carry on, not to start the whole visit again. Paired with save at the foot of that sheet and drawn in the recessive surfaceVariant beside it. Was reset, one word, renamed on instruction: reset names a mechanism where this names the consequence, and the button sits beside Save where the reader is deciding whether to keep what they just did. The cost is width \u2014 two words in a 44pt half-width button, which is why the pair is Expanded rather than sized to its labels."
+  },
   "delete": "Delete",
   "edit": "Edit",
   "done": "Done",
@@ -42,9 +46,92 @@
       }
     }
   },
-  "statusInterested": "Interested",
+  "statusInterested": "Not started",
+  "@statusInterested": {
+    "description": "Status word for a book with no recorded position, and the left end label of the reading track. Was \"Interested\" until the track made the status a read-out of the position rather than a thing to pick: adding a book to a shelf already states the interest, so the status axis does not have to. Same string in both places on purpose \u2014 two words for one state is the defect this design removes."
+  },
   "statusReading": "Reading",
-  "statusFinished": "Read",
+  "statusFinished": "Finished",
+  "@statusFinished": {
+    "description": "Status word for a book at 100%, and the right end label of the reading track. Was \"Read\", which is the most overloaded word in the app \u2014 readToday, reading_days, ReadPile, ReadMonthGrid and the read sheet's own title all use it for the *act* of reading. This is the *state*, so it takes the word that only means the state. The read sheet keeps \"Books read\" for the act; see finishedOnlyTitle."
+  },
+  "statusSetAside": "Set aside",
+  "@statusSetAside": {
+    "description": "Status word for a book closed short of the end (status 3). Not \"Abandoned\" or \"Gave up\", which pass judgement on the reader, and not \"Did not finish\", which is a verdict on the book. Setting a book aside is reversible and ordinary, and the word has to leave room for picking it up again \u2014 which the track does by moving the thumb."
+  },
+  "stopReadingThis": "Stop reading this",
+  "@stopReadingThis": {
+    "description": "The merged status sheet's text action while the book is being read. Drawn in secondaryText grey rather than flame: giving up on a book is ordinary rather than destructive. A verb phrase rather than the status noun, because it names what the tap does where the chip above names what the book becomes. It opens a confirmation sheet rather than flipping the status under the reader's finger \u2014 it is an opaque full-width grey band with no button furniture, which is easy to hit by accident. Paired with startReadingAgain, which reverses it and needs no confirmation."
+  },
+  "startReadingAgain": "Start reading again",
+  "@startReadingAgain": {
+    "description": "The set-aside book's text action, in the slot stopReadingThis occupies while the book is open, and its exact reverse. This reverses a documented decision: the sheet used to offer nothing here on the grounds that a set-aside book resumes by moving the thumb, so a link would be a second affordance for a gesture already present. Two things were wrong with that. Dragging resumes only by *changing the position*, so a reader who set a book aside at 46% and wants to carry on from 46% had no move available; and the thumb is not discoverable as a status control. No confirmation sheet, unlike its opposite: picking a book back up loses nothing."
+  },
+  "stopReadingConfirmTitle": "Stop reading this?",
+  "@stopReadingConfirmTitle": {
+    "description": "Title of the confirmation sheet behind stopReadingThis. A question, matching deleteConfirmTitle, and it repeats the action's own words so the reader can see which tap they are answering for."
+  },
+  "stopReadingConfirmBody": "Your progress is kept, so you can start reading again any time.",
+  "@stopReadingConfirmBody": {
+    "description": "Body of the stop-reading confirmation. Leads with what is NOT lost, because that is the non-obvious half: setting a book aside keeps the recorded position, which is the whole reason the status exists rather than sending the book back to Not started. Deliberately not a warning \u2014 nothing here is destructive and the tone must not suggest it is. One sentence, and it used to be two: it said progress was kept AND that 'The book moves to Set aside.', on the reasoning that naming the destination meant the chip afterwards would not surprise anyone. Removed on instruction, and the reasoning against it is that the sentence made the reader responsible for the app's own taxonomy in order to answer a yes-or-no question about their own book \u2014 the title already names the act and the chip names the result a tap later. Cost, stated: the destination is now learned after the fact rather than before. Also 'place' became 'progress', which is the word the sheet's own title uses (readingProgressTitle), so the two agree."
+  },
+  "startReadingAgainConfirmTitle": "Start reading this again?",
+  "@startReadingAgainConfirmTitle": {
+    "description": "Title of the confirmation behind startReadingAgain. Mirrors stopReadingConfirmTitle word for word so the pair reads as one control in two directions rather than as an action and a correction. This confirmation did not exist at first: resuming was deliberately unconfirmed, on the reasoning that an accidental resume costs a reader nothing. That became false when confirming began to write immediately \u2014 an accidental resume now costs a write, and it clears the day the book was closed."
+  },
+  "startReadingAgainConfirmBody": "Your progress is kept. The day you stopped reading will be cleared.",
+  "@startReadingAgainConfirmBody": {
+    "description": "Body of the resume confirmation. Leads with what is NOT lost, like stopReadingConfirmBody, then names the one thing that is: finish_date is derived from the status, so a book that is being read again cannot carry the date it was closed on, and the column is nulled. Naming it is the whole reason this confirmation is honest rather than ceremonial \u2014 and note it is NOT the sentence removed from stopReadingConfirmBody, which named a status label the reader did not need in order to answer; this names a consequence to their own record."
+  },
+  "startReadingAgainConfirmAction": "Start reading",
+  "@startReadingAgainConfirmAction": {
+    "description": "The resume confirmation's affirmative button. Shorter than startReadingAgain for the reason stopReadingConfirmAction is shorter than stopReadingThis: the title has already said which act, so a button restating the whole phrase reads as a second question."
+  },
+  "stopReadingConfirmAction": "Stop reading",
+  "@stopReadingConfirmAction": {
+    "description": "The confirmation sheet's affirmative button. Shorter than stopReadingThis because the sheet's title has already said which book and which act; a button that restates the whole phrase reads as a second question. Not destructive-red, unlike the delete sheet's: this is reversible in one tap by startReadingAgain."
+  },
+  "addTotalPages": "Add total pages",
+  "@addTotalPages": {
+    "description": "Replaces the page-inside-total read-out for a book with no page_count, which is about two books in three because Kakao supplies no count at all. An invitation rather than a blank, because filling it in is what lights up Page mode, the derived page and the home-screen widget's page read-out for that book."
+  },
+  "currentPageTitle": "Current page",
+  "@currentPageTitle": {
+    "description": "Title of the position wheel when it is opened straight into Page mode by tapping the page numeral in the read-out. Distinct from howFarIn, which asks the open question the percent wheel answers; here the reader has already said which unit they think in, so the sheet names the field instead of asking again."
+  },
+  "totalPagesClamped": "At most {total} pages",
+  "@totalPagesClamped": {
+    "description": "Shown under the total-pages keypad when the reader types past the ceiling. Sibling of progressPageClamped and stated in the same tone \u2014 secondaryText rather than an error \u2014 because clamping means there is no invalid state to report. Distinct from that string because progressPageClamped tells the reader something the app knows and they do not (where the book ends), while this one echoes a bound the app itself imposes.",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "totalPagesTitle": "Total pages",
+  "@totalPagesTitle": {
+    "description": "Title of the sheet that edits page_count, reached by tapping the total in the read-out. Keypad first and no percent/page segment, because a total has one unit and is typed off the back of the book rather than scrolled to."
+  },
+  "finishedOnlyTitle": "Books finished",
+  "@finishedOnlyTitle": {
+    "description": "The read sheet's title in its default, completed-only mode; finishedBooksTitle (\"Books read\") is the same sheet showing set-aside books too. The title *is* the filter's read-out, which is why there is no separate filter label \u2014 a Finished/All pair would have put \"All\" two rows above the year rail's \"All time\". It also makes the counts legible: this mode counts the books the Library Card counts, and only the \"Books read\" mode reads higher."
+  },
+  "noBooksFinished": "No books finished yet \ud83e\udd72",
+  "@noBooksFinished": {
+    "description": "Empty state for the read sheet's completed-only mode. Paired with noFinishedBooks, which serves the inclusive mode: without the pair the sheet says \"No books read yet\" under a \"Books finished\" title."
+  },
+  "readSetFilterMenu": "Change which books are shown",
+  "@readSetFilterMenu": {
+    "description": "Accessible name for the chevron that opens the read sheet's completion filter. The chevron alone says only that a menu exists, not what it is about, and the platform's own fallback announces a generic 'Show menu'. Needed because the menu became a native CNPopupMenuButton: the title beside it is no longer part of the tap target, so the title's own words are no longer the button's name."
+  },
+  "showFinishedOnly": "Show finished only",
+  "@showFinishedOnly": {
+    "description": "First row of the popover the read sheet's title opens, and the default. Phrased as an instruction rather than a noun label because the popover's rows are commands with a check mark, following the year popover in read_filter.dart."
+  },
+  "showAllRead": "Show all read",
+  "@showAllRead": {
+    "description": "Second row of the read sheet's title popover: completed books plus set-aside ones. \"Read\" is the act here, not the status \u2014 a set-aside book was not finished but was partly read \u2014 which is the same distinction statusFinished records. Deliberately not \"All\", which would collide with the year rail's \"All time\" two rows below."
+  },
   "statusOther": "Other",
   "changeStatus": "Change status",
   "@changeStatus": {
@@ -67,6 +154,7 @@
   },
   "progressPage": "p.{page}",
   "@progressPage": {
+    "description": "The only page label now, for a page the reader typed and for one the app derived alike. Its sibling progressApproxPage printed \u0060~ p.{page}\u0060 for the derived case and was deleted on instruction: the same number rendered two ways in two places reads as a glitch rather than as a distinction, and the mark was doing that in the merged sheet's read-out and under the percent wheel. The cost is real and small \u2014 in percent mode the wheel has 101 stops, so at 320 pages one stop is 3.2 pages, and a reader who aimed at p.148 is now shown a flat p.147 as though they had said it. The derived-versus-typed distinction survives in the data, where progress_page is null or set, which is what still makes a typed page round-trip exactly. If an approximate marker is ever wanted back: U+2248 is NOT available, because the app's faces are subset to Latin-1 plus Hangul and the maths glyph drew from a platform fallback in another typeface \u2014 which is why the removed mark was an ASCII tilde.",
     "placeholders": {
       "page": {
         "type": "int"
@@ -78,15 +166,6 @@
     "description": "The dimmed second half of the band's read-out, following progressPage. Split from it so the total can be drawn at 60% opacity: the page is the answer and the count is context.",
     "placeholders": {
       "total": {
-        "type": "int"
-      }
-    }
-  },
-  "progressApproxPage": "\u2248 p.{page}",
-  "@progressApproxPage": {
-    "description": "The percent wheel's derived-page rider. Approximate on purpose: the wheel has 101 stops, so at 320 pages one stop is 3.2 pages and an exact page is not expressible. The tilde is where that cost is admitted to the reader.",
-    "placeholders": {
-      "page": {
         "type": "int"
       }
     }
@@ -114,7 +193,7 @@
   },
   "readToday": "I read today",
   "@readToday": {
-    "description": "Checkbox in the change-status sheet that records one reading day. First person and past tense because the reader is stating a fact about tonight, not setting a preference \u2014 and deliberately not \"Mark as read\", which in a library app means finishing the book."
+    "description": "Checkbox in the change-status sheet that records one reading day. First person and past tense because the reader is stating a fact about today, not setting a preference \u2014 and deliberately not \"Mark as read\", which in a library app means finishing the book."
   },
   "readTodayFailed": "Couldn\u2019t save today\u2019s reading",
   "readingStreakChip": "{days, plural, =0{Start a reading streak} =1{Reading streak: 1 day} other{Reading streak: {days} days}}",
@@ -140,7 +219,7 @@
   },
   "libraryCardStreakSub": "{days, plural, =1{in a row, best 1} other{in a row, best {days}}}",
   "@libraryCardStreakSub": {
-    "description": "Sub-line of the streak tile. Carries the record as well as the run, because with freezes deferred one missed night severs a run outright and the record is the only figure that survives it.",
+    "description": "Sub-line of the streak tile. Carries the record as well as the run, because with freezes deferred one missed day severs a run outright and the record is the only figure that survives it.",
     "placeholders": {
       "days": {
         "type": "int"
@@ -522,7 +601,14 @@
   "selectStartDate": "Select start date",
   "finishDate": "Finish date",
   "selectFinishDate": "Select finish date",
+  "readingProgressTitle": "Reading progress",
+  "@readingProgressTitle": {
+    "description": "Heading of the merged status-and-position sheet. Names the hero rather than the form: the sheet is a track the reader drags, and the status word under it is a read-out of where that thumb sits. Replaces the book's own title, which was tried first and read as a header rather than as a sheet title -- the reader arrived from that book's page and does not need telling which book it is. Also replaces changeReadingStatus, which named a control this sheet no longer has."
+  },
   "changeReadingStatus": "Change reading status",
+  "@changeReadingStatus": {
+    "description": "UNREAD SINCE THE STATUS AND POSITION SHEETS MERGED, and kept deliberately. It was that sheet's heading, and the heading is now the book's own title \u2014 the sheet edits one book's whole state rather than one field of it, and the reader arrives from that book's page. Retained rather than deleted because it is the only phrase in either ARB for \"the thing that sheet used to be\", and because a status-only editor is a plausible thing to want back. `band_doors_test.dart` asserts its absence from the new sheet, so its removal would be caught rather than silent."
+  },
   "selectComplimentEmoji": "Choose a reaction emoji",
   "emojiSearchHint": "Search",
   "emojiSearchResults": "Search results",
@@ -540,8 +626,15 @@
   "openSourceLicenses": "Open source licenses",
   "emojiPickerCredit": "Emoji picker by Sébastien Gruhier (development) and Inès Gruhier (design)",
   "storeMarksCredit": "Store marks from Simple Icons (CC0 1.0) and Arcticons (CC BY-SA 4.0)",
-  "deleteConfirmTitle": "Delete this?",
-  "deleteBookWarning": "Deleted books can't be recovered.",
+  "deleteConfirmTitle": "Remove this book?",
+  "@deleteConfirmTitle": {
+    "description": "Title of the delete-book confirmation sheet (showDeleteBookBottomSheet). Matches removeFromLibrary's wording -- was 'Delete this?', which alongside a destructive-red 'Delete' button read as the book itself being destroyed everywhere, where the action only takes it out of this library."
+  },
+  "deleteBookWarning": "Removed books can't be recovered.",
+  "removeFromLibrary": "Remove from library",
+  "@removeFromLibrary": {
+    "description": "Confirm button on the delete-book sheet (showDeleteBookBottomSheet). Not the generic `delete`: that word alone, on a destructive-red button right under `deleteBookWarning`, read as if the book itself -- its file, its record everywhere -- was being destroyed, where the action only takes it out of this library."
+  },
   "deleteShelfConfirmTitle": "Delete this shelf?",
   "deleteShelfWarning": "All books on this shelf will be deleted.",
   "filterTitle": "Filter",
@@ -700,7 +793,7 @@
     "description": "Replaces streakTodayOpen from kReadingDayWarningHour (21:00) until the day rolls over at midnight, on the home-screen widget. Amber and never red: nothing has been lost yet, so it states the deadline rather than the threat, and the sentences are inverted from streakTodayOpen's so the change is legible as a change."
   },
   "streakTodayDone": "Today is recorded.",
-  "streakNothingYet": "Record a night and it starts here.",
+  "streakNothingYet": "Record a day and it starts here.",
   "streakWidgetLineDawn": "Keep it going!",
   "@streakWidgetLineDawn": {
     "description": "The home-screen widget's line from 05:00 while the day is unrecorded. One of seven lines forming the widget's copy ladder -- see 'The ladder, as chosen' in docs/superpowers/specs/2026-09-22-streak-widget-design.md. The voice changes with the hour on purpose (this one is the Duolingo cadence); a single register read front to back is what wears out. The Korean is not a translation but the same beat written for Korean, and every line has to stay within about 14 full-width syllables -- the tile's copy column fits roughly 6 per line over three lines."
@@ -737,8 +830,9 @@
       }
     }
   },
-  "streakNightsThisMonth": "{count, plural, =0{no nights} =1{1 night} other{{count} nights}}",
-  "@streakNightsThisMonth": {
+  "streakDaysThisMonth": "{count, plural, =0{no days} =1{1 day} other{{count} days}}",
+  "@streakDaysThisMonth": {
+    "description": "The month legend's per-book figure: how many of this month's recorded days belong to that book. Days, not nights -- reading is not nocturnal, and kReadingDayRolloverHour is the calendar boundary (midnight) rather than a claim about when the reading happened.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -747,20 +841,28 @@
   },
   "streakMonthDaysRead": "{count, plural, =0{No days} =1{1 day} other{{count} days}}",
   "@streakMonthDaysRead": {
-    "description": "The figure on the month card's first stat tile: how many nights this month were recorded.",
+    "description": "The figure on the month card's first stat tile: how many days this month were recorded.",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "streakMonthDaysReadCaption": "read this month",
+  "streakMonthDaysReadCaption": "recorded",
   "@streakMonthDaysReadCaption": {
-    "description": "The caption under the days-read figure on the month card."
+    "description": "The caption under the days-read figure on the month card. It says what the figure counts and not which month, which is a change: it read 'read this month' while the card could only ever draw the current one. The heading directly above it names the month and is now pageable, so a caption claiming 'this month' contradicted the heading the moment the reader stepped back to August."
   },
-  "streakMonthBooksCaption": "this month",
+  "streakMonthBooksCaption": "read",
   "@streakMonthBooksCaption": {
-    "description": "The caption under the book-count figure on the month card."
+    "description": "The caption under the book-count figure on the month card. Scope-free for the reason streakMonthDaysReadCaption is, where it used to read 'this month'."
+  },
+  "streakMonthPrevious": "Previous month",
+  "@streakMonthPrevious": {
+    "description": "Accessibility label for the month card's back pager, which draws as a chevron and never shows this text. Bounded by the oldest day the log holds, so it is not offered for a month the query cannot speak about."
+  },
+  "streakMonthNext": "Next month",
+  "@streakMonthNext": {
+    "description": "Accessibility label for the month card's forward pager, which draws as a chevron and never shows this text. Never offered past the current month: a future month is thirty dimmed numerals and no record."
   },
   "streakRecordToday": "I read today",
   "streakUndoToday": "Undo",
@@ -781,7 +883,7 @@
   },
   "streakCelebrationFirst": "One day in!",
   "@streakCelebrationFirst": {
-    "description": "The caption under the celebration's span ladder on the first day of a run. Checked before streakCelebrationChasing and deliberately outranks it: a run of 1 after a broken run is day one, because that is what the number above it says, so a reader coming back is told the same thing as a reader starting — the record does not hold a lapse against them. It replaced \"Day one. The rest is just tomorrow.\", which was improvised in the build rather than chosen: it appears in no spec, no plan and no mockup, and was the only string in this cluster with no description here. It read as condescending to a returning reader and its second clause did not resolve into a meaning. Note what the guard costs, which is open rather than overlooked: the ladder above reads `best`, not `streak`, so on a night where a lapsed reader has a record to chase this line is the only nearby text and it says nothing about that record, leaving the fill unexplained."
+    "description": "The caption under the celebration's span ladder on the first day of a run. Checked before streakCelebrationChasing and deliberately outranks it: a run of 1 after a broken run is day one, because that is what the number above it says, so a reader coming back is told the same thing as a reader starting — the record does not hold a lapse against them. It replaced \"Day one. The rest is just tomorrow.\", which was improvised in the build rather than chosen: it appears in no spec, no plan and no mockup, and was the only string in this cluster with no description here. It read as condescending to a returning reader and its second clause did not resolve into a meaning. Note what the guard costs, which is open rather than overlooked: the ladder above reads `best`, not `streak`, so on a day where a lapsed reader has a record to chase this line is the only nearby text and it says nothing about that record, leaving the fill unexplained."
   },
   "streakSpanWeek": "1 week",
   "@streakSpanWeek": {

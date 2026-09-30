@@ -33,9 +33,7 @@ import 'package:bookworm_friends/ui/widgets/shelf_widget.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_label.dart';
 import 'package:bookworm_friends/ui/widgets/reading_period_row.dart';
 import 'package:bookworm_friends/ui/widgets/band_progress_edge.dart';
-import 'package:bookworm_friends/ui/widgets/band_progress_row.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/book_status_bottom_sheet.dart';
-import 'package:bookworm_friends/ui/widgets/bottom_sheets/select_percent_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/delete_book_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/write_memo_bottom_sheet.dart';
 import 'package:bookworm_friends/ui/widgets/bottom_sheets/compliment_bottom_sheet.dart';
@@ -137,14 +135,15 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     }
 
     // **Watched for its side effect, which is unusual enough to justify.** Nothing on this
-    // page *draws* the streak. What this buys is that the set is resolved by the time either
-    // of the band's two doors is tapped, because both of them ask `readTodayProvider`
-    // whether today was already recorded — and that getter is derived from an async set, so
-    // it answers `false` while the fetch is in flight rather than "not known yet".
+    // page *draws* the streak. What this buys is that the set is resolved by the time the
+    // band's door is tapped, because the sheet behind it asks `readTodayProvider` whether
+    // today was already recorded — and that getter is derived from an async set, so it
+    // answers `false` while the fetch is in flight rather than "not known yet". (There were
+    // two doors here and each asked; there is one card now, and it still asks.)
     //
     // Unwatched, two things went wrong. The status sheet opened with "I read today" unticked
     // on a day that *was* recorded, and saving it called `setRead(read: false)` and took the
-    // night away. And every first nudge of a bookmark looked like the first of the day, so
+    // day away. And every first nudge of a bookmark looked like the first of the day, so
     // the celebration fired on a run it had already celebrated. Both survived on device
     // because the library bar's streak chip watches the same provider and the route below
     // this one stays in the tree — so the set was nearly always already cached, and the
@@ -209,23 +208,6 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
         ? book.authors
         : (bookInfoAsync.valueOrNull?.authors ?? const <String>[]);
     final authorsPending = book.authors.isEmpty && bookInfoAsync.isLoading;
-    // The band carries a reading position while the book is open — as a read-out once
-    // there is one, and as a **prompt** (`How far in? ›`) before that, which is the
-    // only door to the wheel the band has.
-    //
-    // **Not gated on `progress != null`, and that is a correction.** It was, and the
-    // consequence was that the first set — the one moment every book passes through —
-    // had no door in the band at all, and that the feature was invisible on a fresh
-    // install because the streak chip hides at 0 too. The rule the migration states is
-    // that null draws no *bar*, because an empty track claims the reader started and
-    // got nowhere; a prompt claims nothing, so the rule does not reach it. The bar
-    // itself is still gated separately, below.
-    //
-    // On a **friend's** book the prompt is withheld: with no value there is nothing to
-    // read, and the row is not a door for anyone but the owner, so it would be a bare
-    // chevron on an empty line. A friend's book with a real position still shows it.
-    final showsProgressRow =
-        book.status == bookStatusReading && (book.progress != null || isSelf);
     // Shelf names live in the *owner's* library, so a friend's book has to be
     // resolved against their shelves rather than the signed-in user's.
     final shelf = _shelfFor(book, shelves);
@@ -239,16 +221,16 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     // with one shelf the picker would open on a single row that is already ticked,
     // which is a handle on a door that leads back into the room.
     final canMoveShelf = isSelf && shelf != null && shelves.length > 1;
-    // Whether the band's bottom padding has been spent on a row that reaches below
-    // its own ink. Exactly one row can, and which one depends on the state — see
-    // [kStatusVerbSpill]. `ReadingPeriodRow.spillsBelow` is asked rather than its
-    // condition restated, because a copy of it here is a copy that can drift.
-    final bandRowSpills =
-        showsProgressRow ||
-        ReadingPeriodRow.spillsBelow(
-          startDate: book.startDate,
-          tappable: isSelf,
-        );
+    // Whether the band's bottom padding has been spent on a row that reaches below its
+    // own ink — see [kStatusVerbSpill]. `ReadingPeriodRow.spillsBelow` is asked rather
+    // than its condition restated, because a copy of it here is a copy that can drift.
+    //
+    // This used to be `showsProgressRow || ...`, because two rows could claim the padding
+    // and the lower one won. The band is one card now, so there is one claimant.
+    final bandRowSpills = ReadingPeriodRow.spillsBelow(
+      startDate: book.startDate,
+      tappable: isSelf,
+    );
     // Whether the shelf under the cover — the plank and the name tab on it — flies
     // in from the library with the book, or is simply here on arrival.
     //
@@ -578,9 +560,7 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                               // same padding the same way when there is no progress
                               // row to spend it — `bandRowSpills` is the one
                               // question, asked once, because there is one padding.
-                              bandRowSpills
-                                  ? kBandProgressRowResidualPadding
-                                  : 16,
+                              bandRowSpills ? kBandResidualPadding : 16,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,32 +610,29 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                                   status: book.status,
                                   startDate: book.startDate,
                                   finishDate: book.finishDate,
-                                  // The first of the band's two doors, and the one
-                                  // that retired the app bar's pencil: it opens the
-                                  // sheet that edits the three facts it displays.
+                                  // **The band's only door**, and the one that retired
+                                  // the app bar's pencil: it opens the sheet that edits
+                                  // every fact this card displays. There used to be a
+                                  // second row below with a second door straight to the
+                                  // percent wheel; the wheel is now reached from behind
+                                  // the sheet's own numerals, so the thing the reader
+                                  // taps to change a value *is* that value.
                                   // Null on a friend's book — the card still reads,
                                   // but it draws no handle.
                                   onTap: isSelf
                                       ? () => _onEditStatusPressed(book)
                                       : null,
-                                  // The padding below is the progress row's when there
-                                  // is one; the verb only reaches into it otherwise.
-                                  spillsIntoBandPadding: !showsProgressRow,
+                                  // The position the deleted second row used to print, as
+                                  // a bare percent: the page and the total were withdrawn
+                                  // from the card on instruction, and live on in the
+                                  // sheet's read-out where each is a tappable span.
+                                  // Withheld on a friend's book only when there is nothing
+                                  // to read: a friend's real position is theirs to show.
+                                  progress: book.progress,
+                                  // There is one row under the cover now, so the band's
+                                  // bottom padding is unambiguously this one's to spend.
+                                  spillsIntoBandPadding: true,
                                 ),
-                                if (showsProgressRow) ...[
-                                  const SizedBox(height: 10),
-                                  BandProgressRow(
-                                    progress: book.progress,
-                                    pageCount: book.pageCount,
-                                    // The second door. Straight to the wheel rather
-                                    // than through the status sheet: the row already
-                                    // shows the value, so a sheet in between would
-                                    // ask the reader to find it again.
-                                    onTap: isSelf
-                                        ? () => _onEditProgressPressed(book)
-                                        : null,
-                                  ),
-                                ],
                               ],
                             ),
                           ),
@@ -1240,11 +1217,25 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
   void _onEditStatusPressed(Book book) {
     // `readTodayProvider` and not `await ref.read(readingDaysProvider.future)`, and that is
     // a reversal worth recording. Awaiting the set before opening the sheet is the obvious
-    // way to guarantee the tick is right — and it makes the *sheet* wait on a network
-    // read, so a fetch that stalls means the reader cannot edit their dates at all. That
-    // trades a wrong checkbox for an unreachable form, which is the worse of the two. The
-    // set is watched in `build` instead; see the note there.
+    // way to guarantee the celebration fires correctly — and it makes the *sheet* wait on a
+    // network read, so a fetch that stalls means the reader cannot edit their dates at all.
+    // That trades a wrong celebration for an unreachable form, which is the worse of the
+    // two. The set is watched in `build` instead; see the note there.
     final wasRead = ref.read(readTodayProvider);
+
+    // **The status the book carried before the *next* write, which is not always
+    // `book.status`.** `onSave` used to fire at most once per sheet, so the captured value was
+    // always current. A confirmed `Stop reading this` or `Start reading again` now writes
+    // immediately, so this handler can run two or three times against one `book`, and
+    // `fromStatus` is what decides whether `updateBookStatus` recomputes
+    // `reading_shelf_index`.
+    //
+    // Left stale, a stop-then-resume inside one visit passes `fromStatus: 2` with `status: 2`
+    // on the second write — status-identical, so the reposition is skipped — and the book
+    // rejoins the Reading shelf carrying the `null` index the first write cleared. Tracked
+    // here rather than added to `BookStatusEdit`, which is a record of the reader's answers
+    // and has no business holding a provider's bookkeeping.
+    var priorStatus = book.status;
     showBookStatusBottomSheet(
       context,
       currentStatus: book.status,
@@ -1252,12 +1243,18 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
       finishDate: book.finishDate,
       progress: book.progress,
       progressPage: book.progressPage,
-      // Enables the wheel's Page mode, its derived-page rider and the row's ability
-      // to print a page. Null for about two reading books in three, which is why the
-      // sheet stores a fraction and opens on percent.
+      // Lets the read-out print a page at all, and enables Page mode behind the page
+      // numeral. Null for about two reading books in three — which is why the sheet also
+      // offers to *set* it.
       pageCount: book.pageCount,
-      readToday: wasRead,
       onSave: (edit) async {
+        // **Whether this Save moved the bookmark**, which is the fact the day-stamp hangs
+        // on now that the reader is no longer asked directly. Computed against the book as
+        // it was, not against the sheet's opening values, so it cannot be fooled by a
+        // sub-sheet that handed back the same number.
+        final movedPosition =
+            edit.clearProgress || edit.progress != book.progress;
+
         await ref
             .read(libraryActionsProvider)
             .updateBookStatus(
@@ -1267,26 +1264,49 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
               finishDate: edit.finishDate,
               progress: edit.progress,
               progressPage: edit.progressPage,
+              clearProgress: edit.clearProgress,
+              // Without this, saving a position or a date on a book whose status did not
+              // change would recompute `reading_shelf_index` and promote the book to the
+              // head of the Reading shelf — silently reordering a row the reader arranged.
+              fromStatus: priorStatus,
             );
+        priorStatus = edit.status;
+
+        // A separate write because it is a separate kind of fact: a total is a property of
+        // the object, not of the reader's progress through it, and `recordTotalPages`
+        // exists precisely so that changing it cannot move `progress`.
+        final total = edit.totalPages;
+        if (total != null) {
+          await ref
+              .read(libraryActionsProvider)
+              .recordTotalPages(book.id, total);
+        }
+
         // **A second, independent write, deliberately not folded into the first.**
-        // One Save, two facts: a day is not a column on `books` and a bookmark is
-        // not a row in `reading_days`. Keeping the calls apart is what makes it
-        // impossible for a change of status to stamp a day by accident — and this
-        // one no-ops when the tick did not move, so an ordinary date edit issues no
-        // request at all.
-        await ref
-            .read(readingDaysProvider.notifier)
-            .setRead(
-              readingDate(DateTime.now()),
-              read: edit.readToday,
-              bookId: book.id,
-            );
-        // The tick is the reader's own answer here, so "tonight is new" needs both halves:
-        // the day was open, and they said they read it. Unticking a recorded day is the
-        // third case and celebrates nothing.
-        await _celebrateIfTonightIsNew(
+        // One Save, two facts: a day is not a column on `books` and a bookmark is not a row
+        // in `reading_days`. Keeping the calls apart is what makes it impossible for a
+        // change of status to stamp a day *by accident* — and nothing about accident has
+        // changed now that the checkbox is gone. Moving a position is a deliberate
+        // assertion that the reader read today; a date edit moves no position and issues no
+        // request here at all.
+        //
+        // The cost, stated: correcting a percentage the reader got wrong last week also
+        // stamps *today*, and there is no way to tell that apart from reading, because a
+        // position is not a date. The narrower rule — stamp only when the position moved
+        // *forward* — is one comparison away and would quietly refuse the day to a
+        // reader re-reading a chapter.
+        if (movedPosition) {
+          await ref
+              .read(readingDaysProvider.notifier)
+              .setRead(
+                readingDate(DateTime.now()),
+                read: true,
+                bookId: book.id,
+              );
+        }
+        await _celebrateIfTodayIsNew(
           wasRead: wasRead,
-          isReadNow: edit.readToday,
+          isReadNow: movedPosition,
         );
       },
     );
@@ -1310,68 +1330,12 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
   /// async set, which is the trap [_onEditStatusPressed] records. The callers already know
   /// both facts without asking: the set was resolved before the write, and what the write
   /// asserted is in their hands.
-  Future<void> _celebrateIfTonightIsNew({
+  Future<void> _celebrateIfTodayIsNew({
     required bool wasRead,
     required bool isReadNow,
   }) async {
     if (wasRead || !isReadNow || !mounted) return;
     await showStreakCelebration(context, ref);
-  }
-
-  /// The band's second door: straight to the percent wheel.
-  ///
-  /// **Not through `showBookStatusBottomSheet`**, unlike the period card above it.
-  /// The row already shows the position, so routing the tap through a form would ask
-  /// the reader to locate the value they just tapped on. The status sheet keeps its
-  /// own copy of the row for the case where the position is being set for the first
-  /// time and there is nothing in the band yet to tap.
-  void _onEditProgressPressed(Book book) {
-    showSelectPercentBottomSheet(
-      context,
-      initialProgress: book.progress,
-      initialPage: book.progressPage,
-      pageCount: book.pageCount,
-      onProgressSelected: (answer) async {
-        final wasRead = ref.read(readTodayProvider);
-        // The status and both dates are passed back unchanged. This call is the
-        // only writer of the column, and it must not become a way to edit anything
-        // else by accident.
-        await ref
-            .read(libraryActionsProvider)
-            .updateBookStatus(
-              book.id,
-              book.status,
-              startDate: book.startDate,
-              finishDate: book.finishDate,
-              progress: answer.progress,
-              progressPage: answer.page,
-            );
-        // **Moving the bookmark stamps the night, and this door did not used to.** It is
-        // the shortest path in the app to "I read some of this", and it was the only one
-        // that left the streak untouched — so the reader most likely to have a run going
-        // was the one whose run silently did not grow.
-        //
-        // **Still two writes rather than one, and the note above the status sheet's pair
-        // stands.** That note says keeping the calls apart is what makes it impossible for
-        // a change of status to stamp a day *by accident*, and it is worth being precise
-        // about what has changed: nothing about accident. `onProgressSelected` is gated on
-        // the sheet's own `_touched`, so it fires only when the reader moved the wheel off
-        // the value it opened at — confirming a pre-filled position writes neither the
-        // column nor the day. What is asserted here is a reading of intent, not a
-        // side-effect of a form: someone who just told the app where they are in a book
-        // read it today.
-        //
-        // The cost, stated: correcting a percentage the reader got wrong last week also
-        // stamps *today*. There is no way to tell that apart from reading, because the
-        // wheel records a position and not a date. The narrower rule — stamp only when the
-        // position moved *forward* — is available and is one comparison, but it would
-        // quietly refuse the night to a reader re-reading a chapter.
-        await ref
-            .read(readingDaysProvider.notifier)
-            .setRead(readingDate(DateTime.now()), read: true, bookId: book.id);
-        await _celebrateIfTonightIsNew(wasRead: wasRead, isReadNow: true);
-      },
-    );
   }
 
   void _onWriteMemoPressed(String bookId) {
@@ -1506,25 +1470,36 @@ class _BookInfoTab extends StatelessWidget {
         data: (info) => CenteredContent(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (info?.contents != null && info!.contents!.isNotEmpty) ...[
-                  Text(l10n.bookDescription, style: AppTextStyles.subtitle),
+            // `SingleChildScrollView` only loosens its cross-axis constraint
+            // rather than tightening it, so a short column (just the ISBN, when
+            // the catalogue has nothing else) shrink-wraps to its narrowest
+            // child's width instead of the screen's. `CenteredContent`'s `Align`
+            // then centres that narrow box, which is what put the ISBN in the
+            // middle of the screen instead of at its left edge. Forcing the
+            // width here is what every other `CenteredContent` caller gets for
+            // free from a sliver-backed `ListView`.
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (info?.contents != null && info!.contents!.isNotEmpty) ...[
+                    Text(l10n.bookDescription, style: AppTextStyles.subtitle),
+                    const SizedBox(height: 8),
+                    Text(info.contents!, style: AppTextStyles.body),
+                    const SizedBox(height: 24),
+                  ],
+                  if (info?.publisher != null) ...[
+                    Text(l10n.publisher, style: AppTextStyles.subtitle),
+                    const SizedBox(height: 8),
+                    Text(info!.publisher!, style: AppTextStyles.body),
+                    const SizedBox(height: 24),
+                  ],
+                  const Text('ISBN', style: AppTextStyles.subtitle),
                   const SizedBox(height: 8),
-                  Text(info.contents!, style: AppTextStyles.body),
-                  const SizedBox(height: 24),
+                  Text(book.isbn, style: AppTextStyles.body),
                 ],
-                if (info?.publisher != null) ...[
-                  Text(l10n.publisher, style: AppTextStyles.subtitle),
-                  const SizedBox(height: 8),
-                  Text(info!.publisher!, style: AppTextStyles.body),
-                  const SizedBox(height: 24),
-                ],
-                const Text('ISBN', style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
-                Text(book.isbn, style: AppTextStyles.body),
-              ],
+              ),
             ),
           ),
         ),

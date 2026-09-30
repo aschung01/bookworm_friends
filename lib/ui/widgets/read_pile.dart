@@ -88,11 +88,24 @@ class ReadPile extends ConsumerStatefulWidget {
   /// sheet is springing shut and a book left turned out would reopen turned out.
   final bool isEditMode;
 
+  /// Whether the sheet above this pile is in its finished-only mode.
+  ///
+  /// Read for one thing: which of the two all-time empty states to draw, exactly as
+  /// [ReadMonthGrid.finishedOnly] is. The pile draws no chevron and cannot change the
+  /// mode — the collapsed header's row already has the year popover competing for it —
+  /// but it inherits one, so it has to be able to say so: a reader who chose
+  /// finished-only in the expanded sheet and then collapsed it would otherwise be told
+  /// "No books read yet" under a `Books finished` title.
+  ///
+  /// Defaults to false, the wording this pile had before the filter existed.
+  final bool finishedOnly;
+
   const ReadPile({
     super.key,
     required this.books,
     this.filterYear = 0,
     this.isEditMode = false,
+    this.finishedOnly = false,
   });
 
   /// The pile's height at the collapsed position: top gap, then the spine row, then
@@ -305,7 +318,9 @@ class _ReadPileState extends ConsumerState<ReadPile>
                 ? Center(
                     child: Text(
                       widget.filterYear == 0
-                          ? l10n.noFinishedBooks
+                          ? (widget.finishedOnly
+                                ? l10n.noBooksFinished
+                                : l10n.noFinishedBooks)
                           : l10n.noFinishedBooksInYear(widget.filterYear),
                       textAlign: TextAlign.center,
                       style: AppTextStyles.body.copyWith(

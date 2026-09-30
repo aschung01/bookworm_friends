@@ -22,7 +22,7 @@ library;
 /// question now — the streak page's row, the celebration's row, and whichever screen
 /// happens to present the celebration. It was a private method on `ReadingStreakPage`
 /// while that page was the only door to the celebration, and it stopped being one the
-/// moment recording a night from a book's details could raise the same screen.
+/// moment recording a day from a book's details could raise the same screen.
 List<bool> readingWeekEndingOn(Set<DateTime> days, DateTime today) => [
   for (var back = 6; back >= 0; back--)
     days.contains(DateTime(today.year, today.month, today.day - back)),
@@ -73,8 +73,8 @@ int currentReadingRun(Iterable<DateTime> days, DateTime today) {
 ///
 /// **A break does not erase the history.** [currentReadingRun] going to `0` is a
 /// statement about this week; the record is a statement about the reader, and the
-/// only figure that survives the missed night that reset everything else. With
-/// freezes deferred, a single missed night severs a run outright, so this is the
+/// only figure that survives the missed day that reset everything else. With
+/// freezes deferred, a single missed day severs a run outright, so this is the
 /// number that stops that from reading as though the reading never happened.
 ///
 /// Returns `0` for an empty set, never `null`: unlike the Library Card's tiles,

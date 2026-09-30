@@ -657,27 +657,25 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Given edit mode, When an open cover\'s badge is tapped, Then the delete '
-      'confirmation is asked for',
-      (tester) async {
-        await _pump(tester, [_shelf()]);
-        await enterEditMode(tester);
+    testWidgets('Given edit mode, When an open cover\'s badge is tapped, Then the delete '
+        'confirmation is asked for', (tester) async {
+      await _pump(tester, [_shelf()]);
+      await enterEditMode(tester);
 
-        // Off-centre by 6pt for the reason `library_delete_book_test` does the same: the
-        // badge is a 44pt target around a 22pt disc and the row's own gesture arena sits
-        // under its middle.
-        await tester.tapAt(
-          tester.getCenter(find.byKey(const ValueKey('delete_book_r0'))) +
-              const Offset(6, 6),
-        );
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 400));
+      // The middle of the badge, which is the cover's own corner — three quarters of the
+      // badge hangs outside the cover's box, so the pointer arrives through
+      // [DeleteBadgeTapScope]. `tapAt` rather than `tap` because `tap` would warn that
+      // the badge is not in the hit-test path, which is exactly the design. It used to
+      // need a 6pt offset inward.
+      await tester.tapAt(
+        tester.getCenter(find.byKey(const ValueKey('delete_book_r0'))),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
-        // The badge is not the delete — it opens the same confirmation a queue book's does,
-        // and `_onDeleteBook` is shelf-agnostic, so an open book needs no second path.
-        expect(find.text('Delete this?'), findsOne);
-      },
-    );
+      // The badge is not the delete — it opens the same confirmation a queue book's does,
+      // and `_onDeleteBook` is shelf-agnostic, so an open book needs no second path.
+      expect(find.text('Remove this book?'), findsOne);
+    });
   });
 }

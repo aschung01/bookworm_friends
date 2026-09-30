@@ -1,5 +1,5 @@
-// A device preview of the **book details page**, for the two doors added to it:
-// the `Change status` verb on a status-0 line, and the shelf name tab.
+// A device preview of the **book details page**, for the doors added to it: the
+// `Change status` verb on a status-0 line, and the shelf name tab.
 //
 // Same reason `main_shell_preview.dart` exists — reaching this page in the real app
 // means signing in with Apple or Google — and one reason of its own: both of those

@@ -10,8 +10,8 @@ import 'package:bookworm_friends/ui/widgets/streak/streak_celebration.dart';
 ///
 /// **One presenter, because there are now two doors.** The celebration used to be a
 /// `Positioned.fill` inside `ReadingStreakPage`'s own `Stack`, driven by two fields of that
-/// page's state — which was correct while recording a night was something only that page
-/// could do. It is not any more: moving a bookmark from a book's details records the night
+/// page's state — which was correct while recording a day was something only that page
+/// could do. It is not any more: moving a bookmark from a book's details records the day
 /// too, and a reader who does that deserves the same screen. The alternatives were to
 /// duplicate the overlay in `book_details_tab_view.dart`, or to hoist it into the shell and
 /// give two screens a flag to raise it. Both end with one object drawn by two call sites,

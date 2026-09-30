@@ -12,7 +12,7 @@ import 'package:bookworm_friends/services/notification_service.dart'
 /// How many trailing rows the streak is derived from.
 ///
 /// **A ceiling, not a page.** A run longer than this would be under-reported, and 400
-/// days is over a year of unbroken nightly reading — a state no account in this
+/// days is over a year of unbroken daily reading — a state no account in this
 /// database is within two years of reaching. The bound exists so the query has one at
 /// all; the honest figure is that even a perfect four-year streak is under 1,500 rows,
 /// so this could be dropped entirely the day someone gets close.
@@ -124,7 +124,7 @@ class ReadingDaysNotifier
         await supabase.from('reading_days').upsert({
           'user_id': userId,
           'day': _wire(day),
-          // What was read that night, which is what turns a tally into a history:
+          // What was read that day, which is what turns a tally into a history:
           // the month grid colours each day by the book's `cover_color`. Nullable,
           // and a day with two books has to pick one — the price of the primary key.
           //
@@ -192,7 +192,7 @@ final currentStreakProvider = Provider.autoDispose<int>((ref) {
   return currentReadingRun(days.keys, readingDate(DateTime.now()));
 });
 
-/// The longest run on record, which a missed night does not erase.
+/// The longest run on record, which a missed day does not erase.
 final longestStreakProvider = Provider.autoDispose<int>((ref) {
   final days = ref.watch(readingDaysProvider).valueOrNull;
   if (days == null) return 0;

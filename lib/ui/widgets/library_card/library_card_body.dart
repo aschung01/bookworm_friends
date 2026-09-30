@@ -84,13 +84,13 @@ class LibraryCardBody extends StatelessWidget {
   /// month grid without a home — see the note on the tile below.
   final int streak;
 
-  /// The longest run on record, which a missed night does not erase.
+  /// The longest run on record, which a missed day does not erase.
   final int longestStreak;
 
   /// Whether *today* is one of the reader's reading days.
   ///
   /// **Keyed on today, never on [streak], and that distinction is the whole feature.**
-  /// The count is intact all day and only the day's own status changes at the 4am
+  /// The count is intact all day and only the day's own status changes at the midnight
   /// rollover, so a tile that took its temperature from the number would be warm at 9am
   /// on a day nothing had been read — the opposite of a nudge. `ReadingStreakChip`
   /// records the same rule at length; this is the second reader of it.
@@ -191,7 +191,7 @@ class LibraryCardBody extends StatelessWidget {
           // **A filled tile in two temperatures, and the one tile on this card that is
           // not the hero and still takes a fill of its own.** It earns that by being a
           // *state* rather than a stat: Pace and most-read author are true all week, and
-          // this one changes tonight. Warm once today is recorded, cooled before — the
+          // this one changes today. Warm once today is recorded, cooled before — the
           // same shape either way, so a reader who opens the card twice in a day sees
           // one object change temperature rather than two different tiles.
           //
@@ -215,8 +215,8 @@ class LibraryCardBody extends StatelessWidget {
           // the sheet decides that, the same way it decides for the year rail.
           onTap: onStreakTap,
           // Carries the record as well as the run. With freezes deferred a single
-          // missed night severs a run outright, so this is the only figure on the card
-          // that survives the night that reset everything else — without it a reader
+          // missed day severs a run outright, so this is the only figure on the card
+          // that survives the day that reset everything else — without it a reader
           // who missed one Thursday sees a fortnight of reading reduced to `1d`.
           sub: l10n.libraryCardStreakSub(longestStreak),
         ),

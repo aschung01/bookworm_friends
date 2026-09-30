@@ -92,7 +92,7 @@ class AppRoutes {
   /// **Presented upward, and therefore not in [routes].** See [onGenerateRoute].
   static const String shareCard = '/share_card';
 
-  /// The reading streak: the run, the month, and the one control that records a night.
+  /// The reading streak: the run, the month, and the one control that records a day.
   ///
   /// **Reached from the library bar's streak chip, which used to have nowhere to go.** The
   /// chip pointed at the Library Card as a stopgap, because the figure had no destination

@@ -111,11 +111,11 @@ void main() {
         await _openSheet(tester);
         final collapsed = _sheetHeight(tester);
 
-        await tester.tap(find.text('Read'));
+        await tester.tap(find.text('Finished'));
         await tester.pumpAndSettle();
         expect(_sheetHeight(tester), greaterThan(collapsed));
 
-        await tester.tap(find.text('Interested'));
+        await tester.tap(find.text('Not started'));
         await tester.pumpAndSettle();
 
         expect(_sheetHeight(tester), collapsed);
@@ -134,7 +134,7 @@ void main() {
         await _openSheet(tester);
 
         // "Read" seeds both dates with today.
-        await tester.tap(find.text('Read'));
+        await tester.tap(find.text('Finished'));
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Finish date'));

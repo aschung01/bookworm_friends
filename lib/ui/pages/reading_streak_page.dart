@@ -42,20 +42,25 @@ const Key kStreakFigureKey = Key('streak-figure');
 /// The one control, keyed so a test taps a target rather than a glyph.
 const Key kStreakRecordButtonKey = Key('streak-record-button');
 
+/// The month card's back and forward pagers, keyed so a test taps a target rather than a
+/// glyph — and because a chevron carries no text to find it by.
+const Key kStreakMonthPreviousKey = Key('streak-month-previous');
+const Key kStreakMonthNextKey = Key('streak-month-next');
+
 /// The undo, which is a different control from the button it replaces.
 ///
 /// **Not the primary button read back, and that is a correction.** The first cut put "Undo
-/// today" in the green CTA slot once the night was in — which advertises an undo as the page's
+/// today" in the green CTA slot once the day was in — which advertises an undo as the page's
 /// primary action and invites the tap. What the drawing has, and what ships, is a
 /// *confirmation* that today is recorded with the undo as a quiet secondary inside it: the
 /// reader is told the act landed, and taking it back is available without being urged.
 const Key kStreakUndoKey = Key('streak-undo');
 
-/// Whether the page offers to take tonight back.
+/// Whether the page offers to take today back.
 ///
 /// **Debug builds only, on instruction.** The footer it gates is a confirmation with an
 /// undo inside it — "Today is recorded." beside a quiet `Undo` — and the undo is the part
-/// that does not belong in a shipped build: taking a night back is a developer's need while
+/// that does not belong in a shipped build: taking a day back is a developer's need while
 /// working on the feature, not a reader's. A reader who stamped the wrong day has the month
 /// grid in front of them and no way to be harmed by the extra row; a reader offered an Undo
 /// is being invited to treat their own record as provisional.
@@ -82,7 +87,7 @@ bool? debugStreakUndoVisibleOverride;
 /// as a boxed `Longest / 2 days` row between the week and the month — ~60pt of the page's
 /// most valuable space for one secondary number — then as a caption under the hero figure,
 /// which cost a line instead of a card and was still answering a question nobody on this
-/// screen is asking. The page is about the run in progress and tonight's act. `longest` is a
+/// screen is asking. The page is about the run in progress and today's act. `longest` is a
 /// lifetime stat, and the Library Card's streak tile already carries it (`in a row, best N`)
 /// on the surface whose whole job is stats. `longestStreakProvider` is untouched and still
 /// feeds it; what is gone is this page's second copy.
@@ -149,7 +154,7 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
     final read = phase == ReadingDayPhase.recorded;
     final today = readingDate(DateTime.now());
 
-    // **Watched, not read, and that distinction was a bug.** The month colours each night by
+    // **Watched, not read, and that distinction was a bug.** The month colours each day by
     // its book's jacket, which means resolving a `book_id` against the library — and the
     // library arrives asynchronously. Read once during the first build it is still loading,
     // so every patch drew in neutral ink and nothing ever rebuilt the page to correct it. An
@@ -197,14 +202,14 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
                         // between this row and the month card, and was moved into
                         // `StreakCelebration` on instruction — so the note below is true
                         // again rather than superseded, and this page is once more the run
-                        // and tonight's act and nothing else.
+                        // and today's act and nothing else.
                         //
                         // The reasoning, in full, is at the track's call site in
                         // `streak_celebration.dart`; the short version is that the ladder
                         // standing here was a permanent list of four spans the reader has
                         // not reached, which is what option **G** in
                         // `docs/mockups/streak-week/index.html` objected to, and showing it
-                        // only on the night the reader has just added to it answers that
+                        // only on the day the reader has just added to it answers that
                         // without giving up the object. Do not put it back here to "fill the
                         // gap" — the gap is deliberate, and the ladder is not furniture.
                         _MonthCard(
@@ -221,7 +226,7 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
                     ),
                   ),
                 ),
-                // **Nothing at all once the night is in, outside debug.** The
+                // **Nothing at all once the day is in, outside debug.** The
                 // record button is gone because there is nothing left to record, and
                 // the confirmation that used to take its place is now developer
                 // furniture — see [streakUndoVisible]. The padding goes with it rather
@@ -313,7 +318,7 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
       await showSelectPercentBottomSheet(
         context,
         // Opens at the book's last known position, which is what keeps the cost honest: on
-        // a night where the reader has not moved much, Confirm is one tap on a wheel
+        // a day where the reader has not moved much, Confirm is one tap on a wheel
         // already showing roughly the right number.
         initialProgress: book.progress,
         initialPage: book.progressPage,
@@ -344,7 +349,7 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
 
       // **The celebration is a route now, and this page no longer owns it.** It used to be
       // a `Positioned.fill` in this page's own `Stack`, driven by `_celebrating` and
-      // `_celebratedStreak`. Recording a night is no longer something only this page can
+      // `_celebratedStreak`. Recording a day is no longer something only this page can
       // do — moving a bookmark from a book's details does it too — so the screen moved to
       // `showStreakCelebration`, which reads the run itself. Same rule as before, one level
       // out: read after the write rather than incremented.
@@ -361,12 +366,12 @@ class _ReadingStreakPageState extends ConsumerState<ReadingStreakPage> {
   }
 }
 
-/// The footer once the night is in: a confirmation, with the undo inside it.
+/// The footer once the day is in: a confirmation, with the undo inside it.
 ///
 /// **The undo lives where the act was made**, which is the rule this replaces a hidden
 /// control with: `setRead(read: false)` is a real delete rather than a flag, so it has to be
 /// reachable — and the place a reader looks for it is the place they just tapped. What it is
-/// *not* is the primary slot: a green CTA reading "Undo today" advertises taking the night
+/// *not* is the primary slot: a green CTA reading "Undo today" advertises taking the day
 /// back as the thing to do next.
 class _DoneFooter extends StatelessWidget {
   const _DoneFooter({required this.onUndo});
@@ -472,7 +477,7 @@ class _Hero extends StatelessWidget {
     final colors = context.colors;
     final read = phase == ReadingDayPhase.recorded;
     // The chip's own rule, at the page's size: keyed on whether *today* is recorded, never
-    // on the count. Warm once the night is in, grey while the day is still open.
+    // on the count. Warm once the day is in, grey while the day is still open.
     //
     // **[kCandleFlame] rather than `colors.flame`, on instruction.** The mark here is the
     // same silhouette the celebration draws (see `StreakFlameMark`), and drawing it in
@@ -484,7 +489,7 @@ class _Hero extends StatelessWidget {
     // whole feature reads in one warm hue — `kCandleFlame` #F2A93F — so a warning drawn in
     // amber would be the same hue as the state it warns about, in both themes. What carries
     // *late* on this page is the line at the bottom of this column; the flame keeps saying
-    // only whether the night is in.
+    // only whether the day is in.
     final tint = read ? kCandleFlame : colors.secondaryText;
 
     return Column(
@@ -500,7 +505,7 @@ class _Hero extends StatelessWidget {
         // status as well -- "day streak, and today is open" -- with an italic sentence under it
         // asking for a page, and both are gone on instruction. The figure is honest all day
         // either way (a run ending yesterday is intact, because an unstamped today is open
-        // rather than broken), and three things on this screen already say whether tonight is
+        // rather than broken), and three things on this screen already say whether today is
         // in: the flame's tint directly above, the week row's last cell, and the presence of
         // the record button at the foot. Saying it a fourth time in words was the page
         // explaining its own drawing.
@@ -509,7 +514,7 @@ class _Hero extends StatelessWidget {
         // page on instruction, and `l10n.streakDays` already has a zero case of its own --
         // "No streak yet" -- so passing the raw count through unconditionally is enough. It
         // does not overlap with `streakNothingYet`'s job either way: `read` implies the count
-        // is at least 1, so a *recorded* night never had a chance to show "start here" copy in
+        // is at least 1, so a *recorded* day never had a chance to show "start here" copy in
         // the first place. The home-screen widget still owns that sentence -- see
         // `streak_widget_sync.dart` -- because it has no flame, no week row and no button to
         // say the same thing another way.
@@ -531,13 +536,20 @@ class _Hero extends StatelessWidget {
   }
 }
 
-/// This month, its nights, and which books they were.
+/// A month of the record, its days, and which books they were.
 ///
 /// **The \u201clongest this month\u201d stat the Library Card's month carries is dropped here**, and
 /// swapped for the book count. The hero above is already the run; without the swap the page
 /// printed the same number three times, which is exactly the defect the design record exists
 /// to catch. The Card keeps the stat, because nothing above it says the number.
-class _MonthCard extends StatelessWidget {
+///
+/// **Stateful for one integer: how many months back the reader has stepped.** An offset
+/// rather than the month itself, so a rollover at midnight moves the whole card with the
+/// clock instead of stranding it on a month that was \u201cthis\u201d when the page opened. Local to
+/// the card rather than lifted into the page, because nothing else on the page is scoped to
+/// a month \u2014 the hero is the run, the week row is the rolling seven days \u2014 so a provider
+/// for it would be state with exactly one reader.
+class _MonthCard extends StatefulWidget {
   const _MonthCard({
     required this.days,
     required this.today,
@@ -548,16 +560,53 @@ class _MonthCard extends StatelessWidget {
   final DateTime today;
   final Map<String, Book> booksById;
 
+  @override
+  State<_MonthCard> createState() => _MonthCardState();
+}
+
+class _MonthCardState extends State<_MonthCard> {
+  /// Months back from [_MonthCard.today]'s own month. 0 is the current month, and the
+  /// forward pager never goes below it.
+  ///
+  /// **Recording a day does not reset it.** Snapping back to this month after a write would
+  /// put the stamp the reader just made in front of them, and it would also move the card out
+  /// from under someone who paged there on purpose, a second after they dismissed a
+  /// full-screen celebration. The hero and the week row above have both already updated, so
+  /// nothing on screen is stale — the card is showing the month it was asked for, with a lit
+  /// forward chevron saying there is somewhere to go back to.
+  int _monthsBack = 0;
+
   /// The colour a recorded day is drawn in, or null when the book cannot be found.
   ///
   /// `cover_color` when the column has been filled in, and the ISBN-derived tone otherwise
   /// — the same fallback every cover in the app uses, so a day and its book agree on colour
-  /// even before a cover has been decoded. Null for a night whose book is gone, which the
+  /// even before a cover has been decoded. Null for a day whose book is gone, which the
   /// grid draws in neutral ink rather than dropping.
   Color? _colourOf(String? bookId) {
-    final book = bookId == null ? null : booksById[bookId];
+    final book = bookId == null ? null : widget.booksById[bookId];
     if (book == null) return null;
     return book.coverColor ?? generatedCoverColor(book.isbn);
+  }
+
+  /// How far back the log can be paged, in months.
+  ///
+  /// **The oldest recorded day, not a fixed window.** `readingDaysProvider` holds the 400
+  /// most recent `reading_days` rows, so what it can speak about is "every month from the
+  /// oldest row it returned" — a year and a bit for a reader who has never missed a day, and
+  /// much further for one who reads sporadically. Bounding on the data rather than on a
+  /// typed number of months is what keeps the pager from offering a month it would draw as
+  /// thirty empty cells, which would read as "you did not read in 2023" rather than as "this
+  /// query does not go back that far".
+  ///
+  /// A day *after* today would give a negative distance and is ignored: a stray future row
+  /// must not unlock a forward step, which is the one direction that has nothing to show.
+  static int _oldestMonthsBack(Iterable<DateTime> days, DateTime today) {
+    var oldest = 0;
+    for (final day in days) {
+      final back = (today.year - day.year) * 12 + (today.month - day.month);
+      if (back > oldest) oldest = back;
+    }
+    return oldest;
   }
 
   @override
@@ -565,7 +614,18 @@ class _MonthCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final colors = context.colors;
     final materialL10n = MaterialLocalizations.of(context);
-    final month = DateTime(today.year, today.month);
+    final days = widget.days;
+    final today = widget.today;
+
+    final oldest = _oldestMonthsBack(days.keys, today);
+    // **Clamped on read rather than corrected in a `setState`.** The log can shrink under
+    // the card — an undo deletes the only row in the month being looked at, and the fetch
+    // itself lands after the first build with an empty map — and a widget that calls
+    // `setState` from its own `build` to fix that is a loop waiting for a second cause. The
+    // stored offset is left alone and the *rendered* one is bounded, so stepping back and
+    // forward again returns to where the reader was.
+    final monthsBack = _monthsBack > oldest ? oldest : _monthsBack;
+    final month = DateTime(today.year, today.month - monthsBack);
 
     final inMonth = {
       for (final entry in days.entries)
@@ -577,13 +637,13 @@ class _MonthCard extends StatelessWidget {
       for (final entry in inMonth.entries) entry.key: _colourOf(entry.value),
     };
 
-    // One entry per book, with how many of this month's nights it accounts for. Insertion
+    // One entry per book, with how many of this month's days it accounts for. Insertion
     // order is the map's, which is the query's own `day` order — so the legend reads newest
     // book first, matching the grid the reader is looking at.
-    final nights = <String, int>{};
+    final daysByBook = <String, int>{};
     for (final bookId in inMonth.values) {
       if (bookId == null) continue;
-      nights[bookId] = (nights[bookId] ?? 0) + 1;
+      daysByBook[bookId] = (daysByBook[bookId] ?? 0) + 1;
     }
 
     return Container(
@@ -596,21 +656,62 @@ class _MonthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // **Sans at 17, not the record's 15pt serif, and the scale is why.** `.cnav b` is
-          // Georgia 15 — a quiet serif header. The scale's serif tokens start at `spine` 12
-          // and jump to `titleVisit` 20: 12 would put the card's heading *below* its own 13pt
-          // stat figures, and 20 inside a 14pt-padded card next to them is a shout. So this
-          // takes `subtitle`, which is the page's own section voice (`_TopBar` uses it), and
-          // loses the serif. Worth revisiting if the scale ever grows a small serif head.
+          // **The record's ‹ › pagers, which this card documented as deliberately absent for
+          // three rounds.** The argument was that they imply `readingDaysProvider` can be
+          // asked for an arbitrary month and it cannot, because "it holds one window" — so
+          // the control would be an affordance for something that does nothing.
           //
-          // **The ‹ › pagers the record draws are deliberately absent.** They imply
-          // `readingDaysProvider` can be asked for an arbitrary month, and it cannot — it
-          // holds one window. Drawing the control before the query exists would be an
-          // affordance for something that does nothing, which is the mistake the grab handle
-          // on this page's cover would have been.
-          Text(
-            materialL10n.formatMonthYear(month),
-            style: AppTextStyles.subtitle,
+          // The premise was wrong about the provider. `kReadingDaysWindow` is a limit of 400
+          // **rows ordered by day descending**, not a date range: the map already holds every
+          // recorded day back to the 400th, which is over a year for a reader who has never
+          // missed a day and far longer for anyone else. So the months are all already in
+          // memory and paging asks nothing new of the query — what the old note described is
+          // real only at the *edge* of the window, and that edge is what [_oldestMonthsBack]
+          // bounds the pager on. The affordance does something; it was the inference from a
+          // row limit to a date window that did nothing.
+          //
+          // A pager also changes what the card *is*, which is the part worth having: a month
+          // grid that can only ever draw the current month answers "how am I doing" and
+          // cannot answer "what happened" — and on the 1st of a month it is a nearly empty
+          // grid beside a run of 40, with the evidence for that run one tap away and no tap
+          // to make.
+          Row(
+            children: [
+              // **Sans at 17, not the record's 15pt serif, and the scale is why.** `.cnav b`
+              // is Georgia 15 — a quiet serif header. The scale's serif tokens start at
+              // `spine` 12 and jump to `titleVisit` 20: 12 would put the card's heading
+              // *below* its own 13pt stat figures, and 20 inside a 14pt-padded card next to
+              // them is a shout. So this takes `subtitle`, which is the page's own section
+              // voice (`_TopBar` uses it), and loses the serif. Worth revisiting if the scale
+              // ever grows a small serif head.
+              Expanded(
+                child: Text(
+                  materialL10n.formatMonthYear(month),
+                  style: AppTextStyles.subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              _MonthPagerButton(
+                key: kStreakMonthPreviousKey,
+                icon: Icons.chevron_left,
+                semanticLabel: l10n.streakMonthPrevious,
+                onPressed: monthsBack < oldest
+                    ? () => setState(() => _monthsBack = monthsBack + 1)
+                    : null,
+              ),
+              const SizedBox(width: 2),
+              _MonthPagerButton(
+                key: kStreakMonthNextKey,
+                icon: Icons.chevron_right,
+                semanticLabel: l10n.streakMonthNext,
+                // Never past the current month. A future month is thirty dimmed numerals
+                // with nothing recorded on any of them, which is not a record of anything.
+                onPressed: monthsBack > 0
+                    ? () => setState(() => _monthsBack = monthsBack - 1)
+                    : null,
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           // **Two facts off the same stamps, and the one that is missing is the run.** The
@@ -628,7 +729,7 @@ class _MonthCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _MonthStat(
-                  figure: l10n.streakBooksThisMonth(nights.length),
+                  figure: l10n.streakBooksThisMonth(daysByBook.length),
                   caption: l10n.streakMonthBooksCaption,
                 ),
               ),
@@ -636,7 +737,7 @@ class _MonthCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ReadCalendarMonth(month: month, marks: marks, today: today),
-          if (nights.isNotEmpty) ...[
+          if (daysByBook.isNotEmpty) ...[
             const SizedBox(height: 10),
             // The legend is what makes the colours mean anything: without it the month is a
             // handsome tally that cannot say one word about what was read, which is the
@@ -660,16 +761,92 @@ class _MonthCard extends StatelessWidget {
               spacing: 12,
               runSpacing: 4,
               children: [
-                for (final entry in nights.entries)
+                for (final entry in daysByBook.entries)
                   _LegendSpine(
                     colour: _colourOf(entry.key) ?? colors.secondaryText,
-                    title: booksById[entry.key]?.title ?? '',
-                    nights: entry.value,
+                    title: widget.booksById[entry.key]?.title ?? '',
+                    days: entry.value,
                   ),
               ],
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// One step of the month card's pager: a chevron on a faint disc.
+///
+/// **36pt, not the record's 30.** `.cnav .cpg s` is a 30pt disc, which is under every
+/// platform's minimum and under the 36 `_LibraryBar` already settled on for an icon button in
+/// a crowded row — and this one sits *inside* a 14pt-padded card next to 13pt figures, so it
+/// is the tightest row in the feature. The extra 6pt is the cheapest thing in the card.
+///
+/// **Both steps are always drawn, and the unavailable one is dimmed rather than removed.**
+/// Dropping it would reflow the heading every time the reader reaches either end of the log,
+/// so the month name would shift sideways as a side effect of paging — and the pair would stop
+/// reading as a pair, which is the only thing that says the chevron pointing the other way
+/// exists at all. That holds for the both-ends-at-once case too, which is what a reader with a
+/// single recorded day sees: hiding the pager entirely there is tidier on that one screen and
+/// costs a control that appears out of nowhere the month after, which is worse than two ghost
+/// discs that light up in place.
+///
+/// **No ink, deliberately.** A ripple would have to be painted on a [Material] of its own:
+/// the nearest one is under the card's opaque `surface` fill, so an `InkWell` here draws its
+/// splash *behind* the card and shows nothing — and stacking a transparent `Material` on top
+/// to fix that buys a ripple this app does not draw anywhere else on a tinted surface (see
+/// `library_card_body.dart`'s streak tile, which refuses one for the same reason).
+/// [HitTestBehavior.opaque] because the disc is mostly empty fill, and a control that only
+/// answers where a glyph happens to be is not one.
+class _MonthPagerButton extends StatelessWidget {
+  const _MonthPagerButton({
+    super.key,
+    required this.icon,
+    required this.semanticLabel,
+    required this.onPressed,
+  });
+
+  /// The disc's diameter, and the tap target's.
+  static const double diameter = 36;
+
+  final IconData icon;
+
+  /// What the step *is*, in words. The chevron says only that there is one, and a chevron
+  /// carries no text for a screen reader to read — so this is the whole label.
+  final String semanticLabel;
+
+  /// Null at the end of what the log can show, which both dims the disc and makes it inert.
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final enabled = onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: semanticLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: Container(
+          width: diameter,
+          height: diameter,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colors.secondaryText.withValues(
+              alpha: enabled ? 0.08 : 0.04,
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 20,
+              color: colors.secondaryText.withValues(alpha: enabled ? 1 : 0.35),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -827,17 +1004,17 @@ class ReadLegendSpine extends StatelessWidget {
   }
 }
 
-/// One book in the month's legend: its spine, its title, and how many nights it holds.
+/// One book in the month's legend: its spine, its title, and how many days it holds.
 class _LegendSpine extends StatelessWidget {
   const _LegendSpine({
     required this.colour,
     required this.title,
-    required this.nights,
+    required this.days,
   });
 
   final Color colour;
   final String title;
-  final int nights;
+  final int days;
 
   @override
   Widget build(BuildContext context) {
@@ -870,7 +1047,7 @@ class _LegendSpine extends StatelessWidget {
         // is for the *label* that names a figure, and this is the figure. Shouting the value
         // beside a quietly-set title inverts which of the two is the fact.
         Text(
-          AppLocalizations.of(context).streakNightsThisMonth(nights),
+          AppLocalizations.of(context).streakDaysThisMonth(days),
           style: AppTextStyles.caption.copyWith(
             color: colors.secondaryText.withValues(alpha: 0.7),
           ),

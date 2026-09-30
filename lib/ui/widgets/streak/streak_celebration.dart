@@ -141,7 +141,7 @@ class StreakCelebration extends StatefulWidget {
   /// The longest run on record, from `longestStreakProvider`.
   ///
   /// **`longestReadingRun` counts the run in progress**, so `best >= streak` always holds
-  /// and `streak == best` is not a tie — it is the night the record is being set. That is
+  /// and `streak == best` is not a tie — it is the day the record is being set. That is
   /// what lets this screen hand out a real reward without one new stored field.
   ///
   /// Passed rather than watched because this widget is deliberately provider-free:
@@ -169,7 +169,7 @@ class _StreakCelebrationState extends State<StreakCelebration>
   late final AnimationController _beats = AnimationController(
     // **1500, up from 1360**, which bought the ignition and the gleam. Long enough for the
     // sequence to read as one event rather than a flash, short enough that a reader doing
-    // this every night is not waiting for it.
+    // this every day is not waiting for it.
     //
     // **The flame keeps moving after the last cell lands.** This comment used to say the
     // opposite — "nothing moves after the last cell lands, which is why the flicker is part
@@ -251,7 +251,7 @@ class _StreakCelebrationState extends State<StreakCelebration>
   /// **Seeded from the run, for the reason the month's rake is derived from the day**
   /// (`readCalendarPatchTilt`): a re-roll on every paint cannot be told from a regression,
   /// could not be screenshotted, and could not be golden-tested. Seeding from the streak
-  /// means tonight's burst is the same burst every time this screen is built, and a
+  /// means today's burst is the same burst every time this screen is built, and a
   /// different one at a different number.
   late final List<_Spark> _sparkTable = _buildSparks(widget.streak);
 
@@ -375,7 +375,7 @@ class _StreakCelebrationState extends State<StreakCelebration>
                     // (`docs/mockups/streak-week/index.html`): **F** wanted a ladder, **G**
                     // wanted no standing reminder of what the reader has not done and the
                     // whole reward in the celebration. F's object shown only at G's moment
-                    // is both — a reader meets the ladder on the night they have just added
+                    // is both — a reader meets the ladder on the day they have just added
                     // to it, and never as a permanent list of four things they have not
                     // managed. It also puts the object on the ground it was drawn for:
                     // `StreakSpanTrack` paints in `kCandleStockTop` and `kCandleFlame`,
@@ -387,9 +387,9 @@ class _StreakCelebrationState extends State<StreakCelebration>
                     // worse one is that the old bar measured `streak` against `best + 1`
                     // and the sentence directly under it said that same figure in words —
                     // "8 more days to beat your best" *is* the bar, drawn. The ladder says
-                    // something the sentence cannot: where tonight's run sits among spans
-                    // that have names. And it is here every night, where the bar vanished
-                    // on a record night — the one night with the most to show.
+                    // something the sentence cannot: where today's run sits among spans
+                    // that have names. And it is here every day, where the bar vanished
+                    // on a record day — the one day with the most to show.
                     //
                     // **The fill does not animate.** It is set once, at the fraction the
                     // run in progress has reached; the `_Rise` above is the reveal.
@@ -717,7 +717,7 @@ class _SparkBurst extends CustomPainter {
 ///
 /// **It counts from the previous number, which is the point.** The figure a reader came here
 /// to see is not `12`, it is *`11` becoming `12`* — a number that is simply present says
-/// nothing happened tonight. It rolls monotonically while the whole figure drops in with a
+/// nothing happened today. It rolls monotonically while the whole figure drops in with a
 /// spring, so the bounce is positional and the value never overshoots into a day the reader
 /// has not earned.
 class _Counter extends StatelessWidget {
@@ -734,7 +734,7 @@ class _Counter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Day one counts up from nothing, which is the honest version of "the previous number"
-    // on the night there wasn't one.
+    // on the day there wasn't one.
     final from = math.max(0, streak - 1);
 
     return AnimatedBuilder(
@@ -798,7 +798,7 @@ class _Rise extends StatelessWidget {
   }
 }
 
-/// The week this night belongs to, with today stamping in last.
+/// The week this day belongs to, with today stamping in last.
 ///
 /// **The row itself is [ReadWeekRow]** — the same object the streak page draws behind this
 /// screen. What is local is the card it sits on, the candle palette, and the closing beat.
@@ -864,7 +864,7 @@ class _WeekCard extends StatelessWidget {
 }
 
 // **`_MilestoneBar` used to live here and is deleted, not parked.** It was an 8pt rail
-// filling `streak / (best + 1)`, hidden on a record night. `StreakSpanTrack` replaced it,
+// filling `streak / (best + 1)`, hidden on a record day. `StreakSpanTrack` replaced it,
 // moved down from the streak page; the reasoning is at its call site above. One thing it
 // taught that is worth keeping without it: its `SizedBox` had a height and no width, and
 // because the parent `Column` centres its children the whole stack collapsed onto its own

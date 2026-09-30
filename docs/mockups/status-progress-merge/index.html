@@ -77,19 +77,63 @@
   - A position write must never stamp a reading day, and vice versa. That is
     "the single rule the whole design rests on" and nothing here touches it.
 
-  WHAT THIS PAGE DOES NOT CLAIM
+  WHAT THIS PAGE DOES NOT CLAIM -- SUPERSEDED, IT IS BUILT
 
-  Nothing here is built. Zero lines of Dart changed. The hero control
-  collides with the single most-repeated rejection in this repo's design
-  record (see the `Rejected, kept` group and the five OPEN callouts) and the
-  point of drawing it is to find out whether the arming answer is enough.
+  This said "Nothing here is built. Zero lines of Dart changed" and that the
+  point of drawing the hero control was to find out whether the arming answer
+  was enough. It shipped, the suite is green, and the answer turned out to be
+  that there is nothing to arm -- see THREE REVERSALS below. The hero control
+  did collide with the most-repeated rejection in this repo's design record
+  (the `Rejected, kept` group and the OPEN callouts), and that collision is
+  resolved rather than still open.
 
-  MEASUREMENTS
+  THREE REVERSALS, KEPT RATHER THAN DELETED
 
-  Only one height on this page is exact: the wheel sheet's 368pt, summed by
-  `_ProgressSheetState._sheetHeight` (64 header + 48 mode segment + 220
-  wheel + 36 rider). Every other `pt` badge is an ESTIMATE summed from the
-  row heights in the Dart, and is labelled as such in the note.
+  A design record that contradicts the code is worse than none, so the three
+  places this drawing was wrong are corrected in the screens and the losing
+  reasoning is kept in the captions. The whole previous drawing is also kept
+  as one browsable frame, `rej-drawn`, because two of the three verdicts are
+  things you can only see.
+
+  (1) THE TRACK IS A REAL PLATFORM SLIDER. `CNSlider` (a native `UISlider`,
+      which on iOS 26 is where the real Liquid Glass comes from) behind
+      `useNativeGlass`, `CupertinoSlider` everywhere else, and the thumb is
+      the platform's own white disc. This page drew the app's bookmark ribbon
+      on a hand-painted groove; a reader's verdict on it built was "the
+      bookmark makes an ugly thumb". Painting a translucent rectangle and
+      calling it glass got the fallback's LOOK on every platform, including
+      the one platform that has the material -- and the package was already a
+      dependency and already supplied the control. Deliberately NOT
+      `CNSlider`'s own fallback, which is a Material `Slider`: those are
+      ABSOLUTE, so a tap seeks, which is the `band-scrubber` behaviour this
+      whole design was built to avoid. See `el-track`.
+
+  (2) THE HEADING IS `Reading progress`, not the book's title. New ARB key
+      `readingProgressTitle`. The left-alignment argument the book title was
+      chosen for still holds and still applies to the new string.
+
+  (3) `Stop reading this` IS CENTRED AND FULL WIDTH. Left-aligned it sat
+      under the start-date row's inset and read as a third field in the form.
+
+  MEASUREMENTS -- NOW MEASURED
+
+  Every `pt` badge on a PROPOSED screen is now a real measurement at 375x667
+  with the app's fonts loaded, pinned by `book_status_bottom_sheet_test.dart`.
+  Reading clean 275 (estimated 270), dirty 286 (292), Finished 276 (282),
+  Set aside clean 276 and dirty 287 -- the tallest this sheet gets -- and
+  Not started 170, where the estimate was 246.
+
+  That last one is the only badge that was badly out, and not by arithmetic:
+  at the origin the read-out collapses to a SINGLE WORD (no percent, no page
+  pair, no `Add total pages`) and NEITHER date row draws. Both corrections are
+  in `one-null` and in `el-status`.
+
+  `ReadingTrack.height` is 48 and did not budge across the slider swap: the
+  band is 28 with a 4pt gap where the hand-drawn thumb row was 24 with 8, and
+  the end labels are the same 16pt line. The wheel sheet's 368pt is still
+  exact, summed by `_ProgressSheetState._sheetHeight` (64 header + 48 mode
+  segment + 220 wheel + 36 rider). Badges on REJECTED and SUPERSEDED screens
+  are still estimates, because those states were never built to measure.
 
   SECTION INDEX
     1   TOKENS     app_theme.dart L127-144, copied not eyeballed
@@ -958,6 +1002,25 @@
                 flex: 1;
                 text-align: left;
             }
+            /* The commit row at the foot: the delete sheet's geometry, two equal buttons at 44
+               with a 12pt gap and the recessive one on the left. */
+            .dev .cmt {
+                display: flex;
+                gap: calc(12 * var(--pt));
+            }
+            .dev .cmt .cfm,
+            .dev .cmt .rst {
+                flex: 1;
+                text-align: center;
+                padding: calc(13 * var(--pt)) 0;
+                border-radius: calc(22 * var(--pt));
+            }
+            .dev .cmt .rst {
+                background: var(--surfaceVariant);
+                color: var(--brandText);
+                font-size: calc(13 * var(--pt));
+                font-weight: 700;
+            }
             .dev .cfm {
                 background: var(--brandFill);
                 color: #fff;
@@ -1067,70 +1130,139 @@
                 color: var(--text);
                 font-variant-numeric: tabular-nums;
             }
+            /* The trailing group: the page inside the total, pushed to the line's right edge.
+               `margin-left: auto` is CSS's spelling of the `WrapAlignment.spaceBetween` the
+               Dart uses over two nested groups -- and for the same reason it is on the *sub*
+               span rather than `justify-content: space-between` on `.sl`: spreading all three
+               spans would float the percent into the middle of the line. */
             .dev .sl .sub {
+                margin-left: auto;
                 margin-left: auto;
                 font-size: calc(12 * var(--pt));
                 color: var(--text2);
                 font-variant-numeric: tabular-nums;
             }
 
-            /* the reading track */
+            /* The reading track -- A REAL PLATFORM SLIDER, so the geometry below
+               is the platform's rather than a drawing's. Copied from
+               `cupertino/slider.dart`, not eyeballed:
+
+                 `_kPadding`                     8pt   the bar's inset
+                 `CupertinoThumbPainter.radius` 14pt   so a 28pt disc
+                 travel = width - 2*(8 + 14) = width - 44
+
+               28pt tall, which is `ReadingTrack._kSliderHeight` and the height
+               the `SizedBox` hands the platform view. The renderer's `track`
+               case is in SECTION 2; the caption is `el-track`.              */
             .dev .trk {
                 position: relative;
-                height: calc(44 * var(--pt));
-                display: flex;
-                align-items: center;
+                height: calc(28 * var(--pt));
             }
             .dev .trk .bar {
                 position: absolute;
-                left: 0;
-                right: 0;
-                height: calc(6 * var(--pt));
-                border-radius: calc(3 * var(--pt));
+                top: 50%;
+                left: calc(8 * var(--pt));
+                right: calc(8 * var(--pt));
+                height: calc(4 * var(--pt));
+                margin-top: calc(-2 * var(--pt));
+                border-radius: calc(2 * var(--pt));
                 background: #cfd8d2;
             }
+            /* The thumb's CENTRE-travel, inset by `_kPadding` + the thumb's own
+               radius. `--w` resolves against this box, so the two children below
+               are positioned in the platform's coordinates rather than in the
+               frame's: at 0% the disc's left edge sits on the bar's instead of
+               hanging half off the end of it. That is not a nicety here --
+               `one-null` draws 0% and `one-finished` draws 100%.            */
+            .dev .trk .rail {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: calc(22 * var(--pt));
+                right: calc(22 * var(--pt));
+            }
+            /* Bleeds 14pt left of the rail to reach the bar's own left edge, and
+               ends under the thumb's centre -- where `_RenderCupertinoSlider`
+               stops the active track (`trackLeft`..`_thumbCenter`).           */
             .dev .trk .fill {
                 position: absolute;
-                left: 0;
-                height: calc(6 * var(--pt));
-                border-radius: calc(3 * var(--pt));
+                top: 50%;
+                left: calc(-14 * var(--pt));
+                width: calc(var(--w) + 14 * var(--pt));
+                height: calc(4 * var(--pt));
+                margin-top: calc(-2 * var(--pt));
+                border-radius: calc(2 * var(--pt));
                 background: var(--brandFill);
-                width: var(--w);
             }
-            .dev .trk.armed .bar {
-                height: calc(10 * var(--pt));
-                border-radius: calc(5 * var(--pt));
-            }
-            .dev .trk.armed .fill {
-                height: calc(10 * var(--pt));
-                border-radius: calc(5 * var(--pt));
-            }
-            .dev .trk .rib {
+            /* `CupertinoThumbPainter`: a 28pt white disc, a hairline border at
+               #0A000000 and three stacked shadows. Copied from the Flutter
+               source, not eyeballed -- same rule as the colour tokens.
+
+               `drag` deliberately changes NOTHING about it. A `UISlider` thumb
+               does not grow under the finger; the hand-drawn one that did is
+               kept in `rej-drawn`. What marks a drag is the value and Save.   */
+            .dev .trk .thm {
                 position: absolute;
+                top: 50%;
                 left: var(--w);
-                width: calc(13.5 * var(--pt));
-                height: calc(30 * var(--pt));
-                margin-left: calc(-6.75 * var(--pt));
+                width: calc(28 * var(--pt));
+                height: calc(28 * var(--pt));
+                margin: calc(-14 * var(--pt)) 0 0 calc(-14 * var(--pt));
+                border-radius: 50%;
                 background: #fff;
+                box-shadow:
+                    0 0 0 calc(0.5 * var(--pt)) rgba(0, 0, 0, 0.04),
+                    0 calc(3 * var(--pt)) calc(8 * var(--pt))
+                        rgba(0, 0, 0, 0.15),
+                    0 calc(1 * var(--pt)) calc(1 * var(--pt))
+                        rgba(0, 0, 0, 0.16),
+                    0 calc(3 * var(--pt)) calc(1 * var(--pt)) rgba(0, 0, 0, 0.1);
+            }
+            /* `armed` is `rej-bare`'s drawing and nothing else: live on first
+               touch, no Cancel. A fatter bar so it reads as hot. */
+            .dev .trk.armed .bar,
+            .dev .trk.armed .fill {
+                height: calc(8 * var(--pt));
+                margin-top: calc(-4 * var(--pt));
+                border-radius: calc(4 * var(--pt));
+            }
+            /* SUPERSEDED: the app's bookmark ribbon as the thumb, hung off the
+               bar. Drawn only by `rej-drawn`; the verdict is in that caption. */
+            .dev .trk.ribbon .thm {
+                width: calc(15 * var(--pt));
+                height: calc(34 * var(--pt));
+                margin: calc(-17 * var(--pt)) 0 0 calc(-7.5 * var(--pt));
+                border-radius: 0;
+                box-shadow: none;
                 clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
                 filter: drop-shadow(
                     0 calc(2 * var(--pt)) calc(3 * var(--pt))
                         rgba(0, 0, 0, 0.35)
                 );
             }
-            .dev .trk.armed .rib {
-                width: calc(18 * var(--pt));
-                height: calc(40 * var(--pt));
-                margin-left: calc(-9 * var(--pt));
+            /* **Set aside freezes the position**, so the track is drawn at the
+               platform's disabled strength. Worth knowing why the app needs a number
+               here at all: `CupertinoSlider` reads `onChanged: null` as behaviour only
+               -- its `paint` never looks at it -- so a disabled slider is
+               pixel-identical to a live one unless something outside it dims the
+               control. `CNSlider` does it natively through `UISlider.isEnabled`. */
+            .dev .trk.off {
+                opacity: 0.4;
             }
             .dev .trk.null .bar {
                 background: none;
                 outline: calc(1 * var(--pt)) dashed #b9c0b9;
                 outline-offset: calc(-0.5 * var(--pt));
             }
+            /* `ReadingTrack._kLabelGap`. The band above is 28 and this line is
+               16, which is `ReadingTrack.height` = 48 exactly. The track used to
+               be 48pt here AND carry an `ends` row under it, double-counting the
+               labels it already claimed to include. */
             .dev .ends {
                 display: flex;
                 justify-content: space-between;
+                margin-top: calc(4 * var(--pt));
+                min-height: calc(16 * var(--pt));
                 font-size: calc(11 * var(--pt));
                 color: var(--text2);
             }
@@ -1173,59 +1305,54 @@
                 padding: calc(7 * var(--pt)) calc(16 * var(--pt));
             }
 
-            /* Glassy track. `native_glass.dart` gates real Liquid Glass on iOS 26
-               and falls back to painted chrome elsewhere, so this is drawn as the
-               material rather than as a flat bar: translucent ground, a bright top
-               edge, and the fill lit from above. */
-            .dev .trk.glass {
-                height: calc(48 * var(--pt));
-            }
+            /* The material, and it is NOT ours any more. `CNSlider` is a native
+               `UISlider`, so on iOS 26 the track is real Liquid Glass drawn by
+               the platform and the app paints none of it. What this class does is
+               DEPICT that, which is the one thing a drawing may do -- painting a
+               translucent rectangle and calling it glass is precisely what
+               shipped first, and got the fallback's look on every platform
+               including the one that has the material.
+
+               Geometry note: the inset (8pt) and the thumb (r=14) are copied from
+               `cupertino/slider.dart`. The bar's 4pt thickness is the one number
+               drawn rather than copied -- Flutter's fallback paints 2pt
+               (`trackCenter ± 1`) and a native iOS 26 track is thicker, so 4 sits
+               between them and reads at this scale.                           */
             .dev .trk.glass .bar {
-                height: calc(14 * var(--pt));
-                border-radius: calc(7 * var(--pt));
-                background: rgba(255, 255, 255, 0.5);
+                background: rgba(255, 255, 255, 0.55);
                 backdrop-filter: blur(calc(6 * var(--pt)));
                 box-shadow:
-                    inset 0 calc(0.75 * var(--pt)) 0 rgba(255, 255, 255, 0.95),
-                    inset 0 calc(-0.75 * var(--pt)) 0 rgba(0, 0, 0, 0.07),
+                    inset 0 calc(0.5 * var(--pt)) 0 rgba(255, 255, 255, 0.95),
                     inset 0 0 0 calc(0.5 * var(--pt)) rgba(255, 255, 255, 0.7),
-                    0 calc(1 * var(--pt)) calc(3 * var(--pt))
+                    0 calc(0.5 * var(--pt)) calc(2 * var(--pt))
                         rgba(31, 46, 38, 0.1);
             }
             .dev .trk.glass .fill {
-                height: calc(14 * var(--pt));
-                border-radius: calc(7 * var(--pt));
                 background: linear-gradient(
                     180deg,
                     #0bc793 0%,
                     var(--brandFill) 100%
                 );
-                box-shadow:
-                    inset 0 calc(0.75 * var(--pt)) 0 rgba(255, 255, 255, 0.5),
-                    inset 0 calc(-0.5 * var(--pt)) calc(1 * var(--pt))
-                        rgba(0, 0, 0, 0.12);
-            }
-            .dev .trk.glass .rib {
-                width: calc(15 * var(--pt));
-                height: calc(34 * var(--pt));
-                margin-left: calc(-7.5 * var(--pt));
-            }
-            .dev .trk.drag .rib {
-                width: calc(17 * var(--pt));
-                height: calc(38 * var(--pt));
-                margin-left: calc(-8.5 * var(--pt));
-                filter: drop-shadow(
-                    0 calc(4 * var(--pt)) calc(6 * var(--pt)) rgba(0, 0, 0, 0.4)
-                );
             }
 
-            /* Tappable numerals. The two page numbers carry the underline; the
-               percent does not. It is the largest thing on the line and obviously
-               the value, so an underline there would make three competing
-               affordances out of one read-out. */
+            /* **No value on this line is underlined, and that reverses two rounds of
+               the opposite.** The numerals carried the mark and the percent did not,
+               on the argument that marking all three made three competing affordances
+               out of one read-out. It went the other way instead, on instruction: the
+               numerals lost it and the sheet's two text actions gained it (`.lnk`
+               below), which leaves one rule -- an underline marks an *action*, not a
+               value.
+
+               `.add` is not an exception to that rule but an instance of it: `Add
+               total pages` is the only call to action the line can contain, and it is
+               the majority state, since ~65% of the corpus has no count. The cost of
+               the swap is that nothing announces the numerals as doors any more; see
+               the caption on `one-rest`. */
             .dev .pg u,
+            .dev .sl .sub u {
+                text-decoration: none;
+            }
             .dev .pg .add,
-            .dev .sl .sub u,
             .dev .sl .sub .add {
                 text-decoration: underline;
                 text-decoration-thickness: calc(1.25 * var(--pt));
@@ -1235,6 +1362,14 @@
             .dev .pg u {
                 color: var(--text);
                 font-weight: 700;
+            }
+            /* **One ink for the whole phrase**, which is what Set aside forced: it
+               closes the position's doors and leaves the total's open, so per-span ink
+               drew `p.213` grey beside `/ 432` dark -- one sentence in two colours,
+               which reads as a rendering fault. The page's door decides both. */
+            .dev .sl .sub.off u,
+            .dev .pg.off u {
+                color: var(--text2);
             }
             .dev .sl .sub .add,
             .dev .pg .add {
@@ -1335,11 +1470,28 @@
                 border-radius: calc(22 * var(--pt));
                 padding: calc(12 * var(--pt)) 0;
             }
+            /* The one text action. CENTRED and full width: the `GestureDetector`
+               takes the whole row with `HitTestBehavior.opaque`, and the 8pt
+               vertical padding is the shipped `EdgeInsets.symmetric(vertical: 8)`
+               -- so the target is a band rather than the glyphs. `.left` is the
+               superseded alignment, drawn only by `rej-drawn`. */
+            /* **Underlined, and that is where the read-out's mark went.** These two
+               words are the only text on the sheet that *does* something, and before
+               the swap they were grey centred 13pt with no furniture at all -- the only
+               thing that read as tappable was position, on a 36pt band the design
+               record simultaneously describes as easy to hit by accident. */
             .dev .lnk {
                 text-align: center;
+                padding: calc(8 * var(--pt)) 0;
                 font-size: calc(13 * var(--pt));
                 font-weight: 600;
                 color: var(--text2);
+                text-decoration: underline;
+                text-decoration-thickness: calc(1.25 * var(--pt));
+                text-underline-offset: calc(2.5 * var(--pt));
+            }
+            .dev .lnk.left {
+                text-align: left;
             }
             .dev .lnk.fl {
                 color: var(--flame);
@@ -1379,6 +1531,21 @@
                 font-weight: 700;
                 color: var(--brandText);
                 font-variant-numeric: tabular-nums;
+            }
+            /* The card once it carries a position, which inverts the emphasis above.
+               Unmodified `.prd` is the CURRENT card and keeps the old weights so the
+               before-and-after screens can be read against each other: there, the day
+               count is the only value with an answer in it and the range beside it is
+               reference. With a position in the first slot the position IS the answer,
+               and two green values beside a green chip is the "three green things" the
+               shipped card was called messy for. */
+            .dev .prd.pos .dt {
+                color: var(--brandText);
+                font-weight: 700;
+            }
+            .dev .prd.pos .dy {
+                color: var(--text2);
+                font-weight: 400;
             }
             .dev .brow {
                 display: flex;
@@ -1478,12 +1645,34 @@
                 font-variant-numeric: tabular-nums;
             }
             /* The title IS the filter read-out, so the chevron hangs off the
-               count rather than sitting in a control of its own: title, count
-               and chevron are one tap target. */
+               count rather than sitting at the row's edge. It is NOT one tap
+               target with them any more -- the menu is the platform's and UIKit
+               presents it from the button's own tap, so the chevron is the whole
+               target. Drawn attached because that is still where it sits. */
             .dev .shd .chv {
                 display: inline-block;
                 margin-left: calc(-4 * var(--pt));
                 align-self: center;
+                font-size: calc(13 * var(--pt));
+                color: var(--text2);
+                transform: rotate(90deg);
+            }
+            /* The YEAR filter's collapsed popover, flush right in the same row.
+               `margin-left: auto` is the drawing's `spaceBetween`. Two chevrons
+               in one row is the thing this screen exists to show, so they are
+               drawn at the same size in the same ink -- as the app draws them. */
+            .dev .shd .yr {
+                margin-left: auto;
+                display: inline-flex;
+                align-items: center;
+                gap: calc(6 * var(--pt));
+                font-size: calc(15 * var(--pt));
+                font-weight: 600;
+                color: var(--text);
+                white-space: nowrap;
+            }
+            .dev .shd .yr b {
+                font-weight: 400;
                 font-size: calc(13 * var(--pt));
                 color: var(--text2);
                 transform: rotate(90deg);
@@ -1681,7 +1870,18 @@
                     case "title":
                         return `<div class="ttl">${b.v}</div>`;
                     case "head":
-                        return `<div class="hrow"><span class="ttl">${b.v}</span><span class="cfm">${b.btn}</span></div>`;
+                        /* **The button used to be in this row and now is not.** `head` still
+                           means "this screen is dirty" -- it is what `H_SHEET` marks and what
+                           verify.js reads to tell a dirty screen from a clean one -- but the
+                           pair it implies is appended at the foot by `frame`, because Save
+                           moved down there and `Reset` came with it. Rendering it here would
+                           put the buttons above the read-out again. */
+                        return `<div class="ttl">${b.v}</div>`;
+                    case "cmt":
+                        /* `Discard changes`, renamed from `Reset` on instruction: the
+                           first names a mechanism, the second names the consequence the
+                           reader is weighing against Save. */
+                        return `<div class="cmt"><span class="rst">Discard changes</span><span class="cfm">${b.btn || "Save"}</span></div>`;
                     case "seg":
                         return `<div class="seg${b.items.length > 3 ? " four" : ""}">${b.items
                             .map(
@@ -1702,7 +1902,7 @@
                                 : ""
                         }${
                             b.page
-                                ? `<span class="sub">p.<u>${b.page}</u> of <u>${b.total}</u></span>`
+                                ? `<span class="sub${b.off ? " off" : ""}">p.<u>${b.page}</u> of <u>${b.total}</u></span>`
                                 : b.add
                                   ? `<span class="sub"><span class="add">${b.add}</span></span>`
                                   : b.sub
@@ -1710,9 +1910,14 @@
                                     : ""
                         }</div>`;
                     case "track":
-                        return `<div class="trk ${b.mode || "rest"}${b.glass === false ? "" : " glass"}" style="--w:${b.pct}%"><div class="bar"></div>${
+                        /* A real platform slider. `mode` is the state (`rest`,
+                           `drag`, `armed`, `null`), `glass:false` opts out of the
+                           material, and `thumb:"rib"` restores the SUPERSEDED
+                           bookmark-ribbon thumb for `rej-drawn`. The nesting is
+                           the platform's geometry, not decoration -- see the CSS. */
+                        return `<div class="trk ${b.mode || "rest"}${b.off ? " off" : ""}${b.glass === false ? "" : " glass"}${b.thumb === "rib" ? " ribbon" : ""}" style="--w:${b.pct}%"><div class="bar"></div><div class="rail">${
                             b.mode === "null" ? "" : '<div class="fill"></div>'
-                        }<div class="rib"></div></div>`;
+                        }<div class="thm"></div></div></div>`;
                     case "pg":
                         return `<div class="pg">${
                             b.add
@@ -1735,11 +1940,13 @@
                     case "save":
                         return `<div class="save">${b.v}</div>`;
                     case "lnk":
-                        return `<div class="lnk${b.flame ? " fl" : ""}">${b.v}</div>`;
+                        /* Centred and full width unless `left`, which is the
+                           superseded alignment `rej-drawn` keeps. */
+                        return `<div class="lnk${b.flame ? " fl" : ""}${b.left ? " left" : ""}">${b.v}</div>`;
                     case "ann":
                         return `<div class="ann">${b.v}</div>`;
                     case "prd":
-                        return `<div class="prd"><span class="chip${b.tone === "fl" ? " fl" : ""}">${b.chip}</span><span class="dt">${b.dates}</span><span class="dy">${b.days}</span><span class="chev" style="color:var(--text2)">&#8250;</span></div>`;
+                        return `<div class="prd${b.pos ? " pos" : ""}"><span class="chip${b.tone === "fl" ? " fl" : ""}">${b.chip}</span><span class="dt">${b.dates}</span><span class="dy">${b.days}</span><span class="chev" style="color:var(--text2)">&#8250;</span></div>`;
                     case "brow":
                         return `<div class="brow"><span class="l">${b.label}</span>${
                             b.v ? `<span class="r">${b.v}</span>` : ""
@@ -1758,6 +1965,10 @@
                     case "shd":
                         return `<div class="shd"><span class="t">${b.t2}</span><span class="n">${b.n}</span>${
                             b.chev ? '<span class="chv">&#8250;</span>' : ""
+                        }${
+                            b.yr
+                                ? `<span class="yr">${b.yr}<b>&#8250;</b></span>`
+                                : ""
                         }</div>`;
                     case "pop":
                         return `<div class="pop">${b.items
@@ -1796,7 +2007,24 @@
                     s.pt
                         ? `<span class="ptl${s.over ? " bad" : ""}">${s.pt}pt</span>`
                         : ""
-                }${blocks(s.body)}</div>`;
+                }${blocks(s.body)}${
+                    /* The commit row, appended rather than authored into each body: it belongs
+                       to every screen that carries a `head` block and to no other, so deriving
+                       it keeps the two from drifting apart across fifteen screens.
+
+                       **This page cannot show where the row sits.** `.dev` has no height, so
+                       every crop is drawn at its content's natural height and there is no
+                       slack to distribute -- where the real sheet is framed to its tallest
+                       state, leaving 49pt spare on a Reading book and 214 at the origin. The
+                       shipped row is pinned to the foot by a `Spacer`, and the bug that
+                       prompted it (buttons 49pt up the sheet) was invisible here and visible
+                       in a photograph. Same blind spot the streak widget's review page has
+                       about WidgetKit: judge the frame in
+                       `build/status_sheet_preview/`. */
+                    (s.body || []).some((b) => b.t === "head")
+                        ? blocks([{ t: "gap", h: 16 }, { t: "cmt" }])
+                        : ""
+                }</div>`;
             }
 
             /* ==================================================================
@@ -1816,6 +2044,16 @@
                 t: "fld",
                 label: "Reading period",
                 v: "2023.09.18 ~",
+            };
+            /* THE SHEET'S OWN HEADING, not the book's -- ARB `readingProgressTitle`.
+               The book's title was drawn first and is kept in `rej-drawn`. Shared
+               so the heading is edited once; the dirty variant is the same string
+               with Save beside it. */
+            const T_SHEET = { t: "title", v: "Reading progress" };
+            const H_SHEET = {
+                t: "head",
+                v: "Reading progress",
+                btn: "Save",
             };
             const G8 = { t: "gap", h: 8 };
             const G16 = { t: "gap", h: 16 };
@@ -1938,7 +2176,7 @@
                                         ci: 2,
                                         unit: "%",
                                     },
-                                    { t: "rider", v: "~ p.213" },
+                                    { t: "rider", v: "p.213" },
                                 ],
                             },
                         ],
@@ -1950,11 +2188,11 @@
                         [
                             "one-rest",
                             "Resting &middot; Reading at 46%, clean",
-                            "<b>One line carries the whole state:</b> status, percent, and the page inside the total. The two page numerals are underlined because they are small and sit inside a phrase; the percent is not, though it is equally tappable &mdash; it is the largest thing on the line and obviously the value, so underlining it would make three competing affordances out of one read-out. <b>No Save</b>: nothing is dirty yet. The bar is glassy and drag-only &mdash; a tap on it does nothing, which is this design's answer to the objection that killed <code>band-scrubber</code>. Estimated 270pt.",
+                            "<b>One line carries the whole state:</b> status, percent, and the page inside the total. <b>All three are tappable and none of them is marked.</b> The numerals were underlined for two rounds &mdash; small, inside a phrase, no other affordance &mdash; against a bare percent, on the argument that marking all three made three competing affordances out of one read-out. It was settled the other way on instruction: the numerals lost the mark and <code>Stop reading this</code> / <code>Start reading again</code> gained it, which leaves one rule for one device &mdash; <b>an underline marks an action, not a value.</b> The cost is real and was taken knowingly: nothing now announces that <code>213</code> opens a wheel. What is left is the ink, which was never designed as an affordance, and the 44pt track directly below, which is why a reader who never finds the numerals is not stuck. <b>No Save</b>: nothing is dirty yet. <b>The heading is the sheet's, not the book's</b> (<code>readingProgressTitle</code>) &mdash; the book's own title was drawn here first and read as a page header; see <code>rej-drawn</code>. <b>The track is a real <code>UISlider</code></b>, so the thumb is the platform's white disc and the tap on it is inert for free &mdash; see <code>el-track</code>. <b>275pt, measured</b> at 375&times;667 with the app's fonts loaded, against 270 estimated here.",
                             {
-                                pt: 270,
+                                pt: 275,
                                 body: [
-                                    { t: "title", v: "&#49828;&#48197;!" },
+                                    T_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -1986,15 +2224,11 @@
                         [
                             "one-armed",
                             "Mid-drag &middot; dirty, so Save appears",
-                            "<b>Save is the dirty indicator.</b> It is absent until something changes, so its arrival <i>is</i> the feedback that the drag will persist &mdash; and it arrives for a sub-sheet Confirm too. The numerals track the thumb live; the page recomputes from the fraction, so it is the tilde'd derived page until the reader says otherwise. Dismissing discards, which is the recoverability the scrubber lacked without owing the bar its own Cancel. 22pt taller than clean.",
+                            "<b>Save is the dirty indicator.</b> It is absent until something changes, so its arrival <i>is</i> the feedback that the drag will persist &mdash; and it arrives for a sub-sheet Confirm too. The numerals track the thumb live; the page recomputes from the fraction. <b>It used to carry a tilde &mdash; <code>~ p.213</code> &mdash; and no longer does</b>, on instruction: <code>progressApproxPage</code> is deleted, so a derived page and a typed one print identically and the cost is that the line states the arithmetic's page as flatly as the reader's. Dismissing discards, which is the recoverability the scrubber lacked without owing the bar its own Cancel. <b>The thumb does not swell under the finger</b>, and an earlier drawing had it doing so &mdash; a <code>UISlider</code>'s thumb is one size, and the only things that change on a drag are the value and this button. 11pt taller than clean: <b>286pt, measured</b> against 292 estimated.",
                             {
-                                pt: 292,
+                                pt: 286,
                                 body: [
-                                    {
-                                        t: "head",
-                                        v: "&#49828;&#48197;!",
-                                        btn: "Save",
-                                    },
+                                    H_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -2026,11 +2260,11 @@
                         [
                             "one-finished",
                             "Thumb at the end &middot; Read",
-                            "The status word changed without a status control being touched, and the finish date defaulted &mdash; the same defaulting <code>onChanged</code> already does. <b>No &ldquo;Put back on the shelf&rdquo;:</b> dragging the thumb back below the end returns it to Reading, so a second affordance for the same act is not drawn.",
+                            "The status word changed without a status control being touched, and the finish date defaulted &mdash; the same defaulting <code>onChanged</code> already does. <b>No &ldquo;Put back on the shelf&rdquo;:</b> dragging the thumb back below the end returns it to Reading, so a second affordance for the same act is not drawn. <b>At 100% the disc's right edge sits on the bar's</b>, because a slider's thumb travels between insets of its own radius rather than to the pixel &mdash; the drawing follows <code>_thumbCenter</code>'s <code>trackRight - radius</code>. <b>276pt, measured</b> against 282 estimated.",
                             {
-                                pt: 282,
+                                pt: 276,
                                 body: [
-                                    { t: "title", v: "&#49828;&#48197;!" },
+                                    T_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -2059,11 +2293,11 @@
                         [
                             "one-setaside",
                             "Set aside &middot; closed at 46%",
-                            "<b>Its own status, value 3 &mdash; and that reverses the derived scheme this page shipped with.</b> The reason: position alone cannot tell &ldquo;at 46% and still reading&rdquo; from &ldquo;closed at 46%&rdquo;, so a second bit was always needed. Once it is displayed as a first-class word, storing it as <code>status 2</code> makes the column say &ldquo;Read&rdquo; about a book nobody read. <code>finish_date</code> is the day it was closed. No resume link &mdash; moving the thumb resumes it. <b>One cost the drawing hides:</b> <code>BookStatusBadge</code>'s <code>switch</code> ends <code>_ =&gt; statusOther</code>, so without a fourth arm this chip reads <b>Other</b> &mdash; the same silent-wrong-label trap as <code>rej-four</code>'s <code>clamp</code>, and it fails soft, so nothing catches it.",
+                            "<b>Its own status, value 3 &mdash; and that reverses the derived scheme this page shipped with.</b> The reason: position alone cannot tell &ldquo;at 46% and still reading&rdquo; from &ldquo;closed at 46%&rdquo;, so a second bit was always needed. Once it is displayed as a first-class word, storing it as <code>status 2</code> makes the column say &ldquo;Read&rdquo; about a book nobody read. <code>finish_date</code> is the day it was closed. <b>It does have a resume link now, and that reverses this caption:</b> it read &ldquo;no resume link &mdash; moving the thumb resumes it&rdquo;, and the premise was wrong. The thumb resumes only by <i>changing the position</i>, so a reader who stopped at 46% and wants to carry on from 46% had no move at all. Set aside is the one status a position cannot imply, so it is the one that needs a control. <code>Start reading again</code> takes the slot <code>Stop reading this</code> occupies while the book is open, and is <b>confirmed too, which this caption denied twice.</b> The argument was that picking a book back up loses nothing, so a second confirmation would make the pair read as a matched set of consequential acts. The premise expired: <b>a confirmed status change now writes the moment it is confirmed</b> rather than waiting for Save &mdash; so an accidental resume costs a write, and that write clears the day the book was closed. The other half of the objection is answered by shape rather than by argument: the confirmation is <i>one</i> sheet in two sets of words, so the pair cannot read as two different kinds of act. <b>The track and the two position doors are dead here, and that link is the only way out.</b> Asked for in those words, and it is the coherent end of the same argument rather than a second change: a status a position cannot imply should not be one a position can silently overwrite. The drag used to <i>be</i> the resume gesture, which is the third reversal in this caption. The total's door stays open &mdash; a page count is a fact about the book rather than about the reader's place in it, and closing it would draw <code>Add total pages</code> as an offer nobody can accept, in the majority state of the corpus. <b>Note this is not available to the rejected <code>derived</code> scheme below:</b> where the status <i>is</i> the position, there is no position to freeze, so that variant has to leave the track live. One more cost of deriving it. <b>One cost the drawing hides:</b> <code>BookStatusBadge</code>'s <code>switch</code> ends <code>_ =&gt; statusOther</code>, so without a fourth arm this chip reads <b>Other</b> &mdash; the same silent-wrong-label trap as <code>rej-four</code>'s <code>clamp</code>, and it fails soft, so nothing catches it. <b>276pt clean, measured</b> &mdash; the same rows as <code>one-finished</code>, to the point. Reached from Reading it is dirty and <b>287pt</b>, which is the tallest this sheet gets: read-out, track, both date rows and Save at once.",
                             {
-                                pt: 282,
+                                pt: 276,
                                 body: [
-                                    { t: "title", v: "&#49828;&#48197;!" },
+                                    T_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -2072,11 +2306,17 @@
                                         tone: "fl",
                                         page: "213",
                                         total: "462",
+                                        /* The position is frozen here, so the page
+                                           pair recedes -- see the caption. `pc`
+                                           does not: 46% is exactly as true of a
+                                           closed book as of an open one. */
+                                        off: true,
                                     },
                                     {
                                         t: "track",
                                         mode: "rest",
                                         pct: 46,
+                                        off: true,
                                     },
                                     {
                                         t: "ends",
@@ -2091,24 +2331,27 @@
                                         label: "Stopped on",
                                         v: "2026.09.28",
                                     },
+                                    G16,
+                                    {
+                                        t: "lnk",
+                                        v: "Start reading again",
+                                    },
                                 ],
                             },
                         ],
                         [
                             "one-null",
-                            "Not started &middot; an empty bar, thumb at the left",
-                            '<b>Corrected: the bar stays.</b> An earlier pass removed it entirely, which was a misreading &mdash; what has to go is the <i>dashed</i> treatment, the page numerals, and the thumb parked at the <i>right</i>. So it is the ordinary glassy track with no fill and the thumb at the origin, which is both where the drag starts and what &ldquo;not started&rdquo; looks like. <b>The <code>null</code> &ne; <code>0</code> rule still applies but does not reach here:</b> "an empty track is a <i>claim</i>" was written about the <i>band</i>, where a bar appears beside every book and would say &ldquo;began and got nowhere&rdquo; for all of them. Inside a control the reader deliberately opened for one book, an empty bar is the control. <b>The word is <i>Not started</i>, not <i>Interested</i>:</b> adding a book to a shelf already states the intent, so the status axis does not have to.',
+                            "Not started &middot; an empty bar, thumb at the origin",
+                            '<b>Corrected: the bar stays.</b> An earlier pass removed it entirely, which was a misreading &mdash; what has to go is the <i>dashed</i> treatment, the page numerals, and the thumb parked at the <i>right</i>. So it is the ordinary track with no fill and the disc at the origin, which is both where the drag starts and what &ldquo;not started&rdquo; looks like. <b>The <code>null</code> &ne; <code>0</code> rule still applies but does not reach here:</b> "an empty track is a <i>claim</i>" was written about the <i>band</i>, where a bar appears beside every book and would say &ldquo;began and got nowhere&rdquo; for all of them. Inside a control the reader deliberately opened for one book, an empty bar is the control. <b>The word is <i>Not started</i>, not <i>Interested</i>:</b> adding a book to a shelf already states the intent, so the status axis does not have to. <b>Two corrections from the built sheet, and together they are 76pt.</b> The read-out collapses to the <i>word alone</i> &mdash; no percent and no <code>Set a position</code> prompt, because the whole right-hand region answers <i>where in the book</i> and there is no answer yet to qualify &mdash; and <b>no date row draws at all</b>, where this drawing showed a dimmed <code>Reading period</code>. <b>170pt, measured</b>, against 246 estimated: the one badge on this page that was not close, and the reason is the read-out rather than an arithmetic slip.',
                             {
-                                pt: 246,
+                                pt: 170,
                                 body: [
-                                    { t: "title", v: "&#49828;&#48197;!" },
+                                    T_SHEET,
                                     G16,
                                     {
                                         t: "status",
                                         state: "Not started",
                                         tone: "off",
-                                        pc: "Set a position",
-                                        flat: true,
                                     },
                                     {
                                         t: "track",
@@ -2120,24 +2363,17 @@
                                         left: "Not started",
                                         right: "Finished",
                                     },
-                                    G16,
-                                    {
-                                        t: "fld",
-                                        label: "Reading period",
-                                        v: "Not started",
-                                        dim: true,
-                                    },
                                 ],
                             },
                         ],
                         [
                             "one-nopages",
                             "Reading &middot; no page count (the 65% case)",
-                            "<b>This is the majority of the corpus, and it is what editing the total buys.</b> ~65% of books have no <code>page_count</code> &mdash; Kakao supplies none at all &mdash; which is why the wheel hides Page mode and stores a fraction. <code>page_count</code> is written once by <code>addBook</code> and never again, so the underlined <i>Add total pages</i> is a new capability: fill it in and Page mode, the derived page and the widget's page read-out all light up for a book that had none.",
+                            "<b>This is the majority of the corpus, and it is what editing the total buys.</b> ~65% of books have no <code>page_count</code> &mdash; Kakao supplies none at all &mdash; which is why the wheel hides Page mode and stores a fraction. <code>page_count</code> is written once by <code>addBook</code> and never again, so the underlined <i>Add total pages</i> is a new capability &mdash; and <b>it is the one underline the read-out keeps</b>, now that the numerals have lost theirs. Not an exception to the new rule but an instance of it: this is the only <i>call to action</i> the line can contain, where every numeral is a value. It is also the whole reason the offer works, since an unmarked grey sentence in a read-out is read as a caption: fill it in and Page mode, the derived page and the widget's page read-out all light up for a book that had none. <b>275pt</b>, the same as <code>one-rest</code> to the point: the offer stands in for the page pair on the line it already occupies, so it costs no row.",
                             {
-                                pt: 270,
+                                pt: 275,
                                 body: [
-                                    { t: "title", v: "&#49828;&#48197;!" },
+                                    T_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -2168,7 +2404,7 @@
                         [
                             "one-band",
                             "Band &middot; one row, one door",
-                            'What the merge buys on the details page: the two rows become one card carrying status, dates <i>and</i> position, and the second door goes. Saves the 40pt the prompt state costs today. On a friend\'s book the chevron and the tap target drop, and the read-out stays &mdash; the existing rule that "a door nobody can open must not draw a handle."',
+                            'What the merge buys on the details page: the two rows become one card, and the second door goes. Saves the 40pt the prompt state costs today. On a friend\'s book the chevron and the tap target drop, and the read-out stays &mdash; the existing rule that "a door nobody can open must not draw a handle."<br><br><b>This card shipped carrying status, dates <i>and</i> position, and it was called messy.</b> Four values beside the chip wrapped onto two lines at the default text size on a 390pt phone, with two redundant pairs in them: the start date and the day count are one fact, and so are the percent and the page. The card has <b>two slots</b> now &mdash; <i>where or when</i>, then <i>how long</i> &mdash; and the position takes the slot the start date had. A finished book, which has no position worth printing, shows its finish date there instead; the start date is gone from the card and is still editable in the sheet it opens.<br><br><b>Then the page pair went too.</b> The card read <code>46% &middot; p.213</code> and the page and total were withdrawn on instruction &mdash; both are derived from the percent, so the card was spending its widest value restating its first third more precisely than a glance wants. <code>pageCount</code> left <code>ReadingPeriodRow</code> with them. The numerals are not gone from the app: the sheet&rsquo;s read-out still carries <code>p.213</code> and <code>of 462</code>, each a tappable span onto the wheel, which is where a reader who wants a page number already is.',
                             {
                                 band: true,
                                 pt: 98,
@@ -2179,7 +2415,8 @@
                                     {
                                         t: "prd",
                                         chip: "Reading",
-                                        dates: "46% &middot; p.213",
+                                        pos: true,
+                                        dates: "46%",
                                         days: "1106 days",
                                     },
                                 ],
@@ -2215,14 +2452,14 @@
                                         ci: 2,
                                         unit: "%",
                                     },
-                                    { t: "rider", v: "~ p.213" },
+                                    { t: "rider", v: "p.213" },
                                 ],
                             },
                         ],
                         [
                             "sub-page",
                             "Tap <code>213</code> &middot; the current page",
-                            "The same sheet opened straight into Page mode, so the reader who thinks in pages never converts anything. It writes <code>progress_page</code> as well as <code>progress</code> &mdash; which is why the read-out can print the page the reader gave rather than the one the arithmetic derives, and why the tilde disappears once they have said it.",
+                            "The same sheet opened straight into Page mode, so the reader who thinks in pages never converts anything. It writes <code>progress_page</code> as well as <code>progress</code> &mdash; which is why the read-out can print the page the reader gave rather than the one the arithmetic derives. <b>That is now invisible:</b> the tilde that marked the derived case is gone, so the column earns its place by making a typed page round-trip exactly rather than by changing how it looks.",
                             {
                                 pt: 368,
                                 body: [
@@ -2329,8 +2566,8 @@
                         ],
                         [
                             "sheet-popover",
-                            "The menu open &middot; two checkable rows",
-                            "<b>The mechanism already exists, and the obvious one is the wrong one.</b> <code>read_filter.dart</code>'s collapsed popover is a <code>CNPopupMenuButton</code> with <code>CNButtonStyle.glass</code> and <code>CNPopupMenuItem(checked:)</code> &mdash; an exact fit by shape &mdash; but its <code>buttonLabel</code> is rendered by the <i>platform</i>, and that file's own record documents the label coming back at \"the system's 17pt in the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for 13pt\". This label is the largest text on the sheet and <code>LibrarySheetTitle</code> draws its count in <code>brandText</code>, so it cannot become a platform-styled button label. <b>The precedent is <code>shelf_picker_popover.dart</code></b>'s <code>showShelfPickerPopover</code>: an app-drawn card hung from the anchor's <code>RenderBox</code> rect, <code>LiquidGlassContainer</code> on iOS&nbsp;26 and <code>BackdropFilter</code> as the fallback, where \"Flutter draws every pixel of content, the platform supplies the material behind it\". The app-drawn path is also the only one a widget test ever takes, since <code>flutter test</code> reports Android &mdash; which is what makes this popover testable at all. <b>Scope, corrected:</b> an earlier note had the filter expanded-only, with \"the spine pile stays completed-only\". That cannot hold &mdash; a persisted view mode the <code>collapsedBody</code> ignored would make the count jump on collapse. So the filter applies to the sheet's data in <i>both</i> states; what is expanded-only is the <b>chevron</b>, because the collapsed header's row already has the year popover beside <code>Expanded(child: title)</code>, and <code>library_clearance_test.dart</code> exists because that row overflows at 2&times; text with a two-digit count. <b>New ARB keys</b>, and <code>noFinishedBooks</code>&nbsp;/&nbsp;<code>noFinishedBooksInYear</code> have to follow the mode too, or the empty state says \"No books read yet\" under a <code>Books finished</code> title. The card is a route over the sheet rather than a row in it, so the <b>~300pt</b> estimate is the sheet's and does not move. <b>Drawn to scale it also shows what the anchor costs:</b> while the card is up it covers the first three year capsules. That is what a menu hung under the title does, and it survives because the rail is one dismissal away &mdash; but it is a second reason not to put the control on the rail's own row, where it would collide in geometry as well as in wording.",
+                            "The menu open &middot; superseded by the platform's own",
+                            "<b>This card is not what shipped, and it is drawn because the reasoning that chose it is half right.</b> The argument was: <code>read_filter.dart</code>'s collapsed popover is a <code>CNPopupMenuButton</code> with <code>CNButtonStyle.glass</code> and <code>CNPopupMenuItem(checked:)</code> &mdash; an exact fit by shape &mdash; but its <code>buttonLabel</code> is rendered by the <i>platform</i>, and that file's own record has the label coming back at \"the system's 17pt in the theme's tint, wrapped onto two lines inside a platform view Flutter had sized for 13pt\". This label is the largest text on the sheet and <code>LibrarySheetTitle</code> draws its count in <code>brandText</code>, so it cannot become a platform-styled button label. <b>All true &mdash; and it rules out the <i>labelled</i> constructor only.</b> <code>CNPopupMenuButton.icon</code> renders one SF Symbol and no text, so the Flutter title beside it stays Flutter's, which is what <code>home_page.dart</code>'s <code>_VisitMenuButton</code> had been doing next to a Flutter-drawn title all along. <b>The precedent it named is what cost three rounds:</b> <code>shelf_picker_popover.dart</code>'s app-drawn card, <code>LiquidGlassContainer</code> on iOS&nbsp;26 with <code>BackdropFilter</code> as the fallback. A reader said it \"isn't glassy\"; the container is a bare <code>glassEffect</code> with no material of its own, so over an opaque sheet it draws flat. A stretched contentless glass <code>CNButton</code> fixed that and drew a <b>capsule</b>, because the plugin's UIKit branch sets <code>cornerStyle = round ? .capsule : .dynamic</code> and never reads <code>borderRadius</code>. A <code>glassEffectId</code> to reach the SwiftUI branch that <i>does</i> honour the radius then sized the glass to the button's <i>content</i> &mdash; an empty label &mdash; collapsing it to a pill in the middle of the card. Each fix was right about the thing it fixed and uncovered the next. <b>What ended it is that none of the chain is checkable off a device:</b> <code>useNativeGlass</code> needs an Apple target <i>and</i> iOS&nbsp;26, and <code>flutter test</code> reports Android. So the filter is a <code>UIMenu</code> now, which brings the material, the radius, the entrance, the dismissal, the checkmarks and the VoiceOver behaviour from the platform, and ~250 lines of card went with it. <b>The drawing is kept</b> because the two <i>rows</i> are still the design &mdash; the labels, their order and the single check are what the platform menu renders, and the checks below test those rather than this material. <b>What the drawing gets wrong now:</b> the tap target. It shows the whole title row, which was the documented decision (\"title, count and chevron are one tap target; three separately tappable things in a row this size would be three ways to miss\"); UIKit presents from <code>button.showsMenuAsPrimaryAction</code> and the plugin exposes no programmatic open, so the tapped thing has to <i>be</i> the native button and the target is the <b>30pt chevron alone</b>. <b>Scope, corrected twice:</b> a note once had the filter expanded-only with \"the spine pile stays completed-only\", which cannot hold &mdash; a persisted view mode the <code>collapsedBody</code> ignored would make the count jump on collapse. So the filter applied in <i>both</i> states and only the <b>chevron</b> was expanded-only, on the reasoning that the collapsed row already had the year popover competing with the title for it. <b>That second half is reversed too &mdash; see <code>sheet-collapsed</code></b>, which draws the row it was an argument about. <b>New ARB keys</b>, and <code>noFinishedBooks</code>&nbsp;/&nbsp;<code>noFinishedBooksInYear</code> have to follow the mode too, or the empty state says \"No books read yet\" under a <code>Books finished</code> title &mdash; plus <code>readSetFilterMenu</code>, which names the chevron now that the title it wrapped no longer does. <b>Drawn to scale it also shows what the anchor costs:</b> while the menu is up it covers the first three year capsules. That is a second reason not to put the control on the rail's own row, geometric as well as verbal &mdash; but the fix for it is no longer ours: a <code>UIMenu</code> places itself, so only the <b>anchor</b> can move.",
                             {
                                 pt: 300,
                                 body: [
@@ -2416,6 +2653,28 @@
                                 ],
                             },
                         ],
+                        [
+                            "sheet-collapsed",
+                            "Collapsed &middot; two chevrons in one row",
+                            "<b>The chevron is on this header too, which reverses what <code>sheet-popover</code>'s caption argued.</b> It had the chevron expanded-only because \"the collapsed header's row already has the year popover competing with the title for it\" &mdash; a claim about <b>width</b>, and width was never the constraint: both halves of this row are flexible and the title ellipsizes, so a control here takes room from the title's <i>characters</i>, not from the row's edge. <b>Why it had to move:</b> collapsed is where this sheet <i>opens</i>. The filter was honoured in both states from the start, so the pile in front of the reader was already obeying an answer they had to expand the sheet to give. <b>What it costs is height, and only off iOS&nbsp;26.</b> The collapsed sheet is <code>header&nbsp;+&nbsp;ReadPile.extent</code>, so a taller header is a shorter library: measured on the smallest phone the title row goes <b>21&nbsp;&rarr;&nbsp;30</b> and the visible library <b>324&nbsp;&rarr;&nbsp;315</b>. The 30 is the control's box. Native it is <i>free</i> &mdash; the year popover beside it is a 36pt <code>CNPopupMenuButton</code>, so the row is 36 tall either way &mdash; and at 2&times; text it is free on both paths, because the title's own line is 43pt. <code>flutter test</code> reports Android, so the suite measures the strict case. <b>The flex is 2:1, and an even split cost the title its last four characters.</b> Rendered at 390pt with both halves at flex&nbsp;1 this row read <code>Books&nbsp;fini...&nbsp;12&nbsp;&#8250;</code>: the count and the chevron take the fixed end of a half-width box, so the title is what gave way. That is the one thing this header cannot spend, because the title <i>is</i> the read-out &mdash; truncating it truncates the state, and <code>Books&nbsp;fini...</code> does not distinguish the two modes. The <b>year label</b> gives way instead and can afford to: it repeats inside its own menu, its chevron says it is one, and <code>All&nbsp;ti...</code> still reads. <b>Two chevrons in one row is the part only looking settles</b>, which is why the render preview writes this state in both themes: the year filter draws the same glyph at the same size in the same ink, and whether that reads as two controls or as one drawn twice is not something an assertion can answer. There is no year rail here &mdash; collapsed the years are that popover, since capsules would cost the whole card &mdash; so this is the one read-sheet screen where <code>caps</code> is not the row under the title.",
+                            {
+                                pt: 300,
+                                body: [
+                                    {
+                                        t: "shd",
+                                        t2: "Books finished",
+                                        n: "23",
+                                        chev: true,
+                                        yr: "All time",
+                                    },
+                                    G16,
+                                    {
+                                        t: "cvs",
+                                        items: [{}, {}, {}, {}],
+                                    },
+                                ],
+                            },
+                        ],
                     ],
                 ],
                 [
@@ -2424,16 +2683,12 @@
                         [
                             "rej-plusminus",
                             "&minus;&nbsp;/&nbsp;+ steppers beside the bar",
-                            '<b>REJECTED on review.</b> They were drawn to cover what a drag cannot reach &mdash; a ~353pt track over 912 pages &mdash; and the objection is that they make the sheet a form again, which is the same complaint that killed the three-control stack in <code>streaks/index.html</code> ("too many ways to say the same thing"). The exact path is the <i>numerals</i> instead: each one is already on screen and already names what it edits, so precision costs a tap rather than 50pt of chrome.',
+                            '<b>REJECTED on review.</b> They were drawn to cover what a drag cannot reach &mdash; a ~353pt track over 912 pages &mdash; and the objection is that they make the sheet a form again, which is the same complaint that killed the three-control stack in <code>streaks/index.html</code> ("too many ways to say the same thing"). The exact path is the <i>numerals</i> instead: each one is already on screen and already names what it edits, so precision costs a tap rather than 50pt of chrome. <b>The reachability half of the argument dissolved on its own:</b> a relative slider moves at <code>1 / (width - 44)</code> per pixel from wherever the thumb is, so from any value <code>v</code> there is exactly <code>v</code> of the travel to its left and <code>1 - v</code> to its right &mdash; both ends are always exactly reachable.',
                             {
                                 pt: 306,
                                 over: true,
                                 body: [
-                                    {
-                                        t: "head",
-                                        v: "&#49828;&#48197;!",
-                                        btn: "Save",
-                                    },
+                                    H_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -2470,11 +2725,7 @@
                                 pt: 306,
                                 over: true,
                                 body: [
-                                    {
-                                        t: "head",
-                                        v: "&#49828;&#48197;!",
-                                        btn: "Save",
-                                    },
+                                    H_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -2504,16 +2755,12 @@
                         [
                             "rej-bare",
                             "Bare draggable track",
-                            '<b>REJECTED, and it was proposed again in this very conversation before the record was checked.</b> <code>streaks/index.html</code>\'s <code>band-scrubber</code> is the same control, killed because "<b>a stray touch could silently rewrite your position</b>" and "rejected for being able to rewrite a position irrecoverably". Arming plus Cancel is the house answer; a bare track is not. Kept so the rejection is on the record rather than asserted.',
+                            '<b>REJECTED, and it was proposed again in this very conversation before the record was checked.</b> <code>streaks/index.html</code>\'s <code>band-scrubber</code> is the same control, killed because "<b>a stray touch could silently rewrite your position</b>" and "rejected for being able to rewrite a position irrecoverably". Arming plus Cancel is the house answer; a bare track is not. Kept so the rejection is on the record rather than asserted. <b>Superseded in its conclusion, not in its objection:</b> what shipped <i>is</i> bare &mdash; no arming, no Cancel &mdash; because the platform sliders are <b>relative</b>, so a tap opens and closes a drag whose delta is zero and there is nothing to arm against. The objection was right about the danger and wrong about the remedy; the drawing here is what a bare track looks like when it is <i>absolute</i>, which is what a Material <code>Slider</code> would have made it. See <code>el-track</code>.',
                             {
                                 pt: 250,
                                 over: true,
                                 body: [
-                                    {
-                                        t: "head",
-                                        v: "&#49828;&#48197;!",
-                                        btn: "Save",
-                                    },
+                                    H_SHEET,
                                     G16,
                                     {
                                         t: "status",
@@ -2607,7 +2854,7 @@
                                         ci: 1,
                                         unit: "%",
                                     },
-                                    { t: "rider", v: "~ p.213" },
+                                    { t: "rider", v: "p.213" },
                                     G8,
                                     R_START,
                                     G8,
@@ -2622,6 +2869,45 @@
                                 ],
                             },
                         ],
+                        [
+                            "rej-drawn",
+                            "As this page first drew it &middot; ribbon thumb, book title",
+                            "<b>SUPERSEDED BY THE BUILT SHEET, and kept because two of the three verdicts are things you can only see.</b> This is <code>one-rest</code> as it stood before the feature was built, with all three reversals in one frame.<br><br><b>1. The bookmark ribbon as the thumb.</b> The app's own mark, so the sheet would carry the same object as the shelf, the Library Card and the home-screen widget. A reader's verdict on it built: <i>&ldquo;the bookmark makes an ugly thumb&rdquo;</i> &mdash; it is a tall asymmetric shape with a notch and a shadow hung off a 4pt bar, and at rest it reads as a mark <i>dropped on</i> the track rather than a handle <i>on</i> it. It is drawn here at its shipped size against the shipped band, so the overhang is the complaint. The replacement is the platform's own disc; see <code>el-track</code> for what else came with it.<br><br><b>2. The book's title as the heading.</b> The argument for it was that the heading is <i>always left-aligned, so the row does not re-centre when Save appears</i>. That half still holds and still applies &mdash; <code>Reading progress</code> is left-aligned for exactly that reason. What lost is the <i>choice of string</i>: the book's title read as a page header rather than a sheet title, and it told the reader something they already knew, since they arrived from that book's page and the book is still on screen behind the sheet. A sheet title owes them what the sheet <i>does</i>.<br><br><b>3. <code>Stop reading this</code>, left-aligned.</b> Left-aligned it sits under the start-date row's own left inset and reads as a third field in the form rather than an action on the book &mdash; which is what this frame shows. Centred and full width is what shipped.",
+                            {
+                                pt: 275,
+                                over: true,
+                                body: [
+                                    { t: "title", v: "&#49828;&#48197;!" },
+                                    G16,
+                                    {
+                                        t: "status",
+                                        state: "Reading",
+                                        pc: "46%",
+                                        page: "213",
+                                        total: "462",
+                                    },
+                                    {
+                                        t: "track",
+                                        mode: "rest",
+                                        pct: 46,
+                                        thumb: "rib",
+                                    },
+                                    {
+                                        t: "ends",
+                                        left: "Not started",
+                                        right: "Finished",
+                                    },
+                                    G16,
+                                    R_PERIOD,
+                                    G16,
+                                    {
+                                        t: "lnk",
+                                        v: "Stop reading this",
+                                        left: true,
+                                    },
+                                ],
+                            },
+                        ],
                     ],
                 ],
             ];
@@ -2632,8 +2918,8 @@
                     [
                         [
                             "el-track",
-                            "Glassy reading track",
-                            "Translucent ground with a lit top edge and the fill lit from above &mdash; drawn as the <i>material</i>, since <code>native_glass.dart</code> gates real Liquid Glass on iOS 26 and paints a fallback elsewhere. 48pt including its end labels, against 256pt for a wheel and its rider. The ends are <b>named, not numbered</b>, which is what lets the status be read off the control instead of picked beside it.",
+                            "Reading track &middot; a native slider",
+                            "<b>It is a real platform slider, and it was hand-drawn first.</b> <code>CNSlider</code> from <code>cupertino_native_better</code> behind <code>useNativeGlass</code> &mdash; a native <code>UISlider</code>, which on iOS&nbsp;26 is where the real Liquid Glass comes from &mdash; and <code>CupertinoSlider</code> on every other path. The thumb is the platform's own white disc in both. <b>Painting a translucent rectangle and calling it glass got the fallback's <i>look</i> on every platform, including the one platform that has the material</b>, and the package was already a dependency and already supplied the control. The superseded groove and its ribbon thumb are in <code>rej-drawn</code>.<br><br><b>Deliberately not <code>CNSlider</code>'s own fallback</b>, which is a Material <code>Slider</code> &mdash; the one place this widget overrides the package. Material sliders are <i>absolute</i>: a tap on the track seeks to it. That would reintroduce the <code>band-scrubber</code> behaviour this whole design was built to avoid, on Android and in <i>every widget test</i>, which is where the rule is actually checked.<br><br><b>The inert tap is now free, and it comes from the sliders being relative.</b> Flutter's <code>_RenderCupertinoSlider</code> holds one <code>HorizontalDragGestureRecognizer</code>, sets <code>_currentDragValue = _value</code> on drag start and <i>adds</i> deltas &mdash; so a tap opens and closes a drag whose delta is zero. Two further gates do the real work: <code>hitTestSelf</code> accepts a pointer only within about 22pt of the thumb (<code>radius + _kPadding</code>), and <code>_handleChanged</code> reports only when the value differs from the built one. This replaced a hand-rolled slop gate, which existed because <b>a lone drag recognizer wins its gesture arena by default at pointer-down</b> and therefore fires on a plain tap &mdash; that discovery is still true, and is still why this cannot be done with a bare recognizer. It is only that the two platform sliders had already solved it, by being relative rather than by measuring travel.<br><br><b>48pt including its end labels</b> &mdash; a 28pt band, a 4pt gap and a 16pt label line, which is <code>ReadingTrack.height</code> &mdash; against 256pt for a wheel and its rider. Unchanged by the swap: the hand-drawn band was 24 with an 8pt gap. The ends are <b>named, not numbered</b>, which is what lets the status be read off the control instead of picked beside it.",
                             `<div class="dev" style="padding:14px 16px">${blocks(
                                 [
                                     { t: "track", mode: "rest", pct: 46 },
@@ -2648,13 +2934,13 @@
                         [
                             "el-readout",
                             "The read-out &middot; one line, three doors",
-                            "<b>Status, percent and the page inside the total, on one line.</b> <code>46%</code> opens the wheel; <code>213</code> opens it in Page mode; <code>462</code> opens the total-pages sheet. That is what replaced &minus;&nbsp;/&nbsp;+. Only the two page numerals are underlined: they are small and sit inside a phrase, where the percent is the largest thing on the line and needs no marking.",
+                            "<b>Status, percent and the page inside the total, on one line.</b> <code>46%</code> opens the wheel; <code>213</code> opens it in Page mode; <code>462</code> opens the total-pages sheet. That is what replaced &minus;&nbsp;/&nbsp;+. <b>None of the three is underlined</b>, since the mark moved to the sheet's text actions: an underline marks an action and every part of this line is a value. <b>On a set-aside book the first two are shut</b> &mdash; they write a position, and resuming has to be a decision rather than a side effect of touching a slider &mdash; while <code>462</code> stays open, a total being a fact about the book rather than about the reader's place in it.",
                             `<div class="dev" style="padding:14px 16px">${blocks([{ t: "status", state: "Reading", pc: "46%", page: "213", total: "462" }])}</div>`,
                         ],
                         [
                             "el-pageline",
                             "The line's right-hand end &middot; and the 65% case",
-                            "Two underlines when the book has a count; one green prompt when it does not, which is <b>~65% of the corpus</b>. That prompt is the new capability &mdash; <code>page_count</code> is written once by <code>addBook</code> and never again today, so filling it in is what turns Page mode on for a book that never had it.",
+                            "No underline when the book has a count; one underlined green prompt when it does not, which is <b>~65% of the corpus</b>. That prompt is the new capability &mdash; <code>page_count</code> is written once by <code>addBook</code> and never again today, so filling it in is what turns Page mode on for a book that never had it.",
                             `<div class="dev" style="padding:14px 16px">${blocks(
                                 [
                                     { t: "pg", page: "213", total: "462" },
@@ -2666,7 +2952,7 @@
                         [
                             "el-status",
                             "Derived status read-out &middot; three tones",
-                            "The control teaches the model: drag and the word changes. <code>brandText</code> reading, <code>flame</code> set aside, <code>secondaryText</code> not started. This is what replaces <code>BookStatusSelector</code> on this sheet &mdash; and the words are the open question: <b>Interested&nbsp;&rarr;&nbsp;Not started</b> and <b>Read&nbsp;&rarr;&nbsp;Finished</b> would make every status word agree with the track end it corresponds to.",
+                            "The control teaches the model: drag and the word changes. <code>brandText</code> reading, <code>flame</code> set aside, <code>secondaryText</code> not started. This is what replaces <code>BookStatusSelector</code> on this sheet &mdash; and the words are the open question: <b>Interested&nbsp;&rarr;&nbsp;Not started</b> and <b>Read&nbsp;&rarr;&nbsp;Finished</b> would make every status word agree with the track end it corresponds to. <b>The third tone is the word alone</b>, and it used to carry a <code>Set a position</code> prompt beside it: at the origin there is no percent, no page pair and no <i>Add total pages</i> either, because the whole right-hand region answers <i>where in the book</i> and there is no answer yet to qualify. That correction is most of the 76pt <code>one-null</code>'s badge was out by.",
                             `<div class="dev" style="padding:14px 16px">${blocks(
                                 [
                                     {
@@ -2688,10 +2974,8 @@
                                     { t: "gap", h: 10 },
                                     {
                                         t: "status",
-                                        state: "Interested",
+                                        state: "Not started",
                                         tone: "off",
-                                        pc: "Set a position",
-                                        flat: true,
                                     },
                                 ],
                             )}</div>`,
@@ -2759,7 +3043,7 @@
                                         ci: 1,
                                         unit: "%",
                                     },
-                                    { t: "rider", v: "~ p.213" },
+                                    { t: "rider", v: "p.213" },
                                 ],
                             )}</div>`,
                         ],
@@ -2829,7 +3113,7 @@
                                                 ci: 2,
                                                 unit: "%",
                                             },
-                                            { t: "rider", v: "~ p.213" },
+                                            { t: "rider", v: "p.213" },
                                         ],
                                     },
                                 ],
@@ -2838,11 +3122,11 @@
                         [
                             "flow-nudge-new",
                             "Moving the bookmark &middot; proposed",
-                            "<b>Two taps and a drag</b> &mdash; open the card, drag the thumb, Save. Matches today's count, on one door instead of two, and with the status, the dates and the position all visible while you do it. No arming step: a tap on the bar does nothing, so there is nothing to arm.",
+                            "<b>Two taps and a drag</b> &mdash; open the card, drag the thumb, Save. Matches today's count, on one door instead of two, and with the status, the dates and the position all visible in the sheet while you do it. No arming step: a tap on the bar does nothing, and that is the platform's doing rather than a gate of ours &mdash; the sliders are relative, so a tap is a drag of zero delta. See <code>el-track</code>.",
                             [
                                 [
                                     "Band",
-                                    "One card, one door. Status, dates and position on it.",
+                                    "One card, one door. Status, then the percent, then how long.",
                                     {
                                         band: true,
                                         pt: 98,
@@ -2852,7 +3136,8 @@
                                             {
                                                 t: "prd",
                                                 chip: "Reading",
-                                                dates: "46% &middot; p.213",
+                                                pos: true,
+                                                dates: "46%",
                                                 days: "1106 days",
                                             },
                                         ],
@@ -2862,12 +3147,9 @@
                                     "Resting",
                                     "Everything on one line. The bar is drag-only; the numerals are the exact path. <b>No Save yet.</b>",
                                     {
-                                        pt: 270,
+                                        pt: 275,
                                         body: [
-                                            {
-                                                t: "title",
-                                                v: "&#49828;&#48197;!",
-                                            },
+                                            T_SHEET,
                                             G16,
                                             {
                                                 t: "status",
@@ -2888,6 +3170,11 @@
                                             },
                                             G16,
                                             R_PERIOD,
+                                            G16,
+                                            {
+                                                t: "lnk",
+                                                v: "Stop reading this",
+                                            },
                                         ],
                                     },
                                 ],
@@ -2895,13 +3182,9 @@
                                     "Dragging",
                                     "Numerals track the thumb live, and <b>Save appears because the sheet is now dirty</b> &mdash; its arrival is the feedback. Dismissing discards.",
                                     {
-                                        pt: 292,
+                                        pt: 286,
                                         body: [
-                                            {
-                                                t: "head",
-                                                v: "&#49828;&#48197;!",
-                                                btn: "Save",
-                                            },
+                                            H_SHEET,
                                             G16,
                                             {
                                                 t: "status",
@@ -2922,6 +3205,11 @@
                                             },
                                             G16,
                                             R_PERIOD,
+                                            G16,
+                                            {
+                                                t: "lnk",
+                                                v: "Stop reading this",
+                                            },
                                         ],
                                     },
                                 ],
@@ -2941,13 +3229,9 @@
                                     "At 92%",
                                     "Nearly there.",
                                     {
-                                        pt: 290,
+                                        pt: 286,
                                         body: [
-                                            {
-                                                t: "head",
-                                                v: "&#49828;&#48197;!",
-                                                btn: "Save",
-                                            },
+                                            H_SHEET,
                                             G16,
                                             {
                                                 t: "status",
@@ -2968,20 +3252,21 @@
                                             },
                                             G16,
                                             R_PERIOD,
+                                            G16,
+                                            {
+                                                t: "lnk",
+                                                v: "Stop reading this",
+                                            },
                                         ],
                                     },
                                 ],
                                 [
                                     "At the end",
-                                    "The word changes, the finish date arrives, the day-stamp row leaves.",
+                                    "The word changes, the finish date arrives, the day-stamp row leaves &mdash; and so does <code>Stop reading this</code>, because a finished book cannot be given up on.",
                                     {
-                                        pt: 290,
+                                        pt: 287,
                                         body: [
-                                            {
-                                                t: "head",
-                                                v: "&#49828;&#48197;!",
-                                                btn: "Save",
-                                            },
+                                            H_SHEET,
                                             G16,
                                             {
                                                 t: "status",
@@ -3016,15 +3301,11 @@
                             [
                                 [
                                     "At 46%",
-                                    "Stalled. The secondary action is the only new affordance.",
+                                    "Stalled. The secondary action is the only new affordance &mdash; centred and full width, so the target is a band rather than the glyphs.",
                                     {
-                                        pt: 290,
+                                        pt: 286,
                                         body: [
-                                            {
-                                                t: "head",
-                                                v: "&#49828;&#48197;!",
-                                                btn: "Save",
-                                            },
+                                            H_SHEET,
                                             G16,
                                             {
                                                 t: "status",
@@ -3055,15 +3336,11 @@
                                 ],
                                 [
                                     "Set aside",
-                                    "Closed where it stood. <code>Stopped on</code> is <code>finish_date</code>, which is what keeps the month grouping and the year rail working.",
+                                    "Closed where it stood. <code>Stopped on</code> is <code>finish_date</code>, which is what keeps the month grouping and the year rail working. <b>287pt, measured &mdash; the tallest this sheet gets:</b> read-out, track, both date rows and a dirty Save at once, which still clears a 667pt phone by nearly 400.",
                                     {
-                                        pt: 290,
+                                        pt: 287,
                                         body: [
-                                            {
-                                                t: "head",
-                                                v: "&#49828;&#48197;!",
-                                                btn: "Save",
-                                            },
+                                            H_SHEET,
                                             G16,
                                             {
                                                 t: "status",
@@ -3180,11 +3457,7 @@
                                     pt: 318,
                                     over: true,
                                     body: [
-                                        {
-                                            t: "head",
-                                            v: "&#49828;&#48197;!",
-                                            btn: "Save",
-                                        },
+                                        H_SHEET,
                                         G16,
                                         {
                                             t: "status",
@@ -3231,15 +3504,11 @@
                         screens: {
                             "one-rest": {
                                 name: "Resting &middot; wheel inline",
-                                note: "<b>The conservative cut.</b> Status is still derived and still read off the top line, but the value control is the wheel that already exists and already has typed entry, Page mode and a tilde'd rider. Estimated <b>~464pt</b> against the track's 290 &mdash; the whole difference is the wheel. Nothing about the stray-touch rejection applies, because there is nothing to touch by accident.",
+                                note: "<b>The conservative cut.</b> Status is still derived and still read off the top line, but the value control is the wheel that already exists and already has typed entry, Page mode and a rider (tilde'd, at the time this was drawn). Estimated <b>~464pt</b> against the track's 290 &mdash; the whole difference is the wheel. Nothing about the stray-touch rejection applies, because there is nothing to touch by accident.",
                                 spec: {
                                     pt: 464,
                                     body: [
-                                        {
-                                            t: "head",
-                                            v: "&#49828;&#48197;!",
-                                            btn: "Save",
-                                        },
+                                        H_SHEET,
                                         G16,
                                         {
                                             t: "status",
@@ -3260,7 +3529,7 @@
                                             ci: 2,
                                             unit: "%",
                                         },
-                                        { t: "rider", v: "~ p.213" },
+                                        { t: "rider", v: "p.213" },
                                         G16,
                                         R_PERIOD,
                                         G8,
@@ -3280,11 +3549,7 @@
                                 spec: {
                                     pt: 464,
                                     body: [
-                                        {
-                                            t: "head",
-                                            v: "&#49828;&#48197;!",
-                                            btn: "Save",
-                                        },
+                                        H_SHEET,
                                         G16,
                                         {
                                             t: "status",
@@ -3319,11 +3584,7 @@
                                 spec: {
                                     pt: 416,
                                     body: [
-                                        {
-                                            t: "head",
-                                            v: "&#49828;&#48197;!",
-                                            btn: "Save",
-                                        },
+                                        H_SHEET,
                                         G16,
                                         {
                                             t: "status",
@@ -3360,7 +3621,7 @@
                         elements: {
                             "el-wheel": {
                                 name: "The 101-stop wheel &middot; kept",
-                                note: "<b>Kept, not deleted.</b> In this version the wheel is the value control, so typed entry, Page mode and the tilde'd derived page all survive untouched and no new input widget has to be built or made accessible.",
+                                note: "<b>Kept, not deleted.</b> In this version the wheel is the value control, so typed entry, Page mode and the derived page all survive untouched (the rider wore a tilde when this was drawn) and no new input widget has to be built or made accessible.",
                             },
                             "el-track": null,
                             "el-track-armed": null,
@@ -3386,7 +3647,8 @@
                                                 {
                                                     t: "prd",
                                                     chip: "Reading",
-                                                    dates: "46% &middot; p.213",
+                                                    pos: true,
+                                                    dates: "46%",
                                                     days: "1106 days",
                                                 },
                                             ],
@@ -3398,11 +3660,7 @@
                                         {
                                             pt: 464,
                                             body: [
-                                                {
-                                                    t: "head",
-                                                    v: "&#49828;&#48197;!",
-                                                    btn: "Save",
-                                                },
+                                                H_SHEET,
                                                 G16,
                                                 {
                                                     t: "status",
@@ -3430,7 +3688,7 @@
                                                 },
                                                 {
                                                     t: "rider",
-                                                    v: "~ p.268",
+                                                    v: "p.268",
                                                 },
                                                 G16,
                                                 R_PERIOD,

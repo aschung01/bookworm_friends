@@ -14,6 +14,13 @@
  * The version assertions are the ones that earn their keep: a patch that
  * restates an unchanged screen reports a false "changed", and a diff whose
  * labels read backwards badges a removal as new. Both are recorded bugs.
+ *
+ * The three-reversal assertions near the end are the other kind: the feature is
+ * built, so these pin the drawing to the code rather than to an intention --
+ * the thumb is the platform's disc, the heading is the sheet's own title, and
+ * the one text action is centred. Each mirrors the page's REAL predicate (the
+ * renderer's classes and the data's blocks) rather than grepping the prose; a
+ * previous session introduced a bug by reimplementing one loosely.
  */
 const fs = require("fs");
 const path = require("path");
@@ -166,8 +173,8 @@ const all = (v, k) =>
 
 console.log("-- inventory --");
 ok(
-  all("track", "screens").length === 22,
-  "22 screens (" + all("track", "screens").length + ")",
+  all("track", "screens").length === 24,
+  "24 screens (" + all("track", "screens").length + ")",
 );
 ok(all("track", "flows").length === 4, "4 flows");
 ok(
@@ -220,7 +227,7 @@ for (const id of ["sub-percent", "sub-page", "sub-total"])
 
 console.log("-- version patch: inherit / override / remove --");
 const dv = all("derived", "screens");
-ok(dv.length === 22, "derived overrides without adding or removing screens");
+ok(dv.length === 24, "derived overrides without adding or removing screens");
 const setAside = (v) =>
   A.resolveView(v, "screens")
     .flatMap(([, l]) => l)
@@ -247,7 +254,13 @@ ok(
   "derived-wheel removes the track element",
 );
 
-console.log("-- the percent is tappable but NOT underlined --");
+console.log("-- nothing in the read-out is underlined; the actions are --");
+/* **These checks were inverted on instruction, and the tag is why they had to be
+   rewritten rather than flipped.** The old pair asserted "no percent carries the
+   underline class" and "the page numerals do carry underlines" -- the second by looking
+   for `<u>213</u>`. The numerals are still wrapped in `<u>`; what changed is the CSS
+   that gives `<u>` a rule. So the old check passes unmodified against a page that draws
+   no underline at all, which makes it worse than absent. Read the stylesheet. */
 const readouts = [];
 for (const [, l] of A.resolveView("track", "screens"))
   for (const it of l) {
@@ -259,9 +272,60 @@ ok(
   readouts.every(([, h]) => !h.includes('class="pc tap"')),
   "no percent carries the underline class",
 );
+const css = src.slice(src.indexOf("<style"), src.indexOf("</style>"));
+const rule = (sel) => {
+  const i = css.indexOf(sel);
+  if (i < 0) return null;
+  const open = css.indexOf("{", i);
+  return css.slice(open + 1, css.indexOf("}", open));
+};
+ok(
+  /text-decoration:\s*none/.test(rule(".dev .sl .sub u") || ""),
+  "the page numerals are explicitly NOT underlined",
+);
+ok(
+  /text-decoration:\s*underline/.test(rule(".dev .sl .sub .add") || ""),
+  "but the Add total pages offer is, being the line's one call to action",
+);
+ok(
+  /text-decoration:\s*underline/.test(rule(".dev .lnk") || ""),
+  "and the mark moved to the sheet's two text actions",
+);
 ok(
   readouts.some(([, h]) => h.includes("<u>213</u>")),
-  "the page numerals do carry underlines",
+  "the numerals are still their own tap targets, <u> and all",
+);
+
+console.log("-- Set aside freezes the position --");
+/* `resolveView` yields `[group, items]` pairs and the items are
+   `[id, name, caption, spec]`, so a screen is found by scanning rather than by key. */
+const screenById = (id) => {
+  for (const [, l] of A.resolveView("track", "screens"))
+    for (const it of l) if (it[0] === id) return it;
+  return null;
+};
+const aside = screenById("one-setaside");
+ok(!!aside, "one-setaside is drawn in the shipped version");
+const asideHtml = A.frame(aside[3]);
+ok(
+  asideHtml.includes('class="trk rest off'),
+  "its track is drawn disabled, not merely at rest",
+);
+ok(
+  asideHtml.includes('class="sub off"'),
+  "and the page pair recedes with it",
+);
+ok(
+  asideHtml.includes('class="pc"'),
+  "while the percent does not, since 46% is still true",
+);
+ok(
+  /opacity:\s*0\.4/.test(rule(".dev .trk.off") || ""),
+  "the disabled strength is the platform's 0.4, drawn rather than implied",
+);
+ok(
+  A.frame(screenById("one-rest")[3]).includes('class="trk rest glass'),
+  "and a Reading book's track carries no off class",
 );
 
 console.log("-- the page pair shares the status line, not its own --");
@@ -288,6 +352,53 @@ ok(hasSave("one-null") === false, "one-null (clean) has no Save");
 ok(hasSave("one-nopages") === false, "one-nopages (clean) has no Save");
 ok(hasSave("one-armed") === true, "one-armed (dirty) has Save");
 
+console.log("-- and it is at the foot, with Discard changes beside it --");
+/* Save sat in the title row at 92x32 and was asked for at the foot, which is what made
+   `Reset` possible: a slot beside a title holds one button, a full-width row holds a pair.
+   Checked as *order within the rendered frame* rather than by looking for a block, because
+   "at the foot" is the claim -- the buttons must come after the track, not before it. */
+/* Reuses `screenById` above. It used to carry its own copy of that scan, with a comment
+   saying `specOf` is declared further down and a `const` does not hoist -- still true, and
+   the reason the helper now lives before the first of its three callers. */
+const frameOf = (id) => {
+  const it = screenById(id);
+  return it ? A.frame(it[3]) : "";
+};
+const dirtyFrame = frameOf("one-armed");
+ok(dirtyFrame.includes('class="rst"'), "one-armed draws the recessive button");
+ok(
+  dirtyFrame.includes(">Discard changes<"),
+  "and it says Discard changes, not Reset -- the consequence, not the mechanism",
+);
+ok(
+  dirtyFrame.indexOf('class="cfm"') > dirtyFrame.indexOf('class="trk"') &&
+    dirtyFrame.indexOf('class="rst"') > dirtyFrame.indexOf('class="trk"'),
+  "both sit below the track, which is why their arrival cannot push it",
+);
+ok(
+  dirtyFrame.indexOf('class="rst"') < dirtyFrame.indexOf('class="cfm"'),
+  "it is the leading, recessive one",
+);
+ok(
+  !frameOf("one-rest").includes('class="rst"'),
+  "and a clean screen draws neither",
+);
+
+console.log("-- the read-out's page pair ends at the right edge --");
+/* The Dart uses `WrapAlignment.spaceBetween` over two nested groups. The page is that the
+   free space goes in *one* place -- before the trailing group -- and not spread across all
+   three spans, which would float the percent into the middle of the line. `margin-left: auto`
+   on the trailing span is the CSS with that same property; `justify-content: space-between`
+   on the row is the spelling that gets it wrong. */
+ok(
+  /\.dev \.sl \.sub \{[^}]*margin-left: auto/.test(src),
+  "the trailing group is pushed right",
+);
+ok(
+  !/\.dev \.sl \{[^}]*justify-content/.test(src),
+  "and the row does not spread every span instead",
+);
+
 console.log("-- Interested keeps a bar, undotted, thumb at the origin --");
 const specOf = (id) =>
   A.resolveView("track", "screens")
@@ -302,6 +413,200 @@ ok(
   !nullSpec.body.some((b) => b.page || b.t === "pg"),
   "and no page numerals are shown",
 );
+/* The two corrections that account for 76 of the 246 - 170 gap. Asserted on the
+   BLOCKS rather than on the rendered html: `status` renders its right-hand
+   region from whichever of `page` / `add` / `sub` / `pc` it was given, so the
+   claim "the read-out is the word alone" is a claim about the spec. */
+ok(
+  !nullSpec.body.some((b) => b.t === "fld"),
+  "no date row draws at the origin",
+);
+ok(
+  !nullSpec.body.some((b) => b.pc || b.sub || b.add || b.page),
+  "and the read-out collapses to the status word alone",
+);
+
+console.log("-- the pt badges are measured, not estimated --");
+for (const [id, want] of [
+  ["one-rest", 275],
+  ["one-armed", 286],
+  ["one-finished", 276],
+  ["one-setaside", 276],
+  ["one-null", 170],
+  ["one-nopages", 275],
+])
+  ok(specOf(id).pt === want, `${id} is ${want}pt (${specOf(id).pt})`);
+
+console.log("-- the thumb is the platform's disc, not the bookmark ribbon --");
+/* Mirrors the renderer: `block()`'s `track` case always emits `.thm` inside
+   `.rail`, and adds the `ribbon` class only for `thumb: "rib"`. Read off
+   frame() so it is the drawn markup rather than the spec's intent. */
+const trackScreens = [];
+for (const [, l] of A.resolveView("track", "screens"))
+  for (const it of l)
+    if ((it[3].body || []).some((b) => b.t === "track"))
+      trackScreens.push([it[0], A.frame(it[3])]);
+ok(trackScreens.length >= 8, trackScreens.length + " screens draw the track");
+ok(
+  trackScreens.every(([, h]) => h.includes('class="thm"')),
+  "every one of them draws the disc thumb",
+);
+ok(
+  !/class="rib"/.test(js),
+  "the ribbon thumb element is gone from the renderer",
+);
+const ribbons = trackScreens
+  .filter(([, h]) => / ribbon"/.test(h))
+  .map((x) => x[0]);
+ok(
+  ribbons.join() === "rej-drawn",
+  "and the ribbon survives only as rej-drawn (" + ribbons.join() + ")",
+);
+/* The CSS half, because "a disc" is a shape rather than a class name. */
+ok(
+  /\.dev \.trk \.thm \{[^}]*border-radius: 50%/.test(src),
+  "the default thumb is round in the CSS too",
+);
+ok(
+  /\.dev \.trk\.ribbon \.thm \{[^}]*clip-path/.test(src),
+  "and the notch is confined to the .ribbon variant",
+);
+/* `_kPadding` 8 + `CupertinoThumbPainter.radius` 14. Without this inset the
+   disc hangs half off the bar at one-null's 0% and one-finished's 100%. */
+ok(
+  /\.dev \.trk \.rail \{[^}]*left: calc\(22 \* var\(--pt\)\)/.test(src),
+  "the thumb's travel is inset 22pt, which is the platform's own geometry",
+);
+
+console.log("-- the heading is the sheet's title, not the book's --");
+const BOOK = "&#49828;&#48197;!";
+const headOf = (spec) =>
+  (spec.body || []).find((b) => b.t === "title" || b.t === "head");
+const proposedHeads = [];
+for (const [g, l] of A.resolveView("track", "screens"))
+  if (g.startsWith("Proposed"))
+    for (const it of l) {
+      const h = headOf(it[3]);
+      if (h) proposedHeads.push([it[0], h.v]);
+    }
+ok(
+  proposedHeads.length >= 6,
+  proposedHeads.length + " proposed sheets carry a heading",
+);
+ok(
+  proposedHeads.every(([, v]) => v === "Reading progress"),
+  "all of them are readingProgressTitle (" +
+    proposedHeads
+      .filter(([, v]) => v !== "Reading progress")
+      .map(([id]) => id)
+      .join() +
+    ")",
+);
+ok(
+  !proposedHeads.some(([, v]) => v === BOOK),
+  "and none of them is the book's own title",
+);
+/* The flows walk through the same sheet, which is the thing that goes stale. */
+const flowHeads = [];
+for (const [, l] of A.resolveView("track", "flows"))
+  for (const it of l)
+    for (const st of it[3])
+      if ((st[2].body || []).some((b) => b.t === "track")) {
+        const h = headOf(st[2]);
+        flowHeads.push([it[0] + "/" + st[0], h && h.v]);
+      }
+ok(flowHeads.length >= 5, flowHeads.length + " flow steps draw the sheet");
+ok(
+  flowHeads.every(([, v]) => v === "Reading progress"),
+  "and every one of them says it too (" +
+    flowHeads
+      .filter(([, v]) => v !== "Reading progress")
+      .map(([id]) => id)
+      .join() +
+    ")",
+);
+ok(
+  headOf(specOf("rej-drawn")).v === BOOK,
+  "the book title survives as rej-drawn's heading, so the reversal is browsable",
+);
+
+console.log("-- the band card has two slots and one green value --");
+/* The card shipped with four values in it -- range, position, day count -- and wrapped
+   onto two lines on a 390pt phone, which is not a wrap valve opening. Two facts are
+   pinned here. First, every card that carries a position says so in the `dates` slot
+   *instead of* a date, so no screen can quietly go back to printing both. Second, the
+   emphasis inverts with `.pos`: the position is the answer and the day count recedes,
+   because two green values beside a green chip is what "messy" turned out to mean.
+
+   Every version, and flow steps as well as screens: half the cards live inside a flow's
+   states, and a sweep of `track`'s screens alone found two and called the rule broken. */
+const cards = [];
+for (const v of A.VERSIONS.map((x) => x[0])) {
+  for (const [, l] of A.resolveView(v, "screens"))
+    for (const it of l)
+      for (const b of it[3].body || []) if (b.t === "prd") cards.push([it[0], b]);
+  for (const [, l] of A.resolveView(v, "flows"))
+    for (const it of l)
+      for (const st of it[3])
+        for (const b of st[2].body || [])
+          if (b.t === "prd") cards.push([it[0] + "/" + st[0], b]);
+}
+ok(cards.length >= 6, cards.length + " period cards drawn");
+const bothSlots = cards.filter(
+  ([, b]) => /%/.test(b.dates) && /\d{4}\./.test(b.dates),
+);
+ok(
+  bothSlots.length === 0,
+  "no card prints a date and a position in the same slot (" +
+    bothSlots.map(([id]) => id).join() +
+    ")",
+);
+/* And no page numeral on any card: the page and the total were withdrawn from it, and
+   the sheet's read-out is where they live. Asserted as bare digit runs rather than as
+   `p.213`, so a card that brought them back under a different separator still fails. */
+ok(
+  cards.every(([, b]) => !/p\.\d|\bof \d|\/\s*\d/.test(b.dates)),
+  "no card prints a page or a total, only a percent or a date",
+);
+const positional = cards.filter(([, b]) => /%/.test(b.dates));
+ok(
+  positional.length >= 3 && positional.every(([, b]) => b.pos === true),
+  positional.length + " cards with a position all carry the .pos emphasis",
+);
+ok(
+  cards.filter(([, b]) => !/%/.test(b.dates)).every(([, b]) => !b.pos),
+  "and the CURRENT cards, which lead with a range, do not",
+);
+ok(
+  /\.dev \.prd\.pos \.dt \{[^}]*color: var\(--brandText\)/.test(src) &&
+    /\.dev \.prd\.pos \.dy \{[^}]*color: var\(--text2\)/.test(src),
+  "the .pos rule makes the position green and the day count recede",
+);
+
+console.log("-- Stop reading this is centred and full width --");
+/* The page's real predicates for both halves: the `.lnk` rule centres the text,
+   and its 8pt vertical padding on a full-width block is what makes the target a
+   band rather than the glyphs. `.left` is the superseded alignment. */
+ok(
+  /\.dev \.lnk \{[^}]*text-align: center/.test(src),
+  "the .lnk rule centres it",
+);
+ok(
+  /\.dev \.lnk \{[^}]*padding: calc\(8 \* var\(--pt\)\) 0/.test(src),
+  "with the shipped 8pt vertical padding, so the target is a band",
+);
+const leftLnk = [];
+for (const [, l] of A.resolveView("track", "screens"))
+  for (const it of l)
+    if (/class="lnk left"/.test(A.frame(it[3]))) leftLnk.push(it[0]);
+ok(
+  leftLnk.join() === "rej-drawn",
+  "only rej-drawn draws it left-aligned (" + leftLnk.join() + ")",
+);
+ok(
+  A.frame(specOf("one-rest")).includes('class="lnk"'),
+  "and one-rest carries no alignment override at all",
+);
 
 console.log("-- the grey secondary action --");
 const links = [];
@@ -313,10 +618,29 @@ ok(
   links.every((b) => !b.flame),
   "none of them use the flame tone",
 );
+/* **Two words in this slot now, not one.** This used to require every link to read
+   `Stop reading this`, on the rule that a set-aside book resumes by moving the thumb --
+   which is wrong, because the thumb resumes only by changing the position. So the slot is
+   one action whose word is the status, and what is still worth pinning is that there are
+   exactly two of them and no third: every earlier draft that grew a link grew a *verb for
+   a status*, which is the model this sheet exists to replace. */
+const linkWords = [...new Set(links.map((b) => b.v))].sort();
 ok(
-  links.every((b) => b.v === "Stop reading this"),
-  "and the only one left is Stop reading this",
+  linkWords.join(" | ") === "Start reading again | Stop reading this",
+  "the slot carries exactly those two words (" + linkWords.join(" | ") + ")",
 );
+/* And they are never both drawn at once: a sheet offering to stop and to resume the same
+   book is the sheet saying it does not know what the book's status is. */
+for (const [, l] of A.resolveView("track", "screens"))
+  for (const it of l) {
+    const words = (it[3].body || [])
+      .filter((b) => b.t === "lnk")
+      .map((b) => b.v);
+    ok(
+      words.length <= 1,
+      it[0] + " draws at most one text action (" + words.join(",") + ")",
+    );
+  }
 
 console.log("-- the read sheet: the title IS the filter read-out --");
 /* Mirrors the structural claim the drawing makes rather than re-deriving it:
@@ -339,8 +663,44 @@ for (const id of ["sheet-read", "sheet-popover", "sheet-all"]) {
     specOf(id).body.find((b) => b.t === "caps").items[0] === "All time",
     id + ": the year rail is the real one",
   );
-  ok(shdOf(id).chev === true, id + ": the title row carries the chevron");
 }
+/* The chevron is on EVERY read-sheet header now, collapsed included, which reverses
+   `sheet-popover`'s own caption -- see `sheet-collapsed`. Checked across all four
+   rather than in the rail loop, because the collapsed screen deliberately has no
+   rail: collapsed the years ARE a popover, so capsules would cost the whole card. */
+const readHeaders = ["sheet-read", "sheet-popover", "sheet-all", "sheet-collapsed"];
+for (const id of readHeaders)
+  ok(shdOf(id).chev === true, id + ": the title row carries the chevron");
+
+/* The collapsed row, which is the one this screen was added for. Two chevrons live in
+   it -- the completion filter's attached to the count, the year filter's flush right --
+   and the drawing has to hold both or it is not the row that pays the cost. */
+const coll = specOf("sheet-collapsed");
+ok(
+  rowsOf(coll)[0] === "shd" && rowsOf(coll).length === 2,
+  "sheet-collapsed: a title row and a pile, and no rail between them (" +
+    rowsOf(coll).join(">") +
+    ")",
+);
+ok(
+  shdOf("sheet-collapsed").yr === "All time",
+  "sheet-collapsed: the year filter is in the title row, not under it",
+);
+ok(
+  A.frame(coll).split("&#8250;").length - 1 === 2,
+  "sheet-collapsed: both chevrons are actually drawn",
+);
+const collCap = A.resolveView("track", "screens")
+  .flatMap(([, l]) => l)
+  .find((i) => i[0] === "sheet-collapsed")[2];
+ok(
+  collCap.includes("324") && collCap.includes("315"),
+  "sheet-collapsed: the caption states what the library pays",
+);
+ok(
+  collCap.includes("2:1") && collCap.includes("Books&nbsp;fini..."),
+  "and the flex, with the ellipsis that forced it",
+);
 
 /* The superseded `Finished` / `All` segment. Checked as a block KEY across every
    version, not as a substring of the page -- the word "filter" is all over the
@@ -375,14 +735,14 @@ ok(
 ok(
   shdOf("sheet-popover").t2 === shdOf("sheet-read").t2 &&
     shdOf("sheet-popover").n === shdOf("sheet-read").n,
-  "the popover opens over the default state, not a third mode",
+  "the menu opens over the default state, not a third mode",
 );
 const pop = specOf("sheet-popover").body.find((b) => b.t === "pop");
 ok(
   !!pop &&
     pop.items.map((x) => x.v).join(" / ") ===
       "Show finished only / Show all read",
-  "the popover offers exactly the two modes, in that order",
+  "the menu offers exactly the two modes, in that order",
 );
 ok(
   !!pop &&
@@ -393,6 +753,30 @@ ok(
 ok(
   A.frame(specOf("sheet-popover")).includes("&#10003;"),
   "and the check is actually drawn",
+);
+/* The material under those rows is NOT what shipped: three rounds of hand-built glass
+   ended in the platform's own `UIMenu`, so the card is drawn as superseded work. The
+   rows are still the design -- the labels, their order and the single check are what a
+   `CNPopupMenuItem` renders -- which is why the four checks above survive the reversal
+   and only the caption changes. Asserted as substrings so the caption cannot quietly go
+   back to presenting this card as the mechanism. */
+const popCap = A.resolveView("track", "screens")
+  .flatMap(([, l]) => l)
+  .find((i) => i[0] === "sheet-popover")[2];
+ok(
+  popCap.includes("UIMenu"),
+  "the caption records that the platform menu superseded this card",
+);
+ok(
+  popCap.includes("labelled</i> constructor only"),
+  "and keeps the half-right argument that chose the card",
+);
+/* The one thing the DRAWING now gets wrong, which no block check can see: it shows the
+   whole title row as the target and the shipped target is the chevron. Stated in words
+   because redrawing it would cost the occlusion this screen exists to show. */
+ok(
+  popCap.includes("30pt chevron"),
+  "and states the tap target the drawing no longer matches",
 );
 
 /* The flow walks through the same drawing, which is the thing that goes stale. */
@@ -467,7 +851,7 @@ for (const v of A.VERSIONS.map((x) => x[0])) {
   for (const [, l] of A.resolveView(v, "flows"))
     for (const it of l) for (const st of it[3]) (A.frame(st[2]), n++);
 }
-ok(n === 93, `${n} specs rendered without throwing`);
+ok(n === 99, `${n} specs rendered without throwing`);
 
 console.log("-- pt badges --");
 let withPt = 0,
@@ -477,8 +861,8 @@ for (const [, l] of A.resolveView("track", "screens"))
     if (it[3].pt) withPt++;
     if (it[3].over) over++;
   }
-ok(withPt === 22, "every screen carries a measured height (" + withPt + ")");
-ok(over === 5, "5 screens flagged as rejected / overflowing (" + over + ")");
+ok(withPt === 24, "every screen carries a measured height (" + withPt + ")");
+ok(over === 6, "6 screens flagged as rejected / overflowing (" + over + ")");
 
 console.log("-- search resolves words visible on the page --");
 const hits = (q) => {
@@ -515,7 +899,10 @@ ok(shits("606").includes("rej-inline-wheel"), '"606" -> rej-inline-wheel');
 ok(shits("rejected").length >= 3, '"rejected" -> the kept counter-arguments');
 ok(shits("total pages").includes("sub-total"), '"total pages" -> sub-total');
 ok(shits("65%").includes("one-nopages"), '"65%" -> one-nopages');
-ok(shits("glassy").includes("one-rest"), '"glassy" -> one-rest');
+ok(
+  shits("uislider").includes("one-rest"),
+  '"uislider" -> one-rest, so the shipped control is searchable',
+);
 ok(shits("popover").includes("sheet-popover"), '"popover" -> sheet-popover');
 ok(
   shits("chevron").includes("sheet-read"),
@@ -535,7 +922,10 @@ const ehits = (q) => {
         o.push(id);
   return o;
 };
-ok(ehits("glassy").includes("el-track"), 'element "glassy" -> el-track');
+ok(
+  ehits("native slider").includes("el-track"),
+  'element "native slider" -> el-track',
+);
 ok(
   ehits("deleted").join() === "el-readtoday,el-seg,el-wheel",
   'element "deleted" pulls the whole group (' + ehits("deleted").join() + ")",
