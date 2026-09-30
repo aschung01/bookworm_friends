@@ -326,16 +326,18 @@ void main() {
         await _pump(tester, density: ShelfDensity.spines);
         await enterEditMode(tester);
 
-        // Off-centre by 6pt for the reason `library_delete_book_test` does the same: the
-        // row's own gesture arena sits under the middle of the badge.
+        // The middle of the badge, which sits on the spine's top edge with its upper half
+        // outside the box that hit-tests it: the pointer arrives through
+        // [DeleteBadgeTapScope]. `tapAt` rather than `tap` because `tap` would warn that
+        // the badge is not in the hit-test path, which is exactly the design. It used to
+        // need a 6pt offset inward.
         await tester.tapAt(
-          tester.getCenter(find.byKey(const ValueKey('delete_book_c'))) +
-              const Offset(6, 6),
+          tester.getCenter(find.byKey(const ValueKey('delete_book_c'))),
         );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
 
-        expect(find.text('Delete this?'), findsOne);
+        expect(find.text('Remove this book?'), findsOne);
       },
     );
 

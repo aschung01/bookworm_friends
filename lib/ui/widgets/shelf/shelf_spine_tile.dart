@@ -130,7 +130,9 @@ class ShelfSpineTile extends StatelessWidget {
         // book and take taps over its neighbour.
         //
         // `-halfTarget` puts the disc's centre on the spine's top edge, which is the
-        // same relationship a cover's badge has to its corner.
+        // same relationship a cover's badge has to its corner. The half above the spine is
+        // outside this `Stack` and therefore outside its hit test — what makes it
+        // tappable is [DeleteBadgeTapScope], not this box.
         Positioned(
           top: -DeleteBookBadge.halfTarget,
           left: 0,

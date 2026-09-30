@@ -42,7 +42,7 @@ Future<void> showDeleteBookBottomSheet(
               Expanded(
                 child: ElevatedActionButton(
                   height: 44,
-                  buttonText: l10n.delete,
+                  buttonText: l10n.removeFromLibrary,
                   backgroundColor: softRedColor,
                   isDestructive: true,
                   onPressed: onDeletePressed,

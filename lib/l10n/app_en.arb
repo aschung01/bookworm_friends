@@ -622,8 +622,15 @@
   "openSourceLicenses": "Open source licenses",
   "emojiPickerCredit": "Emoji picker by Sébastien Gruhier (development) and Inès Gruhier (design)",
   "storeMarksCredit": "Store marks from Simple Icons (CC0 1.0) and Arcticons (CC BY-SA 4.0)",
-  "deleteConfirmTitle": "Delete this?",
-  "deleteBookWarning": "Deleted books can't be recovered.",
+  "deleteConfirmTitle": "Remove this book?",
+  "@deleteConfirmTitle": {
+    "description": "Title of the delete-book confirmation sheet (showDeleteBookBottomSheet). Matches removeFromLibrary's wording -- was 'Delete this?', which alongside a destructive-red 'Delete' button read as the book itself being destroyed everywhere, where the action only takes it out of this library."
+  },
+  "deleteBookWarning": "Removed books can't be recovered.",
+  "removeFromLibrary": "Remove from library",
+  "@removeFromLibrary": {
+    "description": "Confirm button on the delete-book sheet (showDeleteBookBottomSheet). Not the generic `delete`: that word alone, on a destructive-red button right under `deleteBookWarning`, read as if the book itself -- its file, its record everywhere -- was being destroyed, where the action only takes it out of this library."
+  },
   "deleteShelfConfirmTitle": "Delete this shelf?",
   "deleteShelfWarning": "All books on this shelf will be deleted.",
   "filterTitle": "Filter",

@@ -50,8 +50,26 @@ Future<void> _pumpLibraryInEditMode(WidgetTester tester) async {
 Finder _cover() => find.byType(BookWidget);
 Finder _deleteBadge() => find.byKey(const ValueKey('delete_book_b1'));
 
+/// The white disc a reader actually aims at, matched on its shape rather than by
+/// position in the badge's subtree.
+Finder _disc() => find.descendant(
+  of: _deleteBadge(),
+  matching: find.byWidgetPredicate(
+    (widget) =>
+        widget is DecoratedBox &&
+        widget.decoration is BoxDecoration &&
+        (widget.decoration as BoxDecoration).shape == BoxShape.circle,
+  ),
+);
+
+/// A tap on the middle of the badge — which is the *cover's corner*, so the pointer is
+/// delivered by [DeleteBadgeTapScope] rather than by the badge's own box.
+///
+/// `tapAt` rather than `tap` for that reason: `tap` warns that the widget it found was not
+/// in the hit-test path, which is true and is the whole design here. It used to need a 6pt
+/// offset inward, which was this defect being worked around rather than seen.
 Future<void> _tapDeleteBadge(WidgetTester tester) =>
-    tester.tapAt(tester.getCenter(_deleteBadge()) + const Offset(6, 6));
+    tester.tapAt(tester.getCenter(_deleteBadge()));
 
 /// Ids of the books on [shelfId], in order.
 List<String> _idsOn(ProviderContainer container, String shelfId) => container
@@ -92,7 +110,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
 
-        expect(find.text('Delete this?'), findsNothing);
+        expect(find.text('Remove this book?'), findsNothing);
         expect(committedDeletes, isEmpty);
         expect(_cover(), findsOneWidget);
         expect(isEditing(), isTrue);
@@ -108,7 +126,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
 
-        expect(find.text('Delete this?'), findsOneWidget);
+        expect(find.text('Remove this book?'), findsOneWidget);
         expect(committedDeletes, isEmpty);
         expect(_cover(), findsOneWidget);
       },
@@ -129,7 +147,8 @@ void main() {
         );
         final deleteFinder = find.byWidgetPredicate(
           (widget) =>
-              widget is ElevatedActionButton && widget.buttonText == 'Delete',
+              widget is ElevatedActionButton &&
+              widget.buttonText == 'Remove from library',
         );
         final cancel = tester.widget<ElevatedActionButton>(cancelFinder);
         final delete = tester.widget<ElevatedActionButton>(deleteFinder);
@@ -180,6 +199,85 @@ void main() {
       },
     );
 
+    testWidgets('Given edit mode, When any part of the badge is tapped, Then the '
+        'confirmation opens rather than the edit ending', (tester) async {
+      await _pumpLibraryInEditMode(tester);
+
+      // **Three quarters of these points are outside the cover, which is the defect.**
+      // The badge straddles the cover's corner, and a box painted outside its ancestors
+      // is not hit-tested — so every point up or left of that corner used to fall through
+      // to `home_page.dart`'s page-level detector, whose job is to end the edit. The
+      // badge's dead area behaved as *Done*, and the middle of the disc — sitting exactly
+      // on the boundary — was a coin flip. [DeleteBadgeTapScope] is what makes them
+      // arrive here instead.
+      //
+      // Re-measured each time, because [Wiggle] drifts the badge a couple of points
+      // between pumps and these points are only a few in from its edge.
+      for (final corner in const [
+        Alignment.center,
+        Alignment.topLeft,
+        Alignment.topRight,
+        Alignment.bottomLeft,
+        Alignment.bottomRight,
+      ]) {
+        final badge = tester.getRect(_deleteBadge());
+        // 3pt in from the named corner, so the point is on the badge rather than on the
+        // boundary the wiggle is moving.
+        await tester.tapAt(corner.withinRect(badge.deflate(3)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(
+          find.text('Remove this book?'),
+          findsOneWidget,
+          reason: 'the badge\'s $corner did not open the confirmation',
+        );
+        expect(
+          isEditing(),
+          isTrue,
+          reason: 'the badge\'s $corner ended the edit instead',
+        );
+        expect(committedDeletes, isEmpty);
+
+        await tester.tap(find.text('Cancel'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+    });
+
+    testWidgets(
+      'Given edit mode, When the shelf beside a badge is tapped, Then the edit ends as '
+      'it always did',
+      (tester) async {
+        await _pumpLibraryInEditMode(tester);
+
+        // The other half of the scope's contract, and why it declines pointers rather
+        // than claiming the page: a tap that missed every badge must still reach
+        // `home_page.dart` and end the edit. Two badge-widths clear of this one, past the
+        // cover, on the shelf itself — and to the *right*, because the row's leading
+        // cover sits close enough to the frame that the same distance leftward is off it.
+        final badge = tester.getRect(_deleteBadge());
+        await tester.tapAt(
+          tester.getRect(_cover()).centerRight + const Offset(40, 0),
+        );
+        expect(
+          badge
+              .inflate(20)
+              .contains(
+                tester.getRect(_cover()).centerRight + const Offset(40, 0),
+              ),
+          isFalse,
+          reason: 'the point is not clear of the badge',
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(find.text('Remove this book?'), findsNothing);
+        expect(committedDeletes, isEmpty);
+        expect(isEditing(), isFalse);
+      },
+    );
+
     testWidgets(
       'Given edit mode, Then the delete badge has an accessible 44 point target',
       (tester) async {
@@ -190,28 +288,18 @@ void main() {
           expect(tester.getSize(_deleteBadge()), const Size(44, 44));
 
           final coverTopLeft = tester.getTopLeft(_cover());
-          final targetCenter = tester.getCenter(_deleteBadge());
           // The disc, not the minus drawn inside it — the badge is two
-          // `DecoratedBox`es. Matched on the shape rather than taken by position in
-          // the subtree, so this keeps meaning "the thing the reader can see" if the
-          // badge is ever put together differently.
-          final disc = find.descendant(
-            of: _deleteBadge(),
-            matching: find.byWidgetPredicate(
-              (widget) =>
-                  widget is DecoratedBox &&
-                  widget.decoration is BoxDecoration &&
-                  (widget.decoration as BoxDecoration).shape == BoxShape.circle,
-            ),
-          );
+          // `DecoratedBox`es.
+          final disc = _disc();
           expect(disc, findsOneWidget);
-          // The badge is pinned to the cover's top-left corner, but edit mode
-          // wiggles the cover (see [Wiggle]) with a per-instance random phase
-          // and amplitude, so global positions drift a pixel or two between
-          // runs. Assert with tolerance rather than exact equality, otherwise
-          // this flakes. Sizes are transform-independent, so those stay exact.
+          // Centred on the cover's top-left corner, so three quarters of it hangs over
+          // the shelf: the placement is iOS's own, and [DeleteBadgeTapScope] is what
+          // makes the overhang answer a finger. Edit mode wiggles the cover (see
+          // [Wiggle]) with a per-instance random phase and amplitude, so global
+          // positions drift a pixel or two between runs — hence the tolerance. Sizes are
+          // transform-independent and stay exact.
           expect(
-            targetCenter,
+            tester.getCenter(_deleteBadge()),
             offsetMoreOrLessEquals(coverTopLeft, epsilon: 3),
           );
           expect(
@@ -245,7 +333,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
 
-        expect(find.text('Delete this?'), findsNothing);
+        expect(find.text('Remove this book?'), findsNothing);
         expect(committedDeletes, isEmpty);
         expect(_cover(), findsOneWidget);
       },
@@ -259,7 +347,7 @@ void main() {
         await _tapDeleteBadge(tester);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
-        await tester.tap(find.text('Delete').last);
+        await tester.tap(find.text('Remove from library').last);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
 
@@ -277,7 +365,7 @@ void main() {
         await _tapDeleteBadge(tester);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
-        await tester.tap(find.text('Delete').last);
+        await tester.tap(find.text('Remove from library').last);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
 

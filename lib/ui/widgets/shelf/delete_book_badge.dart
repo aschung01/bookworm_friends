@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:bookworm_friends/ui/widgets/shelf/delete_badge_tap_scope.dart';
+
 /// The badge that takes a book off a shelf while the covers are wiggling.
 ///
 /// **A white disc with a minus — iOS's own remove badge — rather than a red ✕.**
@@ -27,7 +29,7 @@ import 'package:flutter/material.dart';
 /// `ReadingShelfRow` — and the two rows have to draw the *same* badge under the same key,
 /// or a reader would learn one gesture per row and a test could pin either drawing without
 /// noticing the other had drifted.
-class DeleteBookBadge extends StatelessWidget {
+class DeleteBookBadge extends StatefulWidget {
   const DeleteBookBadge({
     super.key,
     required this.label,
@@ -53,6 +55,10 @@ class DeleteBookBadge extends StatelessWidget {
   /// Public because the badge is mounted by its callers rather than by itself —
   /// `ShelfBookTile`, `ShelfSpineTile` and the row's own turned-out book — and all three
   /// used to write `-22` as a literal beside a comment saying which 22 it was.
+  ///
+  /// **Hanging the badge outside its book is what makes [DeleteBadgeTapScope] necessary,**
+  /// and the scope is not an optimisation: without it three quarters of this badge is
+  /// painted and unreachable. See that class.
   static const double halfTarget = _target / 2;
 
   /// The minus, as a proportion of the disc rather than a glyph. Drawn rather than
@@ -80,20 +86,61 @@ class DeleteBookBadge extends StatelessWidget {
   final double? targetWidth;
 
   @override
+  State<DeleteBookBadge> createState() => _DeleteBookBadgeState();
+}
+
+/// **Stateful only so it can register with [DeleteBadgeTapScope].** Nothing here is
+/// mutable: the state exists to hold a registration for the life of the element, and to
+/// hand the scope this badge's own box so a tap outside the cover can be matched against
+/// the rect the disc is actually drawn in.
+class _DeleteBookBadgeState extends State<DeleteBookBadge>
+    implements DeleteBadgeTapTarget {
+  DeleteBadgeTapRegistry? _registry;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final registry = DeleteBadgeTapScope.maybeOf(context);
+    if (registry == _registry) return;
+    _registry?.remove(this);
+    _registry = registry?..add(this);
+  }
+
+  @override
+  void dispose() {
+    _registry?.remove(this);
+    super.dispose();
+  }
+
+  @override
+  RenderBox? get badgeBox {
+    final box = context.findRenderObject();
+    return box is RenderBox && box.attached && box.hasSize ? box : null;
+  }
+
+  @override
+  VoidCallback? get onBadgeTap => widget.onPressed;
+
+  @override
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
       button: true,
-      label: label,
-      onTap: onPressed,
+      label: widget.label,
+      onTap: widget.onPressed,
       child: ExcludeSemantics(
         child: GestureDetector(
+          // **Kept even though [DeleteBadgeTapScope] can reach every part of this
+          // badge.** This is the path for the quarter that *is* inside the cover, and it
+          // wins there by being deeper in the tree than either the scope or the cover's
+          // own tap. Two hit paths, one callback — see the scope for why the second one
+          // cannot be the only one.
           behavior: HitTestBehavior.opaque,
           excludeFromSemantics: true,
-          onTap: onPressed,
+          onTap: widget.onPressed,
           child: SizedBox(
-            width: targetWidth ?? _target,
-            height: _target,
+            width: widget.targetWidth ?? DeleteBookBadge._target,
+            height: DeleteBookBadge._target,
             child: const Center(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -109,18 +156,18 @@ class DeleteBookBadge extends StatelessWidget {
                   ],
                 ),
                 child: SizedBox.square(
-                  dimension: _diameter,
+                  dimension: DeleteBookBadge._diameter,
                   child: Center(
                     child: SizedBox(
-                      width: _barWidth,
-                      height: _barThickness,
+                      width: DeleteBookBadge._barWidth,
+                      height: DeleteBookBadge._barThickness,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           // Near-black rather than black, and rather than the
                           // theme's ink: see the note on this class.
                           color: Color(0xFF1C1C1E),
                           borderRadius: BorderRadius.all(
-                            Radius.circular(_barThickness / 2),
+                            Radius.circular(DeleteBookBadge._barThickness / 2),
                           ),
                         ),
                       ),

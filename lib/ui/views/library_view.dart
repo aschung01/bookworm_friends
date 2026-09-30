@@ -11,6 +11,7 @@ import 'package:bookworm_friends/providers/shelf_density_provider.dart';
 import 'package:bookworm_friends/ui/widgets/empty_state_art.dart';
 import 'package:bookworm_friends/ui/widgets/reading_shelf_lamp.dart';
 import 'package:bookworm_friends/ui/widgets/reading_shelf_row.dart';
+import 'package:bookworm_friends/ui/widgets/shelf/delete_badge_tap_scope.dart';
 import 'package:bookworm_friends/ui/widgets/shelf_row.dart';
 
 /// A library — shelves scrolling behind a sheet.
@@ -348,7 +349,22 @@ class LibraryPane extends StatelessWidget {
     // lets it rise over the shell's bar. The library keeps the whole pane below
     // [topInset] and insets its own content instead — so the shelves scroll *behind*
     // the sheet, and [bottomInset] is what keeps the last of them reachable.
-    return LibraryPaneFrame(topInset: topInset, sheet: sheet, library: library);
+    //
+    // **The scope is what makes a remove badge tappable where it is drawn.** Each one is
+    // pinned half outside the cover it belongs to, which is outside every box that would
+    // hit-test it — so three quarters of every badge was painted and dead, and the taps
+    // fell through to `home_page.dart`'s page-level detector, which ended the edit. It
+    // goes *here* rather than around that detector because it has to be deeper than it to
+    // win the tap, and because this is the smallest box that still contains every
+    // overhang: a badge clipped by the pane's own top edge is one a reader cannot see
+    // either. Read [DeleteBadgeTapScope] before moving it.
+    return DeleteBadgeTapScope(
+      child: LibraryPaneFrame(
+        topInset: topInset,
+        sheet: sheet,
+        library: library,
+      ),
+    );
   }
 }
 

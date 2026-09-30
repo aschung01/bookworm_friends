@@ -608,6 +608,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         // rather than a tap, nothing consumed it.
         onPointerDown: (_) => _editOpenedByThisGesture = false,
         child: GestureDetector(
+          // **A tap that lands on a remove badge never reaches this.** Those badges hang
+          // half outside the covers they belong to, so their overhang used to fall through
+          // to here and end the edit — the dead three quarters of a badge behaved as
+          // *Done*. `DeleteBadgeTapScope`, mounted inside the library pane and therefore
+          // deeper than this detector, claims those taps first and declines every other
+          // pointer, so this handler is unchanged in every case it still sees.
           onTap: () {
             if (_editOpenedByThisGesture) {
               _editOpenedByThisGesture = false;
