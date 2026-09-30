@@ -211,7 +211,7 @@ void main() {
   ) async {
     // **The divergence this row shipped with, in its second form.** Version one drew a box
     // on all seven days, which reads as seven empty checkboxes. Version two then drew three
-    // *different* kinds of not-read: a dashed box for tonight, a bare hairline under a pale
+    // *different* kinds of not-read: a dashed box for today, a bare hairline under a pale
     // letter for a miss, and nothing at all for anything else. Three ways to say the same
     // thing is three things to learn. One flat slot is a slot.
     await _pump(

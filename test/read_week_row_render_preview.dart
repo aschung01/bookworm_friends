@@ -43,7 +43,7 @@ const _weeks = <String, List<bool>>{
   // thing you tap, without reading as the odd one out in a bad way.
   'waiting': [true, true, true, true, true, true, false],
   // The honest case, and the one the old row handled worst: a gap mid-run plus an
-  // unrecorded tonight. Three states on one strip.
+  // unrecorded today. Three states on one strip.
   'gap': [true, false, true, true, false, true, false],
   // What a brand-new reader sees. It must not look like seven failures.
   'empty': [false, false, false, false, false, false, false],

@@ -785,14 +785,14 @@ to fill that gap.** The gap is deliberate (the page's own comment says so) and t
 reconciles the two options the record had left fighting: **F** wanted a ladder, **G** wanted
 no standing reminder of what the reader has not done and the whole reward in the
 celebration. F's object shown only at G's moment is both — a reader meets the ladder on the
-night they just added to it, never as a permanent list of four things they have not managed.
+day they just added to it, never as a permanent list of four things they have not managed.
 It also puts the track on the ground it was drawn for, since it paints in `kCandleStockTop`
 and `kCandleFlame` and was the only candlelit object on a `pageBackground` page.
 
 **It replaced `_MilestoneBar`, which is deleted.** That bar filled `streak / (best + 1)` and
-vanished on a record night. Two amber rails 10pt apart is one duplication; the worse one is
+vanished on a record day. Two amber rails 10pt apart is one duplication; the worse one is
 that the sentence under it — "8 more days to beat your best." — _was_ the bar, in words. The
-ladder says what the sentence cannot, and is present every night. **Its fill does not
+ladder says what the sentence cannot, and is present every day. **Its fill does not
 animate.** The `_Rise` is the reveal.
 
 **The fill reads `streak`, the run in progress, not `best`, the record — and it read `best`
@@ -819,6 +819,64 @@ shorter than any phone the app supports**, so both `streak_celebration_test.dart
 `reading_streak_page_test.dart` now set a real size in their `_pump`. Without that, moving
 the ladder in failed 31 cases with a `RenderFlex` overflow naming a widget none of them
 mentioned.
+
+### The month card pages, and the note refusing it was wrong about the query
+
+`_MonthCard` carries the record's `‹ ›` pagers now, and the comment where they sit spent three
+rounds arguing they must not: they would "imply `readingDaysProvider` can be asked for an
+arbitrary month, and it cannot — it holds one window", so drawing them would be an affordance
+for something that does nothing.
+
+**The premise was a misreading of the provider.** `kReadingDaysWindow` is
+`.order('day', ascending: false).limit(400)` — a limit on **rows**, not a date range. The map
+therefore already holds every recorded day back to the 400th: over a year for a reader who has
+never missed a day, and far longer for anyone who reads in bursts. Paging asks the network for
+nothing. What is genuinely bounded is the far **edge** of that row limit, and that edge is what
+`_MonthCardState._oldestMonthsBack` derives the back stop from — the oldest day in the map, not
+a typed number of months, because a month the query never fetched draws as thirty empty cells
+and would read as _"you did not read in 2023"_ rather than as _"this does not go back that
+far"_. Forward stops at the current month: a future month is thirty dimmed numerals and no
+record.
+
+Five things not to undo:
+
+- **The state is an offset in months, not the month itself**, so the midnight rollover carries
+  the card with the clock instead of stranding it on a month that was "this" when the page
+  opened. It is clamped **on read** rather than corrected in a `setState`, because the log
+  shrinks under the card twice as a matter of course — the first build sees an empty map before
+  the fetch lands, and an undo can delete the only row in the month being looked at — and a
+  widget that calls `setState` from its own `build` is one more cause away from a loop.
+- **Both chevrons stay drawn at either end, dimmed.** Removing the unavailable one reflows the
+  heading, so the month name would shift sideways as a side effect of the log rather than of a
+  tap; and a lone chevron stops saying that the one pointing the other way exists. That holds
+  for the both-ends-at-once case a reader with a single recorded day sees: hiding the pair there
+  is tidier on that one screen and buys a control that appears out of nowhere the month after.
+- **36pt discs, not the record's 30.** `.cnav .cpg s` is 30, which is under every platform's
+  minimum and under the 36 `_LibraryBar` already settled on — and this row is tighter than that
+  one. No ink: the nearest `Material` is under the card's opaque `surface` fill, so an `InkWell`
+  here splashes _behind_ the card and shows nothing.
+- **Neither stat caption names a month any more.** They read `read this month` / `this month`
+  while the card could only ever draw the current one; with a pageable heading directly above
+  them that contradicts the heading. They are `recorded` / `read`, and the heading is the scope.
+- **Recording a day does not snap the card back to this month.** Tempting, because the stamp
+  the reader just made is on a grid they are not looking at — and rejected, because it moves the
+  card out from under someone who paged there deliberately, one second after they dismissed a
+  full-screen celebration. The hero and the week row have both already updated, so nothing on
+  screen is stale. Pinned by a case, since the obvious "fix" is a one-liner.
+
+The four new Korean strings were written rather than natively reviewed: the two captions
+(`기록` / `독서`) and the two chevron labels (`이전 달` / `다음 달`).
+
+`test/streak_month_pager_render_preview.dart` writes the five states worth looking at to
+`build/month_pager_preview/`, because the two things here a green suite cannot see are whether a
+disabled disc reads as _unavailable_ rather than as _failed to load_ on both grounds, and
+whether a **past** month — which can carry thirty hollow gap dots where the current month only
+ever shows a handful — still reads as a record. It loads `MaterialIcons` off the SDK cache by
+walking up from `Platform.resolvedExecutable`: without that both chevrons render as Ahem boxes,
+which looks exactly like the defect the shots exist to rule out. It also keys each
+`ProviderScope`, because successive `pumpWidget` calls build a structurally identical tree and
+Riverpod updates the scope in place — so the card kept the month it had been stepped to and one
+shot came back showing a different log's stamps.
 
 ### Two defects a green suite could not see, so render and look
 
@@ -977,12 +1035,12 @@ re-adding a decoration and watching five cases fail.
 `StatTileVariant` has **four** values now — `hero`, `tile`, `warm`, `cool` — and the streak
 tile is the only non-hero tile on that card with a fill of its own. It earns that by being a
 **state rather than a stat**: pace and most-read author are true all week, and this one
-changes tonight. Warm (`kCandleFlame`) once today is recorded, cool before.
+changes today. Warm (`kCandleFlame`) once today is recorded, cool before.
 
 **Keyed on `readToday`, never on the count.** `readToday` is threaded `home_page.dart` →
 `LibraryCardSheet` → `LibraryCardBody`, off the same `readTodayProvider` the bar's chip uses,
 so the two cannot disagree about whether today counts. The count is intact all day and only
-the day's status changes at the 4am rollover, so a tile keyed on the number would be warm at
+the day's status changes at the midnight rollover, so a tile keyed on the number would be warm at
 9am on a day nothing had been read. Both states read the full count, because the record does
 not scold.
 
@@ -1045,7 +1103,7 @@ compose with what shipped.
 home fixture plus selecting the Card tab and opening the sheet; the body and sheet tests
 cover everything below it.
 
-### Recording a night has two doors, and the celebration is a route rather than an overlay
+### Recording a day has two doors, and the celebration is a route rather than an overlay
 
 `showStreakCelebration` (`lib/ui/widgets/streak/streak_celebration_route.dart`) is the only
 way the celebration is raised, and both callers use it: `ReadingStreakPage._recordToday` and
@@ -1053,7 +1111,7 @@ way the celebration is raised, and both callers use it: `ReadingStreakPage._reco
 driven by `_celebrating` and `_celebratedStreak`, which was right while that page was the only
 thing that could write a `reading_days` row.
 
-**The band's percent wheel now stamps the night, and it did not before.** That was the gap:
+**The band's percent wheel now stamps the day, and it did not before.** That was the gap:
 nudging a bookmark is the shortest "I read some of this" in the app and the path most readers
 actually use, and it was the only one that left the streak untouched — so the reader most
 likely to have a run going was the one whose run grew silently, with no celebration, from a
@@ -1068,12 +1126,12 @@ nor the day. What the wheel asserts is a reading of intent — someone who just 
 where they are in a book read it today. The cost, stated in place: correcting a percentage the
 reader got wrong last week also stamps _today_, and there is no way to tell that apart, because
 the wheel records a position and not a date. The narrower rule (stamp only when the position
-moved forward) is one comparison away and would refuse the night to someone re-reading a
+moved forward) is one comparison away and would refuse the day to someone re-reading a
 chapter.
 
 **Celebrate on the transition, never the state.** `readToday` stays true for the rest of the
 day, so celebrating on the state would raise the screen on every later nudge.
-`_celebrateIfTonightIsNew` takes both halves as arguments rather than reading the second back,
+`_celebrateIfTodayIsNew` takes both halves as arguments rather than reading the second back,
 because the callers already know them.
 
 **`BookDetailsTabView.build` watches `readingDaysProvider` for its side effect.** Nothing there
@@ -1081,7 +1139,7 @@ draws the streak. Both write paths ask `readTodayProvider` whether today was alr
 and that getter is derived from an _async_ set — so it answers `false` while the fetch is in
 flight rather than "not known yet". Unwatched, two things broke: the status sheet opened with "I
 read today" unticked on a day that **was** recorded, and saving it called `setRead(read: false)`
-and took the night away; and every first nudge looked like the first of the day, so the
+and took the day away; and every first nudge looked like the first of the day, so the
 celebration fired on a run it had already celebrated. Both survive on device only because the
 library bar's chip watches the same provider and the route below stays in the tree, so the set
 is nearly always already cached — the failure showed up the moment a test pumped the page with
@@ -1106,7 +1164,7 @@ whole implementation of the reading-streaks design's `sc-risk`, choosing between
 from the warning hour.
 
 **Withdrawn on instruction, and the reason it holds is that the page was saying it four
-times.** Whether tonight is in is already the flame's tint above the figure, the week row's
+times.** Whether today is in is already the flame's tint above the figure, the week row's
 last cell below it, and whether the foot of the page offers a record button or a
 confirmation. The words were the page explaining its own drawing.
 
@@ -1216,7 +1274,7 @@ That fallback is why this shipped with **`v` still at 1** and no coordinated rel
 "simplify" it away: it is what the tile draws on the first render after a book change, for a reader
 who was offline then, and for any cover URL that 404s. Five things not to undo:
 
-- **The snapshot is written first, the cover second.** Reversing it makes a recorded night wait on a
+- **The snapshot is written first, the cover second.** Reversing it makes a recorded day wait on a
   download. The extra timeline reload is affordable only because `write` is deduplicated per
   snapshot — the refresh budget is spent by per-rebuild reloads, not by per-book-change ones.
 - **`StreakCoverThumbnail` re-fetches rather than reusing `cover_sample.dart`'s decode.** The free
@@ -1442,7 +1500,7 @@ background.** Over the read sheet's plain ground the blurred card composites to
 `(238, 238, 237)` against a `(240, 240, 240)` background — a 2/255 difference, so the card is
 carried entirely by a 0.5pt hairline and its shadow. Where covers sit behind it the blur has
 something to work with and it reads properly. This is the same trap `shelf_picker_popover`
-records from the other end (*"a blur of something uniform is that thing"*) and it is **not**
+records from the other end (_"a blur of something uniform is that thing"_) and it is **not**
 fixed: it is a separate judgement about the non-glass path, and retuning the fill is a change
 nobody has asked for yet. **Moot for the read filter**, whose fallback is now Material's menu
 on `colors.surface`; kept because `shelf_picker_popover` still draws that card, and because
@@ -1525,10 +1583,10 @@ to expand the sheet to give. The control was the only expanded-only part of it.
 plus `ReadPile.extent`, so a taller header is a shorter library. Measured on the smallest
 phone, by removing the control and re-measuring rather than by estimating:
 
-| | title row | visible library |
-| --- | --- | --- |
-| without the chevron | 21 | 324 |
-| with it | 30 | 315 |
+|                     | title row | visible library |
+| ------------------- | --------- | --------------- |
+| without the chevron | 21        | 324             |
+| with it             | 30        | 315             |
 
 The 30 is the control's own box. **Native it is free**: the year popover beside it is a 36pt
 `CNPopupMenuButton`, so the row is 36 tall either way — and at 2× text it is free on both
@@ -1863,8 +1921,14 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2058 cases). There is no expected-failure list any
+`flutter test` passes completely (2088 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
+
+**A run that reports a much lower total, or fails to load a file naming a string nothing in the
+diff touched (`The getter 'removeFromLibrary' isn't defined`), is a build artefact rather than a
+regression.** `lib/l10n/app_localizations*.dart` is gitignored and regenerated from the ARBs on
+every build, and a run that starts while that is in flight has been seen to do both. Re-run
+before investigating; two runs agreeing on the total is the check.
 
 This section used to say the opposite: `test/library_read_books_test.dart` carried 3
 failures that were not regressions, because `ReadPile` moved out of the library page into

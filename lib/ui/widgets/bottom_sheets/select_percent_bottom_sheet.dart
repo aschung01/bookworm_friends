@@ -115,7 +115,7 @@ Future<void> showSelectPercentBottomSheet(
   /// caller for whom this sheet is a *required step* has to know the step was completed:
   /// from outside, "confirmed without moving the wheel" and "swiped the sheet away" both
   /// look like silence, and treating the first as a dismissal would refuse to record a
-  /// night the reader just confirmed.
+  /// day the reader just confirmed.
   ///
   /// Fires before [onProgressSelected] and before the pop, so a caller can set a flag in
   /// it and read the answer after the await. Optional, and null for every caller that

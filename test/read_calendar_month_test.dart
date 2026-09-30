@@ -75,7 +75,7 @@ void main() {
       isNull,
       reason: 'a day with no row must draw no mark at all',
     );
-    // The numeral is there either way: the grid is a month, not a list of the nights in it.
+    // The numeral is there either way: the grid is a month, not a list of the days in it.
     expect(find.text('4'), findsOneWidget);
   });
 
@@ -192,10 +192,10 @@ void main() {
     }
   });
 
-  testWidgets('a night with no attribution still draws, in neutral ink', (
+  testWidgets('a day with no attribution still draws, in neutral ink', (
     tester,
   ) async {
-    // A row written before the `book_id` column existed, or a book since deleted. The night
+    // A row written before the `book_id` column existed, or a book since deleted. The day
     // happened and the streak counts it, so a hole in the month would be a lie — and it
     // would make the grid disagree with the figure above it.
     await _pump(tester, marks: {DateTime(2026, 9, 3): null});

@@ -47,7 +47,7 @@ class StreakWidgetSnapshot {
   /// The run ending at [lastReadDay]. Not today's streak.
   final int streak;
 
-  /// The record, which a missed night does not erase. Read only on the broken path.
+  /// The record, which a missed day does not erase. Read only on the broken path.
   final int longestStreak;
 
   /// The most recent recorded day, or null when nothing is recorded at all.

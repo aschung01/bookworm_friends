@@ -117,7 +117,7 @@ enum StatTileVariant {
   ///
   /// **The one exception to [tile]'s "not three heroes competing" rule**, and it earns it
   /// by being a *state* rather than a stat. Pace and most-read author are true all week;
-  /// this one changes tonight, and the card has no other way to say so. It is also the
+  /// this one changes today, and the card has no other way to say so. It is also the
   /// only tile a reader can open — see [StatTile.onTap].
   warm,
 

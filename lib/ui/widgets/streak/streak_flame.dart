@@ -383,7 +383,7 @@ base class _FlamePainter extends rive.BasicArtboardPainter {
     super.advance(elapsedSeconds);
 
     // **The return value gates the ticker, and getting it wrong is a 60fps repaint on a
-    // screen a reader opens nightly.** It is true exactly while the loop is live, which is the
+    // screen a reader opens daily.** It is true exactly while the loop is live, which is the
     // point of the loop. Otherwise it is false, the render box stops its ticker, and the
     // drawing still paints: `false` means "no more frames are needed", not "do not draw". A
     // later change to `progress` or `liveness` calls `scheduleRepaint`, which the render box

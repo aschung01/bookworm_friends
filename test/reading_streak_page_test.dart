@@ -211,7 +211,7 @@ Future<void> _recordVia(WidgetTester tester, String title) async {
 void main() {
   // **These cases push the celebration and then settle, so the flame has to hold still.**
   // Nothing here is about the flame -- it is scenery on a screen whose subject is whether
-  // recording a night writes the day -- but the Rive artboard loops forever once it has caught,
+  // recording a day writes the day -- but the Rive artboard loops forever once it has caught,
   // so `pumpAndSettle` would never return on any machine that has run
   // `dart run rive_native:setup`. Four cases below started timing out on exactly that without
   // a line of this file changing. `useStillStreakFlame` has the long version.
@@ -249,7 +249,7 @@ void main() {
     tester,
   ) async {
     // **The undo is a secondary inside a confirmation, not the primary button read back.** A
-    // green CTA reading "Undo today" would advertise taking the night back as the thing to do
+    // green CTA reading "Undo today" would advertise taking the day back as the thing to do
     // next. `setRead(read: false)` is a real delete, so it still has to be reachable — and
     // where a reader looks for it is where they made the act.
     final rig = await _pump(tester, log: _runEndingToday(12));
@@ -295,7 +295,7 @@ void main() {
     // then a caption under the figure, then nothing.** The row cost ~60pt above the fold and
     // the caption cost a line, but the objection that settled it was not cost — it is that a
     // lifetime stat answers a question this screen is not about. The page is the run in
-    // progress and tonight's act; `libraryCardStreakSub` carries the record on the surface
+    // progress and today's act; `libraryCardStreakSub` carries the record on the surface
     // whose job is stats.
     await _pump(
       tester,
@@ -309,18 +309,18 @@ void main() {
     expect(find.textContaining('9 days'), findsNothing);
   });
 
-  testWidgets('recording a night writes the day, its book, and the position', (
+  testWidgets('recording a day writes the day, its book, and the position', (
     tester,
   ) async {
     // **The pair, end to end.** This is the reversal the whole design turns on: ticking a
     // box used to write one `reading_days` row and *nothing else*, and now the position
-    // rides with it — because recording the night and knowing where you stopped are one
+    // rides with it — because recording the day and knowing where you stopped are one
     // event, and this is the one moment the reader has the answer in their hand.
     final rig = await _pump(tester);
 
     await tester.tap(find.byKey(kStreakRecordButtonKey));
     await tester.pumpAndSettle();
-    // Reading books are their own group and come first: on an ordinary night the answer is
+    // Reading books are their own group and come first: on an ordinary day the answer is
     // a few rows from the top rather than something to search for.
     expect(find.text('Reading now'), findsOneWidget);
     expect(find.text('The Dispossessed'), findsOneWidget);
@@ -342,13 +342,13 @@ void main() {
     );
   });
 
-  testWidgets('agreeing with the wheel records the night and writes no position', (
+  testWidgets('agreeing with the wheel records the day and writes no position', (
     tester,
   ) async {
     // **Two facts, and the sheet reports them separately for this exact case.** `_touched`
     // stops Confirm from rewriting the column with the value it was already showing — it
     // used to, and it walked bookmarks back a page. But the *step* was still completed, and
-    // treating silence as a dismissal would refuse to record a night the reader just
+    // treating silence as a dismissal would refuse to record a day the reader just
     // confirmed. Hence `onConfirmed` beside `onProgressSelected`.
     final rig = await _pump(tester);
     await _recordVia(tester, 'The Dispossessed');
@@ -396,7 +396,7 @@ void main() {
     expect(
       rig.days.calls,
       isEmpty,
-      reason: 'the book was named but the night was never confirmed',
+      reason: 'the book was named but the day was never confirmed',
     );
   });
 
@@ -405,7 +405,7 @@ void main() {
   ) async {
     // Read after the write rather than incremented: the figure is derived from the set, so
     // there is no counter here that can drift from it. A run of 11 ending yesterday plus
-    // tonight is 12.
+    // today is 12.
     await _pump(tester, log: _runEndingYesterday(11));
     await _recordVia(tester, 'Piranesi');
 
@@ -414,7 +414,7 @@ void main() {
       find.text('12'),
       findsWidgets,
       reason:
-          'the celebration counts tonight, which is the whole reason it is up',
+          'the celebration counts today, which is the whole reason it is up',
     );
   });
 
@@ -433,7 +433,7 @@ void main() {
     expect(find.byKey(kStreakUndoKey), findsOneWidget);
   });
 
-  testWidgets('outside debug there is no footer once the night is in', (
+  testWidgets('outside debug there is no footer once the day is in', (
     tester,
   ) async {
     // **The shipped behaviour, which no other case can reach.** `flutter test` runs in
@@ -471,7 +471,7 @@ void main() {
     },
   );
 
-  testWidgets('the month colours a recorded night by the book it names', (
+  testWidgets('the month colours a recorded day by the book it names', (
     tester,
   ) async {
     // The payload of the `book_id` decision, drawn. Without it the grid is a tally that
@@ -491,7 +491,7 @@ void main() {
     expect(ink.b, expected.b);
   });
 
-  testWidgets('the legend names the books and counts their nights', (
+  testWidgets('the legend names the books and counts their days', (
     tester,
   ) async {
     await _pump(
@@ -503,8 +503,8 @@ void main() {
       },
     );
 
-    expect(find.text('2 nights'), findsOneWidget);
-    expect(find.text('1 night'), findsOneWidget);
+    expect(find.text('2 days'), findsOneWidget);
+    expect(find.text('1 day'), findsOneWidget);
     expect(find.text('2 books'), findsOneWidget);
 
     // **Spines, not swatches — and spines with a spine's anatomy.** The app's whole
@@ -584,13 +584,20 @@ void main() {
     // Uppercased at the call site, which is `AppTextStyles.caption`'s own documented
     // convention for a stat label — and a no-op on Korean, which is why the casing is not
     // baked into the `.arb` string.
-    expect(find.text('READ THIS MONTH'), findsOneWidget);
-    expect(find.text('THIS MONTH'), findsOneWidget);
+    //
+    // **Neither caption names a month any more, and that is the pager's doing.** They read
+    // `READ THIS MONTH` and `THIS MONTH` while this card could only ever draw the current
+    // month; now that the heading above them can be stepped back to August, a caption saying
+    // "this month" contradicts the heading it sits under. The heading is the scope.
+    expect(find.text('RECORDED'), findsOneWidget);
+    expect(find.text('READ'), findsOneWidget);
+    expect(
+      find.text('READ THIS MONTH'),
+      findsNothing,
+      reason: 'the month is named once, by the pageable heading',
+    );
     final tile = find
-        .ancestor(
-          of: find.text('READ THIS MONTH'),
-          matching: find.byType(Container),
-        )
+        .ancestor(of: find.text('RECORDED'), matching: find.byType(Container))
         .first;
     expect(
       find.descendant(of: tile, matching: find.text('3 days')),
@@ -601,6 +608,172 @@ void main() {
       findsNothing,
       reason: 'the hero above is already the run',
     );
+  });
+
+  // **The pager, which this card's own comment argued against for three rounds.** The
+  // argument was that `readingDaysProvider` "holds one window" and so cannot be asked for an
+  // arbitrary month. It holds 400 *rows* ordered newest-first, which is every recorded day
+  // back to the 400th — so the older months were already in memory and the control was
+  // refused on a premise about the query that the query does not have. What is genuinely
+  // bounded is the far edge of that row limit, and that is what these cases pin: the pager
+  // reaches exactly as far as the log can speak about and no further, in either direction.
+  group('the month is pageable', () {
+    /// The month the grid is actually drawing, which is the thing that has to move.
+    DateTime monthOnScreen(WidgetTester tester) =>
+        tester.widget<ReadCalendarMonth>(find.byType(ReadCalendarMonth)).month;
+
+    /// The heading, formatted the way the card formats it. Read off the live element rather
+    /// than hardcoded, so the case does not quietly assert an `en` date format.
+    String heading(WidgetTester tester, DateTime month) =>
+        MaterialLocalizations.of(
+          tester.element(find.byType(ReadCalendarMonth)),
+        ).formatMonthYear(month);
+
+    /// The tally tile, reached through its caption. Scoped because the legend prints "2 days"
+    /// for a book with two days on it, so the bare string is ambiguous by construction.
+    Finder tallyTile() => find
+        .ancestor(of: find.text('RECORDED'), matching: find.byType(Container))
+        .first;
+
+    final thisMonth = DateTime(_today.year, _today.month);
+    // `month - 1` rather than a subtracted duration: `DateTime` normalises month 0 to the
+    // previous December, and the 15th exists in every month, which a `_today.day` would not.
+    final lastMonth = DateTime(_today.year, _today.month - 1);
+
+    testWidgets('stepping back moves the grid, its tally and its legend', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        log: {
+          _today: 'open-a',
+          DateTime(lastMonth.year, lastMonth.month, 15): 'open-b',
+          DateTime(lastMonth.year, lastMonth.month, 14): 'open-b',
+        },
+      );
+
+      expect(monthOnScreen(tester), thisMonth);
+      expect(find.text(heading(tester, thisMonth)), findsOneWidget);
+
+      await tester.tap(find.byKey(kStreakMonthPreviousKey));
+      await tester.pump();
+
+      expect(monthOnScreen(tester), lastMonth);
+      expect(find.text(heading(tester, lastMonth)), findsOneWidget);
+      expect(find.text(heading(tester, thisMonth)), findsNothing);
+
+      // **Every figure on the card is scoped to the month, not just the grid.** The stats and
+      // the legend derive from the same filtered map the marks do, so this is really a check
+      // that nothing on the card kept reading `today`'s month behind the pager's back.
+      expect(
+        find.descendant(of: tallyTile(), matching: find.text('2 days')),
+        findsOneWidget,
+      );
+      expect(find.text('1 book'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('streak-legend-spine-Piranesi')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('streak-legend-spine-The Dispossessed')),
+        findsNothing,
+        reason:
+            'the book read this month did not appear in last month\'s legend',
+      );
+      // Last month has no today, so the rule that marks an open day is gone with it rather
+      // than stranded on the 1st or drawn twice.
+      expect(find.byKey(const ValueKey('streak-today-rule')), findsNothing);
+    });
+
+    testWidgets(
+      'the oldest recorded day is the floor and today\'s month the ceiling',
+      (tester) async {
+        await _pump(
+          tester,
+          log: {
+            _today: null,
+            DateTime(lastMonth.year, lastMonth.month, 15): null,
+          },
+        );
+
+        await tester.tap(find.byKey(kStreakMonthPreviousKey));
+        await tester.pump();
+        expect(monthOnScreen(tester), lastMonth);
+
+        // **Nothing older is offered, because nothing older was fetched.** An empty grid for
+        // two months ago would read as "you did not read then" where the honest statement is
+        // that the query does not reach that far.
+        await tester.tap(find.byKey(kStreakMonthPreviousKey));
+        await tester.pump();
+        expect(monthOnScreen(tester), lastMonth);
+
+        await tester.tap(find.byKey(kStreakMonthNextKey));
+        await tester.pump();
+        expect(monthOnScreen(tester), thisMonth);
+
+        // No future months: thirty dimmed numerals with nothing on them is not a record.
+        await tester.tap(find.byKey(kStreakMonthNextKey));
+        await tester.pump();
+        expect(monthOnScreen(tester), thisMonth);
+      },
+    );
+
+    testWidgets(
+      'both steps stay drawn at either end, so the heading does not reflow',
+      (tester) async {
+        // One day, so there is nowhere to go in either direction — the state in which a pager
+        // that hid its unavailable half would be at its most disruptive, because the month name
+        // would shift as a side effect of the log rather than of a tap.
+        await _pump(tester, log: {_today: null});
+
+        final before = tester.getRect(find.text(heading(tester, thisMonth)));
+        expect(find.byKey(kStreakMonthPreviousKey), findsOneWidget);
+        expect(find.byKey(kStreakMonthNextKey), findsOneWidget);
+
+        await tester.tap(find.byKey(kStreakMonthPreviousKey));
+        await tester.pump();
+
+        expect(monthOnScreen(tester), thisMonth);
+        expect(tester.getRect(find.text(heading(tester, thisMonth))), before);
+        // 36 rather than the record's 30: this is the tightest row in the feature, and 30 is
+        // under every platform's minimum target.
+        expect(
+          tester.getSize(find.byKey(kStreakMonthPreviousKey)),
+          const Size(36, 36),
+        );
+      },
+    );
+    testWidgets('recording today leaves the card where the reader put it', (
+      tester,
+    ) async {
+      // **Deliberate, and the alternative is a real option rather than a bug.** Snapping back
+      // to this month would put the stamp the reader just made in front of them; it would also
+      // move the card out from under someone who navigated there on purpose, a second after
+      // they dismissed a full-screen celebration. The hero and the week row above have both
+      // already updated, so nothing on screen is stale — the card is showing a different month,
+      // which is what it was asked to show, with a lit forward chevron saying so.
+      await _pump(
+        tester,
+        log: {DateTime(lastMonth.year, lastMonth.month, 15): 'open-b'},
+      );
+
+      await tester.tap(find.byKey(kStreakMonthPreviousKey));
+      await tester.pump();
+      expect(monthOnScreen(tester), lastMonth);
+
+      // Not Piranesi: it is the book on August's day, so its title is in the legend under the
+      // grid as well as in the picker, and `tap` refuses two matches.
+      await _recordVia(tester, 'The Dispossessed');
+      await tester.tap(find.text('Keep it going'));
+      await tester.pumpAndSettle();
+
+      expect(monthOnScreen(tester), lastMonth);
+      expect(
+        find.byKey(kStreakUndoKey),
+        findsOneWidget,
+        reason: 'the write landed; it is only the card that did not move',
+      );
+    });
   });
 
   testWidgets('the flame leads the figure, and it is the chip\'s own mark', (
@@ -722,7 +895,7 @@ void main() {
       expect(mark.color, isNot(kCandleFlame));
     });
 
-    // Once the night is in, the footer says it three rows down and nothing above repeats it.
+    // Once the day is in, the footer says it three rows down and nothing above repeats it.
     testWidgets('once today is recorded, the hero still says only the run', (
       tester,
     ) async {

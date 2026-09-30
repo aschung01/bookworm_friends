@@ -146,7 +146,7 @@ void main() {
 
   testWidgets('today\'s cell arrives last, after the figure', (tester) async {
     // The beat order is the whole argument: a celebration that lands the total last is about
-    // the number, and this one is about the night.
+    // the number, and this one is about the day.
     await _pump(tester, streak: 12);
 
     await tester.pump(); // schedule
@@ -197,7 +197,7 @@ void main() {
   ) async {
     // The one beat with no precedent in the app, so it is hand-painted — and the thing that
     // makes a hand-painted burst safe is that it *ends*. A painter still drawing at rest would
-    // be an idle repaint on a screen a reader opens nightly.
+    // be an idle repaint on a screen a reader opens daily.
     await _pump(tester, streak: 12);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -322,13 +322,13 @@ void main() {
     tester,
   ) async {
     // **The figure a reader came for is not `12`, it is `11` becoming `12`.** A number that is
-    // simply present says nothing happened tonight. And it must never read 13: the spring is
+    // simply present says nothing happened today. And it must never read 13: the spring is
     // on where the figure sits, not on what it says, because this is the one place on the
     // screen that states a fact.
     await _pump(tester, streak: 12);
     await tester.pump();
 
-    expect(_figureValue(tester), 11, reason: 'it starts on last night\'s run');
+    expect(_figureValue(tester), 11, reason: 'it starts on yesterday\'s run');
 
     final seen = <int>{};
     for (var ms = 0; ms < 1500; ms += 20) {
@@ -516,16 +516,16 @@ void main() {
     expect(find.text('Your longest run yet.'), findsOneWidget);
   });
 
-  testWidgets('the span ladder is here every night, record or not', (
+  testWidgets('the span ladder is here every day, record or not', (
     tester,
   ) async {
-    // **This case used to assert that a progress bar disappeared on a record night, and
+    // **This case used to assert that a progress bar disappeared on a record day, and
     // that bar no longer exists.** `_MilestoneBar` measured `streak` against `best + 1`
     // and was hidden once the run *was* the record, on the reasoning that a bar toward a
     // target already passed is furniture. That reasoning was sound about that bar and is
     // exactly why `StreakSpanTrack` replaced it: a ladder of named spans has somewhere
-    // further to go on every night there is, so it never has to vanish, and the night the
-    // record is set is the night it has the most to say.
+    // further to go on every day there is, so it never has to vanish, and the day the
+    // record is set is the day it has the most to say.
     for (final pair in [
       [9, 20],
       [9, 9],
@@ -541,7 +541,7 @@ void main() {
     }
   });
 
-  testWidgets('the ladder measures tonight\'s run, not the record', (
+  testWidgets('the ladder measures today\'s run, not the record', (
     tester,
   ) async {
     // **Which of the two numbers it reads is the whole difference from the bar it
@@ -585,8 +585,8 @@ void main() {
     tester,
   ) async {
     // **The bar this replaced filled as the beat ran, and that would be a lie here.** The
-    // bar measured tonight's run, so growing it was the news. The ladder measures `best`,
-    // which on any night short of a record did not move — so the reveal is the `_Rise`'s
+    // bar measured today's run, so growing it was the news. The ladder measures `best`,
+    // which on any day short of a record did not move — so the reveal is the `_Rise`'s
     // fade and slide, and the fill is whatever it already was. Asserted by taking the
     // fill's width mid-sequence and again at rest: same number, while the opacity above
     // it is still climbing.

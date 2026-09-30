@@ -189,7 +189,7 @@
   },
   "readToday": "I read today",
   "@readToday": {
-    "description": "Checkbox in the change-status sheet that records one reading day. First person and past tense because the reader is stating a fact about tonight, not setting a preference \u2014 and deliberately not \"Mark as read\", which in a library app means finishing the book."
+    "description": "Checkbox in the change-status sheet that records one reading day. First person and past tense because the reader is stating a fact about today, not setting a preference \u2014 and deliberately not \"Mark as read\", which in a library app means finishing the book."
   },
   "readTodayFailed": "Couldn\u2019t save today\u2019s reading",
   "readingStreakChip": "{days, plural, =0{Start a reading streak} =1{Reading streak: 1 day} other{Reading streak: {days} days}}",
@@ -215,7 +215,7 @@
   },
   "libraryCardStreakSub": "{days, plural, =1{in a row, best 1} other{in a row, best {days}}}",
   "@libraryCardStreakSub": {
-    "description": "Sub-line of the streak tile. Carries the record as well as the run, because with freezes deferred one missed night severs a run outright and the record is the only figure that survives it.",
+    "description": "Sub-line of the streak tile. Carries the record as well as the run, because with freezes deferred one missed day severs a run outright and the record is the only figure that survives it.",
     "placeholders": {
       "days": {
         "type": "int"
@@ -789,7 +789,7 @@
     "description": "Replaces streakTodayOpen from kReadingDayWarningHour (21:00) until the day rolls over at midnight, on the home-screen widget. Amber and never red: nothing has been lost yet, so it states the deadline rather than the threat, and the sentences are inverted from streakTodayOpen's so the change is legible as a change."
   },
   "streakTodayDone": "Today is recorded.",
-  "streakNothingYet": "Record a night and it starts here.",
+  "streakNothingYet": "Record a day and it starts here.",
   "streakWidgetLineDawn": "Keep it going!",
   "@streakWidgetLineDawn": {
     "description": "The home-screen widget's line from 05:00 while the day is unrecorded. One of seven lines forming the widget's copy ladder -- see 'The ladder, as chosen' in docs/superpowers/specs/2026-09-22-streak-widget-design.md. The voice changes with the hour on purpose (this one is the Duolingo cadence); a single register read front to back is what wears out. The Korean is not a translation but the same beat written for Korean, and every line has to stay within about 14 full-width syllables -- the tile's copy column fits roughly 6 per line over three lines."
@@ -826,8 +826,9 @@
       }
     }
   },
-  "streakNightsThisMonth": "{count, plural, =0{no nights} =1{1 night} other{{count} nights}}",
-  "@streakNightsThisMonth": {
+  "streakDaysThisMonth": "{count, plural, =0{no days} =1{1 day} other{{count} days}}",
+  "@streakDaysThisMonth": {
+    "description": "The month legend's per-book figure: how many of this month's recorded days belong to that book. Days, not nights -- reading is not nocturnal, and kReadingDayRolloverHour is the calendar boundary (midnight) rather than a claim about when the reading happened.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -836,20 +837,28 @@
   },
   "streakMonthDaysRead": "{count, plural, =0{No days} =1{1 day} other{{count} days}}",
   "@streakMonthDaysRead": {
-    "description": "The figure on the month card's first stat tile: how many nights this month were recorded.",
+    "description": "The figure on the month card's first stat tile: how many days this month were recorded.",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "streakMonthDaysReadCaption": "read this month",
+  "streakMonthDaysReadCaption": "recorded",
   "@streakMonthDaysReadCaption": {
-    "description": "The caption under the days-read figure on the month card."
+    "description": "The caption under the days-read figure on the month card. It says what the figure counts and not which month, which is a change: it read 'read this month' while the card could only ever draw the current one. The heading directly above it names the month and is now pageable, so a caption claiming 'this month' contradicted the heading the moment the reader stepped back to August."
   },
-  "streakMonthBooksCaption": "this month",
+  "streakMonthBooksCaption": "read",
   "@streakMonthBooksCaption": {
-    "description": "The caption under the book-count figure on the month card."
+    "description": "The caption under the book-count figure on the month card. Scope-free for the reason streakMonthDaysReadCaption is, where it used to read 'this month'."
+  },
+  "streakMonthPrevious": "Previous month",
+  "@streakMonthPrevious": {
+    "description": "Accessibility label for the month card's back pager, which draws as a chevron and never shows this text. Bounded by the oldest day the log holds, so it is not offered for a month the query cannot speak about."
+  },
+  "streakMonthNext": "Next month",
+  "@streakMonthNext": {
+    "description": "Accessibility label for the month card's forward pager, which draws as a chevron and never shows this text. Never offered past the current month: a future month is thirty dimmed numerals and no record."
   },
   "streakRecordToday": "I read today",
   "streakUndoToday": "Undo",
@@ -870,7 +879,7 @@
   },
   "streakCelebrationFirst": "One day in!",
   "@streakCelebrationFirst": {
-    "description": "The caption under the celebration's span ladder on the first day of a run. Checked before streakCelebrationChasing and deliberately outranks it: a run of 1 after a broken run is day one, because that is what the number above it says, so a reader coming back is told the same thing as a reader starting — the record does not hold a lapse against them. It replaced \"Day one. The rest is just tomorrow.\", which was improvised in the build rather than chosen: it appears in no spec, no plan and no mockup, and was the only string in this cluster with no description here. It read as condescending to a returning reader and its second clause did not resolve into a meaning. Note what the guard costs, which is open rather than overlooked: the ladder above reads `best`, not `streak`, so on a night where a lapsed reader has a record to chase this line is the only nearby text and it says nothing about that record, leaving the fill unexplained."
+    "description": "The caption under the celebration's span ladder on the first day of a run. Checked before streakCelebrationChasing and deliberately outranks it: a run of 1 after a broken run is day one, because that is what the number above it says, so a reader coming back is told the same thing as a reader starting — the record does not hold a lapse against them. It replaced \"Day one. The rest is just tomorrow.\", which was improvised in the build rather than chosen: it appears in no spec, no plan and no mockup, and was the only string in this cluster with no description here. It read as condescending to a returning reader and its second clause did not resolve into a meaning. Note what the guard costs, which is open rather than overlooked: the ladder above reads `best`, not `streak`, so on a day where a lapsed reader has a record to chase this line is the only nearby text and it says nothing about that record, leaving the fill unexplained."
   },
   "streakSpanWeek": "1 week",
   "@streakSpanWeek": {

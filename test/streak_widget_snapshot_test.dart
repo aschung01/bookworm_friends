@@ -27,7 +27,7 @@ const StreakWidgetCopy _copy = StreakWidgetCopy(
   todayOpen: 'A page is enough. Today counts until midnight.',
   todayLate: 'Nearly midnight. A page is enough.',
   todayDone: 'Today is recorded.',
-  nothingYet: 'Record a night and it starts here.',
+  nothingYet: 'Record a day and it starts here.',
 );
 
 const StreakWidgetLines _lines = StreakWidgetLines(
@@ -228,7 +228,7 @@ void main() {
     // would be the tile explaining its own drawing. Asserted because the obvious "completeness"
     // refactor is to add one.
     test(
-      'Given a recorded night, When the ladder is encoded, Then it carries no line for it',
+      'Given a recorded day, When the ladder is encoded, Then it carries no line for it',
       () {
         final lines =
             (jsonDecode(_snapshot().encode()) as Map<String, Object?>)['lines']!
@@ -257,7 +257,7 @@ void main() {
     );
 
     test(
-      'Given a night recorded, When the snapshot changes, Then it is no longer equal',
+      'Given a day recorded, When the snapshot changes, Then it is no longer equal',
       () {
         expect(_snapshot(streak: 12), isNot(_snapshot(streak: 13)));
         expect(
@@ -295,7 +295,7 @@ void main() {
 
     // A locale change moves nothing else on this payload -- same run, same day, same book -- so
     // without the ladder in equality the widget would keep drawing yesterday's language until a
-    // night happened to be recorded.
+    // day happened to be recorded.
     test(
       'Given the ladder changing language, When compared, Then the snapshot differs',
       () {

@@ -1062,10 +1062,36 @@ Georgia, because the scale's serif runs `spine` 12 then `titleVisit` 20, and 12 
 the card's heading below its own 13pt stat figures while 20 beside them is a shout. Worth
 revisiting if the scale ever grows a small serif head.
 
-**One thing in the record's month is deliberately absent: the ‹ › pagers.** They imply
-`readingDaysProvider` can be asked for an arbitrary month, and it cannot — it holds one
-window. Drawing the control before the query exists is an affordance for something that
-does nothing, which is the same mistake a grab handle on this page's cover would be.
+**The record's ‹ › pagers were called deliberately absent here for three rounds, and that is
+now reversed.** The argument was that they imply `readingDaysProvider` can be asked for an
+arbitrary month and it cannot, because "it holds one window" — so drawing the control before
+the query exists is an affordance for something that does nothing, the same mistake a grab
+handle on this page's cover would be.
+
+The premise was wrong about the provider rather than about affordances. `kReadingDaysWindow`
+is `.order('day', ascending: false).limit(400)` — a cap on **rows**, not a date range — so the
+map already holds every recorded day back to the 400th, which is over a year of unbroken daily
+reading and far longer for anyone who reads in bursts. Every month the pager can reach was
+already in memory; stepping back asks the network for nothing. What the old note describes is
+real only at the far **edge** of that row cap, and that edge is exactly what bounds the control
+now: `_MonthCardState._oldestMonthsBack` derives the back stop from the oldest day in the map,
+so a month the query never fetched is never offered — an empty grid there would read as _"you
+did not read in 2023"_ rather than as _"this does not go back that far"_. Forward stops at the
+current month, because a future month is thirty dimmed numerals and no record.
+
+What the pager changes about the card is the part worth having: a grid that can only ever draw
+the current month answers _how am I doing_ and cannot answer _what happened_ — and on the 1st
+it is a nearly empty grid beside a run of 40, with the evidence for that run one tap away and
+no tap to make. Two divergences from the record come with it, both in the app's favour:
+
+- **36pt discs, where `.cnav .cpg s` is 30.** 30 is under every platform's minimum target and
+  under the 36 `_LibraryBar` already settled on for an icon button in a crowded row — and this
+  row is tighter than that one, being inside a 14pt-padded card next to 13pt figures.
+- **Neither stat caption names a month.** `calHTML` prints `read this month` and `this month`,
+  which was right for a card that could only draw one; under a pageable heading it contradicts
+  the heading the moment the reader steps back to August. They are `recorded` and `read`, and
+  the heading is the scope. The record's own text is left as drawn, since the drawing predates
+  the control.
 
 - **`lib/ui/widgets/bottom_sheets/pick_reading_book_sheet.dart`** — step one of the
   pair. **One deviation, and the app's own rule forced it:** the drawing puts the

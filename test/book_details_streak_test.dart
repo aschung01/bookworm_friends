@@ -4,11 +4,11 @@
 // row and the only place the celebration could appear, so the reader most likely to have a
 // run going — the one who keeps it by nudging a bookmark on the book in their hand — had
 // their run grow silently and never saw the screen built for the moment. Moving the
-// bookmark from the band's own door now stamps the night, and both of the details page's
+// bookmark from the band's own door now stamps the day, and both of the details page's
 // write paths raise the celebration when a write is what made today count.
 //
 // **The route changed under this file and the premise did not.** The band used to have a
-// second door straight to the percent wheel, and `onProgressSelected` was where the night
+// second door straight to the percent wheel, and `onProgressSelected` was where the day
 // was stamped. The band is one card now: it opens the merged status sheet, the reader moves
 // the position there (by dragging the track or through the read-out's own numerals), and
 // **Save** is the single writer. So the stamp hangs on `movedPosition` — the position
@@ -16,7 +16,7 @@
 // further in.
 //
 // **The rule under test is a transition, never a state.** `readToday` is true for the rest
-// of the day once a night is in, so celebrating on the state would raise the screen again on
+// of the day once a day is in, so celebrating on the state would raise the screen again on
 // every subsequent nudge. What earns it is `false` becoming `true`.
 
 // Cupertino rather than Material: the framework widgets named here are the percent wheel's
@@ -202,10 +202,10 @@ void main() {
     );
   }
 
-  testWidgets('Given today is open, When the bookmark moves, Then the night is '
+  testWidgets('Given today is open, When the bookmark moves, Then the day is '
       'recorded and the celebration follows', (tester) async {
     final today = readingDate(DateTime.now());
-    // A run of 11 ending yesterday. Tonight makes 12, which is the figure the celebration
+    // A run of 11 ending yesterday. Today makes 12, which is the figure the celebration
     // must show — read back from the set rather than incremented.
     await pump(
       tester,
@@ -227,7 +227,7 @@ void main() {
     expect(find.text('12'), findsWidgets);
   });
 
-  testWidgets('Given tonight is already in, When the bookmark moves again, Then '
+  testWidgets('Given today is already in, When the bookmark moves again, Then '
       'nothing is celebrated twice', (tester) async {
     final today = readingDate(DateTime.now());
     await pump(tester, days: _run(12, endingOn: today));
@@ -241,12 +241,12 @@ void main() {
     expect(
       find.byType(StreakCelebration),
       findsNothing,
-      reason: 'today was already recorded, so tonight is not news',
+      reason: 'today was already recorded, so it is not news',
     );
   });
 
   testWidgets(
-    'Given the sheet is saved with the position untouched, Then no night is stamped',
+    'Given the sheet is saved with the position untouched, Then no day is stamped',
     (tester) async {
       // The other half of the gate, from this side: agreeing with the position the sheet
       // opened at is not a claim about today.

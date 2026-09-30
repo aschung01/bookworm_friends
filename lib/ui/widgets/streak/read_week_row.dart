@@ -333,13 +333,13 @@ class ReadWeekRow extends StatelessWidget {
 
 /// What a token has to say about its day.
 enum _DayState {
-  /// Read, on a day that is not tonight.
+  /// Read, on a day that is not today.
   stamped,
 
-  /// Read, tonight, in the celebration's closing beat.
+  /// Read, today, in the celebration's closing beat.
   fresh,
 
-  /// Tonight, not read yet. The only token that invites a tap.
+  /// Today, not read yet. The only token that invites a tap.
   today,
 
   /// A day that went by unread. Not red, not an X — just an empty slot.

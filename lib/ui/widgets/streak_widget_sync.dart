@@ -11,7 +11,7 @@ import 'package:bookworm_friends/services/streak_widget_channel.dart';
 /// Keeps the home-screen widget's snapshot in step with the app.
 ///
 /// **Hosted in `MaterialApp.builder` beside [InviteLinkListener], and for the same two reasons.**
-/// It draws nothing, and it has to outlive every route: a night can be recorded from the streak
+/// It draws nothing, and it has to outlive every route: a day can be recorded from the streak
 /// page, from the book details band, or from the finished-books sheet, and the widget has to
 /// follow all of them. Sitting above the navigator also means it is still mounted while a modal
 /// sheet is up, which is where the record actually happens.
@@ -135,7 +135,7 @@ class _StreakWidgetSyncState extends ConsumerState<StreakWidgetSync> {
   ///
   /// **Deliberately not awaited by [_publish], and the order is the point.** The figures are
   /// already on the home screen before this starts; making the streak wait on a network call
-  /// would mean a recorded night does not appear until a cover downloads. The widget draws
+  /// would mean a recorded day does not appear until a cover downloads. The widget draws
   /// `coverColor` in the meantime, which is what it drew before thumbnails existed.
   void _publishCover(StreakWidgetFacts facts) {
     final book = facts.book;

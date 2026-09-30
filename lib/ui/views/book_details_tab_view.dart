@@ -143,7 +143,7 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
     //
     // Unwatched, two things went wrong. The status sheet opened with "I read today" unticked
     // on a day that *was* recorded, and saving it called `setRead(read: false)` and took the
-    // night away. And every first nudge of a bookmark looked like the first of the day, so
+    // day away. And every first nudge of a bookmark looked like the first of the day, so
     // the celebration fired on a run it had already celebrated. Both survived on device
     // because the library bar's streak chip watches the same provider and the route below
     // this one stays in the tree — so the set was nearly always already cached, and the
@@ -1293,7 +1293,7 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
         // The cost, stated: correcting a percentage the reader got wrong last week also
         // stamps *today*, and there is no way to tell that apart from reading, because a
         // position is not a date. The narrower rule — stamp only when the position moved
-        // *forward* — is one comparison away and would quietly refuse the night to a
+        // *forward* — is one comparison away and would quietly refuse the day to a
         // reader re-reading a chapter.
         if (movedPosition) {
           await ref
@@ -1304,7 +1304,7 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
                 bookId: book.id,
               );
         }
-        await _celebrateIfTonightIsNew(
+        await _celebrateIfTodayIsNew(
           wasRead: wasRead,
           isReadNow: movedPosition,
         );
@@ -1330,7 +1330,7 @@ class _BookDetailsTabViewState extends ConsumerState<BookDetailsTabView>
   /// async set, which is the trap [_onEditStatusPressed] records. The callers already know
   /// both facts without asking: the set was resolved before the write, and what the write
   /// asserted is in their hands.
-  Future<void> _celebrateIfTonightIsNew({
+  Future<void> _celebrateIfTodayIsNew({
     required bool wasRead,
     required bool isReadNow,
   }) async {

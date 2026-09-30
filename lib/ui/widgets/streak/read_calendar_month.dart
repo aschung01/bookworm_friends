@@ -51,7 +51,7 @@ const double kReadCalendarStampAlpha = 0.65;
 /// by hand and starts reading as a mistake.
 double readCalendarPatchTilt(int day) => ((day * 7) % 9) - 4;
 
-/// One month of the reader's recorded nights, drawn as date stamps.
+/// One month of the reader's recorded days, drawn as date stamps.
 ///
 /// **The mark carries the colour, not a band, and the mark is a stamp the reader's own
 /// hand would make.** Eighteen weights were drawn before this one
@@ -124,7 +124,7 @@ class ReadCalendarMonth extends StatelessWidget {
   ///
   /// A null value is a recorded day with no attribution: either the row predates the
   /// `book_id` column or the book has since been deleted. It draws in neutral ink rather
-  /// than being dropped, because the night happened and the streak counts it.
+  /// than being dropped, because the day happened and the streak counts it.
   final Map<DateTime, Color?> marks;
 
   /// What the reader's clock says today is, as a reading date.
@@ -295,7 +295,7 @@ class ReadCalendarMonth extends StatelessWidget {
     // month exists to show — where the thread broke — could only be found by counting.
     final gap = !marked && !isToday && !future;
 
-    // Neutral ink for a night with no attribution. Not skipped: the night happened, the
+    // Neutral ink for a day with no attribution. Not skipped: the day happened, the
     // streak counts it, and a hole in the month would say it did not.
     final colour = marked ? (marks[date] ?? colors.secondaryText) : null;
 

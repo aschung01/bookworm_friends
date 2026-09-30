@@ -25,7 +25,7 @@ import 'package:bookworm_friends/models/reading_date.dart';
 void main() {
   group('readingDayPhase', () {
     // A day that is in the log, and the same day's evening. Recorded outranks late: once the
-    // night is in there is nothing left to warn about, and this is the assertion that keeps a
+    // day is in there is nothing left to warn about, and this is the assertion that keeps a
     // later refactor from checking the hour first.
     test(
       'Given today is recorded, When it is 22:00, Then the phase is recorded rather than late',
@@ -72,7 +72,7 @@ void main() {
     // Midnight is the rollover, so this is a *new* day with nothing recorded on it — and a new
     // day is calm. The evening it follows being unrecorded is not this function's business.
     test(
-      'Given last night was missed, When midnight passes, Then the new day reads open rather than late',
+      'Given yesterday was missed, When midnight passes, Then the new day reads open rather than late',
       () {
         expect(
           readingDayPhase(DateTime(2026, 9, 23), const <DateTime>[]),
@@ -81,7 +81,7 @@ void main() {
       },
     );
 
-    // The first night. Of 137 profiles in production exactly one has a reading day at all, so
+    // The first day. Of 137 profiles in production exactly one has a reading day at all, so
     // the empty log is the common case rather than the edge, and the warning has to reach it.
     test(
       'Given nothing has ever been recorded, When it is 21:30, Then the day still goes late',

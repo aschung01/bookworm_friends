@@ -25,7 +25,7 @@ import 'package:bookworm_friends/ui/widgets/streak/streak_flame.dart';
 /// then settles hangs for its full timeout on a configured machine and passes on an
 /// unconfigured one, which is how four cases in `reading_streak_page_test.dart` started
 /// failing without anything in that file changing. Those cases are about whether recording a
-/// night writes the day; the flame is scenery, and this makes it hold still.
+/// day writes the day; the flame is scenery, and this makes it hold still.
 ///
 /// A test that wants the *artboard* should not call this: see `streak_flame_test.dart` and
 /// `streak_flame_golden_test.dart`, which pass `liveness` of zero instead.

@@ -1,12 +1,12 @@
 /// The wall-clock hour at which one reading day gives way to the next.
 ///
 /// Zero — midnight, matching Duolingo's own streak reset. This used to be 4,
-/// specifically so a chapter finished at 00:30 read as _tonight's_ reading rather
+/// specifically so a chapter finished at 00:30 read as _today's_ reading rather
 /// than costing the run it had just extended; that reasoning did not stop being
 /// true, it was outweighed on instruction by matching the reset everyone already
 /// knows from Duolingo. The accepted cost is exactly the case 4 existed to avoid: a
 /// page turned between midnight and whenever the reader actually goes to bed now
-/// counts for tomorrow, not tonight.
+/// counts for tomorrow, not today.
 ///
 /// Kept as a named constant rather than a literal in [readingDate] and in the
 /// evening warning's copy, so the hour in the arithmetic and the hour in the copy
@@ -106,7 +106,7 @@ enum ReadingDayPhase { recorded, open, openLate }
 ///
 /// **An empty [days] is not a special case.** A reader with nothing recorded has an open day
 /// like anybody else, and it still turns late in the evening. That is deliberate: the first
-/// night is the only night the warning has anything to do, and of 137 profiles in production
+/// day is the only day the warning has anything to do, and of 137 profiles in production
 /// exactly one has a reading day at all.
 ReadingDayPhase readingDayPhase(DateTime now, Iterable<DateTime> days) {
   final local = now.toLocal();

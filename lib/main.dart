@@ -205,7 +205,7 @@ class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
       // draws nothing, and a link can arrive on any screen, so it has to sit outside
       // every route. See its class comment for the case it exists to fix — a link
       // tapped while the app is already running used to do nothing at all.
-      // `StreakWidgetSync` sits alongside for the same reason and draws nothing either: a night
+      // `StreakWidgetSync` sits alongside for the same reason and draws nothing either: a day
       // can be recorded from the streak page, the book details band or the finished-books sheet,
       // and the home-screen widget has to follow all three. Innermost of the three so it is
       // below `Localizations` — it needs `AppLocalizations` to put translated copy in the

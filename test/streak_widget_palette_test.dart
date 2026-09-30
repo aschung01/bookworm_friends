@@ -249,7 +249,7 @@ void main() {
           greaterThanOrEqualTo(4.5),
           reason:
               'the open ground #${anchor.top.toRadixString(16)} is within 4.5:1 of the recorded '
-              'ground, so an unrecorded hour can be mistaken for a recorded night',
+              'ground, so an unrecorded hour can be mistaken for a recorded day',
         );
       }
     },
