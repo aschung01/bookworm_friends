@@ -609,8 +609,10 @@ Per observation 4, the requirement is a **system**, not seven decorated images: 
 type treatment, one length band across every frame. Apple crops hard in search results and shows
 only the first three, so those three have to carry what it is, why it is different, and the payoff.
 
-Proposed order and captions — top-anchored, 4–6 words, brand green `#09BC8A` on the app's own
-`pageBackground`, set in Gowun Batang Bold to match the in-app `hero`/`title` token:
+Proposed order and captions — 4–6 words, set in Gowun Batang Bold to match the in-app
+`hero`/`title` token. **Ink is `primaryText`, not brand green**: `brandText` at 10% of frame
+width on near-white paper is a wash, and the headline is the one thing in the frame that has
+to survive being served as a thumbnail.
 
 | #   | Capture             | Caption                       |
 | --- | ------------------- | ----------------------------- |
@@ -624,14 +626,62 @@ Proposed order and captions — top-anchored, 4–6 words, brand green `#09BC8A`
 
 iPad reuses 1, 3, 6, 4 against its four captures.
 
+### The layout, decided by looking
+
+`test/store_frame_render_preview.dart` composites the frames and writes `build/store_frames/`,
+including a `_sheet.png` contact sheet. **Top-anchored, centre-aligned, headline plus a
+supporting line, device inset with a bezel and bleeding off the bottom edge** — treatment `d`
+of four that were rendered and compared at full size and as thumbnails.
+
+The two references disagree, and picking one settled the rest. **Flighty** uses a dark ground,
+a bezelled device tilted and cropped off two edges, and a big bold caption top-left over an
+attribution stack. **Duolingo** uses no device at all: a full-bleed raw screenshot with the
+caption drawn as one of its own in-app components, bottom-centre. Inset-with-bezel was chosen,
+which is Flighty's model, so the caption goes where Flighty puts it.
+
+Three things decided the variants, and two of them are structural rather than aesthetic:
+
+- **Top, because Apple crops the top in search results.** A bottom caption is invisible exactly
+  where the frame has to do its work — and bleeding the device off the _top_ instead cost the
+  app's own `My Library` heading and status bar to the crop.
+- **Centre, because the device is centred.** Left-aligned is the stronger editorial move and
+  Flighty earns it with a dark ground and an attribution stack beneath. Against a centred phone
+  on light paper the left-hang reads unresolved at thumbnail size.
+- **A supporting line, because at the size Apple serves these it is the only variant where you
+  learn two things.** It also lets the headline stay short rather than stretching to carry the
+  whole claim. Drop it on any frame where it would merely restate the headline; position and
+  alignment stay fixed either way, which is what keeps the set a system.
+
+Proportional, not absolute: the headline is 10.2% of frame width and the device 82%, so the
+iPad pass inherits the same _proportions_ rather than the same point sizes. The screen's aspect
+is taken from the capture, so a screenshot is never stretched — the one distortion a reviewer
+notices immediately. The screen radius is 14.1% of screen width, measured off the hardware,
+because a radius that is merely "rounded" is the tell that a mockup was drawn rather than
+photographed.
+
+Two traps the renderer is built around, both of which cost a round here:
+
+- **A missing `Material` ancestor does not look like a missing `Material` ancestor.** Without
+  one the ambient default is `MaterialApp`'s `_errorTextStyle`, and `Text` _merges_ it: the
+  explicit colour, family and size all won, so the headline came out correct in every respect
+  except the underline and yellow `decorationColor` that nothing here overrode. It reads as a
+  font bug rather than a missing widget.
+- **The device has to take what the caption leaves.** Positioned from the frame's edge it
+  ignores the caption's height, and the supporting-line variant drew its second line behind the
+  phone with the last word clipped. Deriving the crop from the remainder makes a taller caption
+  mean a deeper crop, which is the honest trade: the more you say, the less app you show.
+
+**The frames in `build/store_frames/` are built from a stale capture on purpose.** This pass
+chose a layout, and the layout does not depend on what is inside the screen. They still show
+the rust flame and the half-open finished-books sheet, so the bottom of the crop is uglier than
+it will be.
+
 Two open questions I am not deciding for you:
 
 - **Whether slot 1 becomes a poster.** Four of eight benchmark apps spend it on composed art with
   no UI at all. We have the chalk-hand asset vocabulary to do it — but read
   `docs/mockups/empty-states/PROMPTS.md` first, because `AGENTS.md` is explicit that hand-authored
-  SVG in that style has failed ten times.
-- **Whether the captions get composited here or in a design tool.** The 11 files now live at
-  `docs/store/screenshots/1.1.0/capture/`, so the input is stable either way. Compositing in-repo
-  (a Flutter render preview writing `upload/`, the way `test/*_render_preview.dart` already works)
-  makes the captions re-runnable per locale and keeps Korean out of an image editor; doing it by
-  hand is faster once and unrepeatable.
+  SVG in that style has failed ten times and only the xAI route worked.
+- **Whether supporting lines get written for all seven slots.** Only slot 1's exists. The
+  alternative is a bare headline below slot 3, on the argument that Apple shows three and the
+  rest are browsed rather than read.
