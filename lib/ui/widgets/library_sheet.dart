@@ -70,6 +70,18 @@ double sheetMidExtent(double available) => available * 0.65;
 /// of the same number is a number that eventually stops agreeing with itself.
 const double sheetMinHeightFraction = 0.2;
 
+/// Horizontal gutter a [LibrarySheet] puts around its header, and by convention what
+/// a body should sit inside too, so a tab switch does not shift the title sideways.
+///
+/// **Top-level because a tab that caps its own width has to discount it.** The sheet
+/// stays full-width on a tablet by design — it is the persistent sheet, so neither
+/// Material's 640 nor `CenteredContent` was ever applied to it — which means a tab
+/// whose content should not stretch has to cap the content itself. A cap applied
+/// *inside* this padding must subtract it twice to land on the same centre line as one
+/// applied outside it, and `LibraryCardSheet` needs both. Duplicating the literal there
+/// is how a header and a hero drift apart by 50pt.
+const double kLibrarySheetGutter = 25;
+
 /// Where a [LibrarySheet] rests.
 ///
 /// An enum rather than the boolean this used to be, because "expanded" stopped being
@@ -460,7 +472,7 @@ class _LibrarySheetState extends State<LibrarySheet>
   /// Measured from the card's edge, not the screen's, so it moves with
   /// [_gutterInset]: the title sits 25 inside the card at every position, which is
   /// what makes the card read as one object being resized.
-  static const double _gutter = 25;
+  static const double _gutter = kLibrarySheetGutter;
 
   /// Fraction of a drag that still moves the sheet once it is past a snap
   /// position, i.e. how rubbery it feels when overdragged.
