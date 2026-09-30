@@ -13,9 +13,20 @@
 | Support URL        | ✅ `https://libstack.app/support` on both locales              |
 | Reviewer contact   | ✅ Andrew Chung — and the dead 2022 demo account is cleared    |
 | Review notes       | ✅ published, 2963 chars                                       |
-| Screenshots        | ❌ not uploaded — see Finding 5                                |
-| Build 13           | ❌ not uploaded                                                |
-| Apple sign-in      | ❌ **broken — blocks submission, see Finding 1**               |
+| Apple sign-in      | ✅ **works, and links to the 2022 account — see Finding 1**    |
+| Screenshots        | ⚠️ captured and kept, not captioned, not uploaded — Finding 5  |
+| Build              | ❌ none attached. 14 is uploaded but **predates** the button   |
+| `releaseType`      | ⚠️ `AFTER_APPROVAL` — decide, `MANUAL` may suit a resurrection |
+
+**The build is the live blocker.** `+14` uploaded 2026-09-26 21:57 and is `VALID`, but every file
+in the Sign in with Apple button rebuild (Finding 6) was written 2026-09-27 12:42–13:35 — the day
+after — so the compliant button is in no uploaded build. Ship `+15` before attaching anything.
+`scripts/asc_version.py` lists the builds and attaches one:
+
+```bash
+.venv/bin/python scripts/asc_version.py                      # report, incl. builds
+.venv/bin/python scripts/asc_version.py --attach-build 15
+```
 
 Everything above is reachable from `scripts/asc_version.py`, which reads this file as
 the source of truth for the copy — so **edit the fields below and re-run, rather than editing
@@ -56,40 +67,63 @@ All 136 migrated users have a confirmed email, and 136 profiles sit behind them 
 So the libraries are there. **Reachability depends entirely on which email the migration stored**,
 and that splits the user base three ways:
 
-| Route                                             | Users  | Books   | Verdict                                   |
-| ------------------------------------------------- | ------ | ------- | ----------------------------------------- |
-| `gmail.com` → Google                              | 52     | 195     | ✅ Works. Proven twice above.             |
-| `privaterelay.appleid.com` + `icloud.com` → Apple | 21     | 86      | ⚠️ Should work. **Unproven — see below.** |
-| naver / kakao / nate / hanmail / daum / other     | **63** | **192** | ❌ No route exists.                       |
+| Route                                             | Users  | Books   | Verdict                                              |
+| ------------------------------------------------- | ------ | ------- | ---------------------------------------------------- |
+| `gmail.com` → Google                              | 52     | 195     | ✅ Works. Proven twice above.                        |
+| `privaterelay.appleid.com` + `icloud.com` → Apple | 21     | 86      | ⚠️ Mechanism proven. **Relay persistence unproven.** |
+| naver / kakao / nate / hanmail / daum / other     | **63** | **192** | ❌ No route exists.                                  |
 
 **63 users holding 192 books — 46% of the people and 41% of the books — cannot get back in.** The
 app offers only Apple and Google, and no Korean portal address can be presented through either.
 
 Two things I checked because they would have changed the answer, and they did:
 
+- **Apple sign-in now works, and it linked rather than duplicated. ✅ Proven 2026-09-28.** Signing in
+  with Apple against an Apple ID whose address matches an existing confirmed email attached a second
+  identity to the **existing 2022 user** instead of opening a new one:
+
+  ```
+  user aschung1005@gmail.com   created 2022-08-24, 75 books
+    raw_app_meta_data {"provider":"google","providers":["google","apple"]}
+    identity google  2026-08-10
+    identity apple   2026-09-28   email_verified true, name "Andrew Chung"
+  ```
+
+  Totals unchanged either side of it — 137 users, 137 profiles, 473 books — so nothing was
+  duplicated. This is the exact email-matching path the 21 Apple-route users depend on, and it also
+  disproves the theory that the app was failing to request the `email` scope: Apple returned both
+  `email` and `name`, so `auth_provider.dart` needs no change.
+
+- **What is still unproven is narrower than it was: whether Apple hands a _returning 2022 user_ their
+  original `@privaterelay.appleid.com` address.** Relay addresses are scoped to the primary App ID
+  and the bundle ID has not changed, so it should hold, but only an Apple ID that actually authorized
+  this app in 2022 can demonstrate it and none is available to test with. An earlier test that came
+  back with **no email at all** is fully explained by Apple returning `email` only on the _first_
+  authorization of an App ID — that Apple ID had authorized before — and not by a scope fault.
+  It produced a null-email orphan account, since deleted.
+
 - **There is no password route.** Every migrated row has `encrypted_password = ''` — an empty
   string, not a hash. (`count()` counts empty strings, which is what made this look like "all 137
   have passwords" on first pass.) Only the demo account has a real bcrypt hash. So adding
   email+password sign-in would recover **nobody**; it would take an emailed one-time code.
-- **Not one Apple identity has ever been created on this project.** The entire `auth.identities`
-  table is 2 Google rows and 1 email row. Which means two separate things are unproven: whether
-  Apple sign-in works here at all, and whether Apple returns those 20 users their original relay
-  address. Relay addresses are scoped to the primary App ID, and the bundle ID has not changed, so
-  it _should_ hold — but `signInWithOAuth` uses the **web** flow through a Services ID, not native
-  SIWA, and if that Services ID is not grouped under `com.unicorn.bookwormFriends` those 20 users
-  land on a brand-new empty account instead of their library.
 
 **Two recommendations, in priority order:**
 
-1. **Sign in with Apple is broken right now — confirmed, not theoretical.** Tested 2026-09-21 and
-   it fails with **"Provider not enabled"**: the Apple provider has never been switched on in
-   Supabase Auth, which is exactly why `auth.identities` holds zero Apple rows. You are fixing it.
-   This was one step from being the rejection, because the review notes point App Review at Sign in
-   with Apple as their only way into the app. **Do not submit until a real Apple sign-in has
-   produced an identity row here** — `select provider, count(*) from auth.identities group by 1;`
-   While enabling it, confirm the Services ID is grouped under the primary App ID
-   `com.unicorn.bookwormFriends`; that is what decides whether the 20 relay users reach their own
-   library or a new empty one.
+1. **Sign in with Apple was broken and is now fixed. ✅** It failed on 2026-09-21 with **"Provider
+   not enabled"** — the Apple provider had never been switched on in Supabase Auth, which is why
+   `auth.identities` held zero Apple rows. Setup is written up in `docs/apple-sign-in.md`: both the
+   App ID and the Services ID (`com.bookwormFriends.signin`) already existed from 2022 with
+   `APPLE_ID_AUTH`, so what was left was the Services ID's return URL, a freshly minted client
+   secret (`scripts/apple_client_secret.py`, **expires 2027-03-25**) and the Client IDs ordering
+   trap. It was one step from being the rejection, because the review notes point App Review at
+   Sign in with Apple as their only way into the app.
+
+   The gate this section set — _do not submit until a real Apple sign-in has produced an identity
+   row here_ — is now met, and the identity landed on the **existing** account rather than a new
+   one, which also answers the question about the Services ID being grouped under the primary App
+   ID. Re-check with `select provider, count(*) from auth.identities group by 1;` (`apple:1,
+email:1, google:2`).
+
 2. **Kakao sign-in recovers the 63, and is a 1.1.1 item, not a blocker.** Kakao is a built-in
    Supabase provider, and those naver/nate/hanmail/daum addresses are almost certainly the _Kakao
    account_ emails the old app received — which is exactly what auto-linking matches on. Note that
@@ -171,11 +205,42 @@ single most likely way a Korean user receives an invite link. Worth fixing on th
 launch; it is a page edit, not an app change. Flagging rather than fixing since the website is not
 in this repo.
 
-### Finding 5 — the screenshots still have no captions
+### Finding 5 — the screenshots are safe now, and still have no captions
 
-Eleven captures are at exact required sizes (7 × iPhone 6.9" `1320×2868`, 4 × iPad 13" `2064×2752`)
-in `build/shots/` — **gitignored, and destroyed by the next `flutter clean`.** Still unmoved; still
-needs a decision. Captions drafted at the end of this document.
+Eleven captures at exact required sizes (7 × iPhone 6.9" `1320×2868`, 4 × iPad 13" `2064×2752`),
+**moved out of `build/shots/` and into the repo** at
+`docs/store/screenshots/1.1.0/capture/{iphone69,ipad13}/`. 23 MB, which is nothing against a 1.0 GB
+`.git`, and the alternative was leaving a day of simulator work one `flutter clean` from gone.
+`capture/` is the raw device output; a caption pass writes a sibling `upload/`.
+
+Still uncaptioned, and per the competitor read below every serious app in this category spends slot
+1 on composed art rather than raw UI. Captions drafted at the end of this document.
+`index.html` beside them is a generated contact sheet — all 11 at once, in store order, with the
+defects below marked. Open it before deciding anything about captions.
+
+#### They predate the reading streak, so some of them are wrong
+
+Captured **2026-09-19**. The streak merged to main **2026-09-26 21:41** (`d147827`). Verified by
+opening the frames, not inferred:
+
+| Frame                            | What it draws                 | What ships now                                   |
+| -------------------------------- | ----------------------------- | ------------------------------------------------ |
+| `iphone69/01`, `02`, `ipad13/02` | bar flame in **rust**         | `kCandleFlame` **#F2A93F**, and a generated mark |
+| `iphone69/03`, `ipad13/02`       | streak tile **unfilled grey** | filled warm/cool with a `StreakFlameMark`        |
+
+The chip itself is in the captures — it predates this branch — so the drift is hue and glyph rather
+than a missing control, which is exactly the kind of thing that survives a glance and fails a
+side-by-side. Two further problems the sheet makes obvious and no test would:
+
+- **The finished-books sheet is half-open across the bottom third of `01` and `02`**, showing
+  "Books read 1", a single spine and a lot of white — in the two most valuable frames Apple shows.
+- **The seeded data is "1d, best 1" and 1 book read this year.** That was survivable while the
+  streak tile was grey furniture. It is the loudest object on the card now, so a screenshot
+  advertising a streak feature would be advertising a one-day streak.
+
+**So re-capture, and seed a real run first.** Captioning the current frames would composite text
+onto obsolete pixels, and the iPad card needs its `CenteredContent` fix landed before its frame is
+worth taking at all.
 
 ### Finding 6 — four 2022 values were still live in App Store Connect, and one was a rejection. ✅ Fixed.
 
@@ -335,7 +400,7 @@ Korean and English throughout. Light and dark. iPhone and iPad.
 ```
 Libstack is a new name, and a new app underneath it.
 
-Coming back from the old version? Sign in with the same Apple ID or Google account you used before and your shelves will be waiting. If your shelf comes up empty, reach out and I will reconnect it by hand — nothing was deleted.
+Coming back from the old version? Sign in with the same Apple ID or Google account you used before, and in most cases your shelves are already waiting. If yours comes up empty, reach out and I will reconnect it by hand — nothing was deleted.
 
 • Friends. Invite by link, see what your friends have open, visit their shelves, and poke the quiet ones. Friendships are mutual, and only friends can see your library.
 • Reading progress by page or percent, with the days you read stamped into a streak.
@@ -351,6 +416,13 @@ The reconnect-by-hand line is there because of Finding 1: 21 users are reachable
 Apple relay address we have never once seen returned. If it does not hold, that sentence is the
 difference between a bug report and a churned user.
 
+**Softened 2026-09-28, after Apple sign-in was proven to link.** It used to promise "your shelves
+_will_ be waiting"; it now says "in most cases". Counter-intuitively the softening came _with_ the
+good news rather than instead of it: proving the mechanism also pinned down exactly who it has not
+been proven for — the 20 Hide My Email users, whose original relay address no available Apple ID
+can test. An unqualified promise was defensible while the whole question was open and is not once
+the exception has a number on it.
+
 ---
 
 ## ko
@@ -358,23 +430,52 @@ difference between a bug report and a churned user.
 ### Name (limit 30)
 
 ```
-Libstack: 독서 기록
+책벌레 친구들 (Libstack): 독서 기록
 ```
 
 ### Subtitle (limit 30)
 
 ```
-책벌레 친구들 - 함께하는 독서 기록
+친구와 함께 만드는 독서 습관
 ```
 
-Your string, with `함꼐하는` corrected to `함께하는` — `ㅐ`/`ㅔ` transposed. Confirm you are happy
-with the fix.
-
-> `독서 기록` now appears in both name and subtitle, which is precisely the waste observation 2
-> calls out. It is a deliberate trade: the subtitle's job is to preserve four years of
-> `책벌레 친구들` recognition on the storefront where every existing user lives. If you would rather
-> not spend it twice, the name goes back to bare `Libstack` and the subtitle carries the category
-> alone.
+> **Why the name carries both brands, and the subtitle carries neither.**
+>
+> This slot was `Libstack: 독서 기록` for a day, and that was a rebrand default rather than a
+> decision — the reasoning below did not exist when it was published, which is what made it look
+> arbitrary on review. Three jobs, done in 25 of 30 characters:
+>
+> - **`책벌레 친구들` leads**, because it is an exact-match name hit for the four years of recognition
+>   this listing already has, in the storefront where **every existing user lives**. A name match
+>   outranks a subtitle match, which is all the old subtitle could offer.
+> - **`(Libstack)` resolves an icon mismatch**, and this is the reason the obvious
+>   `책벌레 친구들: 독서 기록` was rejected. `ios/Runner/ko.lproj/InfoPlist.strings` pins
+>   `CFBundleDisplayName = "Libstack"` — deliberately, since a `ko.lproj` exists and could have said
+>   otherwise — so a Korean reader installs from this listing and gets an icon labelled `Libstack`.
+>   Without the parenthetical that reads as having downloaded the wrong app.
+> - **`독서 기록` stays** because it is the only term in the field with Korean search volume.
+>   "Libstack" has none; nobody types it.
+>
+> **The truncation objection is disproven by this listing's own history.** 25 Korean characters is
+> 35 half-widths of display space, which will truncate in search results — but the name Apple
+> displayed here from 2022 to 2026 was `책벌레 친구들 - 친구들과 함께하는 독서 기록` at **43**. This is
+> narrower than what shipped. It should cut around `책벌레 친구들 (Libstack)…`, which is the bridge
+> message intact. And **truncation is display-only**: Apple indexes the whole string, so `독서 기록`
+> keeps its ranking value even unseen.
+>
+> **So the subtitle stopped carrying `책벌레 친구들`.** Its documented job was preserving that
+> recognition; the name does it now, and earlier. Keeping it in both would put the brand twice in
+> the only two lines Apple shows — the same waste observation 2 raises about `독서 기록`, relocated
+> onto the brand. It also retires the old note here, which offered to drop `독서 기록` from the name
+> instead; that trade is moot now that the name has a reason to be long.
+>
+> **And it carries no keywords either**, on purpose. `독서기록`, `책장`, `서재`, `독서습관`, `완독`
+> and `바코드` are all in the keywords field below, where a second copy earns nothing. So the
+> subtitle persuades: `친구와 함께 만드는 독서 습관` is also the closest line to the 2022 subtitle
+> (`친구와 함께 독서 습관 만들기`), which is continuity for a returning reader at no cost.
+>
+> The `함꼐하는` → `함께하는` fix that used to be flagged here (`ㅐ`/`ㅔ` transposed) is moot — that
+> string is gone.
 
 ### Promotional text (limit 170, editable without review)
 
@@ -436,7 +537,7 @@ New, where there is room to be honest about it, not in a 170-character hook.
 ```
 이름도 Libstack으로, 속도 새로워졌습니다.
 
-예전 버전을 쓰셨다면: 그때 Google 또는 Apple 계정으로 가입하셨다면, 같은 계정으로 로그인하면 서재가 그대로 남아 있습니다. 카카오 계정으로 가입하셨던 분들은 아직 로그인할 방법이 없습니다 — 카카오 로그인을 복구하는 작업을 진행 중이고, 그때까지 서재는 삭제되지 않고 그대로 보관됩니다.
+예전 버전을 쓰셨다면: 그때 Google 또는 Apple 계정으로 가입하셨다면, 같은 계정으로 로그인해 보세요. 대부분 서재가 그대로 남아 있습니다. 혹시 비어 있으면 알려 주세요 — 직접 연결해 드리겠습니다. 카카오 계정으로 가입하셨던 분들은 아직 로그인할 방법이 없습니다 — 카카오 로그인을 복구하는 작업을 진행 중이고, 그때까지 서재는 삭제되지 않고 그대로 보관됩니다.
 
 • 친구. 링크로 친구를 초대하고, 친구가 읽는 책을 확인하고, 친구의 서재를 둘러보고, 조용한 친구는 콕 찔러 보세요. 친구는 서로 수락해야 맺어지고, 서재는 친구에게만 보입니다.
 • 쪽수나 퍼센트로 남기는 진도, 그리고 읽은 날이 쌓이는 연속 기록.
@@ -529,5 +630,8 @@ Two open questions I am not deciding for you:
   no UI at all. We have the chalk-hand asset vocabulary to do it — but read
   `docs/mockups/empty-states/PROMPTS.md` first, because `AGENTS.md` is explicit that hand-authored
   SVG in that style has failed ten times.
-- **Where the 11 files live.** They are still in `build/shots/`, 22.6 MB, one `flutter clean` from
-  gone. `docs/store/screenshots/` is the obvious home if you are willing to carry them in git.
+- **Whether the captions get composited here or in a design tool.** The 11 files now live at
+  `docs/store/screenshots/1.1.0/capture/`, so the input is stable either way. Compositing in-repo
+  (a Flutter render preview writing `upload/`, the way `test/*_render_preview.dart` already works)
+  makes the captions re-runnable per locale and keeps Korean out of an image editor; doing it by
+  hand is faster once and unrepeatable.

@@ -26,8 +26,16 @@ Latin script the way Notion and Slack do in the Korean stores. Consequence: the 
 overrides now hold the same string as English and are pure redundancy. They were kept
 rather than deleted because `ios/Runner/ko.lproj/InfoPlist.strings` still carries
 `NSPhotoLibraryUsageDescription`, and dropping the macOS one risks a dangling Xcode
-reference. `책벌레 친구들` is no longer in the app; it is still a good App Store
-subtitle for the KO locale if the category signal is wanted there.
+reference.
+
+**`책벌레 친구들` is no longer in the app, and it is back in the App Store — in the KO
+_name_ rather than the subtitle this file used to suggest.** It reads
+`책벌레 친구들 (Libstack): 독서 기록`, and the parenthetical is load-bearing precisely because
+of the paragraph above: the launcher says `Libstack` in Korean too, so a listing named for
+the old brand alone would install an icon the reader does not recognise. Reasoning and the
+rejected alternatives are in `docs/store/listing-1.1.0.md` under `## ko`. The distinction
+this file draws — launcher name versus store name — is what lets the two differ on purpose;
+they are not required to match, only to not contradict.
 
 `macos/Runner/Configs/AppInfo.xcconfig` sets `PRODUCT_NAME = bookworm_friends` on
 purpose — it drives `CFBundleName` and the built `.app` filename, not the user-facing

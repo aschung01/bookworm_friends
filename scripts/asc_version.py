@@ -22,6 +22,9 @@ Usage:
   ./scripts/asc_version.py --set-review-details
   ./scripts/asc_version.py --publish-copy             # from the markdown draft
   ./scripts/asc_version.py --publish-copy --locale ko
+  ./scripts/asc_version.py --attach-build 15          # required before submitting
+
+The report also lists every uploaded build and which one the version points at.
 
 Nothing is written unless one of the --set/--publish flags is passed. Credentials
 come from ios/asc.json, the same file release_ios.sh uses.
@@ -269,8 +272,87 @@ def report(bearer: str, app: str) -> None:
         notes = da.get("notes")
         print(f"    {'notes':20} {len(notes) if notes else 0} chars")
 
+    report_builds(bearer, app, version)
+
+
+def builds(bearer: str, app: str, limit: int = 12) -> list[dict]:
+    """Uploaded builds, newest first, across every version train.
+
+    Filtered by app rather than by version: a build belongs to a `preReleaseVersion`
+    and is only *related* to an `appStoreVersion` once attached, so asking the version
+    for its builds cannot show you the one you are about to attach.
+    """
+    query = urllib.parse.urlencode(
+        {
+            "filter[app]": app,
+            "sort": "-version",
+            "limit": limit,
+            "fields[builds]": "version,processingState,uploadedDate,expired,"
+            "usesNonExemptEncryption",
+        }
+    )
+    return request("GET", f"/builds?{query}", bearer).get("data", [])
+
+
+def attached_build(bearer: str, version_id: str) -> dict | None:
+    return request("GET", f"/appStoreVersions/{version_id}/build", bearer).get("data")
+
+
+def report_builds(bearer: str, app: str, version: dict) -> None:
+    print("\nbuilds (newest first)")
+    for build in builds(bearer, app):
+        a = build["attributes"]
+        # `usesNonExemptEncryption` False is the export-compliance answer already given,
+        # which is what `ITSAppUsesNonExemptEncryption` in Info.plist buys. A build
+        # showing None here is parked at Missing Compliance and cannot be distributed --
+        # see scripts/asc_compliance.py.
+        print(
+            f"  +{a['version']:<4} {a['processingState']:<10}"
+            f" expired={str(a['expired']):<5}"
+            f" encryptionAnswered={a['usesNonExemptEncryption'] is not None}"
+            f"  {a['uploadedDate']}"
+        )
+
+    current = attached_build(bearer, version["id"])
+    shown = f"+{current['attributes']['version']}" if current else "NONE ATTACHED"
+    print(f"\n  {VERSION} build: {shown}")
+
 
 # ------------------------------------------------------------------------- write
+
+
+def attach_build(bearer: str, app: str, version_id: str, wanted: str) -> None:
+    """Point the version at an uploaded build.
+
+    Submission is refused without this, and the web UI's build picker is the only other
+    way to reach it. The build must have finished processing -- a `PROCESSING` one is
+    accepted by the API and then silently is not there.
+    """
+    match = next(
+        (b for b in builds(bearer, app, limit=200) if b["attributes"]["version"] == wanted),
+        None,
+    )
+    if match is None:
+        raise SystemExit(f"error: no build +{wanted} on record -- run without --attach-build to list them")
+    state = match["attributes"]["processingState"]
+    if state != "VALID":
+        raise SystemExit(f"error: build +{wanted} is {state}, not VALID -- wait for processing")
+
+    request(
+        "PATCH",
+        f"/appStoreVersions/{version_id}",
+        bearer,
+        {
+            "data": {
+                "type": "appStoreVersions",
+                "id": version_id,
+                "relationships": {
+                    "build": {"data": {"type": "builds", "id": match["id"]}}
+                },
+            }
+        },
+    )
+    print(f"attached build +{wanted} to {VERSION}")
 
 
 def set_idfa(bearer: str, version_id: str, value: bool) -> None:
@@ -433,6 +515,12 @@ def main() -> None:
     parser.add_argument("--set-idfa", choices=("true", "false"))
     parser.add_argument("--set-review-details", action="store_true")
     parser.add_argument("--publish-copy", action="store_true")
+    parser.add_argument(
+        "--attach-build",
+        metavar="N",
+        help="point the version at uploaded build N (the number after the + in "
+        "pubspec.yaml). Submission is refused until a build is attached.",
+    )
     parser.add_argument("--locale", help="restrict --publish-copy to one locale")
     parser.add_argument(
         "--snapshot",
@@ -462,6 +550,9 @@ def main() -> None:
         wrote = True
     if args.publish_copy:
         publish_copy(bearer, app, version, args.locale)
+        wrote = True
+    if args.attach_build:
+        attach_build(bearer, app, version["id"], args.attach_build.lstrip("+"))
         wrote = True
 
     if wrote:
