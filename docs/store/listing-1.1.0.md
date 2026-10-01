@@ -157,9 +157,9 @@ password set" rather than "no account", so a reset reaches them.
 
 **So credentials are now the lower-risk path**, because 2.1 rejections come from credentials that do
 not work rather than from offering them. `test@apple.com` is verified against
-`/auth/v1/token?grant_type=password` (HTTP 200, provider `email`) and seeded with 20 books across 3
-shelves, 12 reading days, and one friendship — so the shelf, the Library Card, the streak and the
-Friends tab all have content on first launch. `build/demo-account-revert.sql` undoes the seed.
+`/auth/v1/token?grant_type=password` (HTTP 200, provider `email`) and seeded with 32 books across 3
+shelves, a year of reading days, and one friendship — so the shelf, the Library Card, the streak and
+the Friends tab all have content on first launch. `build/demo-account-revert.sql` undoes the seed.
 
 **Re-verify the pair before each submission rather than trusting that it worked once.** The 2022
 record pointed App Review at a dead `aschung01@snu.ac.kr`, which is precisely the failure this field
@@ -596,7 +596,7 @@ Set alongside these: `demoAccountRequired = true`, with `demoAccountName` /
 ```
 A DEMO ACCOUNT IS PROVIDED, AND SIGN IN WITH APPLE ALSO WORKS.
 
-The demo account in the fields above signs in on the first screen: tap "Continue with email", enter the address and password, then tap "Sign in". It already has 20 books across three shelves, five of them in progress, a 12-day reading streak and one friend, so every feature below has something in it from the first launch.
+The demo account in the fields above signs in on the first screen: tap "Continue with email", enter the address and password, then tap "Sign in". It already has 32 books across three shelves — five in progress, 17 finished — a year of reading days with a 12-day run against a 16-day best, and one friend, so every feature below has something in it from the first launch.
 
 If you would rather use your own account, tap "Continue with Apple" instead — Hide My Email works fine. Account creation is instant, with no payment and no personal details beyond what Apple returns. Either way you can delete the account from within the app when you are finished.
 
@@ -609,7 +609,7 @@ WHAT TO TRY.
 3. Tap the book on the shelf to open it. Update progress logs where you are, by page number (p.259 / 432) or by percent.
 4. The view switcher on the Library tab cycles three shelf views: covers face-out, spines lined up, and leaning. Books can be dragged between positions.
 5. LIBRARY CARD, at the bottom of the Library tab — it summarises books finished, days read, reading pace and most-read author, and the share button renders it as an image for the system share sheet, Instagram Stories or Photos.
-6. READING STREAK — tap the flame in the bar at the top of the Library tab. The demo account's run is 12 days, drawn as a week row and a month grid. "I read today" records the day; recording a day that is not yet logged plays a short celebration.
+6. READING STREAK — tap the flame in the bar at the top of the Library tab. The demo account's current run is 12 days against a 16-day best, drawn as a week row and a month grid you can page back through. "I read today" records the day; recording a day that is not yet logged plays a short celebration.
 
 FRIENDS ARE MUTUAL AND INVITE-ONLY. There is no public profile, no feed, no way to search for or browse strangers, and no direct messaging between users. A connection exists only after both people accept an invite link, and a library is readable only between mutually connected accounts. This is enforced by row-level security in the database, not in the client. The only user-to-user content is an emoji reaction on a book. Notes a reader writes on a book are private to its author and are never visible to friends.
 
