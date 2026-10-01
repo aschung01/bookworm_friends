@@ -38,6 +38,37 @@ The same is true of anything else ignored: `ios/Pods`, `ios/Flutter/ephemeral` a
 `android/local.properties` all regenerate themselves, so those need no action.
 `GoogleService-Info.plist` **is** tracked, so Firebase config is never the problem.
 
+### A booted simulator ignores every tap until DeviceHub is running
+
+Xcode 27 **replaced Simulator.app with DeviceHub**, at
+`/Applications/Xcode.app/Contents/Applications/DeviceHub.app`. `simctl boot` (and
+so `boot-device`) starts the simulator **without** it, and in that state argent can
+read the device but not touch it:
+
+|                      |                                          |
+| -------------------- | ---------------------------------------- |
+| `describe` (AX tree) | works                                    |
+| `screenshot`         | works                                    |
+| `gesture-tap`        | returns `tapped: true`, nothing happens  |
+| `button home`        | returns `pressed: home`, nothing happens |
+
+```bash
+open -a "/Applications/Xcode.app/Contents/Applications/DeviceHub.app"
+```
+
+That is the whole fix, and it is worth trying **first**, because every symptom points
+somewhere else. The calls succeed at the API level, so nothing errors; one session
+burned a long detour through real-AX-bounds-instead-of-eyeballed-pixels, `--args`
+JSON in case the CLI was string-coercing the coordinates, a full
+`stop-all-simulator-servers` restart, and an argent upgrade 0.20.0 → 0.26.0 — none
+of which was the cause. **`button home` failing is the tell**: that is a different
+injection path from gestures, so a coordinate or scaling theory cannot explain it,
+and input delivery as a whole is what is missing.
+
+Do **not** conclude from a missing `Simulator.app` that the Xcode install is broken
+and needs repairing. Its absence is correct on Xcode 27 and says nothing; check
+`pgrep -lf DeviceHub` instead.
+
 ## The Crashlytics build phase is patched, and don't revert it
 
 `project.pbxproj`'s `FlutterFire: "flutterfire upload-crashlytics-symbols"` phase no
