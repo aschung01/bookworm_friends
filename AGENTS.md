@@ -1921,7 +1921,7 @@ icon font included**, or the chevron is an empty square and every glyph is 40% t
 
 ## The suite is green — keep it that way
 
-`flutter test` passes completely (2092 cases). There is no expected-failure list any
+`flutter test` passes completely (2135 cases). There is no expected-failure list any
 more, so **any** red is a real regression.
 
 **A run that reports a much lower total, or fails to load a file naming a string nothing in the
