@@ -82,7 +82,7 @@ REVIEWER_CONTACT = {
     #     -H "apikey: $PUBLISHABLE_KEY" -H 'Content-Type: application/json' \
     #     -d '{"email":"test@apple.com","password":"..."}'
     #
-    # The account is also *seeded* -- 32 books, 3 shelves, a year of reading days,
+    # The account is also *seeded* -- 44 books, 3 shelves, a year of reading days,
     # 1 friend -- because an empty library reaches none of the features the screenshots
     # advertise: no shelf to look at, no Library Card, no streak, no friend to visit.
     # `build/demo-account-revert.sql` undoes the seed.

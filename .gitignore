@@ -131,3 +131,6 @@ __pycache__/
 # of the last red run rather than anything to keep. Read it, fix the test or
 # re-record the golden with `--update-goldens`, and let it be overwritten.
 test/failures/
+
+# argent secrets for device automation (credentials typed into the simulator).
+.argent/secrets.env

@@ -103,6 +103,15 @@ const _phoneSlots = <_Slot>[
     'Covers, spines, or leaning',
     'Drag them into the order you want.',
   ),
+  // The streak sits third because it is what this release is for, and because the App
+  // Store shows the first three frames in search results. Its two lines deliberately
+  // avoid every idea already spent: `keep` belongs to slot 1, `page` to slot 4, and the
+  // card's `days` is one item in a list of stats rather than the subject of a sentence.
+  _Slot(
+    'iphone69/08-streak',
+    'The days add up',
+    'Mark today, and watch the month fill in.',
+  ),
   _Slot(
     'iphone69/03-library-card',
     'Your reading becomes a card',
@@ -132,8 +141,20 @@ const _phoneSlots = <_Slot>[
   ),
 ];
 
-/// The iPad reuses four of the seven captions against its four captures rather than
+/// The iPad reuses four of the eight captions against its four captures rather than
 /// writing four more: this is one system at two sizes, not two sets.
+///
+/// The fourth slot is the **streak**, not the book details it was for two rounds, and the
+/// swap is about what the iPad does to a modal. The capture has to show the progress
+/// sheet for `in one drag` to be true, and on a 13-inch screen that sheet is a small band
+/// at the bottom behind a full-screen scrim — so the frame rendered as a uniformly grey
+/// page with the sheet itself cut off below the device's bottom bleed, promising a control
+/// it did not contain. Capturing the page *without* the sheet fixes the dimming and loses
+/// the claim: the iPad details page is short, capped and centred, so it came out as a
+/// cover and two lines of metadata over about half a screen of empty white.
+///
+/// The streak page has the opposite shape — it fills the width at any size, and the
+/// month grid's hand-drawn rings read better large than small.
 const _tabletSlots = <_Slot>[
   _Slot(
     'ipad13/01-library',
@@ -151,9 +172,9 @@ const _tabletSlots = <_Slot>[
     'See what they have open right now.',
   ),
   _Slot(
-    'ipad13/04-book-details',
-    'Log the page you\u2019re on',
-    'By page or percent, in one drag.',
+    'ipad13/04-streak',
+    'The days add up',
+    'Mark today, and watch the month fill in.',
   ),
 ];
 
@@ -507,7 +528,7 @@ Future<void> _contactSheet(
 void main() {
   setUpAll(_loadRealFonts);
 
-  testWidgets('render the seven iPhone frames and the four iPad frames', (
+  testWidgets('render the eight iPhone frames and the four iPad frames', (
     tester,
   ) async {
     addTearDown(tester.view.reset);
