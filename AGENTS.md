@@ -9,6 +9,15 @@ this machine). It holds `keyId`, `issuerId` and `keyPath` pointing at the `.p8`
 private key under `~/private_keys/`. Read that file instead of asking; if it is
 missing, the shape is in `release_ios.sh`.
 
+It carries a fourth key that `release_ios.sh` does not know about:
+**`demoAccountPassword`**, the password App Review signs in with as
+`test@apple.com`. `scripts/asc_version.py` reads it through `demo_password()` and
+**raises** rather than defaulting, because a PATCH only touches the attributes it
+names — so a silently blank password would leave whatever is already on the
+record, and what was on the record historically is a dead 2022 account. It is
+here rather than in `env.json` for the same reason `XAI_API_KEY` is: `env.json` is
+injected into the build and ships inside the app bundle.
+
 Build-time API keys live in **`env.json`** (gitignored). Every build and run must
 inject it, which is what `run.sh` / `build.sh` / `release_ios.sh` are for. A plain
 `flutter run` silently degrades book search.

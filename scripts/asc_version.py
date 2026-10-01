@@ -62,19 +62,61 @@ REVIEWER_CONTACT = {
     "contactLastName": "Chung",
     "contactEmail": "aschung1005@gmail.com",
     "contactPhone": "+1 628-688-9415",
-    # **False on purpose.** The app has no username-and-password sign-in at all --
-    # `auth_page.dart` offers only Apple and Google -- so there are no credentials a
-    # reviewer could enter. The notes tell them to use their own Apple ID instead.
-    # Handing over credentials with nowhere to type them earns a Guideline 2.1
-    # rejection.
-    "demoAccountRequired": False,
-    # Blanked explicitly rather than omitted. A PATCH only touches the attributes it
-    # names, and the 2022 record left `aschung01@snu.ac.kr` sitting in this field --
-    # so omitting it would leave a reviewer a stale account to fail against even
-    # with demoAccountRequired false.
-    "demoAccountName": "",
-    "demoAccountPassword": "",
+    # **True now, and this reverses what stood here for the whole of the draft.** It
+    # used to be `False` with both credential fields blanked, on the reasoning that the
+    # app had no username-and-password sign-in at all -- `auth_page.dart` offered only
+    # Apple and Google -- so credentials with nowhere to type them would earn a
+    # Guideline 2.1 rejection. That was correct about the app it described.
+    #
+    # `feat/email-password-auth` merged, so there is an email field, a password field,
+    # sign-up and reset, and the notes name the exact labels to tap. Supplying working
+    # credentials is the lower-risk path of the two: 2.1 rejections come from
+    # credentials that do not work, not from offering them.
+    "demoAccountRequired": True,
+    # **Re-verify this pair signs in before every submission.** Not paranoia -- the 2022
+    # record left a dead `aschung01@snu.ac.kr` in this field, which is exactly the
+    # failure it is capable of, and a reviewer who cannot get in does not file a bug,
+    # they reject. One call is enough:
+    #
+    #   curl -s -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+    #     -H "apikey: $PUBLISHABLE_KEY" -H 'Content-Type: application/json' \
+    #     -d '{"email":"test@apple.com","password":"..."}'
+    #
+    # The account is also *seeded* -- 20 books, 3 shelves, 12 reading days, 1 friend --
+    # because an empty library reaches none of the features the screenshots advertise:
+    # no shelf to look at, no Library Card, no streak, no friend to visit.
+    # `build/demo-account-revert.sql` undoes the seed.
+    "demoAccountName": "test@apple.com",
+    # The password is **not** here. It comes from `ios/asc.json`, which is gitignored --
+    # see `demo_password()`. This file is committed, and a credential a reviewer can use
+    # to sign in to production does not belong in a public GitHub repository, however
+    # little the account holds.
 }
+
+
+def demo_password() -> str:
+    """The App Review demo account's password, out of gitignored `ios/asc.json`.
+
+    Lives beside the ASC key rather than in `env.json` because `env.json` is injected
+    into the build and therefore **ships inside the app bundle** -- the same reason
+    `AGENTS.md` keeps `XAI_API_KEY` out of it.
+
+    Raises rather than defaulting to an empty string. A PATCH only touches the
+    attributes it names, so blanking this one silently would leave whatever is already
+    on the record -- and what is already on the record, historically, is a dead 2022
+    account. A missing password should stop the publish, not quietly half-apply it.
+    """
+    with open(os.path.join(ROOT, "ios", "asc.json")) as fh:
+        cfg = json.load(fh)
+    secret = cfg.get("demoAccountPassword")
+    if not secret:
+        raise SystemExit(
+            'ios/asc.json has no "demoAccountPassword".\n'
+            "Add it next to keyId/issuerId/keyPath -- the password for\n"
+            f'  {REVIEWER_CONTACT["demoAccountName"]}\n'
+            "which App Review signs in with. The file is gitignored."
+        )
+    return secret
 
 # Draft heading -> (resource, API attribute). The draft is the source of truth for
 # every value here; this only says where each one belongs.
@@ -375,7 +417,9 @@ def set_review_details(bearer: str, version_id: str, notes: str) -> None:
     existing = request(
         "GET", f"/appStoreVersions/{version_id}/appStoreReviewDetail", bearer
     ).get("data")
-    attributes = dict(REVIEWER_CONTACT, notes=notes)
+    attributes = dict(
+        REVIEWER_CONTACT, notes=notes, demoAccountPassword=demo_password()
+    )
     if existing:
         request(
             "PATCH",

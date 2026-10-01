@@ -2,21 +2,21 @@
 
 **Status: copy is PUBLISHED to both locales. Screenshots and the build are not.**
 
-| Field              | State                                                          |
-| ------------------ | -------------------------------------------------------------- |
-| `copyright`        | ✅ `2026 Andrew Chung`                                         |
-| `usesIdfa`         | ✅ `false` — corrected, see Finding 3                          |
-| `en-US` locale     | ✅ published — `Libstack: Reading Tracker`, was holding Korean |
-| `ko` locale        | ✅ published — 2022 copy replaced                              |
-| Age rating         | ✅ answered                                                    |
-| Privacy Policy URL | ✅ `https://libstack.app/privacy` on both locales              |
-| Support URL        | ✅ `https://libstack.app/support` on both locales              |
-| Reviewer contact   | ✅ Andrew Chung — and the dead 2022 demo account is cleared    |
-| Review notes       | ✅ published, 2963 chars                                       |
-| Apple sign-in      | ✅ **works, and links to the 2022 account — see Finding 1**    |
-| Screenshots        | ⚠️ captured and kept, not captioned, not uploaded — Finding 5  |
-| Build              | ❌ none attached. 14 is uploaded but **predates** the button   |
-| `releaseType`      | ⚠️ `AFTER_APPROVAL` — decide, `MANUAL` may suit a resurrection |
+| Field              | State                                                                |
+| ------------------ | -------------------------------------------------------------------- |
+| `copyright`        | ✅ `2026 Andrew Chung`                                               |
+| `usesIdfa`         | ✅ `false` — corrected, see Finding 3                                |
+| `en-US` locale     | ✅ published — `Libstack: Reading Tracker`, was holding Korean       |
+| `ko` locale        | ✅ published — 2022 copy replaced                                    |
+| Age rating         | ✅ answered                                                          |
+| Privacy Policy URL | ✅ `https://libstack.app/privacy` on both locales                    |
+| Support URL        | ✅ `https://libstack.app/support` on both locales                    |
+| Reviewer contact   | ✅ Andrew Chung — demo account `test@apple.com`, seeded and verified |
+| Review notes       | ✅ published, 2963 chars                                             |
+| Apple sign-in      | ✅ **works, and links to the 2022 account — see Finding 1**          |
+| Screenshots        | ⚠️ captured and kept, not captioned, not uploaded — Finding 5        |
+| Build              | ❌ none attached. 14 is uploaded but **predates** the button         |
+| `releaseType`      | ⚠️ `AFTER_APPROVAL` — decide, `MANUAL` may suit a resurrection       |
 
 **The build is the live blocker.** `+14` uploaded 2026-09-26 21:57 and is `VALID`, but every file
 in the Sign in with Apple button rebuild (Finding 6) was written 2026-09-27 12:42–13:35 — the day
@@ -132,29 +132,38 @@ email:1, google:2`).
    as long as the Korean What's New does not promise those users their shelves back — which the
    copy below no longer does.
 
-### Finding 2 — the demo credentials cannot work, and no version of them can
+### Finding 2 — the demo credentials could not work. ✅ Fixed, by building the screen.
 
-You created `test@apple.com` on 2026-09-01. It is real, confirmed, has a genuine bcrypt password,
-0 books, and has never been signed into.
+**As written, this finding said not to supply credentials at all, and it was right at the time.**
+`auth_page.dart` rendered exactly two buttons — `continueWithApple` and `continueWithGoogle` — and
+`auth_provider.dart` exposed only `signInWithGoogle`, `signInWithApple` and `signOut`. There was no
+`signInWithPassword` anywhere in `lib/`, so a reviewer handed a username and password would have had
+nowhere to type them, which is a Guideline 2.1 rejection. The recommendation was
+`demoAccountRequired = false` plus an explanation, and it noted that TestFlight beta review had not
+caught the gap only because beta review frequently does not attempt sign-in at all.
 
-**The app has no field to type it into.** `auth_page.dart` renders exactly two buttons —
-`continueWithApple` and `continueWithGoogle` — and `auth_provider.dart` exposes only
-`signInWithGoogle`, `signInWithApple` and `signOut`. There is no `signInWithPassword` anywhere in
-`lib/`. I re-read both files rather than trusting the earlier note, because your message implied
-this had been solved; it has not.
+**What changed is the premise.** `feat/email-password-auth` merged on 2026-09-30: `email_auth_page.dart`,
+`new_password_page.dart`, `password_recovery_listener.dart`, `resetPasswordForEmail`, and about 960
+lines of tests. There is now an email field, a password field, sign-up and reset, and Supabase SMTP
+is configured and verified end to end.
 
-TestFlight beta review did not catch it because beta review frequently does not attempt sign-in at
-all. App Review will, and a reviewer handed credentials with nowhere to enter them rejects under
-Guideline 2.1.
+The finding's own counter-argument was that building such a screen "for review only" costs a screen,
+two locales, tests and an SMTP configuration, that Apple dislikes sign-in surfaces that exist only
+for them, and that it would recover zero returning users. The first clause was an accurate estimate
+of the cost. The other two do not apply to what was built: the screen is for **everyone**, which is
+why it is advertised in both locales' What's New, and it recovers the 63 users Finding 1 could not
+reach — every migrated row has a confirmed email and `encrypted_password = ''`, which means "no
+password set" rather than "no account", so a reset reaches them.
 
-**Recommendation: do not supply credentials. Set `demoAccountRequired = false` and explain.** Apple
-routinely accepts this for Sign in with Apple apps — the reviewer makes an account with their own
-Apple ID in one tap. Notes drafted below. This is also why Finding 1's first recommendation matters
-so much.
+**So credentials are now the lower-risk path**, because 2.1 rejections come from credentials that do
+not work rather than from offering them. `test@apple.com` is verified against
+`/auth/v1/token?grant_type=password` (HTTP 200, provider `email`) and seeded with 20 books across 3
+shelves, 12 reading days, and one friendship — so the shelf, the Library Card, the streak and the
+Friends tab all have content on first launch. `build/demo-account-revert.sql` undoes the seed.
 
-The alternative — building an email+password screen for review only — costs a screen, two locales,
-tests and a Supabase email-provider configuration, and Apple actively dislikes sign-in surfaces that
-exist only for them. It would also recover zero returning users, per Finding 1.
+**Re-verify the pair before each submission rather than trusting that it worked once.** The 2022
+record pointed App Review at a dead `aschung01@snu.ac.kr`, which is precisely the failure this field
+is capable of.
 
 ### Finding 3 — `usesIdfa` was a false declaration. ✅ Fixed.
 
@@ -402,6 +411,7 @@ Libstack is a new name, and a new app underneath it.
 
 Coming back from the old version? Sign in with the same Apple ID or Google account you used before, and in most cases your shelves are already waiting. If yours comes up empty, reach out and I will reconnect it by hand — nothing was deleted.
 
+• Sign in with an email and password, Apple, or Google — whichever you prefer.
 • Friends. Invite by link, see what your friends have open, visit their shelves, and poke the quiet ones. Friendships are mutual, and only friends can see your library.
 • Reading progress by page or percent, with the days you read stamped into a streak.
 • A Library Card that turns your reading into something worth sharing — books, days reading, pace, most-read author.
@@ -537,8 +547,9 @@ New, where there is room to be honest about it, not in a 170-character hook.
 ```
 이름도 Libstack으로, 속도 새로워졌습니다.
 
-예전 버전을 쓰셨다면: 그때 Google 또는 Apple 계정으로 가입하셨다면, 같은 계정으로 로그인해 보세요. 대부분 서재가 그대로 남아 있습니다. 혹시 비어 있으면 알려 주세요 — 직접 연결해 드리겠습니다. 카카오 계정으로 가입하셨던 분들은 아직 로그인할 방법이 없습니다 — 카카오 로그인을 복구하는 작업을 진행 중이고, 그때까지 서재는 삭제되지 않고 그대로 보관됩니다.
+예전 버전을 쓰셨다면: 그때 Google 또는 Apple 계정으로 가입하셨다면, 같은 계정으로 로그인해 보세요. 대부분 서재가 그대로 남아 있습니다. 혹시 비어 있으면 알려 주세요 — 직접 연결해 드리겠습니다.
 
+• 이메일과 비밀번호, Apple, Google 중 원하는 방법으로 로그인하세요.
 • 친구. 링크로 친구를 초대하고, 친구가 읽는 책을 확인하고, 친구의 서재를 둘러보고, 조용한 친구는 콕 찔러 보세요. 친구는 서로 수락해야 맺어지고, 서재는 친구에게만 보입니다.
 • 쪽수나 퍼센트로 남기는 진도, 그리고 읽은 날이 쌓이는 연속 기록.
 • 읽은 기록이 한 장의 카드가 되는 도서 대출증 — 완독한 책, 읽은 날수, 속도, 가장 많이 읽은 작가.
@@ -558,36 +569,51 @@ because 52 of its 73 reachable users are on Google.
 
 ## App Review notes
 
-Set alongside these: `demoAccountRequired = false`, and `demoAccountName` /
-`demoAccountPassword` explicitly blanked — see Finding 6, there is a dead 2022 account in
-those fields right now. Reviewer contact is `Andrew Chung`, `aschung1005@gmail.com`,
-`+1 628-688-9415`, held in `REVIEWER_CONTACT` in `scripts/asc_version.py`. Apply the whole
-block with:
+Set alongside these: `demoAccountRequired = true`, with `demoAccountName` /
+`demoAccountPassword` supplying a real account. Reviewer contact is `Andrew Chung`,
+`aschung1005@gmail.com`, `+1 628-688-9415`, held in `REVIEWER_CONTACT` in
+`scripts/asc_version.py`. Apply the whole block with:
 
 ```bash
 .venv/bin/python scripts/asc_version.py --set-review-details
 ```
 
+> **This reverses Finding 2, and the reversal is a fact rather than a preference.** That
+> finding said not to supply credentials, because `auth_page.dart` offered only Apple and
+> Google and a reviewer handed a username and password would have had nowhere to type them —
+> a Guideline 2.1 rejection. True at the time. `feat/email-password-auth` has since merged,
+> so there is an email field, a password field, sign-up, and reset. Supplying working
+> credentials is now the lower-risk path of the two: 2.1 rejections come from credentials
+> that do not work, not from offering them.
+>
+> The account is `test@apple.com`, created 2026-09-29. Note the listing's own history here:
+> the 2022 record pointed App Review at a **dead** `aschung01@snu.ac.kr`, which is the exact
+> failure this field is capable of. Re-check the pair actually signs in before each
+> submission rather than trusting that it did once.
+
 ### Notes (limit 4000)
 
 ```
-NO DEMO ACCOUNT IS NEEDED — PLEASE USE SIGN IN WITH APPLE.
+A DEMO ACCOUNT IS PROVIDED, AND SIGN IN WITH APPLE ALSO WORKS.
 
-Libstack has no username-and-password sign-in. The only two ways in are Sign in with Apple and Google, so there are no credentials to hand over. On the first screen, tap "Continue with Apple" and use your own Apple ID; Hide My Email works fine. Account creation is instant, with no email confirmation, no payment, and no personal details beyond what Apple returns. You can delete the account from within the app when you are finished.
+The demo account in the fields above signs in on the first screen: tap "Continue with email", enter the address and password, then tap "Sign in". It already has 20 books across three shelves, five of them in progress, a 12-day reading streak and one friend, so every feature below has something in it from the first launch.
+
+If you would rather use your own account, tap "Continue with Apple" instead — Hide My Email works fine. Account creation is instant, with no payment and no personal details beyond what Apple returns. Either way you can delete the account from within the app when you are finished.
 
 The app is free. No in-app purchases, no subscriptions, no advertising.
 
-WHAT TO TRY. A new account starts with an empty shelf, so:
+WHAT TO TRY.
 
 1. SEARCH TAB — type any title, for example "Dune". Or tap the barcode button and scan the back cover of any physical book.
 2. Tap a result, add it, and choose a shelf. It appears on the shelf on the Library tab.
 3. Tap the book on the shelf to open it. Update progress logs where you are, by page number (p.259 / 432) or by percent.
 4. The view switcher on the Library tab cycles three shelf views: covers face-out, spines lined up, and leaning. Books can be dragged between positions.
 5. LIBRARY CARD, at the bottom of the Library tab — it summarises books finished, days read, reading pace and most-read author, and the share button renders it as an image for the system share sheet, Instagram Stories or Photos.
+6. READING STREAK — tap the flame in the bar at the top of the Library tab. The demo account's run is 12 days, drawn as a week row and a month grid. "I read today" records the day; recording a day that is not yet logged plays a short celebration.
 
 FRIENDS ARE MUTUAL AND INVITE-ONLY. There is no public profile, no feed, no way to search for or browse strangers, and no direct messaging between users. A connection exists only after both people accept an invite link, and a library is readable only between mutually connected accounts. This is enforced by row-level security in the database, not in the client. The only user-to-user content is an emoji reaction on a book. Notes a reader writes on a book are private to its author and are never visible to friends.
 
-To see the Friends tab with real data you need a second account: Friends tab, Invite, share the link, then open that link on a second device signed in with a different Apple ID and accept it. Invite links expire after 48 hours.
+The demo account already has one friend, so the Friends tab is populated — tap the friend to visit their shelves. To make a new connection yourself you need a second account: Friends tab, Invite, share the link, then open that link on a second device signed in with a different account and accept it. Invite links expire after 48 hours.
 
 ACCOUNT DELETION. Settings, then Delete account. One confirmation, then it is immediate and irreversible: the authentication user, profile, handle, photo, every book and shelf, notes, reading days and friendships are all removed server-side by an edge function. This satisfies Guideline 5.1.1(v).
 
