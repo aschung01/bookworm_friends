@@ -508,6 +508,260 @@ def publish_copy(bearer: str, app: str, version: dict, only: str | None) -> None
         print(f"  {locale}: set {', '.join(sorted(info_payload))}")
 
 
+# ------------------------------------------------------------------ screenshots
+
+# Display type -> (frame-file prefix, the exact pixel size Apple accepts there).
+#
+# **These names are read off the API, not inferred from the marketing size.** There
+# is no `APP_IPHONE_69`: Apple folded the 6.9-inch slot into `APP_IPHONE_67`, which
+# takes 1320x2868 as well as 1290x2796, and the 13-inch iPad goes to the 12.9-inch
+# 3rd-gen type. Guessing earns a 400 *after* the bytes are uploaded. To re-derive the
+# list, POST an `appScreenshotSets` with a nonsense `screenshotDisplayType` -- the
+# rejection enumerates every valid member and creates nothing.
+SCREENSHOT_SETS = {
+    "APP_IPHONE_67": ("iphone69-", (1320, 2868)),
+    "APP_IPAD_PRO_3GEN_129": ("ipad13-", (2064, 2752)),
+}
+
+FRAMES_DIR = os.path.join(ROOT, "build", "store_frames")
+
+# The 2022 sets, which hold eight JPEGs of an app that no longer exists. None of
+# these sizes is required any more -- Apple scales 6.9-inch and 13-inch artwork down
+# -- and leaving them would ship four screens of a four-year-old UI beside the new
+# ones. Deleting is behind its own flag because getting it wrong is not cheap: a
+# missing *required* set blocks submission, so upload first, look, then delete.
+STALE_SCREENSHOT_TYPES = ("APP_IPHONE_55", "APP_IPHONE_65", "APP_IPAD_PRO_129")
+
+
+def _png_size(path: str) -> tuple[int, int]:
+    """Width and height out of the IHDR, without pulling in Pillow.
+
+    Checked rather than trusted: a frame rendered at the wrong size is accepted by
+    the reserve call and rejected on commit, by which point the set holds a
+    half-created asset that has to be cleaned up by hand.
+    """
+    with open(path, "rb") as fh:
+        head = fh.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        raise SystemExit(f"error: {path} is not a PNG")
+    return (
+        int.from_bytes(head[16:20], "big"),
+        int.from_bytes(head[20:24], "big"),
+    )
+
+
+def _upload_part(operation: dict, blob: bytes) -> None:
+    """Send one `uploadOperation` to Apple's asset store.
+
+    Deliberately *not* routed through `request`: the URL is pre-signed and the body
+    is raw PNG, so adding our Authorization header or a JSON content type makes it
+    fail. Only the headers Apple handed back are sent.
+    """
+    chunk = blob[operation["offset"] : operation["offset"] + operation["length"]]
+    req = urllib.request.Request(
+        operation["url"], data=chunk, method=operation["method"]
+    )
+    for header in operation.get("requestHeaders") or []:
+        req.add_header(header["name"], header["value"])
+    try:
+        with urllib.request.urlopen(req) as resp:
+            resp.read()
+    except urllib.error.HTTPError as err:
+        body = err.read().decode(errors="replace")
+        print(
+            f"error: upload {operation['method']} -> HTTP {err.code}\n{body}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
+def screenshot_sets(bearer: str, loc_id: str) -> dict:
+    data = request(
+        "GET",
+        f"/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50",
+        bearer,
+    ).get("data", [])
+    return {d["attributes"]["screenshotDisplayType"]: d for d in data}
+
+
+def _clear_set(bearer: str, set_id: str) -> int:
+    """Empty a set, so an upload *replaces* rather than appends.
+
+    The individual screenshots go, not the set: deleting the set and recreating it
+    works too and loses nothing, but an empty set that already exists is the state
+    the upload wants, and one fewer create is one fewer thing to fail halfway.
+    """
+    shots = request(
+        "GET", f"/appScreenshotSets/{set_id}/appScreenshots?limit=50", bearer
+    ).get("data", [])
+    for shot in shots:
+        request("DELETE", f"/appScreenshots/{shot['id']}", bearer)
+    return len(shots)
+
+
+def _upload_one(bearer: str, set_id: str, path: str) -> str:
+    """Reserve, send, commit. Returns the new appScreenshot id."""
+    with open(path, "rb") as fh:
+        blob = fh.read()
+    created = request(
+        "POST",
+        "/appScreenshots",
+        bearer,
+        {
+            "data": {
+                "type": "appScreenshots",
+                "attributes": {
+                    "fileName": os.path.basename(path),
+                    "fileSize": len(blob),
+                },
+                "relationships": {
+                    "appScreenshotSet": {
+                        "data": {"type": "appScreenshotSets", "id": set_id}
+                    }
+                },
+            }
+        },
+    )["data"]
+    for operation in created["attributes"].get("uploadOperations") or []:
+        _upload_part(operation, blob)
+    # `sourceFileChecksum` is an MD5 of the whole file and is how Apple decides the
+    # transfer was intact. It is a content hash, not a credential -- hashlib is
+    # imported here rather than at module scope because nothing else needs it.
+    import hashlib
+
+    request(
+        "PATCH",
+        f"/appScreenshots/{created['id']}",
+        bearer,
+        {
+            "data": {
+                "type": "appScreenshots",
+                "id": created["id"],
+                "attributes": {
+                    "uploaded": True,
+                    "sourceFileChecksum": hashlib.md5(blob).hexdigest(),
+                },
+            }
+        },
+    )
+    return created["id"]
+
+
+def upload_screenshots(bearer: str, version_id: str, only: str | None) -> None:
+    """Replace every screenshot set from the rendered frames in `build/store_frames`.
+
+    Both locales get the same artwork. The frames carry no words of their own beyond
+    the English caption burned into them, so a Korean reader sees English captions --
+    which is a real cost and a deliberate one: the alternative is rendering and
+    reviewing a second set of twelve, and `ko` has been showing 2022 screenshots of a
+    different app for four years.
+    """
+    if not os.path.isdir(FRAMES_DIR):
+        raise SystemExit(
+            f"error: {FRAMES_DIR} does not exist.\n"
+            "Render the frames first: flutter test test/store_frame_render_preview.dart"
+        )
+    locs = localizations(bearer, "version", version_id)
+    for locale in sorted(locs):
+        if only and locale != only:
+            continue
+        existing = screenshot_sets(bearer, locs[locale]["id"])
+        print(f"{locale}:")
+        for display_type, (prefix, want) in SCREENSHOT_SETS.items():
+            files = sorted(
+                f
+                for f in os.listdir(FRAMES_DIR)
+                if f.startswith(prefix) and f.endswith(".png")
+            )
+            if not files:
+                raise SystemExit(f"error: no {prefix}*.png in {FRAMES_DIR}")
+            if len(files) > 10:
+                raise SystemExit(
+                    f"error: {len(files)} {prefix} frames; the App Store takes 10"
+                )
+            for name in files:
+                got = _png_size(os.path.join(FRAMES_DIR, name))
+                if got != want:
+                    raise SystemExit(
+                        f"error: {name} is {got[0]}x{got[1]}, "
+                        f"{display_type} wants {want[0]}x{want[1]}"
+                    )
+            found = existing.get(display_type)
+            if found:
+                removed = _clear_set(bearer, found["id"])
+                set_id = found["id"]
+                print(f"  {display_type}: reusing set, removed {removed} old")
+            else:
+                set_id = request(
+                    "POST",
+                    "/appScreenshotSets",
+                    bearer,
+                    {
+                        "data": {
+                            "type": "appScreenshotSets",
+                            "attributes": {"screenshotDisplayType": display_type},
+                            "relationships": {
+                                "appStoreVersionLocalization": {
+                                    "data": {
+                                        "type": "appStoreVersionLocalizations",
+                                        "id": locs[locale]["id"],
+                                    }
+                                }
+                            },
+                        }
+                    },
+                )["data"]["id"]
+                print(f"  {display_type}: created set")
+            ids = []
+            for name in files:
+                ids.append(_upload_one(bearer, set_id, os.path.join(FRAMES_DIR, name)))
+                print(f"      {name}")
+            # Order is set explicitly rather than left to creation order. The frame
+            # filenames carry the slot number precisely so the first three -- the only
+            # ones the App Store shows in search results -- cannot silently reshuffle.
+            request(
+                "PATCH",
+                f"/appScreenshotSets/{set_id}/relationships/appScreenshots",
+                bearer,
+                {"data": [{"type": "appScreenshots", "id": i} for i in ids]},
+            )
+            print(f"      ordered {len(ids)}")
+
+
+def delete_stale_screenshots(bearer: str, version_id: str) -> None:
+    locs = localizations(bearer, "version", version_id)
+    for locale in sorted(locs):
+        existing = screenshot_sets(bearer, locs[locale]["id"])
+        for display_type in STALE_SCREENSHOT_TYPES:
+            found = existing.get(display_type)
+            if not found:
+                continue
+            request("DELETE", f"/appScreenshotSets/{found['id']}", bearer)
+            print(f"{locale}: deleted {display_type}")
+
+
+def report_screenshots(bearer: str, version_id: str) -> None:
+    locs = localizations(bearer, "version", version_id)
+    print("\nscreenshots")
+    for locale in sorted(locs):
+        sets = screenshot_sets(bearer, locs[locale]["id"])
+        if not sets:
+            print(f"  {locale}: NONE -- Apple will not accept the submission")
+            continue
+        for display_type, record in sorted(sets.items()):
+            shots = request(
+                "GET",
+                f"/appScreenshotSets/{record['id']}/appScreenshots?limit=50",
+                bearer,
+            ).get("data", [])
+            states = {
+                (s["attributes"].get("assetDeliveryState") or {}).get("state")
+                for s in shots
+            }
+            flag = "" if states <= {"COMPLETE"} else f"  {sorted(states)}"
+            print(f"  {locale:6} {display_type:24} {len(shots):>2} shots{flag}")
+
+
 def _redact(detail: dict) -> dict:
     """Strip the demo-account password out of a snapshot.
 
@@ -565,7 +819,21 @@ def main() -> None:
         help="point the version at uploaded build N (the number after the + in "
         "pubspec.yaml). Submission is refused until a build is attached.",
     )
-    parser.add_argument("--locale", help="restrict --publish-copy to one locale")
+    parser.add_argument("--locale", help="restrict --publish-copy / --upload-screenshots to one locale")
+    parser.add_argument(
+        "--upload-screenshots",
+        action="store_true",
+        help="replace every screenshot set from the rendered frames in "
+        "build/store_frames. Sizes are verified against the display type before "
+        "anything is sent.",
+    )
+    parser.add_argument(
+        "--delete-stale-screenshots",
+        action="store_true",
+        help=f"delete the legacy sets ({', '.join(STALE_SCREENSHOT_TYPES)}), which "
+        "hold 2022 artwork. Separate from --upload-screenshots on purpose: upload "
+        "and look at the result before removing anything.",
+    )
     parser.add_argument(
         "--snapshot",
         metavar="PATH",
@@ -598,10 +866,17 @@ def main() -> None:
     if args.attach_build:
         attach_build(bearer, app, version["id"], args.attach_build.lstrip("+"))
         wrote = True
+    if args.upload_screenshots:
+        upload_screenshots(bearer, version["id"], args.locale)
+        wrote = True
+    if args.delete_stale_screenshots:
+        delete_stale_screenshots(bearer, version["id"])
+        wrote = True
 
     if wrote:
         print()
     report(bearer, app)
+    report_screenshots(bearer, version["id"])
 
 
 if __name__ == "__main__":

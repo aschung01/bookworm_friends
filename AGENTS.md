@@ -157,6 +157,42 @@ To find the last shipped build without App Store Connect access, check
 `build/ios/archive/Runner.xcarchive/Info.plist` and
 `~/Library/Developer/Xcode/Archives/`.
 
+### Screenshots upload through `asc_version.py`, and there is no `APP_IPHONE_69`
+
+```bash
+flutter test test/store_frame_render_preview.dart          # build/store_frames/
+.venv/bin/python scripts/asc_version.py --upload-screenshots
+.venv/bin/python scripts/asc_version.py --delete-stale-screenshots
+```
+
+**The display type is not the marketing size.** A 6.9-inch iPhone frame (1320x2868)
+uploads to **`APP_IPHONE_67`** — Apple folded the 6.9 slot into the 6.7 one — and a
+13-inch iPad frame (2064x2752) goes to **`APP_IPAD_PRO_3GEN_129`**, the 12.9-inch
+3rd-gen type. `APP_IPHONE_69` does not exist and neither does an iPad 13 type.
+
+There is no endpoint that lists the enum, so don't look for one and don't trust a
+guess: POST an `appScreenshotSets` with a nonsense `screenshotDisplayType` and the
+400 enumerates every valid member while creating nothing. Worth doing, because a
+wrong type is accepted by the reserve call and only rejected on commit, after the
+bytes are already uploaded.
+
+Uploading is three calls per image — reserve (`POST /appScreenshots` returns
+`uploadOperations`), send each operation's byte range to a **pre-signed** URL, then
+commit with `uploaded: true` and an **MD5** `sourceFileChecksum`. The send must not
+go through the script's `request` helper: adding our `Authorization` header or a JSON
+content type to a pre-signed PUT fails it.
+
+Two things the uploader does that are easy to leave out. It **clears a set before
+filling it**, because uploading into an existing set appends — `ko` had four 2022
+sets and would have ended up with twelve images in one. And it **PATCHes the
+`appScreenshots` relationship** to fix the order, since the App Store shows only the
+first three in search results and creation order is not a guarantee.
+
+Deletion is a separate flag on purpose: a missing _required_ set blocks submission,
+so upload, look, then delete. As of 1.1.0 only `APP_IPHONE_67` and
+`APP_IPAD_PRO_3GEN_129` are required — 6.5-inch, 5.5-inch and 12.9-inch-2nd-gen are
+legacy, and Apple scales the two live sizes down.
+
 ### Export compliance is already answered
 
 `ios/Runner/Info.plist` sets `ITSAppUsesNonExemptEncryption` to `false`, so new

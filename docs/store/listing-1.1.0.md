@@ -14,8 +14,8 @@
 | Reviewer contact   | ✅ Andrew Chung — demo account `test@apple.com`, seeded and verified |
 | Review notes       | ✅ published, 2963 chars                                             |
 | Apple sign-in      | ✅ **works, and links to the 2022 account — see Finding 1**          |
-| Screenshots        | ⚠️ captured and kept, not captioned, not uploaded — Finding 5        |
-| Build              | ❌ none attached. 14 is uploaded but **predates** the button         |
+| Screenshots        | ✅ 8 iPhone + 4 iPad, both locales, 2022 sets deleted                |
+| Build              | ✅ **+15 attached** — the first build with email/password auth       |
 | `releaseType`      | ⚠️ `AFTER_APPROVAL` — decide, `MANUAL` may suit a resurrection       |
 
 **The build is the live blocker.** `+14` uploaded 2026-09-26 21:57 and is `VALID`, but every file
