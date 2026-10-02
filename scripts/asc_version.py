@@ -523,6 +523,9 @@ SCREENSHOT_SETS = {
     "APP_IPAD_PRO_3GEN_129": ("ipad13-", (2064, 2752)),
 }
 
+# The renderer writes one directory per locale under here, named with App Store
+# Connect's own locale code -- so the directory name and the locale this script
+# iterates are one string. See `test/store_frame_render_preview.dart`.
 FRAMES_DIR = os.path.join(ROOT, "build", "store_frames")
 
 # The 2022 sets, which hold eight JPEGs of an app that no longer exists. None of
@@ -648,13 +651,19 @@ def _upload_one(bearer: str, set_id: str, path: str) -> str:
 
 
 def upload_screenshots(bearer: str, version_id: str, only: str | None) -> None:
-    """Replace every screenshot set from the rendered frames in `build/store_frames`.
+    """Replace every screenshot set from the frames in `build/store_frames/<locale>`.
 
-    Both locales get the same artwork. The frames carry no words of their own beyond
-    the English caption burned into them, so a Korean reader sees English captions --
-    which is a real cost and a deliberate one: the alternative is rendering and
-    reviewing a second set of twelve, and `ko` has been showing 2022 screenshots of a
-    different app for four years.
+    **A directory per locale, and that is the fix rather than a tidying.** Every locale
+    used to be filled from one flat `build/store_frames`, so `ko` got the English set
+    byte for byte -- and the captions are burned into the PNG, so a Korean reader read
+    English captions over screens of a Korean app. The cost of the old arrangement was
+    recorded here as deliberate, on the grounds that the alternative was rendering and
+    reviewing a second set of twelve. That is now what happens: the renderer composites
+    per locale, and this reads the locale's own directory.
+
+    Nothing here guesses or falls back. A locale whose directory is missing stops the
+    run by name -- quietly uploading the other locale's bytes is exactly the bug being
+    fixed, and it leaves no trace in the output.
     """
     if not os.path.isdir(FRAMES_DIR):
         raise SystemExit(
@@ -665,25 +674,37 @@ def upload_screenshots(bearer: str, version_id: str, only: str | None) -> None:
     for locale in sorted(locs):
         if only and locale != only:
             continue
+        frames = os.path.join(FRAMES_DIR, locale)
+        if not os.path.isdir(frames):
+            raise SystemExit(
+                f"error: {frames} does not exist, so there are no {locale} frames.\n"
+                "Render them: flutter test test/store_frame_render_preview.dart\n"
+                "If that run fails naming a capture directory instead, the capture "
+                f"pass for {locale} has not been run yet."
+            )
         existing = screenshot_sets(bearer, locs[locale]["id"])
         print(f"{locale}:")
         for display_type, (prefix, want) in SCREENSHOT_SETS.items():
+            # The prefix carries its trailing hyphen, which is also what keeps the
+            # renderer's `_sheet-iphone69.png` contact sheets out of the upload. Do not
+            # broaden this to `iphone69` -- a sheet is a thumbnail strip, nothing like
+            # 1320x2868, so the size check below would reject it, which is the lucky case.
             files = sorted(
                 f
-                for f in os.listdir(FRAMES_DIR)
+                for f in os.listdir(frames)
                 if f.startswith(prefix) and f.endswith(".png")
             )
             if not files:
-                raise SystemExit(f"error: no {prefix}*.png in {FRAMES_DIR}")
+                raise SystemExit(f"error: no {prefix}*.png in {frames}")
             if len(files) > 10:
                 raise SystemExit(
                     f"error: {len(files)} {prefix} frames; the App Store takes 10"
                 )
             for name in files:
-                got = _png_size(os.path.join(FRAMES_DIR, name))
+                got = _png_size(os.path.join(frames, name))
                 if got != want:
                     raise SystemExit(
-                        f"error: {name} is {got[0]}x{got[1]}, "
+                        f"error: {locale}/{name} is {got[0]}x{got[1]}, "
                         f"{display_type} wants {want[0]}x{want[1]}"
                     )
             found = existing.get(display_type)
@@ -714,7 +735,7 @@ def upload_screenshots(bearer: str, version_id: str, only: str | None) -> None:
                 print(f"  {display_type}: created set")
             ids = []
             for name in files:
-                ids.append(_upload_one(bearer, set_id, os.path.join(FRAMES_DIR, name)))
+                ids.append(_upload_one(bearer, set_id, os.path.join(frames, name)))
                 print(f"      {name}")
             # Order is set explicitly rather than left to creation order. The frame
             # filenames carry the slot number precisely so the first three -- the only
@@ -824,8 +845,9 @@ def main() -> None:
         "--upload-screenshots",
         action="store_true",
         help="replace every screenshot set from the rendered frames in "
-        "build/store_frames. Sizes are verified against the display type before "
-        "anything is sent.",
+        "build/store_frames/<locale>, one directory per App Store locale. Sizes are "
+        "verified against the display type before anything is sent, and a locale with "
+        "no directory stops the run rather than inheriting another locale's frames.",
     )
     parser.add_argument(
         "--delete-stale-screenshots",

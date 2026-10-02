@@ -5,7 +5,7 @@
 // `CenteredContent` — but the Card lives in the *persistent* `LibrarySheet`, which is
 // full-width by design, so a hero card and three tiles spread across all 1032 points of
 // an iPad with a dead white half-page underneath. It is what
-// `docs/store/screenshots/1.1.0/capture/ipad13/02-library-card.png` shows, and it went
+// `docs/store/screenshots/1.1.0/capture/en-US/ipad13/02-library-card.png` shows, and it went
 // unnoticed because nothing in the suite laid this sheet out wider than a phone.
 //
 // Two caps, not one, because the header and the body are padded differently: the title

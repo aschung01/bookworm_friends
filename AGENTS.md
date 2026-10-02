@@ -160,10 +160,76 @@ To find the last shipped build without App Store Connect access, check
 ### Screenshots upload through `asc_version.py`, and there is no `APP_IPHONE_69`
 
 ```bash
-flutter test test/store_frame_render_preview.dart          # build/store_frames/
+flutter test test/store_frame_render_preview.dart          # build/store_frames/<locale>/
 .venv/bin/python scripts/asc_version.py --upload-screenshots
 .venv/bin/python scripts/asc_version.py --delete-stale-screenshots
 ```
+
+**Everything in this pipeline is per-locale, and it was not until 1.1.0.** Captures live
+in `docs/store/screenshots/1.1.0/capture/<locale>/{iphone69,ipad13}/`, frames render to
+`build/store_frames/<locale>/`, and `upload_screenshots` reads the directory matching the
+locale it is uploading. The locales are `en-US` and `ko`, which are App Store Connect's own
+codes — one string is the capture directory, the render output directory and the upload
+source, so a typo cannot leave the uploader finding stale frames somewhere else. Both
+locales share one ordered capture list and one `_borrowedCaption` map in
+`store_frame_render_preview.dart`, because slot order and which caption the iPad reuses are
+product decisions rather than translation ones — a locale must not be able to answer them
+differently and ship a different slot 3 to Korea.
+
+**Before that, the uploader looped locales and read one flat directory**, so `ko` got the
+identical English-caption frames over English-UI screenshots — next to a deliberately
+written `책벌레 친구들 (Libstack): 독서 기록` and a full Korean description. A missing
+per-locale directory now **fails by name** rather than rendering the locales that happen to
+exist: a short set uploads cleanly and leaves `ko` on whatever it had, which is how that
+shipped in the first place.
+
+**A Korean headline gets about eight full-width glyphs per line, and the ninth orphans.**
+The headline is `w * 0.102`, so on a 1320pt frame roughly eight syllables fit;
+`읽은 책을 보여주세요` rendered as `읽은 책을 보여주세` with a bare `요` beneath it, which reads as
+a clipping bug rather than a wrap. Count glyphs rather than reaching for an explicit `\n`,
+which fixes one size and silently re-breaks at the next. Note also that the serif face is
+**GowunBatang subset to Latin-1 plus KS X 1001's 2,350 syllables**, and a syllable outside
+that cut does not draw a box — `AppTextStyles.hero` carries
+`fontFamilyFallback: [AppFonts.sans]`, so it sets in **Pretendard**, i.e. half a serif
+headline silently in a sans. Check new Hangul against the font's cmap with fontTools.
+
+### Capturing a localised set: set the system language and reboot, don't pass a launch argument
+
+`xcrun simctl launch <udid> <bundle> -AppleLanguages "(ko)"` does put the app into Korean
+without rebuilding or rebooting, and it is the wrong tool for screenshots. It leaves two
+marks that are invisible until someone crops the corner of a finished frame:
+
+- **a `◀ Safari` breadcrumb** in the status bar of _every_ capture, because the app is
+  launched as though another app opened it, and
+- **an English status bar** — which does not matter on an iPhone, where only the clock
+  shows, but the **iPad** status bar carries the date and read `Thu Oct 1` across all four
+  frames.
+
+Set the language on the device and reboot, which fixes both at once and needs no launch
+argument afterwards:
+
+```bash
+xcrun simctl spawn <udid> defaults write .GlobalPreferences AppleLanguages -array "ko-KR" "en-US"
+xcrun simctl spawn <udid> defaults write .GlobalPreferences AppleLocale -string "ko_KR"
+xcrun simctl shutdown <udid> && xcrun simctl boot <udid>
+```
+
+Then re-open DeviceHub if needed (see above) and **verify a tap lands before capturing a
+dozen frames**. Two states do not survive the reboot and both appear in the frames: the
+completed-books **year filter** resets to the current year (so the sheet header reads
+`완독한 책 15 · 2026년` where the English set shows `17 · All time`) and the shelf **view mode**
+resets. Set `전기간` and the right density first, and compare against the other locale's
+capture rather than trusting the app's defaults.
+
+**Check the corner of the finished captures.** A pixel heuristic over the breadcrumb zone is
+not reliable — frames with a scrim or a shelf behind it read as false positives — so crop
+the top strip of all of them into one sheet and look.
+
+**The demo account's own shelves are still English** (`Fiction`, `Learning`, `Business`), so
+the two library frames carry English shelf chips in the Korean set. The friend's library
+(`04-friends`) is the opposite and is the strongest Korean frame of the eight: every shelf
+on it is Korean. Renaming the demo's shelves would fix the other two and would also be what
+App Review sees.
 
 **The display type is not the marketing size.** A 6.9-inch iPhone frame (1320x2868)
 uploads to **`APP_IPHONE_67`** — Apple folded the 6.9 slot into the 6.7 one — and a

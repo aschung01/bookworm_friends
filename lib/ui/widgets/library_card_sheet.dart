@@ -170,7 +170,7 @@ class LibraryCardSheet extends StatelessWidget {
   /// need one behind the same number — but this is the *persistent* sheet, which is
   /// full-width by design, so neither ever applied here. The result was a hero card and
   /// three tiles spread across all 1032 points of an iPad with a dead white half-page
-  /// underneath, which is what `docs/store/screenshots/1.1.0/capture/ipad13/02` shows.
+  /// underneath, which is what `docs/store/screenshots/1.1.0/capture/en-US/ipad13/02` shows.
   ///
   /// Two caps rather than one because the two are padded differently and the gap
   /// between them is the point: the title sits [LibrarySheet.gutter] inside the card

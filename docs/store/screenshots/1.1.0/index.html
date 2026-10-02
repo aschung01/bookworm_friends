@@ -5,7 +5,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Libstack 1.1.0 — store screenshot contact sheet</title>
         <!--
-      Generated review page for the 12 captures under `capture/`.
+      Generated review page for the 24 captures under `capture/<locale>/`, twelve per
+      locale: `en-US` and `ko` hold the same basenames at the same sizes.
 
       Why it exists: the captures are the raw device screenshots, before the frame
       renderer composites a caption and a bezel over them. A weak or wrong one is
@@ -297,7 +298,7 @@
                     from before the status/progress merge. All of that is gone.
                 </p>
                 <p>
-                    Two things about how these were made, both of which change
+                    Three things about how these were made, all of which change
                     what you can trust. The streak page was captured from a
                     build with
                     <code>debugStreakUndoVisibleOverride&nbsp;=&nbsp;false</code
@@ -305,10 +306,16 @@
                     <code>kDebugMode</code> and a simulator cannot be built in
                     profile or release — so without it every capture carries a
                     <b>“Today is recorded. / Undo”</b> footer the shipping app
-                    does not have. And the month card is paged back to
+                    does not have. The month card is paged back to
                     <b>September</b>: it was captured just after midnight on 1
                     October, when the current month held exactly one stamped
-                    day.
+                    day. And the <code>ko</code> set was captured with the
+                    simulator’s <b>system</b> language set to Korean and then
+                    rebooted — not with a <code>-AppleLanguages</code> launch
+                    argument, which does put the app into Korean but leaves the
+                    iPad’s status bar reading <b>Thu Oct 1</b> in English and
+                    leaves a <b>“◀ Safari”</b> breadcrumb in the corner of every
+                    frame.
                 </p>
             </div>
 
@@ -317,6 +324,9 @@
                     Store order
                 </button>
                 <button id="order-file" aria-pressed="false">File order</button>
+                <span style="width: 18px"></span>
+                <button id="loc-en" aria-pressed="true">en-US</button>
+                <button id="loc-ko" aria-pressed="false">ko</button>
             </div>
             <div class="legend">
                 <span
@@ -367,7 +377,7 @@
 
         <script>
             const KO_FRIEND = {
-                text: "the friend is <code>독서하는 유니콘</code> with a <code>리더십</code> shelf — Korean on an en-US frame. Kept: it is the author's real account, the only mutual friend the demo has, and it reads as a friend who reads Korean books rather than as a defect",
+                text: "the friend is <code>독서하는 유니콘</code> with a <code>리더십</code> shelf — Korean on an en-US frame. Kept: it is the author's real account, the only mutual friend the demo has, and it reads as a friend who reads Korean books rather than as a defect. On the <code>ko</code> set this frame is the strongest of the eight for the same reason — every shelf name on it (<code>리더십</code>, <code>사회</code>, <code>금융</code>, <code>의사결정</code>) is Korean, where the demo's own shelves are still <code>Fiction</code> / <code>Learning</code> / <code>Business</code>",
                 kind: "",
             };
             const SHEET_VOID = {
@@ -491,16 +501,55 @@
                 );
             }
 
+            // The captures live under `capture/<locale>/`, and the two locales hold the same
+            // basenames -- so the only thing a locale switch changes is this prefix and which
+            // caption pair is drawn. `koCaption` carries the Korean pairs so this page shows
+            // what was actually uploaded rather than the English lines over Korean screens.
+            let locale = "en-US";
+
+            const koCaption = {
+                "01-library-covers":
+                    "계속 쓰게 되는 책장 / 무료. 광고도, 구독도 없습니다.",
+                "02-library-spines":
+                    "표지로, 책등으로 / 원하는 순서로 끌어 옮기세요.",
+                "08-streak":
+                    "하루하루 쌓입니다 / 오늘을 기록하면, 달력이 채워져요.",
+                "03-library-card":
+                    "내 독서가 카드로 / 권수, 읽은 날, 속도, 가장 많이 읽은 작가.",
+                "05-book-details":
+                    "지금 읽는 쪽을 기록 / 쪽이나 퍼센트로, 한 번에.",
+                "07-share-card":
+                    "읽은 책 보여주기 / 스토리로, 사진으로, 또는 그대로 공유.",
+                "04-friends":
+                    "친구와 함께 읽기 / 지금 어떤 책을 펼쳤는지 보세요.",
+                "06-search-results":
+                    "바코드를 비추면 끝 / 제목, 저자, 출판사로 검색할 수도 있어요.",
+                "01-library":
+                    "계속 쓰게 되는 책장 / 무료. 광고도, 구독도 없습니다.",
+                "02-library-card":
+                    "내 독서가 카드로 / 권수, 읽은 날, 속도, 가장 많이 읽은 작가.",
+                "03-friends":
+                    "친구와 함께 읽기 / 지금 어떤 책을 펼쳤는지 보세요.",
+                "04-streak":
+                    "하루하루 쌓입니다 / 오늘을 기록하면, 달력이 채워져요.",
+            };
+
+            function caption(s) {
+                return locale === "ko"
+                    ? (koCaption[s.file] ?? s.caption)
+                    : s.caption;
+            }
+
             function render(el, items, dir) {
                 el.innerHTML = items
                     .map(
                         (s) => `
           <figure>
-            <a href="capture/${dir}/${s.file}.png" target="_blank" rel="noopener">
-              <img src="capture/${dir}/${s.file}.png" alt="${s.caption}" loading="lazy" />
+            <a href="capture/${locale}/${dir}/${s.file}.png" target="_blank" rel="noopener">
+              <img src="capture/${locale}/${dir}/${s.file}.png" alt="${s.caption}" loading="lazy" />
             </a>
             <figcaption>
-              <div><span class="slot">${s.slot}</span><span class="caption">${s.caption}</span></div>
+              <div><span class="slot">${s.slot}</span><span class="caption">${caption(s)}</span></div>
               <div class="file">${s.file}.png</div>
               ${issueList(s.issues)}
             </figcaption>
@@ -523,15 +572,33 @@
 
             const bStore = document.getElementById("order-store");
             const bFile = document.getElementById("order-file");
+            let order = "store";
             bStore.onclick = () => {
                 bStore.ariaPressed = "true";
                 bFile.ariaPressed = "false";
-                draw("store");
+                order = "store";
+                draw(order);
             };
             bFile.onclick = () => {
                 bFile.ariaPressed = "true";
                 bStore.ariaPressed = "false";
-                draw("file");
+                order = "file";
+                draw(order);
+            };
+
+            const bEn = document.getElementById("loc-en");
+            const bKo = document.getElementById("loc-ko");
+            bEn.onclick = () => {
+                bEn.ariaPressed = "true";
+                bKo.ariaPressed = "false";
+                locale = "en-US";
+                draw(order);
+            };
+            bKo.onclick = () => {
+                bKo.ariaPressed = "true";
+                bEn.ariaPressed = "false";
+                locale = "ko";
+                draw(order);
             };
 
             document.getElementById("gaps").innerHTML = gaps

@@ -666,9 +666,32 @@ supporting lines stay under 40 characters, which is one line at 40% of the headl
 
 iPad reuses 1, 3, 6, 4 against its four captures.
 
+### The Korean set
+
+The `ko` locale has its own twelve captures and its own eight caption pairs, added after the
+English set shipped — before that the uploader sent the identical English-caption frames to
+both locales. The headlines borrow the app's own Korean vocabulary so a caption and the screen
+under it use the same word (`표지`/`책등`, `가장 많이 읽은 작가`, `쪽`, `스토리`/`사진`, `기록`).
+
+Two places the Korean is deliberately **not** a translation of the English:
+
+- **Slot 2 is `표지로, 책등으로`, two modes, where the English says "Covers, spines, or
+  leaning".** `ShelfDensity` has two values; the spine row rakes but raking is not a third
+  selectable mode. The English overclaims and should be the one that changes.
+- **Slot 8 drops ISBN.** The Korean follows `searchBookPlaceholder` (`제목, 저자, 출판사`) where
+  the English promises "title, author, or ISBN". Same category as slot 2.
+
+All eight Korean headlines are one line, which the English ones are not — a ninth full-width
+glyph orphans onto a second line, so slot 6 is `읽은 책 보여주기` rather than the
+nine-syllable `읽은 책을 보여주세요` that shipped a bare `요` under it in review.
+
+**Written, not natively reviewed**, and one gap is known and unfixed: the demo account's own
+shelves are `Fiction` / `Learning` / `Business`, so the two library frames carry English shelf
+chips. The friend's library frame is the opposite and is the strongest of the eight.
+
 ### The layout, decided by looking
 
-`test/store_frame_render_preview.dart` composites the frames and writes `build/store_frames/`,
+`test/store_frame_render_preview.dart` composites the frames and writes `build/store_frames/<locale>/`,
 including a `_sheet.png` contact sheet. **Top-anchored, centre-aligned, headline plus a
 supporting line, device inset with a bezel and bleeding off the bottom edge** — treatment `d`
 of four that were rendered and compared at full size and as thumbnails.
@@ -711,10 +734,17 @@ Two traps the renderer is built around, both of which cost a round here:
   phone with the last word clipped. Deriving the crop from the remainder makes a taller caption
   mean a deeper crop, which is the honest trade: the more you say, the less app you show.
 
-**The frames in `build/store_frames/` are built from a stale capture on purpose.** This pass
+~~**The frames in `build/store_frames/<locale>/` are built from a stale capture on purpose.** This pass
 chose a layout, and the layout does not depend on what is inside the screen. They still show
 the rust flame and the half-open finished-books sheet, so the bottom of the crop is uglier than
-it will be.
+it will be.~~
+
+**Superseded: every capture was retaken off the demo account, and the `ko` set was captured
+separately.** Both locales now have their own twelve under
+`docs/store/screenshots/1.1.0/capture/<locale>/`, so nothing in either set is stale and the
+rust flame and half-open sheet are gone. The paragraph is kept because its reasoning still
+holds for the next layout pass: the layout does not depend on what is inside the screen, so a
+layout decision can be made against whatever captures exist.
 
 Two open questions I am not deciding for you:
 
