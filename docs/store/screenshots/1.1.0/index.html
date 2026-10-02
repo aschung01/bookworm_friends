@@ -5,12 +5,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Libstack 1.1.0 — store screenshot contact sheet</title>
         <!--
-      Generated review page for the 24 captures under `capture/<locale>/`, twelve per
-      locale: `en-US` and `ko` hold the same basenames at the same sizes.
+      Generated review page for the store assets, in two views. **Framed** is the
+      default: the composited file that is uploaded, caption and bezel and all, read
+      out of the gitignored `build/store_frames/<locale>/`. **Raw capture** is the
+      device screenshot it was built from, committed under `capture/<locale>/` — 24
+      files, twelve per locale, `en-US` and `ko` holding the same basenames.
 
-      Why it exists: the captures are the raw device screenshots, before the frame
-      renderer composites a caption and a bezel over them. A weak or wrong one is
-      invisible a file at a time and obvious when they sit side by side.
+      Why it exists: a weak or wrong frame is invisible a file at a time and obvious
+      when they sit side by side. The per-frame notes were written against the raw
+      captures and still hold — the renderer crops the bottom of the screen, it does
+      not repaint what is inside it.
 
       Paths are relative, so this opens straight off disk with no server.
     -->
@@ -126,6 +130,39 @@
                 border-color: var(--brand);
                 color: #04120d;
                 font-weight: 600;
+            }
+            /* Shown only once an <img> has actually 404'd, so it reports the real state of
+               the disk rather than guessing from the view. */
+            #missing-note {
+                display: none;
+                margin: 0 0 14px;
+                padding: 10px 14px;
+                border: 1px solid #a8742b;
+                border-left-width: 4px;
+                border-radius: 8px;
+                background: #2a1f10;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+            body.frames-missing #missing-note {
+                display: block;
+            }
+            figure.missing a {
+                display: block;
+                min-height: 220px;
+                border: 1px dashed var(--edge);
+                border-radius: 8px;
+            }
+            figure.missing img {
+                display: none;
+            }
+            figure.missing a::after {
+                content: "not rendered";
+                display: block;
+                padding: 100px 0;
+                text-align: center;
+                font-size: 12.5px;
+                color: var(--ink-dim);
             }
             .legend {
                 display: flex;
@@ -282,10 +319,13 @@
         <div class="wrap">
             <h1>Libstack 1.1.0 — store screenshots</h1>
             <p class="sub">
-                12 captures, every one at its exact required size. Click any
-                frame for full resolution. Taken off the App Review demo
-                account, so these are the screens a reviewer sees when they sign
-                in.
+                12 frames per locale, <code>en-US</code> and <code>ko</code>,
+                every one at its exact required size. Showing the
+                <b>framed</b> store asset by default — switch to
+                <b>Raw capture</b> for the bare device screenshot underneath.
+                Click any frame for full resolution. Taken off the App Review
+                demo account, so these are the screens a reviewer sees when they
+                sign in.
             </p>
 
             <div class="banner">
@@ -320,6 +360,9 @@
             </div>
 
             <div class="bar">
+                <button id="view-framed" aria-pressed="true">Framed</button>
+                <button id="view-raw" aria-pressed="false">Raw capture</button>
+                <span style="width: 18px"></span>
                 <button id="order-store" aria-pressed="true">
                     Store order
                 </button>
@@ -327,6 +370,14 @@
                 <span style="width: 18px"></span>
                 <button id="loc-en" aria-pressed="true">en-US</button>
                 <button id="loc-ko" aria-pressed="false">ko</button>
+            </div>
+            <div id="missing-note">
+                <b>The framed files are not on disk.</b> They are gitignored —
+                28MB across the two locales — so they are built rather than
+                committed. Run
+                <code>flutter test test/store_frame_render_preview.dart</code>
+                (about 10 seconds) and reload, or switch to
+                <b>Raw capture</b>.
             </div>
             <div class="legend">
                 <span
@@ -427,7 +478,7 @@
                 {
                     file: "07-share-card",
                     slot: 6,
-                    caption: "Made to be handed over",
+                    caption: "Show someone what you read",
                     issues: [],
                 },
                 {
@@ -540,17 +591,41 @@
                     : s.caption;
             }
 
+            // **Two views, and `framed` is the default because it is what Apple serves.** The
+            // raw capture is the device screenshot with no caption and no bezel; the framed
+            // file is the store asset the renderer composites out of it, which is the thing
+            // worth judging. The per-frame notes below each figure were written against the
+            // raw captures and still apply — the frame crops the bottom, it does not repaint
+            // what is inside the screen.
+            //
+            // The framed files are **gitignored**, because the two locales come to 28MB and a
+            // review page is not worth that in the history. So this reaches up into `build/`,
+            // and a figure whose image 404s says how to produce it rather than showing a
+            // broken-image glyph — which is indistinguishable from a bad frame.
+            let view = "framed";
+
+            const pad2 = (n) => String(n).padStart(2, "0");
+
+            // `<prefix>-<slot>-<capture>.png`: slot order leads the name because Apple shows
+            // the first three and nothing inside the image says which one it is.
+            function src(s, dir) {
+                return view === "framed"
+                    ? `../../../../build/store_frames/${locale}/${dir}-${pad2(s.slot)}-${s.file}.png`
+                    : `capture/${locale}/${dir}/${s.file}.png`;
+            }
+
             function render(el, items, dir) {
                 el.innerHTML = items
                     .map(
                         (s) => `
           <figure>
-            <a href="capture/${locale}/${dir}/${s.file}.png" target="_blank" rel="noopener">
-              <img src="capture/${locale}/${dir}/${s.file}.png" alt="${s.caption}" loading="lazy" />
+            <a href="${src(s, dir)}" target="_blank" rel="noopener">
+              <img src="${src(s, dir)}" alt="${s.caption}" loading="lazy"
+                   onerror="this.closest('figure').classList.add('missing'); document.body.classList.add('frames-missing')" />
             </a>
             <figcaption>
               <div><span class="slot">${s.slot}</span><span class="caption">${caption(s)}</span></div>
-              <div class="file">${s.file}.png</div>
+              <div class="file">${view === "framed" ? `${dir}-${pad2(s.slot)}-${s.file}.png` : `${s.file}.png`}</div>
               ${issueList(s.issues)}
             </figcaption>
           </figure>`,
@@ -598,6 +673,23 @@
                 bKo.ariaPressed = "true";
                 bEn.ariaPressed = "false";
                 locale = "ko";
+                draw(order);
+            };
+
+            const bFramed = document.getElementById("view-framed");
+            const bRaw = document.getElementById("view-raw");
+            bFramed.onclick = () => {
+                bFramed.ariaPressed = "true";
+                bRaw.ariaPressed = "false";
+                view = "framed";
+                draw(order);
+            };
+            bRaw.onclick = () => {
+                bRaw.ariaPressed = "true";
+                bFramed.ariaPressed = "false";
+                view = "raw";
+                // Raw captures are committed, so a previous framed miss is not news here.
+                document.body.classList.remove("frames-missing");
                 draw(order);
             };
 
