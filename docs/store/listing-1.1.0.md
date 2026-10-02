@@ -640,31 +640,52 @@ Proposed order and captions — 4–6 words, set in Gowun Batang Bold to match t
 width on near-white paper is a wash, and the headline is the one thing in the frame that has
 to survive being served as a thumbnail.
 
-| #   | Capture             | Headline                      | Supporting line                      |
-| --- | ------------------- | ----------------------------- | ------------------------------------ |
-| 1   | `01-library-covers` | A bookshelf you actually keep | Free. No ads, no subscription.       |
-| 2   | `02-library-spines` | Covers, spines, or leaning    | Drag them into the order you want.   |
-| 3   | `03-library-card`   | Your reading becomes a card   | Books, days, pace, most-read author. |
-| 4   | `05-book-details`   | Log the page you're on        | By page or percent, in one drag.     |
-| 5   | `07-share-card`     | Made to be handed over        | Nothing is public until you send it. |
-| 6   | `04-friends`        | Read alongside your friends   | See what they have open right now.   |
-| 7   | `06-search-results` | Scan the barcode to add       | Or search by title, author, or ISBN. |
+| #   | Capture             | Headline                      | Supporting line                           |
+| --- | ------------------- | ----------------------------- | ----------------------------------------- |
+| 1   | `01-library-covers` | A bookshelf you actually keep | Free. No ads, no subscription.            |
+| 2   | `02-library-spines` | Covers, spines, or leaning    | Drag them into the order you want.        |
+| 3   | `08-streak`         | The days add up               | Mark today, and watch the month fill in.  |
+| 4   | `03-library-card`   | Your reading becomes a card   | Books, days, pace, most-read author.      |
+| 5   | `05-book-details`   | Log the page you're on        | By page or percent, in one drag.          |
+| 6   | `07-share-card`     | Show someone what you read    | Straight to Stories, Photos, or a friend. |
+| 7   | `04-friends`        | Read alongside your friends   | See what they have open right now.        |
+| 8   | `06-search-results` | Add it by its cover           | Works when the barcode won't.             |
 
-Two changes from the first draft of this table, both for the same reason — observation 2
-applied one level down, since the strong listings never spend a character twice:
+Four changes from the first draft of this table, the first two for the same reason —
+observation 2 applied one level down, since the strong listings never spend a character
+twice:
 
 - **Slot 1's supporting line is the objection-removal move, not `Covers, spines, or
 leaning.`** That was slot 2's _headline_ verbatim, so the first two frames a reviewer sees
   would have said one thing twice. Free, no ads, no subscription is what Flighty spends its
   own opening on, it is true here, and nothing else in the set says it.
-- **Slot 5's headline was `Share it, or keep it`.** "It" had no referent this side of slot 3,
-  and the second clause described the absence of an action. `Made to be handed over` names
-  the artifact's purpose and leaves the privacy point to the line underneath.
+- **Slot 6's headline was `Share it, or keep it`, then `Made to be handed over`.** "It" had
+  no referent this side of slot 4, and the second clause described the absence of an action.
+  "Handed over" then traded that for the verb for surrendering something, with a supporting
+  line that answered a privacy objection the viewer has not formed yet. It leads with the act
+  and names the three destinations that exist.
+- **The streak moved to slot 3.** Apple shows only the first three in search results, so
+  those three have to carry what it is, why it is different, and the payoff — which is the
+  streak's job, not a feature frame's.
+- **Slot 8 leads with the cover photo, not the barcode** (`Scan the barcode to add` / `Or
+search by title, author, or ISBN.`). Cover reading is shipped and prominent —
+  `_CoverButton` in `scan_book_page.dart` is on screen from the scan page's first frame — and
+  the whole listing mentioned it nowhere in either locale, while barcode and ISBN were in the
+  description, the keywords and the review walkthrough. It claims **coverage, not speed**, and
+  that is deliberate: `mobile_scanner` has no still capture, so the photo is taken in the
+  system camera, where a barcode decodes live in the viewfinder. What the cover wins is the
+  books a barcode cannot do — a library sticker over the ISBN, an old or foreign edition, a
+  dust jacket, a book already in your hand. The headline also does not say _added_, because
+  `cover_read.dart` returns a search query rather than a book and the flow lands on this
+  slot's own results grid for the reader to confirm.
 
 No two headlines and no two supporting lines share an idea. Headlines run 4–6 words;
 supporting lines stay under 40 characters, which is one line at 40% of the headline's size.
 
-iPad reuses 1, 3, 6, 4 against its four captures.
+iPad reuses slots 1, 4, 7 and 3 against its four captures — `_borrowedCaption` maps
+`01-library`, `02-library-card`, `03-friends` and `04-streak` onto the iPhone entries they
+share a subject with, so slot order and which caption the iPad borrows stay product decisions
+rather than per-locale ones.
 
 ### The Korean set
 
@@ -678,12 +699,17 @@ Two places the Korean is deliberately **not** a translation of the English:
 - **Slot 2 is `표지로, 책등으로`, two modes, where the English says "Covers, spines, or
   leaning".** `ShelfDensity` has two values; the spine row rakes but raking is not a third
   selectable mode. The English overclaims and should be the one that changes.
-- **Slot 8 drops ISBN.** The Korean follows `searchBookPlaceholder` (`제목, 저자, 출판사`) where
-  the English promises "title, author, or ISBN". Same category as slot 2.
+- **Slot 8's supporting line inverts the English rather than translating it.** The English
+  says the cover works where the barcode will not; the Korean says the barcode and the title
+  work too (`바코드나 제목으로도 추가할 수 있어요.`). Once the headline leads with the cover,
+  the useful second line is the one saying the familiar paths are still there. It says `찾아요`
+  (finds) and not `끝` (done), for the same reason the English does not say _added_.
 
 All eight Korean headlines are one line, which the English ones are not — a ninth full-width
-glyph orphans onto a second line, so slot 6 is `읽은 책 보여주기` rather than the
-nine-syllable `읽은 책을 보여주세요` that shipped a bare `요` under it in review.
+glyph orphans onto a second line, and it broke **mid-word** both times it happened: slot 6 is
+`읽은 책 보여주기` rather than the nine-syllable `읽은 책을 보여주세요` that shipped a bare `요`
+under it in review, and slot 8 is `표지 찍어도 찾아요` rather than `표지만 찍어도 찾아요`, which
+did the same thing. Counting words tells you nothing; count glyphs.
 
 **Written, not natively reviewed**, and one gap is known and unfixed: the demo account's own
 shelves are `Fiction` / `Learning` / `Business`, so the two library frames carry English shelf

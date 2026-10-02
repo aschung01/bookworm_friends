@@ -215,9 +215,30 @@ const _captionsEnUs = <String, _Caption>{
     'Read alongside your friends',
     'See what they have open right now.',
   ),
+  // **Slot 8 leads with the cover photo, not the barcode.** Three things decided that, and
+  // the middle one is why it claims coverage rather than speed:
+  //
+  // - **Cover reading was unsold.** It is shipped and prominent — `_CoverButton` in
+  //   `scan_book_page.dart` is "on screen from the first frame", not behind the nudge — and
+  //   the whole listing mentioned it nowhere, in either locale, while barcode and ISBN were
+  //   in the headline, the description, the keywords and the review walkthrough.
+  // - **It is not actually the faster path, so this does not say it is.** `mobile_scanner`
+  //   has no still capture, so the photo is taken in the *system* camera: tap, leave the
+  //   app, shoot, come back. A barcode decodes live in the viewfinder. What the cover wins
+  //   is the books a barcode cannot do — a library sticker over the ISBN, an old or foreign
+  //   edition, a dust jacket, a book already in your hand — which is a coverage claim and
+  //   is true.
+  // - **It ends at this capture.** `cover_read.dart` returns a *search query*, never a book,
+  //   because "a model reading stylised cover type is a guess, and it can be confidently
+  //   wrong in ways an ISBN cannot" — so the flow lands on the results grid for the reader
+  //   to confirm. That is exactly the screen this slot already shows, so leading with the
+  //   cover needed no recapture. It also could not have had one: a simulator has no camera.
+  //
+  // So the headline does not say *added* and the Korean does not say `끝`. `Add it by its
+  // cover` is the idiom read straight, and it is what the feature does.
   'iphone69/06-search-results': _Caption(
-    'Scan the barcode to add',
-    'Or search by title, author, or ISBN.',
+    'Add it by its cover',
+    'Works when the barcode won\u2019t.',
   ),
 };
 
@@ -227,10 +248,9 @@ const _captionsEnUs = <String, _Caption>{
 /// under it say the same word: `표지` and `책등` are the nouns inside `shelfDensityCovers`
 /// and `shelfDensitySpines`, `가장 많이 읽은 작가` is `libraryCardTopAuthor` verbatim, `쪽` is
 /// `progressPageColumn`, `스토리` and `사진` are `shareCardDestinationStories` and
-/// `shareCardDestinationPhotos`, `기록` is `streakMonthDaysReadCaption`, and
-/// `제목, 저자, 출판사` is the list inside `searchBookPlaceholder`. A storefront that names a
-/// control the app calls something else is the same drift this whole file exists to avoid,
-/// one layer out.
+/// `shareCardDestinationPhotos`, `기록` is `streakMonthDaysReadCaption`, and `표지` in slot 8 is
+/// the noun inside `scanReadCover` (`표지 읽기`). A storefront that names a control the app
+/// calls something else is the same drift this whole file exists to avoid, one layer out.
 ///
 /// **`표지로, 책등으로` deliberately does not translate the English headline's third item,
 /// "leaning".** `ShelfDensity` in `lib/providers/shelf_density_provider.dart` has two
@@ -250,8 +270,23 @@ const _captionsEnUs = <String, _Caption>{
 /// than a wrap. It is `읽은 책 보여주기` instead: seven glyphs, one line like the other
 /// seven, and the nominal `-기` ending slots 2 and 7 already use, since the Korean set
 /// turns the English imperatives into nominals throughout (`Read alongside your friends`
-/// is `친구와 함께 읽기`). Counting glyphs is the check — an explicit `\n` would fix the
+/// is `친구와 함깘 읽기`). Counting glyphs is the check — an explicit `\n` would fix the
 /// break and silently re-break if the size ever moves.
+///
+/// Slot 8 is the second instance and confirms the budget: `표지만 찍어도 찾아요` is nine
+/// glyphs and rendered `표지만 찍어도 찾아` with a bare `요` beneath it. **Note the break
+/// is mid-word, not at a space** — Korean wraps between syllables, so counting words tells
+/// you nothing and a line that happens to end on a particle is not safer. The fix was to
+/// drop the `-만` particle rather than restructure: `표지 찍어도 찾아요`, eight glyphs, one
+/// line, same claim.
+///
+/// **It says `찾아요` (finds), not `끝` (done), for the reason the English does not say
+/// *added*.** `cover_read.dart` hands back a search query and the flow lands on the results
+/// grid for the reader to confirm, so a completion claim would be the one thing this
+/// feature cannot promise. The supporting line inverts the English rather than translating
+/// it — English says the cover works where the barcode will not, Korean says the barcode
+/// and the title work too — because once the headline leads with the cover, the useful
+/// second line is the one that says the familiar paths are still there.
 ///
 /// Every headline is set in `GowunBatang-Bold.ttf`, which is subset to Latin-1 plus KS X
 /// 1001's 2,350 syllables, so **do not alter a Hangul character here without checking it
@@ -272,10 +307,7 @@ const _captionsKo = <String, _Caption>{
   'iphone69/05-book-details': _Caption('지금 읽는 쪽을 기록', '쪽이나 퍼센트로, 한 번에.'),
   'iphone69/07-share-card': _Caption('읽은 책 보여주기', '스토리로, 사진으로, 또는 그대로 공유.'),
   'iphone69/04-friends': _Caption('친구와 함께 읽기', '지금 어떤 책을 펼쳤는지 보세요.'),
-  'iphone69/06-search-results': _Caption(
-    '바코드를 비추면 끝',
-    '제목, 저자, 출판사로 검색할 수도 있어요.',
-  ),
+  'iphone69/06-search-results': _Caption('표지 찍어도 찾아요', '바코드나 제목으로도 추가할 수 있어요.'),
 };
 
 /// One App Store locale: where its captures and frames live, which Flutter locale the
