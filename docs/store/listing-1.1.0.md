@@ -363,7 +363,7 @@ feature line once the dormant users have cycled through.
 ### Keywords (limit 100)
 
 ```
-streak,ISBN,barcode,stats,books read,shelf,library,Libby,friends,goals,habit,log,diary,spine
+streak,ISBN,barcode,cover,stats,books read,shelf,library,Libby,friends,goals,habit,log,diary,spine
 ```
 
 Excludes every word already in the name and subtitle, since Apple indexes all three as one pool.
@@ -377,11 +377,11 @@ A bookshelf you actually keep.
 
 Free. No ads, no subscription, nothing to unlock. Your library is private until you hand someone a link.
 
-Add a book by title, author or ISBN — or point your camera at the barcode on the back. Put it on a shelf you named yourself. Watch the shelf fill up.
+Add a book by title, author or ISBN — or point your camera at the barcode on the back. No barcode to scan? Photograph the cover instead. Put it on a shelf you named yourself. Watch the shelf fill up.
 
 A SHELF THAT LOOKS LIKE A SHELF
 • Name your own shelves and move books between them
-• Three ways to see one: covers face-out, spines lined up, or leaning
+• Two ways to see one: covers face-out, or spines lined up
 • Whatever you are reading leads every shelf, so you never lose your place
 
 TRACK WHERE YOU ACTUALLY ARE
@@ -415,7 +415,7 @@ Coming back from the old version? Sign in with the same Apple ID or Google accou
 • Friends. Invite by link, see what your friends have open, visit their shelves, and poke the quiet ones. Friendships are mutual, and only friends can see your library.
 • Reading progress by page or percent, with the days you read stamped into a streak.
 • A Library Card that turns your reading into something worth sharing — books, days reading, pace, most-read author.
-• Shelves you arrange yourself, in three views: covers, spines, or leaning.
+• Shelves you arrange yourself, in two views: covers or spines.
 • Notes on any book, private to you.
 • Open a book in the app you read it in, or borrow it free from your library through Libby.
 • Redesigned for iPad.
@@ -505,7 +505,7 @@ New, where there is room to be honest about it, not in a 170-character hook.
 ### Keywords (limit 100)
 
 ```
-독서기록,독서앱,책장,서재,독서습관,완독,책읽기,독서모임,바코드,ISBN,도서관,밀리의서재,리디
+독서기록,독서앱,책장,서재,독서습관,완독,책읽기,독서모임,바코드,ISBN,도서관,표지,표지촬영,밀리의서재,리디
 ```
 
 ### Description (limit 4000)
@@ -515,11 +515,11 @@ New, where there is room to be honest about it, not in a 170-character hook.
 
 무료입니다. 광고도, 구독도, 잠겨 있는 기능도 없습니다. 내 서재는 링크를 건네기 전까지 아무에게도 보이지 않습니다.
 
-제목이나 저자, ISBN으로 책을 찾거나, 책 뒤편의 바코드를 카메라로 비추기만 하세요. 직접 이름 붙인 선반에 꽂고, 선반이 채워지는 걸 지켜보세요.
+제목이나 저자, ISBN으로 책을 찾거나, 책 뒤편의 바코드를 카메라로 비추기만 하세요. 바코드가 없으면 표지를 찍어도 찾아요. 직접 이름 붙인 선반에 꽂고, 선반이 채워지는 걸 지켜보세요.
 
 책장처럼 보이는 책장
 • 선반 이름을 직접 정하고, 책을 옮겨 가며 정리하세요
-• 선반을 보는 방식 세 가지: 표지, 책등, 기대어 놓기
+• 선반을 보는 방식 두 가지: 표지, 책등
 • 지금 읽는 책이 항상 선반 맨 앞에 서기 때문에 읽던 자리를 놓치지 않습니다
 
 지금 어디까지 읽었는지
@@ -553,7 +553,7 @@ New, where there is room to be honest about it, not in a 170-character hook.
 • 친구. 링크로 친구를 초대하고, 친구가 읽는 책을 확인하고, 친구의 서재를 둘러보고, 조용한 친구는 콕 찔러 보세요. 친구는 서로 수락해야 맺어지고, 서재는 친구에게만 보입니다.
 • 쪽수나 퍼센트로 남기는 진도, 그리고 읽은 날이 쌓이는 연속 기록.
 • 읽은 기록이 한 장의 카드가 되는 도서 대출증 — 완독한 책, 읽은 날수, 속도, 가장 많이 읽은 작가.
-• 직접 정리하는 선반, 표지·책등·기대어 놓기 세 가지 보기.
+• 직접 정리하는 선반, 표지·책등 두 가지 보기.
 • 책마다 남기는 나만의 메모.
 • 읽던 앱에서 바로 열기, Libby로 도서관 무료 대출.
 • iPad 화면에 맞게 새로 정리했습니다.
@@ -604,10 +604,10 @@ The app is free. No in-app purchases, no subscriptions, no advertising.
 
 WHAT TO TRY.
 
-1. SEARCH TAB — type any title, for example "Dune". Or tap the barcode button and scan the back cover of any physical book.
+1. SEARCH TAB — type any title, for example "Dune". Or tap the barcode button and scan the back cover of any physical book. On the scan screen, "Read the cover" photographs the front cover instead and turns it into a search — for a book whose barcode is missing, covered by a library sticker, or on an older edition.
 2. Tap a result, add it, and choose a shelf. It appears on the shelf on the Library tab.
 3. Tap the book on the shelf to open it. Update progress logs where you are, by page number (p.259 / 432) or by percent.
-4. The view switcher on the Library tab cycles three shelf views: covers face-out, spines lined up, and leaning. Books can be dragged between positions.
+4. The view switcher on the Library tab toggles two shelf views: covers face-out and spines lined up. Books can be dragged between positions.
 5. LIBRARY CARD, at the bottom of the Library tab — it summarises books finished, days read, reading pace and most-read author, and the share button renders it as an image for the system share sheet, Instagram Stories or Photos.
 6. READING STREAK — tap the flame in the bar at the top of the Library tab. The demo account's current run is 17 days, drawn as a week row and a month grid you can page back through. "I read today" records the day; recording a day that is not yet logged plays a short celebration.
 
@@ -640,16 +640,16 @@ Proposed order and captions — 4–6 words, set in Gowun Batang Bold to match t
 width on near-white paper is a wash, and the headline is the one thing in the frame that has
 to survive being served as a thumbnail.
 
-| #   | Capture             | Headline                      | Supporting line                           |
-| --- | ------------------- | ----------------------------- | ----------------------------------------- |
-| 1   | `01-library-covers` | A bookshelf you actually keep | Free. No ads, no subscription.            |
-| 2   | `02-library-spines` | Covers, spines, or leaning    | Drag them into the order you want.        |
-| 3   | `08-streak`         | The days add up               | Mark today, and watch the month fill in.  |
-| 4   | `03-library-card`   | Your reading becomes a card   | Books, days, pace, most-read author.      |
-| 5   | `05-book-details`   | Log the page you're on        | By page or percent, in one drag.          |
-| 6   | `07-share-card`     | Show someone what you read    | Straight to Stories, Photos, or a friend. |
-| 7   | `04-friends`        | Read alongside your friends   | See what they have open right now.        |
-| 8   | `06-search-results` | Add it by its cover           | Works when the barcode won't.             |
+| #   | Capture             | Headline                       | Supporting line                           |
+| --- | ------------------- | ------------------------------ | ----------------------------------------- |
+| 1   | `01-library-covers` | A bookshelf you actually keep  | Free. No ads, no subscription.            |
+| 2   | `02-library-spines` | Covers out, or spines lined up | Drag them into the order you want.        |
+| 3   | `08-streak`         | The days add up                | Mark today, and watch the month fill in.  |
+| 4   | `03-library-card`   | Your reading becomes a card    | Books, days, pace, most-read author.      |
+| 5   | `05-book-details`   | Log the page you're on         | By page or percent, in one drag.          |
+| 6   | `07-share-card`     | Show someone what you read     | Straight to Stories, Photos, or a friend. |
+| 7   | `04-friends`        | Read alongside your friends    | See what they have open right now.        |
+| 8   | `06-search-results` | Add it by its cover            | Works when the barcode won't.             |
 
 Four changes from the first draft of this table, the first two for the same reason —
 observation 2 applied one level down, since the strong listings never spend a character
@@ -696,9 +696,12 @@ under it use the same word (`표지`/`책등`, `가장 많이 읽은 작가`, `�
 
 Two places the Korean is deliberately **not** a translation of the English:
 
-- **Slot 2 is `표지로, 책등으로`, two modes, where the English says "Covers, spines, or
-  leaning".** `ShelfDensity` has two values; the spine row rakes but raking is not a third
-  selectable mode. The English overclaims and should be the one that changes.
+- **Slot 2 is `표지로, 책등으로`, two modes, and the English now matches.** `ShelfDensity`
+  has two values; the spine row rakes but raking is not a third selectable mode, and its own
+  doc records `leaning` as withdrawn. The English headline promised three (`Covers, spines, or
+leaning`) and the Korean never did — so the Korean was right and the English has been
+  corrected to `Covers out, or spines lined up`, along with the same overclaim in both
+  locales' description, What's New, and the App Review walkthrough's step 4.
 - **Slot 8's supporting line inverts the English rather than translating it.** The English
   says the cover works where the barcode will not; the Korean says the barcode and the title
   work too (`바코드나 제목으로도 추가할 수 있어요.`). Once the headline leads with the cover,

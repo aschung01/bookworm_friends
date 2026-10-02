@@ -173,11 +173,21 @@ const _captionsEnUs = <String, _Caption>{
     'A bookshelf you actually keep',
     'Free. No ads, no subscription.',
   ),
-  // **This headline overclaims and the Korean one does not** — see `_captionsKo`.
-  // `ShelfDensity` has two values, so "leaning" names a mode that was withdrawn. Left
-  // alone in this pass deliberately: it is an English copy change, not a translation.
+  // **This said `Covers, spines, or leaning` and that named a mode the app does not have.**
+  // `ShelfDensity` has two values and its own doc records `leaning` as withdrawn — the spine
+  // row rakes, but raking is not a third selectable thing. The Korean caption had always
+  // said two (`표지로, 책등으로`), so this is the English being brought into line with it
+  // rather than a new decision. The same overclaim was in both locales' description and
+  // What's New and in the App Review walkthrough's step 4, where it was worst: a reviewer
+  // following "cycles three shelf views" would have found two and had a step fail.
+  //
+  // **Known cost: `cover` is now also in slot 8's headline**, the same category as the
+  // `friend` collision noted on slot 7. Accepted because the app's own vocabulary gives a
+  // cover two unrelated jobs — how a shelf is drawn, and what you photograph to add a book
+  // — so the two frames are not saying one thing twice. The Korean set has carried the same
+  // overlap (`표지로, 책등으로` and `표지 찍어도 찾아요`) since it shipped.
   'iphone69/02-library-spines': _Caption(
-    'Covers, spines, or leaning',
+    'Covers out, or spines lined up',
     'Drag them into the order you want.',
   ),
   // The streak's two lines deliberately avoid every idea already spent: `keep` belongs to
@@ -252,12 +262,15 @@ const _captionsEnUs = <String, _Caption>{
 /// the noun inside `scanReadCover` (`표지 읽기`). A storefront that names a control the app
 /// calls something else is the same drift this whole file exists to avoid, one layer out.
 ///
-/// **`표지로, 책등으로` deliberately does not translate the English headline's third item,
-/// "leaning".** `ShelfDensity` in `lib/providers/shelf_density_provider.dart` has two
-/// values, `covers` and `spines`; the spine row does rake, but raking is not a third
-/// selectable mode — its own doc records `leaning` as withdrawn. So the English line
-/// promises a control that is not there and the Korean does not. **The English is the one
-/// that should change**, and it has deliberately not been changed in this pass.
+/// **`표지로, 책등으로` was right and the English was wrong, so the English changed.**
+/// `ShelfDensity` in `lib/providers/shelf_density_provider.dart` has two values, `covers`
+/// and `spines`; the spine row does rake, but raking is not a third selectable mode — its
+/// own doc records `leaning` as withdrawn. The Korean caption never promised a third and
+/// the English headline did, so slot 2 is now `Covers out, or spines lined up`. Worth
+/// knowing how far that one claim had spread before anyone checked it against the enum: it
+/// was in both locales' description bullet and What's New bullet, and in the App Review
+/// walkthrough's step 4, which told a reviewer the switcher "cycles three shelf views" — a
+/// step that would simply have failed in front of them.
 ///
 /// **Written, not natively reviewed** — the same caveat `AGENTS.md` records for the other
 /// agent-written Korean strings.
