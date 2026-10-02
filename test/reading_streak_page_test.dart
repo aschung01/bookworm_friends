@@ -107,6 +107,40 @@ Map<DateTime, String?> _runEndingDaysAgo(int back, int length) => {
     DateTime(_today.year, _today.month, _today.day - back - i): null,
 };
 
+/// Three consecutive days well inside the **previous** month: [first] on the first two,
+/// [second] on the third.
+///
+/// **For the two cases that read the month card and the legend, a run ending *today* is not
+/// a valid fixture.** Both of those draw one month, and `DateTime(y, m, day - 2)` normalises
+/// backwards across a month boundary — so on the 1st and 2nd of any month two of the three
+/// stamps land outside the grid the card draws, and the tally reads 1 instead of 3. Both
+/// cases passed for 28 days a month and failed on 1 October, which is the worst shape a red
+/// suite can have: it looks like a regression in whatever was last touched.
+///
+/// Anchored on the 10th of the previous month, so it is valid on every date, needs no
+/// future-dated reading day (a fixture the app can never produce), and is reached by one tap
+/// on the card's own `‹`. Anchoring to the 1st–3rd of the *current* month was the other
+/// candidate and is worse: for most of the month those days are in the future.
+Map<DateTime, String?> _threeDaysLastMonth(String first, String second) {
+  final endOfLastMonth = DateTime(
+    _today.year,
+    _today.month,
+    1,
+  ).subtract(const Duration(days: 1));
+  final anchor = DateTime(endOfLastMonth.year, endOfLastMonth.month, 10);
+  return {
+    anchor: first,
+    DateTime(anchor.year, anchor.month, anchor.day + 1): first,
+    DateTime(anchor.year, anchor.month, anchor.day + 2): second,
+  };
+}
+
+/// Steps the month card back one month — to where [_threeDaysLastMonth] put its stamps.
+Future<void> _pageToPreviousMonth(WidgetTester tester) async {
+  await tester.tap(find.byKey(kStreakMonthPreviousKey));
+  await tester.pumpAndSettle();
+}
+
 /// Two open books and one that is not, which is the shape the picker's grouping is about.
 List<Shelf> _shelves() => [
   testShelf('reading', [
@@ -494,14 +528,8 @@ void main() {
   testWidgets('the legend names the books and counts their days', (
     tester,
   ) async {
-    await _pump(
-      tester,
-      log: {
-        _today: 'open-a',
-        DateTime(_today.year, _today.month, _today.day - 1): 'open-a',
-        DateTime(_today.year, _today.month, _today.day - 2): 'open-b',
-      },
-    );
+    await _pump(tester, log: _threeDaysLastMonth('open-a', 'open-b'));
+    await _pageToPreviousMonth(tester);
 
     expect(find.text('2 days'), findsOneWidget);
     expect(find.text('1 day'), findsOneWidget);
@@ -569,14 +597,8 @@ void main() {
     // "longest this month"; the hero on this page already *is* the run, so keeping it made
     // the page print one number three times — which is the defect the design record exists
     // to catch. The tally and the book count are two different facts off the same stamps.
-    await _pump(
-      tester,
-      log: {
-        _today: 'open-a',
-        DateTime(_today.year, _today.month, _today.day - 1): 'open-a',
-        DateTime(_today.year, _today.month, _today.day - 2): 'open-b',
-      },
-    );
+    await _pump(tester, log: _threeDaysLastMonth('open-a', 'open-b'));
+    await _pageToPreviousMonth(tester);
 
     // Scoped to the tile, because this fixture's tally is 3 and so is its longest run — a
     // coincidence of this log, not a duplication. Asserting on the bare string would pass for
